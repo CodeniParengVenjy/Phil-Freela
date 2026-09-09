@@ -1,0 +1,15 @@
+@import url('../dashboard/styles.css');
+
+.max-w-950 {
+  max-width: 950px;
+}
+
+.status-tab-btn {
+  transition: all 0.25s ease;
+}
+
+.status-tab-btn.active-tab {
+  background: var(--accent-orange) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.4);
+}

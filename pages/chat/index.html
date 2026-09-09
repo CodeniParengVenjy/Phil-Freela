@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhilFreela – Direct Chat</title>
+  <link rel="icon" type="image/svg+xml" href="../../images/logo-philfreela.svg" />
+  
+  <!-- Fonts & Bootstrap 5 & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-dark text-light fixed-layout">
+
+  <!-- Top Navigation Bar -->
+  <nav class="navbar navbar-expand-lg fixed-top border-bottom border-secondary border-opacity-25" id="topNavbar">
+    <div class="container-fluid px-3 px-lg-4">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-outline-secondary text-white border-0 shadow-none p-1" type="button" id="sidebarToggle" aria-label="Toggle Sidebar">
+          <i class="bi bi-list fs-2 text-warning"></i>
+        </button>
+        <a href="../homepage/index.html" class="navbar-brand d-flex align-items-center gap-2 m-0">
+          <img src="../../images/logo-philfreela.svg" alt="PhilFreela" class="logo-img" />
+        </a>
+      </div>
+
+      <!-- Quick Search Bar -->
+      <div class="d-none d-md-flex mx-auto position-relative search-nav-box" style="width: 380px;">
+        <i class="bi bi-search search-icon text-secondary"></i>
+        <input type="search" class="form-control nav-search-input" placeholder="Search profiles, services, projects..." />
+      </div>
+
+      <div class="d-flex align-items-center gap-3">
+        <a href="../services/index.html" class="nav-link text-white-50 hover-orange d-none d-lg-block fw-semibold fs-7">Join as Freelancer</a>
+        <a href="../messages/index.html" class="nav-link text-white-50 hover-orange d-none d-lg-block fw-semibold fs-7">Become a Client</a>
+        <a href="../services/index.html" class="nav-link text-white-50 hover-orange d-none d-lg-block fw-semibold fs-7">Services</a>
+        
+        <div class="dropdown">
+          <button class="btn btn-dark border border-secondary border-opacity-50 rounded-pill d-flex align-items-center gap-2 px-3 py-1 dropdown-toggle text-white" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="avatar-circle-sm bg-orange text-white fw-bold">K</span>
+            <span class="fw-semibold fs-7 text-truncate d-none d-sm-inline">Keanne Obias</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border border-secondary border-opacity-25 shadow-lg p-2" aria-labelledby="userMenuDropdown">
+            <li><a class="dropdown-item rounded-2 text-white" href="../profile/index.html"><i class="bi bi-person me-2 text-orange"></i> My Profile</a></li>
+            <li><a class="dropdown-item rounded-2 text-white" href="../settings/index.html"><i class="bi bi-gear me-2 text-info"></i> Settings</a></li>
+            <li><hr class="dropdown-divider border-secondary border-opacity-25"></li>
+            <li><a class="dropdown-item rounded-2 text-danger" href="../login/index.html"><i class="bi bi-box-arrow-right me-2"></i> Sign out</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- App Main Body Wrapper -->
+  <div class="app-container d-flex">
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
+      <div class="sidebar-inner d-flex flex-column justify-content-between h-100 py-3 px-2">
+        <div class="nav flex-column gap-2">
+          
+          <a href="../profile/index.html" class="sidebar-pill-btn">
+            <i class="bi bi-person-circle"></i>
+            <span>Profile</span>
+          </a>
+
+          <a href="../messages/index.html" class="sidebar-pill-btn">
+            <i class="bi bi-briefcase-fill"></i>
+            <span>Messages / Jobs</span>
+          </a>
+
+          <a href="../inbox/index.html" class="sidebar-pill-btn active">
+            <i class="bi bi-chat-left-text-fill"></i>
+            <span>Inbox</span>
+            <span class="badge bg-danger rounded-pill ms-auto">3</span>
+          </a>
+
+          <a href="../notifications/index.html" class="sidebar-pill-btn">
+            <i class="bi bi-bell-fill"></i>
+            <span>Notifications</span>
+            <span class="badge bg-warning text-dark rounded-pill ms-auto">2</span>
+          </a>
+
+          <a href="../services/index.html" class="sidebar-pill-btn">
+            <i class="bi bi-plus-circle-fill"></i>
+            <span>Create Services</span>
+          </a>
+
+          <a href="../projects/index.html" class="sidebar-pill-btn">
+            <i class="bi bi-folder-fill"></i>
+            <span>Projects & Resumes</span>
+          </a>
+
+          <a href="../settings/index.html" class="sidebar-pill-btn">
+            <i class="bi bi-gear-fill"></i>
+            <span>Settings</span>
+          </a>
+
+        </div>
+
+        <div class="sidebar-footer px-3 pt-3 border-top border-secondary border-opacity-25 fs-8 text-secondary">
+          <p class="mb-1 fw-semibold text-white-50">PhilFreela Dashboard</p>
+          <small>© 2026 Version 2.0</small>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main View Content Area -->
+    <main class="content-wrapper flex-grow-1 p-3 p-md-4">
+
+      <div class="glass-card rounded-4 border border-secondary border-opacity-25 overflow-hidden d-flex flex-column" style="height: calc(100vh - 120px);">
+        
+        <!-- Chat Recipient Header -->
+        <div class="chat-header p-3 bg-dark border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-3">
+            <a href="../inbox/index.html" class="btn btn-sm btn-dark text-secondary"><i class="bi bi-arrow-left fs-5"></i></a>
+            <div class="avatar-circle bg-success text-white fw-bold d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <i class="bi bi-person-fill fs-5"></i>
+            </div>
+            <div>
+              <h6 class="text-white fw-bold mb-0" id="chatActiveName">Juan Cruz</h6>
+              <small class="text-success"><i class="bi bi-circle-fill fs-8"></i> Active Now</small>
+            </div>
+          </div>
+          <div>
+            <button class="btn btn-sm btn-outline-secondary text-white border-0"><i class="bi bi-telephone-fill fs-5"></i></button>
+            <button class="btn btn-sm btn-outline-secondary text-white border-0"><i class="bi bi-camera-video-fill fs-5"></i></button>
+          </div>
+        </div>
+
+        <!-- Chat Messages Stream Body -->
+        <div class="chat-body flex-grow-1 p-4 overflow-y-auto d-flex flex-column gap-3 bg-black bg-opacity-40" id="chatMessagesStream">
+          
+          <!-- Received Message -->
+          <div class="chat-bubble incoming align-self-start p-3 rounded-4 max-w-500 bg-secondary bg-opacity-25 text-white">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <strong class="fs-8 text-orange" id="bubbleSenderName">Juan Cruz</strong>
+              <small class="fs-8 text-secondary">10:15 AM</small>
+            </div>
+            <p class="mb-0 fs-7">Hello Keanne! I reviewed your portfolio and video editing samples. We're very impressed!</p>
+          </div>
+
+          <!-- Sent Message -->
+          <div class="chat-bubble outgoing align-self-end p-3 rounded-4 max-w-500 bg-orange text-white">
+            <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
+              <small class="fs-8 text-white-50">10:18 AM</small>
+            </div>
+            <p class="mb-0 fs-7">Thank you so much! I'd love to help you edit your promotional advertisement.</p>
+          </div>
+
+          <!-- Received Message -->
+          <div class="chat-bubble incoming align-self-start p-3 rounded-4 max-w-500 bg-secondary bg-opacity-25 text-white">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <strong class="fs-8 text-orange" id="bubbleSenderName2">Juan Cruz</strong>
+              <small class="fs-8 text-secondary">10:20 AM</small>
+            </div>
+            <p class="mb-0 fs-7">Awesome! Do we have a deal?</p>
+          </div>
+
+        </div>
+
+        <!-- Chat Input Controls Bar -->
+        <div class="chat-footer p-3 bg-dark border-top border-secondary border-opacity-25">
+          <form id="chatInputForm" class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-dark text-secondary p-2" title="Attach Document"><i class="bi bi-file-earmark-plus fs-5"></i></button>
+            <button type="button" class="btn btn-dark text-secondary p-2" title="Attach Image"><i class="bi bi-image fs-5"></i></button>
+            <button type="button" class="btn btn-dark text-secondary p-2" title="Voice Message"><i class="bi bi-mic fs-5"></i></button>
+            
+            <input type="text" id="chatMessageInput" class="form-control bg-secondary bg-opacity-25 border-0 text-white rounded-pill px-4 py-2 placeholder-muted" placeholder="Type a message..." required />
+            
+            <button type="submit" class="btn btn-gradient-orange rounded-circle p-2 text-white d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+              <i class="bi bi-send-fill fs-5"></i>
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- JS Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="chat.js"></script>
+</body>
+</html>
