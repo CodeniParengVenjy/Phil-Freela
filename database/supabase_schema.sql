@@ -1,4 +1,5 @@
--- Postgres/Supabase schema, converted from database/capstone_system_2026.sql (MySQL).
+-- Postgres/Supabase schema for the Capstone System (originally converted from
+-- a MySQL schema, which has since been removed now that this is the source of truth).
 -- Run this in the Supabase SQL Editor (Project > SQL Editor > New query) before importing data.
 
 create type gender_type as enum ('male', 'female');
