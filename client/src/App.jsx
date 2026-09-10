@@ -10,6 +10,13 @@ import NotificationsView from "./pages/dashboard/views/NotificationsView";
 import ServicesView from "./pages/dashboard/views/ServicesView";
 import ProjectsView from "./pages/dashboard/views/ProjectsView";
 import SettingsView from "./pages/dashboard/views/SettingsView";
+import FeedbackView from "./pages/dashboard/views/FeedbackView";
+import JobDetailsView from "./pages/dashboard/views/JobDetailsView";
+import ProjectDetailsView from "./pages/dashboard/views/ProjectDetailsView";
+import SubmitProjectView from "./pages/dashboard/views/SubmitProjectView";
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminSetup from "./pages/admin/AdminSetup";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 function App() {
   return (
@@ -25,7 +32,14 @@ function App() {
         <Route path="services" element={<ServicesView />} />
         <Route path="projects" element={<ProjectsView />} />
         <Route path="settings" element={<SettingsView />} />
+        <Route path="feedback" element={<FeedbackView />} />
+        <Route path="job-details" element={<JobDetailsView />} />
+        <Route path="project-details" element={<ProjectDetailsView />} />
+        <Route path="submit-project" element={<SubmitProjectView />} />
       </Route>
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/setup" element={<AdminSetup />} />
+      <Route path="/admin" element={<AdminDashboard />} />
     </Routes>
   );
 }

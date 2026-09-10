@@ -639,3 +639,38 @@ body.sidebar-collapsed .sidebar-wrapper {
     gap: 12px;
   }
 }
+
+
+/* Extras from the standalone feedback/job-details/project-details/submit-project
+   pages, which each just @imported this file and added a few rules of their own. */
+.max-w-850 { max-width: 850px; }
+.max-w-900 { max-width: 900px; }
+.max-w-950 { max-width: 950px; }
+
+.star-icon {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.star-icon:hover {
+  transform: scale(1.2);
+}
+
+.status-tab-btn {
+  transition: all 0.25s ease;
+}
+
+.status-tab-btn.active-tab {
+  background: var(--accent-orange) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.4);
+}
+
+.dropzone-box {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dropzone-box:hover, .dropzone-box.dragover {
+  border-color: var(--accent-orange) !important;
+  background: rgba(255, 107, 0, 0.08) !important;
+  box-shadow: 0 0 25px rgba(255, 107, 0, 0.2);
+}
