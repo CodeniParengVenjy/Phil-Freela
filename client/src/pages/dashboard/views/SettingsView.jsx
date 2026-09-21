@@ -27,7 +27,7 @@ export default function SettingsView() {
                 <button
                   key={item}
                   type="button"
-                  className={`btn text-start fw-semibold py-2 px-3 rounded-3 ${activeSubNav === item ? "bg-orange text-white" : "text-white-50 hover-orange"}`}
+                  className={`btn text-start fw-semibold py-2 px-3 rounded-3 ${activeSubNav === item ? "bg-role text-white" : "text-white-50 hover-role"}`}
                   onClick={() => setActiveSubNav(item)}
                 >
                   {item}
@@ -66,7 +66,7 @@ export default function SettingsView() {
                 </div>
 
                 <div>
-                  <button type="submit" className="btn btn-gradient-orange rounded-pill px-5 py-2 fw-bold text-white shadow-glow">
+                  <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role">
                     Save Changes
                   </button>
                 </div>

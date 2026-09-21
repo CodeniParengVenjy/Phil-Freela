@@ -29,12 +29,7 @@ export default function ProfileView() {
                 </div>
               </div>
 
-              <h2 className="fw-bold text-white mb-1">{displayName}</h2>
-              <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
-                <span className="text-warning fs-5"><i className="bi bi-star-fill"></i> <strong>4.3</strong></span>
-                <span className="text-secondary fs-7">(67 client reviews)</span>
-              </div>
-              <p className="text-warning fw-semibold fs-7 mb-4">Video Editor, Graphic Designer, Web Developer</p>
+              <h2 className="fw-bold text-white mb-4">{displayName}</h2>
 
               <div className="text-start bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary border-opacity-25 mb-4">
                 <h5 className="text-white fw-bold mb-2"><i className="bi bi-text-paragraph text-orange me-2"></i> Description</h5>
@@ -116,11 +111,8 @@ export default function ProfileView() {
             <div className="d-flex align-items-center gap-2 mb-2 text-success fs-7">
               <i className="bi bi-check-circle-fill"></i> Identity Verified
             </div>
-            <div className="d-flex align-items-center gap-2 mb-2 text-success fs-7">
-              <i className="bi bi-check-circle-fill"></i> Email Authenticated
-            </div>
             <div className="d-flex align-items-center gap-2 text-success fs-7">
-              <i className="bi bi-check-circle-fill"></i> Payment Method Verified
+              <i className="bi bi-check-circle-fill"></i> Email Authenticated
             </div>
           </div>
         </div>

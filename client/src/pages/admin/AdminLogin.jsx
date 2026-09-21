@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
-import "../auth.css";
+import { getFriendlyErrorMessage } from "../../lib/errors";
+import "../../styles/auth.css";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export default function AdminLogin() {
         password
       });
 
-      if (error) throw new Error("Invalid credentials.");
+      if (error) throw error;
 
       const { data: adminRow, error: adminError } = await supabase
         .from("admins")
@@ -43,7 +44,7 @@ export default function AdminLogin() {
       setMessage({ text: "Signed in! Redirecting...", type: "success" });
       navigate("/admin");
     } catch (error) {
-      setMessage({ text: error.message, type: "error" });
+      setMessage({ text: getFriendlyErrorMessage(error), type: "error" });
     } finally {
       setSubmitting(false);
     }

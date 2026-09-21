@@ -1,22 +1,47 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { supabase } from "../../../lib/supabaseClient";
 
-const jobs = [
-  { name: "Jack Doe", title: "Hiring a logo designer for our cafe business", rating: "5.0", tag: "Graphic Designer", icon: "bi-person-fill", avatar: "bg-success" },
-  { name: "Peter Cruz", title: "We are looking for poster maker for billboard ads", rating: "5.0", tag: "Graphic Designer", icon: "bi-person", avatar: "bg-secondary" },
-  { name: "Coffee Company", title: "Hiring a video editor for advertisement", rating: "5.0", tag: "Video Editor", icon: "bi-building", avatar: "bg-secondary" },
-  { name: "Justin Lopez", title: "Hiring a logo designer for our cafe business", rating: "5.0", tag: "Web Developer", icon: "bi-person", avatar: "bg-secondary" },
-  { name: "Alex's Craft", title: "I am looking for Web Developer for clothing store", rating: "5.0", tag: null, icon: "bi-shop", avatar: "bg-secondary" }
+const categories = [
+  { value: "video-editing", label: "Video Editing & Motion Graphics" },
+  { value: "graphic-design", label: "Graphic Design & Poster/Logo" },
+  { value: "web-development", label: "Web Development & React Apps" },
+  { value: "copywriting", label: "Copywriting & Content Creation" }
 ];
 
 export default function MessagesView() {
   const { openChat } = useOutletContext();
   const [query, setQuery] = useState("");
+  const [jobs, setJobs] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    supabase
+      .from("job_posts")
+      .select("id, title, category, budget, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username)")
+      .order("created_at", { ascending: false })
+      .then(({ data, error: fetchError }) => {
+        if (!active) return;
+        if (fetchError) setError("Failed to load job listings.");
+        else setJobs(data);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
+    if (!jobs) return [];
     const q = query.toLowerCase();
-    return jobs.filter((job) => `${job.name} ${job.title} ${job.tag ?? ""}`.toLowerCase().includes(q));
-  }, [query]);
+    return jobs.filter((job) => {
+      const clientName = job.client?.full_name || job.client?.username || "";
+      const categoryLabel = categories.find((c) => c.value === job.category)?.label || job.category;
+      return `${clientName} ${job.title} ${categoryLabel}`.toLowerCase().includes(q);
+    });
+  }, [jobs, query]);
 
   return (
     <section className="dashboard-view active-view">
@@ -39,27 +64,37 @@ export default function MessagesView() {
           </div>
         </div>
 
+        {error && <p className="text-danger fs-7 text-center py-4 mb-0">{error}</p>}
+        {!error && jobs === null && <p className="text-secondary fs-7 text-center py-4 mb-0">Loading listings...</p>}
+        {!error && jobs !== null && filtered.length === 0 && (
+          <p className="text-secondary fs-7 text-center py-4 mb-0">No client listings yet.</p>
+        )}
+
         <div className="d-flex flex-column gap-3">
-          {filtered.map((job) => (
-            <div key={job.name + job.title} className="job-item-card p-3 p-md-4 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between gap-3 hover-lift">
-              <div className="d-flex align-items-center gap-3">
-                <div className={`avatar-circle ${job.avatar} text-white fw-bold flex-shrink-0 d-flex align-items-center justify-content-center`} style={{ width: 52, height: 52 }}>
-                  <i className={`bi ${job.icon} fs-3`}></i>
-                </div>
-                <div>
-                  <h5 className="text-white fw-bold mb-1">{job.title}</h5>
-                  <div className="d-flex align-items-center gap-2 fs-7 mb-2">
-                    <span className="text-white-50">{job.name}</span>
-                    <span className="text-warning"><i className="bi bi-star-fill"></i> {job.rating}</span>
-                    {job.tag && <span className="badge bg-black text-light px-3 py-1 rounded-pill">{job.tag}</span>}
+          {filtered.map((job) => {
+            const clientName = job.client?.full_name || job.client?.username || "Client";
+            const categoryLabel = categories.find((c) => c.value === job.category)?.label || job.category;
+            return (
+              <div key={job.id} className="job-item-card p-3 p-md-4 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between gap-3 hover-lift">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="avatar-circle bg-secondary text-white fw-bold flex-shrink-0 d-flex align-items-center justify-content-center" style={{ width: 52, height: 52 }}>
+                    <i className="bi bi-building fs-3"></i>
+                  </div>
+                  <div>
+                    <h5 className="text-white fw-bold mb-1">{job.title}</h5>
+                    <div className="d-flex align-items-center gap-2 fs-7 mb-2">
+                      <span className="text-white-50">{clientName}</span>
+                      {job.budget && <span className="text-warning">₱{Number(job.budget).toLocaleString()}</span>}
+                      <span className="badge bg-black text-light px-3 py-1 rounded-pill">{categoryLabel}</span>
+                    </div>
                   </div>
                 </div>
+                <button className="btn btn-dark border border-secondary text-orange hover-bg-orange rounded-3 px-3 py-2" onClick={() => openChat(job.client?.id)}>
+                  <i className="bi bi-chat-dots-fill fs-5"></i>
+                </button>
               </div>
-              <button className="btn btn-dark border border-secondary text-orange hover-bg-orange rounded-3 px-3 py-2" onClick={() => openChat(job.name)}>
-                <i className="bi bi-chat-dots-fill fs-5"></i>
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

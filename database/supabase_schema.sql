@@ -1,28 +1,34 @@
--- Postgres/Supabase schema for the Capstone System (originally converted from
--- a MySQL schema, which has since been removed now that this is the source of truth).
--- Run this in the Supabase SQL Editor (Project > SQL Editor > New query) before importing data.
+-- Postgres/Supabase schema for the Capstone System.
+-- This mirrors what has already been applied to the live Supabase project
+-- (via the Supabase MCP `apply_migration` tool) -- run it only if you need to
+-- recreate the schema from scratch on a fresh project.
 
-create type gender_type as enum ('male', 'female');
+create type public.gender_type as enum ('male', 'female');
+create type public.account_type as enum ('freelancer', 'client');
 
-create table if not exists users (
-  id bigint generated always as identity primary key,
+-- Extends auth.users (Supabase Auth). Created by supabase.auth.signUp() on
+-- the client, then this row is inserted right after with the extra profile
+-- fields Supabase Auth doesn't store natively.
+create table public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
   full_name varchar(120) not null,
   username varchar(60) not null unique,
-  email varchar(190) not null unique,
-  password_hash varchar(255),
-  gender gender_type not null,
+  gender public.gender_type not null,
+  account_type public.account_type not null default 'freelancer',
   created_at timestamptz not null default now(),
-  updated_at timestamp
+  updated_at timestamptz
 );
 
-create index if not exists idx_users_created_at on users (created_at);
+alter table public.profiles enable row level security;
 
-create table if not exists admins (
-  id bigint generated always as identity primary key,
-  full_name varchar(120) not null,
-  username varchar(60) not null unique,
-  email varchar(190) not null unique,
-  password_hash varchar(255) not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamp
-);
+create policy "profiles: individuals can view own"
+  on public.profiles for select
+  using (auth.uid() = id);
+
+create policy "profiles: individuals can insert own"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
+create policy "profiles: individuals can update own"
+  on public.profiles for update
+  using (auth.uid() = id);

@@ -1,6 +1,6 @@
--- Admin panel schema, extends database/supabase_schema.sql and the profiles
--- table from the Supabase Bridge tutorial. Run this in the Supabase SQL Editor
--- after those. Replaces pages/admin/api/*.php and the MySQL `admins` table.
+-- Admin panel schema, extends database/supabase_schema.sql. Run this in the
+-- Supabase SQL Editor after that file (or see supabase_schema.sql's note --
+-- both are already applied to the live project via Supabase MCP migrations).
 
 create table public.admins (
   id uuid primary key references auth.users (id) on delete cascade,
@@ -24,8 +24,8 @@ as $$
   select count(*) from public.admins;
 $$;
 
--- Mirrors the old setup.php: an insert into admins is only allowed while the
--- table is empty, so this only ever admits the very first admin account.
+-- An insert into admins is only allowed while the table is empty, so this
+-- only ever admits the very first admin account.
 create policy "bootstrap first admin only"
   on public.admins for insert
   with check (auth.uid() = id and public.admin_count() = 0);

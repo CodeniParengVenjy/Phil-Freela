@@ -1,15 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
-import "../auth.css";
-
-function getPasswordStrengthMessage(password) {
-  if (password.length < 8) return "Password must be at least 8 characters.";
-  if (!/[A-Z]/.test(password)) return "Password must contain at least 1 uppercase letter.";
-  if (!/[a-z]/.test(password)) return "Password must contain at least 1 lowercase letter.";
-  if (!/\d/.test(password)) return "Password must contain at least 1 number.";
-  return "";
-}
+import { getPasswordStrengthMessage } from "../../lib/validators";
+import "../../styles/auth.css";
 
 export default function AdminSetup() {
   const navigate = useNavigate();

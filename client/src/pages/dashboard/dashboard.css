@@ -17,6 +17,24 @@
   --font-body: 'Plus Jakarta Sans', sans-serif;
   --sidebar-w: 260px;
   --navbar-h: 70px;
+
+  /* Role accent: freelancers are the platform's default orange (the
+     "supply" side, matches the homepage's Join-as-Freelancer pathway).
+     body.theme-client overrides these to cyan (the "demand" side, matches
+     the homepage's Become-a-Client pathway) so the client dashboard reads
+     as a distinct mode of the same platform rather than a copy of the
+     freelancer one. */
+  --accent-role: var(--accent-orange);
+  --accent-role-2: #ff8800;
+  --accent-role-glow: rgba(255, 107, 0, 0.4);
+  --accent-role-subtle: rgba(255, 107, 0, 0.15);
+}
+
+body.theme-client {
+  --accent-role: var(--accent-cyan);
+  --accent-role-2: #22d3ee;
+  --accent-role-glow: rgba(6, 182, 212, 0.4);
+  --accent-role-subtle: rgba(6, 182, 212, 0.15);
 }
 
 body.fixed-layout {
@@ -120,13 +138,35 @@ body.sidebar-collapsed .sidebar-wrapper {
 }
 
 .sidebar-pill-btn:hover {
-  background: rgba(255, 107, 0, 0.15);
+  background: var(--accent-role-subtle);
   color: #fff;
   transform: translateX(4px);
 }
 
 .sidebar-pill-btn:hover i {
-  color: var(--accent-orange);
+  color: var(--accent-role);
+}
+
+/* Sidebar identity card: shows who's signed in and which side of the
+   marketplace they're on before the nav list itself. */
+.sidebar-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-identity .role-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent-role);
 }
 
 .sidebar-pill-btn.active {
@@ -189,6 +229,45 @@ body.sidebar-collapsed .sidebar-wrapper {
 
 .shadow-glow {
   box-shadow: 0 0 15px rgba(255, 107, 0, 0.35);
+}
+
+/* Role-accent equivalents of the classes above -- orange for freelancers,
+   cyan for clients (see the --accent-role variables at the top of this
+   file). Used on shared views/components so they pick up whichever role is
+   currently signed in, instead of always reading as the freelancer side. */
+.bg-role { background-color: var(--accent-role) !important; }
+.bg-role-subtle { background-color: var(--accent-role-subtle) !important; }
+.text-role { color: var(--accent-role) !important; }
+
+.btn-gradient-role {
+  background: linear-gradient(135deg, var(--accent-role) 0%, var(--accent-role-2) 100%);
+  border: none;
+  color: #fff;
+  transition: all 0.3s ease;
+}
+
+.btn-gradient-role:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px var(--accent-role-glow);
+}
+
+.btn-outline-role {
+  border: 1px solid var(--accent-role);
+  color: var(--accent-role);
+  background: transparent;
+}
+
+.btn-outline-role:hover {
+  background: var(--accent-role);
+  color: #fff;
+}
+
+.hover-role:hover { color: var(--accent-role) !important; }
+.hover-bg-role:hover { background-color: var(--accent-role) !important; color: #fff !important; }
+
+.shadow-glow-role {
+  box-shadow: 0 0 15px var(--accent-role-glow);
 }
 
 .hover-lift {
@@ -559,6 +638,35 @@ body.sidebar-collapsed .sidebar-wrapper {
 @keyframes shimmer-sweep {
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
+}
+
+@keyframes role-confirm-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes role-confirm-card-in {
+  0% { opacity: 0; transform: scale(0.82) translateY(30px); }
+  60% { opacity: 1; transform: scale(1.04) translateY(-6px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes role-confirm-icon-swap {
+  0% { transform: rotate(0deg) scale(0.5); opacity: 0; }
+  55% { transform: rotate(210deg) scale(1.2); opacity: 1; }
+  100% { transform: rotate(360deg) scale(1); opacity: 1; }
+}
+
+.role-confirm-backdrop {
+  animation: role-confirm-backdrop-in 0.2s ease-out;
+}
+
+.role-confirm-card {
+  animation: role-confirm-card-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.role-confirm-icon {
+  animation: role-confirm-icon-swap 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s backwards;
 }
 
 .sr-only {
