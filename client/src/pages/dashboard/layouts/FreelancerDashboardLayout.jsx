@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
-import DashboardTopNav from "./DashboardTopNav";
-import DashboardOverlays from "./DashboardOverlays";
-import "./dashboard.css";
+import DashboardTopNav from "../components/DashboardTopNav";
+import DashboardOverlays from "../components/DashboardOverlays";
+import "../dashboard.css";
 
 const sidebarLinks = [
   { to: "/dashboard-freelancer", end: true, icon: "bi-speedometer2", label: "Dashboard" },
@@ -74,7 +74,7 @@ export default function FreelancerDashboardLayout({
               <NavLink to="/dashboard/services" className="btn btn-outline-role rounded-pill px-3 py-2 fs-7 fw-bold">
                 <i className="bi bi-plus-lg me-1"></i> Post Service
               </NavLink>
-              <NavLink to="/dashboard/messages" className="btn btn-gradient-role rounded-pill px-3 py-2 fs-7 fw-bold text-white">
+              <NavLink to="/dashboard/find-jobs" className="btn btn-gradient-role rounded-pill px-3 py-2 fs-7 fw-bold text-white">
                 <i className="bi bi-search me-1"></i> Find Jobs
               </NavLink>
             </div>

@@ -1,13 +1,9 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-
-const categories = [
-  { value: "video-editing", label: "Video Editing & Motion Graphics" },
-  { value: "graphic-design", label: "Graphic Design & Poster/Logo" },
-  { value: "web-development", label: "Web Development & React Apps" },
-  { value: "copywriting", label: "Copywriting & Content Creation" }
-];
+import { categories } from "../../../lib/categories";
+import MediaDropzone from "../components/MediaDropzone";
+import ServiceCard from "../components/ServiceCard";
 
 const skillOptions = [
   { value: "critical-thinker", label: "Critical Thinker" },
@@ -16,6 +12,24 @@ const skillOptions = [
   { value: "video-editor", label: "Video Editor" }
 ];
 
+// Upload rules. The Supabase bucket enforces the same limits on the server.
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const VIDEO_TYPES = ["video/mp4", "video/webm"];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+const MEDIA_ACCEPT = "image/jpeg,image/png,image/webp,video/mp4,video/webm";
+
+// Returns a message when the file is not allowed, or "" when it is fine.
+function checkMediaFile(file) {
+  if (IMAGE_TYPES.includes(file.type)) {
+    return file.size > MAX_IMAGE_BYTES ? "Photos must be 5 MB or smaller." : "";
+  }
+  if (VIDEO_TYPES.includes(file.type)) {
+    return file.size > MAX_VIDEO_BYTES ? "Videos must be 50 MB or smaller." : "";
+  }
+  return "Only JPG, PNG or WebP photos, or MP4 or WebM videos, are allowed.";
+}
+
 export default function ServicesView() {
   const { currentUserId, showToast } = useOutletContext();
   const [title, setTitle] = useState("");
@@ -23,7 +37,8 @@ export default function ServicesView() {
   const [description, setDescription] = useState("");
   const [skill, setSkill] = useState("");
   const [price, setPrice] = useState("");
-  const [imageFile, setImageFile] = useState(null);
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaError, setMediaError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [services, setServices] = useState(null);
 
@@ -33,7 +48,7 @@ export default function ServicesView() {
 
     supabase
       .from("services")
-      .select("id, title, category, price, image_url, created_at")
+      .select("id, title, category, price, image_url, media_type, created_at")
       .eq("freelancer_id", currentUserId)
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -46,21 +61,43 @@ export default function ServicesView() {
     };
   }, [currentUserId]);
 
+  // Called by the drop zone with the picked or dropped file (null = removed).
+  const handleMediaSelect = (file) => {
+    if (!file) {
+      setMediaFile(null);
+      setMediaError("");
+      return;
+    }
+    const problem = checkMediaFile(file);
+    if (problem) {
+      setMediaError(problem);
+      setMediaFile(null);
+      return;
+    }
+    setMediaError("");
+    setMediaFile(file);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId) return;
     setSubmitting(true);
 
-    let imageUrl = null;
-    if (imageFile) {
-      const path = `${currentUserId}/${Date.now()}-${imageFile.name}`;
-      const { error: uploadError } = await supabase.storage.from("marketplace-images").upload(path, imageFile);
+    let mediaUrl = null;
+    let mediaType = "image";
+    if (mediaFile) {
+      mediaType = VIDEO_TYPES.includes(mediaFile.type) ? "video" : "image";
+      // Name the file by time + extension only, so odd characters in the
+      // original file name can't break the upload.
+      const extension = mediaFile.type.split("/")[1];
+      const path = `${currentUserId}/${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from("marketplace-images").upload(path, mediaFile);
       if (uploadError) {
         setSubmitting(false);
-        showToast("Couldn't upload that image. Please try again.");
+        showToast(`Couldn't upload that ${mediaType}. Please try again.`);
         return;
       }
-      imageUrl = supabase.storage.from("marketplace-images").getPublicUrl(path).data.publicUrl;
+      mediaUrl = supabase.storage.from("marketplace-images").getPublicUrl(path).data.publicUrl;
     }
 
     const { data, error } = await supabase
@@ -72,9 +109,10 @@ export default function ServicesView() {
         description: description.trim(),
         skill: skill || null,
         price: price ? Number(price) : null,
-        image_url: imageUrl
+        image_url: mediaUrl,
+        media_type: mediaType
       })
-      .select("id, title, category, price, image_url, created_at")
+      .select("id, title, category, price, image_url, media_type, created_at")
       .single();
 
     setSubmitting(false);
@@ -89,7 +127,7 @@ export default function ServicesView() {
     setDescription("");
     setSkill("");
     setPrice("");
-    setImageFile(null);
+    setMediaFile(null);
     showToast(`Your new service "${data.title}" is live!`);
   };
 
@@ -154,17 +192,18 @@ export default function ServicesView() {
                 />
               </div>
 
-              <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 pt-2">
-                <div>
-                  <label className="form-label text-white fw-semibold fs-7 d-block">Upload a photo (optional):</label>
-                  <input
-                    type="file"
-                    className="form-control form-control-sm bg-dark border-secondary text-white"
-                    accept="image/*"
-                    onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                  />
-                </div>
+              <div>
+                <label className="form-label text-white fw-semibold fs-7">Upload a photo or video (optional):</label>
+                <MediaDropzone
+                  file={mediaFile}
+                  onSelect={handleMediaSelect}
+                  accept={MEDIA_ACCEPT}
+                  hint="Photos (JPG, PNG, WebP) up to 5 MB. Videos (MP4, WebM) up to 50 MB."
+                  error={mediaError}
+                />
+              </div>
 
+              <div className="d-flex justify-content-end pt-2">
                 <button type="submit" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting}>
                   {submitting ? "Publishing..." : "Upload & Publish"}
                 </button>
@@ -181,23 +220,7 @@ export default function ServicesView() {
             {services !== null && services.length === 0 && <p className="text-secondary fs-7 mb-0">You haven't posted a service yet.</p>}
 
             <div className="d-flex flex-column gap-3">
-              {services?.map((s) => {
-                const categoryLabel = categories.find((c) => c.value === s.category)?.label || s.category;
-                return (
-                  <div key={s.id} className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 d-flex gap-3 align-items-center">
-                    {s.image_url && (
-                      <img src={s.image_url} alt="" className="rounded-3 flex-shrink-0" style={{ width: 56, height: 56, objectFit: "cover" }} />
-                    )}
-                    <div className="flex-grow-1">
-                      <h6 className="text-white fw-bold mb-1">{s.title}</h6>
-                      <span className="badge bg-orange text-white fs-8 mb-2">{categoryLabel}</span>
-                      <p className="text-secondary fs-8 mb-0">
-                        {s.price ? `Starting at ₱${Number(s.price).toLocaleString()}` : "Price on request"} • {new Date(s.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              {services?.map((s) => <ServiceCard key={s.id} service={s} />)}
             </div>
           </div>
         </div>

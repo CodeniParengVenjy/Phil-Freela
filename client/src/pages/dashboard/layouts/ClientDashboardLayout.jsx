@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
-import DashboardTopNav from "./DashboardTopNav";
-import DashboardOverlays from "./DashboardOverlays";
-import "./dashboard.css";
+import DashboardTopNav from "../components/DashboardTopNav";
+import DashboardOverlays from "../components/DashboardOverlays";
+import "../dashboard.css";
 
 const sidebarLinks = [
   { to: "/dashboard-client", end: true, icon: "bi-speedometer2", label: "Dashboard" },

@@ -1,7 +1,8 @@
 -- Marketplace listings schema, extends database/supabase_schema.sql. Run
 -- this in the Supabase SQL Editor after that file (or see supabase_schema.sql's
 -- note -- this has already been applied to the live project via Supabase MCP
--- migrations: add_services_and_job_posts, add_marketplace_images_storage).
+-- migrations: add_services_and_job_posts, add_marketplace_images_storage,
+-- add_service_video_support).
 
 -- Freelancer-posted services, browsable by clients (and other freelancers)
 -- on the marketplace home. Mirrors the ownership + RLS pattern already used
@@ -138,3 +139,18 @@ create policy "marketplace-images: owners can delete their files"
   on storage.objects for delete
   to authenticated
   using (bucket_id = 'marketplace-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Services can show a photo or a short video. media_type tells the UI whether
+-- image_url points at an image or a video file. (Column name kept as image_url
+-- so existing rows and queries keep working.)
+alter table public.services
+  add column media_type text not null default 'image'
+  check (media_type in ('image', 'video'));
+
+-- Server-side upload rules for the bucket: photos and short videos only, max
+-- 50 MB per file. The browser checks these too, but this is what enforces
+-- them even if someone bypasses the form.
+update storage.buckets
+set file_size_limit = 52428800,
+    allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm']
+where id = 'marketplace-images';

@@ -1,13 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-
-const categories = [
-  { value: "video-editing", label: "Video Editing & Motion Graphics" },
-  { value: "graphic-design", label: "Graphic Design & Poster/Logo" },
-  { value: "web-development", label: "Web Development & React Apps" },
-  { value: "copywriting", label: "Copywriting & Content Creation" }
-];
+import { categories, getCategory } from "../../../lib/categories";
 
 export default function PostNeedView() {
   const { currentUserId, showToast } = useOutletContext();
@@ -139,7 +133,7 @@ export default function PostNeedView() {
 
             <div className="d-flex flex-column gap-3">
               {posts?.map((p) => {
-                const categoryLabel = categories.find((c) => c.value === p.category)?.label || p.category;
+                const categoryLabel = getCategory(p.category).label;
                 return (
                   <div key={p.id} className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
                     <h6 className="text-white fw-bold mb-1">{p.title}</h6>

@@ -1,4 +1,4 @@
-import { useDashboardShell } from "./useDashboardShell";
+import { useDashboardShell } from "../hooks/useDashboardShell";
 import ClientDashboardLayout from "./ClientDashboardLayout";
 
 // Route-level wrapper for /dashboard-client -- resolves the shared shell

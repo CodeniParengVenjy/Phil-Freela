@@ -1,4 +1,4 @@
-import { useDashboardShell } from "./useDashboardShell";
+import { useDashboardShell } from "../hooks/useDashboardShell";
 import FreelancerDashboardLayout from "./FreelancerDashboardLayout";
 import ClientDashboardLayout from "./ClientDashboardLayout";
 

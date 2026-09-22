@@ -32,7 +32,7 @@ export default function NotificationsView() {
                 <p className="text-secondary fs-7 mb-0">Jack Doe invited you to apply for "Cafe Logo Designer".</p>
               </div>
             </div>
-            <button className="btn btn-gradient-role rounded-pill px-4 py-2 fw-bold text-white fs-7" onClick={() => navigate("/dashboard/messages")}>View</button>
+            <button className="btn btn-gradient-role rounded-pill px-4 py-2 fw-bold text-white fs-7" onClick={() => navigate("/dashboard/find-jobs")}>View</button>
           </div>
         </div>
       </div>

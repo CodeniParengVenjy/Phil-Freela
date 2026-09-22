@@ -3,13 +3,13 @@ import Homepage from "./pages/homepage/Homepage";
 import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
 import ResetPassword from "./pages/login/ResetPassword";
-import DashboardLayout from "./pages/dashboard/DashboardLayout";
-import DashboardFreelancerRoute from "./pages/dashboard/DashboardFreelancerRoute";
-import DashboardClientRoute from "./pages/dashboard/DashboardClientRoute";
+import DashboardLayout from "./pages/dashboard/layouts/DashboardLayout";
+import DashboardFreelancerRoute from "./pages/dashboard/layouts/DashboardFreelancerRoute";
+import DashboardClientRoute from "./pages/dashboard/layouts/DashboardClientRoute";
 import FreelancerFYPView from "./pages/dashboard/views/FreelancerFYPView";
 import ClientHomepageView from "./pages/dashboard/views/ClientHomepageView";
 import ProfileView from "./pages/dashboard/views/ProfileView";
-import MessagesView from "./pages/dashboard/views/MessagesView";
+import FindJobsView from "./pages/dashboard/views/FindJobsView";
 import InboxView from "./pages/dashboard/views/InboxView";
 import ChatView from "./pages/dashboard/views/ChatView";
 import NotificationsView from "./pages/dashboard/views/NotificationsView";
@@ -40,7 +40,7 @@ function App() {
       </Route>
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route path="profile" element={<ProfileView />} />
-        <Route path="messages" element={<MessagesView />} />
+        <Route path="find-jobs" element={<FindJobsView />} />
         <Route path="inbox" element={<InboxView />} />
         <Route path="chat" element={<ChatView />} />
         <Route path="chat/:conversationId" element={<ChatView />} />

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabaseClient";
 
 // Everything the freelancer and client dashboard shells have in common:
 // the signed-in session (and redirect-to-login guard), the sidebar

@@ -1,15 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { getCategory } from "../../../lib/categories";
 
-const categories = [
-  { value: "video-editing", label: "Video Editing & Motion Graphics" },
-  { value: "graphic-design", label: "Graphic Design & Poster/Logo" },
-  { value: "web-development", label: "Web Development & React Apps" },
-  { value: "copywriting", label: "Copywriting & Content Creation" }
-];
-
-export default function MessagesView() {
+export default function FindJobsView() {
   const { openChat } = useOutletContext();
   const [query, setQuery] = useState("");
   const [jobs, setJobs] = useState(null);
@@ -38,7 +32,7 @@ export default function MessagesView() {
     const q = query.toLowerCase();
     return jobs.filter((job) => {
       const clientName = job.client?.full_name || job.client?.username || "";
-      const categoryLabel = categories.find((c) => c.value === job.category)?.label || job.category;
+      const categoryLabel = getCategory(job.category).label;
       return `${clientName} ${job.title} ${categoryLabel}`.toLowerCase().includes(q);
     });
   }, [jobs, query]);
@@ -73,7 +67,7 @@ export default function MessagesView() {
         <div className="d-flex flex-column gap-3">
           {filtered.map((job) => {
             const clientName = job.client?.full_name || job.client?.username || "Client";
-            const categoryLabel = categories.find((c) => c.value === job.category)?.label || job.category;
+            const categoryLabel = getCategory(job.category).label;
             return (
               <div key={job.id} className="job-item-card p-3 p-md-4 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between gap-3 hover-lift">
                 <div className="d-flex align-items-center gap-3">

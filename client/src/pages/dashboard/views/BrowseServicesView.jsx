@@ -1,17 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { categories, getCategory } from "../../../lib/categories";
 
-const categories = [
-  { value: "video-editing", label: "Video Editing & Motion Graphics", icon: "bi-camera-reels-fill" },
-  { value: "graphic-design", label: "Graphic Design & Poster/Logo", icon: "bi-palette-fill" },
-  { value: "web-development", label: "Web Development & React Apps", icon: "bi-code-slash" },
-  { value: "copywriting", label: "Copywriting & Content Creation", icon: "bi-pencil-fill" }
-];
-
-function categoryMeta(value) {
-  return categories.find((c) => c.value === value) || { label: value, icon: "bi-briefcase-fill" };
-}
+const mediaStyle = { height: 140, width: "100%", objectFit: "cover" };
 
 export default function BrowseServicesView() {
   const { openChat } = useOutletContext();
@@ -25,7 +17,7 @@ export default function BrowseServicesView() {
 
     supabase
       .from("services")
-      .select("id, title, category, price, image_url, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)")
+      .select("id, title, category, price, image_url, media_type, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)")
       .order("created_at", { ascending: false })
       .then(({ data, error: fetchError }) => {
         if (!active) return;
@@ -90,13 +82,15 @@ export default function BrowseServicesView() {
 
         <div className="row g-4">
           {filtered.map((s) => {
-            const meta = categoryMeta(s.category);
+            const meta = getCategory(s.category);
             const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "Freelancer";
             return (
               <div className="col-md-6 col-lg-4" key={s.id}>
                 <div className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
                   {s.image_url ? (
-                    <img src={s.image_url} alt={s.title} style={{ height: 140, width: "100%", objectFit: "cover" }} />
+                    s.media_type === "video"
+                      ? <video src={s.image_url} controls preload="metadata" style={mediaStyle} />
+                      : <img src={s.image_url} alt={s.title} style={mediaStyle} />
                   ) : (
                     <div className="d-flex align-items-center justify-content-center bg-role-subtle" style={{ height: 140 }}>
                       <i className={`bi ${meta.icon} text-role`} style={{ fontSize: "2.75rem" }}></i>
