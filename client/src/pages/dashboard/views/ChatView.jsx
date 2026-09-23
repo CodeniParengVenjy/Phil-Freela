@@ -4,7 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 
 export default function ChatView() {
   const { conversationId } = useParams();
-  const { currentUserId } = useOutletContext();
+  const { currentUserId, refreshUnreadCount } = useOutletContext();
   const navigate = useNavigate();
   const [otherProfile, setOtherProfile] = useState(null);
   const [messages, setMessages] = useState(null);
@@ -50,6 +50,10 @@ export default function ChatView() {
         return;
       }
       setMessages(messageRows);
+
+      // Opening the conversation counts as reading whatever's already here.
+      await supabase.rpc("mark_conversation_read", { target_conversation_id: conversationId });
+      refreshUnreadCount?.();
     })();
 
     const channel = supabase
@@ -57,7 +61,12 @@ export default function ChatView() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-        (payload) => setMessages((prev) => (prev ? [...prev, payload.new] : [payload.new]))
+        async (payload) => {
+          setMessages((prev) => (prev ? [...prev, payload.new] : [payload.new]));
+          // Still on this screen when it arrives, so it's read immediately too.
+          await supabase.rpc("mark_conversation_read", { target_conversation_id: conversationId });
+          refreshUnreadCount?.();
+        }
       )
       .subscribe();
 
@@ -65,7 +74,7 @@ export default function ChatView() {
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [conversationId, currentUserId]);
+  }, [conversationId, currentUserId, refreshUnreadCount]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

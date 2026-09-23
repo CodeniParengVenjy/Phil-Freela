@@ -6,7 +6,7 @@ import "../dashboard.css";
 const sidebarLinks = [
   { to: "/dashboard-client", end: true, icon: "bi-speedometer2", label: "Dashboard" },
   { to: "/dashboard/profile", icon: "bi-person-circle", label: "Profile" },
-  { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox", badge: "3", badgeClass: "bg-danger" },
+  { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox" },
   { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications", badge: "2", badgeClass: "bg-warning text-dark" },
   { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes" },
@@ -18,6 +18,7 @@ const sidebarLinks = [
 // calling the hook itself, so the auth session isn't fetched twice.
 export default function ClientDashboardLayout({
   displayName, setDisplayName, accountType, currentUserId,
+  unreadCount, refreshUnreadCount,
   toast, closeToast, showToast,
   preview, openPreview, closePreview,
   roleConfirm, resolveRoleConfirm,
@@ -41,18 +42,23 @@ export default function ClientDashboardLayout({
                 </div>
               </div>
 
-              {sidebarLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.end}
-                  className={({ isActive }) => `sidebar-pill-btn${isActive ? " active" : ""}`}
-                >
-                  <i className={`bi ${link.icon}`}></i>
-                  <span>{link.label}</span>
-                  {link.badge && <span className={`badge ${link.badgeClass} rounded-pill ms-auto`}>{link.badge}</span>}
-                </NavLink>
-              ))}
+              {sidebarLinks.map((link) => {
+                const isInbox = link.to === "/dashboard/inbox";
+                const badge = isInbox ? (unreadCount > 0 ? String(unreadCount) : null) : link.badge;
+                const badgeClass = isInbox ? "bg-danger" : link.badgeClass;
+                return (
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    end={link.end}
+                    className={({ isActive }) => `sidebar-pill-btn${isActive ? " active" : ""}`}
+                  >
+                    <i className={`bi ${link.icon}`}></i>
+                    <span>{link.label}</span>
+                    {badge && <span className={`badge ${badgeClass} rounded-pill ms-auto`}>{badge}</span>}
+                  </NavLink>
+                );
+              })}
             </div>
 
             <div className="sidebar-footer px-3 pt-3 border-top border-secondary border-opacity-25 fs-8 text-secondary">
@@ -81,7 +87,7 @@ export default function ClientDashboardLayout({
             </div>
           </div>
 
-          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, showToast, openChat, openPreview }} />
+          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, showToast, openChat, openPreview, refreshUnreadCount }} />
         </main>
       </div>
 

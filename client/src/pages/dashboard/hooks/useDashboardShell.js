@@ -17,6 +17,7 @@ export function useDashboardShell() {
   // trees, each of which mounts its own fresh instance of this hook.
   const [accountType, setAccountType] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState({ message: "", visible: false });
   const [preview, setPreview] = useState({ src: "", title: "", visible: false });
   const [roleConfirm, setRoleConfirm] = useState({ visible: false, nextType: null });
@@ -86,6 +87,29 @@ export function useDashboardShell() {
       subscription.subscription.unsubscribe();
     };
   }, [navigate]);
+
+  // Real unread count (replaces the old hardcoded Inbox badge), refreshed on
+  // load and whenever any message the RLS lets this user see gets inserted.
+  // ChatView also calls this right after marking a conversation read, so the
+  // badge drops immediately instead of waiting on the next insert.
+  const refreshUnreadCount = useCallback(async () => {
+    const { data, error } = await supabase.rpc("get_unread_message_count");
+    if (!error) setUnreadCount(data ?? 0);
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    refreshUnreadCount();
+
+    const channel = supabase
+      .channel(`unread-messages:${currentUserId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, refreshUnreadCount)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, refreshUnreadCount]);
 
   const showToast = useCallback((message) => {
     setToast({ message, visible: true });
@@ -185,6 +209,7 @@ export function useDashboardShell() {
 
   return {
     displayName, setDisplayName, accountType, currentUserId,
+    unreadCount, refreshUnreadCount,
     toast, closeToast, showToast,
     preview, openPreview, closePreview,
     roleConfirm, resolveRoleConfirm,
