@@ -9,11 +9,25 @@ const VIDEO_TYPES = ["video/mp4", "video/webm"];
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 
+// "just now" / "5m ago" / "3h ago" -- used for the Sent/Delivered/Seen label.
+function formatRelativeTime(dateString) {
+  if (!dateString) return "";
+  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(dateString).getTime()) / 1000));
+  if (diffSec < 30) return "just now";
+  if (diffSec < 60) return `${diffSec}s ago`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  return `${Math.floor(diffHr / 24)}d ago`;
+}
+
 export default function ChatView() {
   const { conversationId } = useParams();
   const { currentUserId, showToast, refreshUnreadCount, openPreview } = useOutletContext();
   const navigate = useNavigate();
   const [otherProfile, setOtherProfile] = useState(null);
+  const [otherLastReadAt, setOtherLastReadAt] = useState(null);
   const [messages, setMessages] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [draft, setDraft] = useState("");
@@ -64,7 +78,7 @@ export default function ChatView() {
       const { data: conversation, error: conversationError } = await supabase
         .from("conversations")
         .select(`
-          id, user_a, user_b,
+          id, user_a, user_b, user_a_last_read_at, user_b_last_read_at,
           a:profiles!conversations_user_a_fkey(id, full_name, username),
           b:profiles!conversations_user_b_fkey(id, full_name, username)
         `)
@@ -76,11 +90,13 @@ export default function ChatView() {
         setNotFound(true);
         return;
       }
-      setOtherProfile(conversation.user_a === currentUserId ? conversation.b : conversation.a);
+      const isUserA = conversation.user_a === currentUserId;
+      setOtherProfile(isUserA ? conversation.b : conversation.a);
+      setOtherLastReadAt(isUserA ? conversation.user_b_last_read_at : conversation.user_a_last_read_at);
 
       const { data: messageRows, error: messagesError } = await supabase
         .from("messages")
-        .select("id, sender_id, body, created_at, edited_at, attachment_url, attachment_type")
+        .select("id, sender_id, body, created_at, edited_at, delivered_at, attachment_url, attachment_type")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
@@ -117,6 +133,16 @@ export default function ChatView() {
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
         (payload) => setMessages((prev) => prev?.filter((m) => m.id !== payload.old.id) ?? prev)
+      )
+      .on(
+        // Keeps "Seen" live: fires when the other person opens this chat
+        // (mark_conversation_read) or a new message updates last_message_at.
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "conversations", filter: `id=eq.${conversationId}` },
+        (payload) => {
+          const isUserA = payload.new.user_a === currentUserId;
+          setOtherLastReadAt(isUserA ? payload.new.user_b_last_read_at : payload.new.user_a_last_read_at);
+        }
       )
       .subscribe();
 
@@ -306,6 +332,7 @@ export default function ChatView() {
   }
 
   const recipientName = otherProfile?.full_name || otherProfile?.username || "...";
+  const lastMineId = [...(messages || [])].reverse().find((m) => m.sender_id === currentUserId)?.id;
 
   return (
     <section className="dashboard-view active-view">
@@ -377,6 +404,15 @@ export default function ChatView() {
                     )}
                     {m.body && <p className="mb-0 fs-7">{m.body}</p>}
                     {m.edited_at && <small className="fs-9 text-white-50 fst-italic">(edited)</small>}
+                    {isMe && m.id === lastMineId && (
+                      <small className="fs-9 text-white-50 d-block text-end mt-1">
+                        {otherLastReadAt && new Date(otherLastReadAt) >= new Date(m.created_at)
+                          ? `Seen ${formatRelativeTime(otherLastReadAt)}`
+                          : m.delivered_at
+                          ? `Delivered ${formatRelativeTime(m.delivered_at)}`
+                          : `Sent ${formatRelativeTime(m.created_at)}`}
+                      </small>
+                    )}
                   </>
                 )}
               </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 
 // Everything the freelancer and client dashboard shells have in common:
@@ -10,6 +10,7 @@ import { supabase } from "../../../lib/supabaseClient";
 // own nav/sidebar markup without duplicating this logic.
 export function useDashboardShell() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [displayName, setDisplayName] = useState("User");
   // null until the session loads -- defaulting this to either role caused a
   // visible flash of the wrong dashboard when navigating between the
@@ -97,20 +98,6 @@ export function useDashboardShell() {
     if (!error) setUnreadCount(data ?? 0);
   }, []);
 
-  useEffect(() => {
-    if (!currentUserId) return;
-    refreshUnreadCount();
-
-    const channel = supabase
-      .channel(`unread-messages:${currentUserId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, refreshUnreadCount)
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentUserId, refreshUnreadCount]);
-
   const showToast = useCallback((message) => {
     setToast({ message, visible: true });
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -120,6 +107,50 @@ export function useDashboardShell() {
   const closeToast = useCallback(() => {
     setToast((prev) => ({ ...prev, visible: false }));
   }, []);
+
+  // System-wide "new message" handling: refreshes the badge, marks the
+  // message delivered (this client is what just received it, regardless of
+  // which page is open), and pops a toast -- unless the person is already
+  // looking at that exact conversation, where the message just appearing in
+  // the chat is feedback enough.
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    // Catches up on anything sent while this device was offline -- the
+    // realtime INSERT handler below only fires for messages that arrive
+    // while it's actively subscribed.
+    supabase.rpc("mark_messages_delivered");
+
+    const channel = supabase
+      .channel(`unread-messages:${currentUserId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload) => {
+        refreshUnreadCount();
+        if (payload.new.sender_id === currentUserId) return;
+
+        await supabase.rpc("mark_messages_delivered");
+
+        const isViewingThisChat = location.pathname === `/dashboard/chat/${payload.new.conversation_id}`;
+        if (isViewingThisChat) return;
+
+        const { data: sender } = await supabase
+          .from("profiles")
+          .select("full_name, username")
+          .eq("id", payload.new.sender_id)
+          .maybeSingle();
+        const name = sender?.full_name || sender?.username || "Someone";
+        const contentLabel = payload.new.attachment_type === "video" ? "a video"
+          : payload.new.attachment_type === "image" ? "a photo"
+          : "a message";
+        showToast(`${name} sent ${contentLabel}`);
+      })
+      .subscribe();
+
+    refreshUnreadCount();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, refreshUnreadCount, location.pathname, showToast]);
 
   const openPreview = useCallback((src, title) => {
     setPreview({ src, title, visible: true });
