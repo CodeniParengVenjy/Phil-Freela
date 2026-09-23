@@ -38,3 +38,22 @@ export const supabase = createClient(
   supabaseAnonKey || "placeholder-anon-key",
   { auth: { storage: dynamicStorage } }
 );
+
+// A second connection used only by the admin "Add Admin" form. Calling
+// signUp() on the main client would replace the signed-in admin's session
+// with the new account; this one keeps its session in memory only (never
+// saved), so creating an account here leaves the current admin logged in.
+// detectSessionInUrl is off so it never grabs a login/reset link meant for
+// the main client (e.g. on the Reset Password page).
+export const supabaseSignup = createClient(
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-anon-key",
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: "philfreela-admin-signup"
+    }
+  }
+);

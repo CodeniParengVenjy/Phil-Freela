@@ -10,6 +10,12 @@ body {
   min-height: 100vh;
 }
 
+/* Whole admin page background (same orange glow as the rest of the site). */
+.admin-shell {
+  background: radial-gradient(circle at 50% 0%, rgba(255, 107, 0, 0.12) 0%, rgba(9, 10, 15, 1) 70%);
+  background-color: var(--bg-dark);
+}
+
 .admin-topbar {
   background: rgba(22, 26, 38, 0.9);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -17,6 +23,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .admin-sidebar {
@@ -27,11 +36,23 @@ body {
   gap: 4px;
 }
 
+/* On phones the sidebar sits above the page as a row of scrollable tabs. */
+@media (max-width: 767.98px) {
+  .admin-sidebar {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .admin-nav-btn {
+    white-space: nowrap;
+  }
+}
+
 .admin-nav-btn {
-  background: transparent;
-  border: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: rgba(255, 255, 255, 0.7);
-  text-align: left;
+  text-decoration: none;
   padding: 10px 14px;
   border-radius: 12px;
   font-weight: 600;
@@ -53,10 +74,64 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.admin-view {
-  display: none;
+.admin-badge-orange {
+  background-color: rgba(255, 107, 0, 0.18);
+  color: #ff8a33;
 }
 
-.admin-view.active-view {
-  display: block;
+.btn-admin-orange {
+  background: linear-gradient(135deg, #ff6b00 0%, #ff8800 100%);
+  border: none;
+  color: #fff;
 }
+
+.btn-admin-orange:hover,
+.btn-admin-orange:focus {
+  color: #fff;
+  filter: brightness(1.1);
+}
+
+/* Overview stat cards */
+.admin-stat-card {
+  height: 100%;
+}
+
+.admin-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.admin-stat-orange { background: rgba(255, 107, 0, 0.15); color: #ff8a33; }
+.admin-stat-cyan { background: rgba(0, 200, 255, 0.12); color: #33d6ff; }
+.admin-stat-green { background: rgba(40, 200, 120, 0.12); color: #4ade80; }
+
+.admin-stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+
+/* Form inputs and feedback messages */
+.admin-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.admin-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-orange);
+  color: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(255, 107, 0, 0.2);
+}
+
+.admin-message { color: rgba(255, 255, 255, 0.7); }
+.admin-message.success { color: #4ade80; }
+.admin-message.error { color: #f87171; }

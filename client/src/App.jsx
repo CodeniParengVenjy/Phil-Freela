@@ -23,7 +23,10 @@ import ProjectDetailsView from "./pages/dashboard/views/ProjectDetailsView";
 import SubmitProjectView from "./pages/dashboard/views/SubmitProjectView";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminSetup from "./pages/admin/AdminSetup";
-import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminLayout from "./pages/admin/layout/AdminLayout";
+import AdminOverviewView from "./pages/admin/views/AdminOverviewView";
+import AdminUsersView from "./pages/admin/views/AdminUsersView";
+import AdminAdminsView from "./pages/admin/views/AdminAdminsView";
 
 function App() {
   return (
@@ -56,7 +59,11 @@ function App() {
       </Route>
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin/setup" element={<AdminSetup />} />
-      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminOverviewView />} />
+        <Route path="users" element={<AdminUsersView />} />
+        <Route path="admins" element={<AdminAdminsView />} />
+      </Route>
     </Routes>
   );
 }
