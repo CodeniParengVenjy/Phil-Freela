@@ -46,8 +46,14 @@ export default function Login() {
     // already, and anyone who is already signed in opening /login directly.
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!active || !session) return;
-      const destination = await resolvePostAuthRoute(session.user);
-      if (active) navigate(destination, { replace: true });
+      try {
+        const destination = await resolvePostAuthRoute(session.user);
+        if (active) navigate(destination, { replace: true });
+      } catch (error) {
+        // e.g. a suspended user: resolvePostAuthRoute signed them out and
+        // the error says why.
+        if (active) setMessage({ text: error.message, type: "error" });
+      }
     });
 
     return () => {

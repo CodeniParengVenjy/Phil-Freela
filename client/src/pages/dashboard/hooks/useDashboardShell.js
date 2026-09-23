@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { getSuspensionReason } from "../../../lib/profile";
 
 // Everything the freelancer and client dashboard shells have in common:
 // the signed-in session (and redirect-to-login guard), the sidebar
@@ -81,6 +82,15 @@ export function useDashboardShell() {
         .eq("id", session.user.id)
         .maybeSingle();
       if (!active) return;
+
+      // Suspended while already logged in: send them to the login page,
+      // which signs them out and shows the reason (see resolvePostAuthRoute).
+      if (await getSuspensionReason(session.user.id)) {
+        if (active) navigate("/login", { replace: true });
+        return;
+      }
+      if (!active) return;
+
       // Client is the default role: only an explicit "freelancer" record
       // switches the dashboard to the freelancer view.
       setAccountType(profile?.account_type === "freelancer" ? "freelancer" : "client");

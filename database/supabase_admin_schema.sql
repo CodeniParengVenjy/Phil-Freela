@@ -131,3 +131,122 @@ revoke execute on function public.remove_admin(uuid) from public, anon;
 revoke execute on function public.admin_stats() from public, anon;
 grant execute on function public.remove_admin(uuid) to authenticated;
 grant execute on function public.admin_stats() to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Admin panel step 2: suspending users and fully deleting accounts.
+-- ---------------------------------------------------------------------------
+
+-- One row per suspended user. Kept in its own table (not a column on
+-- profiles) because users are allowed to edit their own profile row, so a
+-- column there could be switched off by the suspended user themselves.
+create table public.user_suspensions (
+  user_id uuid primary key references public.profiles (id) on delete cascade,
+  reason text not null check (char_length(reason) between 1 and 500),
+  suspended_by uuid references public.admins (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.user_suspensions enable row level security;
+
+create policy "admins can read suspensions"
+  on public.user_suspensions for select
+  using (public.is_admin());
+
+-- Lets a suspended user read their own row, so the login page can show why.
+create policy "users can read own suspension"
+  on public.user_suspensions for select
+  using (auth.uid() = user_id);
+
+create policy "admins can suspend users"
+  on public.user_suspensions for insert
+  with check (public.is_admin() and suspended_by = auth.uid());
+
+-- Unsuspending = deleting the row.
+create policy "admins can unsuspend users"
+  on public.user_suspensions for delete
+  using (public.is_admin());
+
+-- True when the given user is suspended. "security definer" so the rules
+-- below can check any user, even though normal users can't read other
+-- people's suspension rows.
+create or replace function public.is_suspended(target uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.user_suspensions where user_id = target);
+$$;
+
+-- Suspended users can't post services, post jobs, or send messages. These
+-- keep each rule's original check and add "and not suspended".
+alter policy "services: freelancers can insert own" on public.services
+  with check (
+    freelancer_id = auth.uid()
+    and exists (select 1 from public.profiles p where p.id = auth.uid() and p.account_type = 'freelancer')
+    and not public.is_suspended(auth.uid())
+  );
+
+alter policy "job_posts: clients can insert own" on public.job_posts
+  with check (
+    client_id = auth.uid()
+    and exists (select 1 from public.profiles p where p.id = auth.uid() and p.account_type = 'client')
+    and not public.is_suspended(auth.uid())
+  );
+
+alter policy "messages: participants can insert own" on public.messages
+  with check (
+    sender_id = auth.uid()
+    and exists (
+      select 1 from public.conversations c
+      where c.id = messages.conversation_id
+        and (c.user_a = auth.uid() or c.user_b = auth.uid())
+    )
+    and not public.is_suspended(auth.uid())
+  );
+
+-- Suspended users' services and job posts are hidden from everyone except
+-- the owner and admins.
+alter policy "services: signed-in users can view" on public.services
+  using (not public.is_suspended(freelancer_id) or freelancer_id = auth.uid() or public.is_admin());
+
+alter policy "job_posts: signed-in users can view" on public.job_posts
+  using (not public.is_suspended(client_id) or client_id = auth.uid() or public.is_admin());
+
+-- Fully deletes a user: their login account, and through "on delete cascade"
+-- their profile, services, job posts, conversations, and messages.
+create or replace function public.delete_user(target_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can delete users.';
+  end if;
+
+  if exists (select 1 from public.admins where id = target_id) then
+    raise exception 'Admins are removed from the Admins page, not here.';
+  end if;
+
+  if not exists (select 1 from public.profiles where id = target_id) then
+    raise exception 'That user no longer exists.';
+  end if;
+
+  delete from auth.users where id = target_id;
+end;
+$$;
+
+revoke execute on function public.delete_user(uuid) from public, anon;
+grant execute on function public.delete_user(uuid) to authenticated;
+
+-- Only the signed-in rules above use is_suspended(), so logged-out visitors
+-- don't need it.
+revoke execute on function public.is_suspended(uuid) from public, anon;
+grant execute on function public.is_suspended(uuid) to authenticated;
+
+-- The old "Remove" only deleted the profile row, which was recreated on the
+-- user's next login. delete_user() above replaces it.
+drop policy "admins can delete profiles" on public.profiles;
