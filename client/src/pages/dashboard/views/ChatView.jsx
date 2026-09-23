@@ -3,9 +3,15 @@ import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom
 import { supabase } from "../../../lib/supabaseClient";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 
+// Same upload rules as the Post a Service media dropzone.
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const VIDEO_TYPES = ["video/mp4", "video/webm"];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+
 export default function ChatView() {
   const { conversationId } = useParams();
-  const { currentUserId, showToast, refreshUnreadCount } = useOutletContext();
+  const { currentUserId, showToast, refreshUnreadCount, openPreview } = useOutletContext();
   const navigate = useNavigate();
   const [otherProfile, setOtherProfile] = useState(null);
   const [messages, setMessages] = useState(null);
@@ -19,7 +25,11 @@ export default function ChatView() {
   const [deleting, setDeleting] = useState(false);
   const [forwardMessage, setForwardMessage] = useState(null); // message being forwarded
   const [forwardConversations, setForwardConversations] = useState(null);
+  const [forwardQuery, setForwardQuery] = useState("");
   const [forwarding, setForwarding] = useState(false);
+
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight;
@@ -70,7 +80,7 @@ export default function ChatView() {
 
       const { data: messageRows, error: messagesError } = await supabase
         .from("messages")
-        .select("id, sender_id, body, created_at, edited_at")
+        .select("id, sender_id, body, created_at, edited_at, attachment_url, attachment_type")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
@@ -189,6 +199,7 @@ export default function ChatView() {
     setContextMenu(null);
     setForwardMessage(message);
     setForwardConversations(null);
+    setForwardQuery("");
 
     const { data } = await supabase
       .from("conversations")
@@ -219,6 +230,56 @@ export default function ChatView() {
     setForwardMessage(null);
     setForwardConversations(null);
     showToast?.(error ? "Couldn't forward that message." : "Message forwarded.");
+  };
+
+  const filteredForwardConversations = forwardConversations?.filter((c) =>
+    c.name.toLowerCase().includes(forwardQuery.trim().toLowerCase())
+  );
+
+  const handleMediaButtonClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // lets the same file be picked again later
+    if (!file) return;
+
+    let mediaType;
+    if (IMAGE_TYPES.includes(file.type)) {
+      if (file.size > MAX_IMAGE_BYTES) {
+        showToast?.("Photos must be 5 MB or smaller.");
+        return;
+      }
+      mediaType = "image";
+    } else if (VIDEO_TYPES.includes(file.type)) {
+      if (file.size > MAX_VIDEO_BYTES) {
+        showToast?.("Videos must be 50 MB or smaller.");
+        return;
+      }
+      mediaType = "video";
+    } else {
+      showToast?.("Only JPG, PNG, WebP photos or MP4, WebM videos are allowed.");
+      return;
+    }
+
+    setUploadingMedia(true);
+    const extension = file.type.split("/")[1];
+    const path = `${conversationId}/${currentUserId}-${Date.now()}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from("chat-attachments").upload(path, file);
+    if (uploadError) {
+      setUploadingMedia(false);
+      showToast?.(`Couldn't upload that ${mediaType}. Please try again.`);
+      return;
+    }
+    const attachmentUrl = supabase.storage.from("chat-attachments").getPublicUrl(path).data.publicUrl;
+
+    const { error: insertError } = await supabase.from("messages").insert({
+      conversation_id: conversationId,
+      sender_id: currentUserId,
+      attachment_url: attachmentUrl,
+      attachment_type: mediaType
+    });
+    setUploadingMedia(false);
+    if (insertError) showToast?.(`Couldn't send that ${mediaType}. Please try again.`);
   };
 
   if (!conversationId) {
@@ -302,7 +363,19 @@ export default function ChatView() {
                   </form>
                 ) : (
                   <>
-                    <p className="mb-0 fs-7">{m.body}</p>
+                    {m.attachment_url && m.attachment_type === "image" && (
+                      <img
+                        src={m.attachment_url}
+                        alt="Sent"
+                        className="rounded-3 mb-1 d-block"
+                        style={{ maxWidth: 240, maxHeight: 240, objectFit: "cover", cursor: "pointer" }}
+                        onClick={() => openPreview?.(m.attachment_url, "Photo")}
+                      />
+                    )}
+                    {m.attachment_url && m.attachment_type === "video" && (
+                      <video src={m.attachment_url} controls className="rounded-3 mb-1 d-block" style={{ maxWidth: 240 }} />
+                    )}
+                    {m.body && <p className="mb-0 fs-7">{m.body}</p>}
                     {m.edited_at && <small className="fs-9 text-white-50 fst-italic">(edited)</small>}
                   </>
                 )}
@@ -313,8 +386,19 @@ export default function ChatView() {
 
         <div className="chat-footer p-3 bg-dark border-top border-secondary border-opacity-25">
           <form className="d-flex align-items-center gap-2" onSubmit={handleSubmit}>
-            <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-paperclip fs-5"></i></button>
-            <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-image fs-5"></i></button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+            <button type="button" className="btn btn-dark text-secondary p-2" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video">
+              <i className="bi bi-paperclip fs-5"></i>
+            </button>
+            <button type="button" className="btn btn-dark text-secondary p-2" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video">
+              <i className="bi bi-image fs-5"></i>
+            </button>
             <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-mic fs-5"></i></button>
 
             <input
@@ -370,10 +454,33 @@ export default function ChatView() {
             onClick={(event) => event.stopPropagation()}
           >
             <h6 className="fw-bold mb-3">Forward to...</h6>
+
             {forwardConversations === null && <p className="text-secondary fs-7">Loading conversations...</p>}
-            {forwardConversations?.length === 0 && <p className="text-secondary fs-7 mb-0">No other conversations to forward to.</p>}
+
+            {forwardConversations !== null && forwardConversations.length === 0 && (
+              <p className="text-secondary fs-7 mb-0">No other conversations to forward to.</p>
+            )}
+
+            {forwardConversations !== null && forwardConversations.length > 0 && (
+              <div className="position-relative mb-3">
+                <i className="bi bi-search search-icon text-secondary"></i>
+                <input
+                  type="search"
+                  className="form-control nav-search-input"
+                  placeholder="Search contacts..."
+                  value={forwardQuery}
+                  onChange={(event) => setForwardQuery(event.target.value)}
+                  autoFocus
+                />
+              </div>
+            )}
+
+            {forwardConversations?.length > 0 && filteredForwardConversations.length === 0 && (
+              <p className="text-secondary fs-7 mb-0">No contacts match "{forwardQuery}".</p>
+            )}
+
             <div className="d-flex flex-column gap-2" style={{ maxHeight: 260, overflowY: "auto" }}>
-              {forwardConversations?.map((c) => (
+              {filteredForwardConversations?.map((c) => (
                 <button
                   key={c.id}
                   type="button"
