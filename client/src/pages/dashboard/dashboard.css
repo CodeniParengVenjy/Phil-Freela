@@ -290,6 +290,25 @@ body.sidebar-collapsed .sidebar-wrapper {
 }
 
 /* Chat View Styles */
+/* The message list never scrolls sideways; long text wraps instead. */
+.chat-body {
+  overflow-x: hidden;
+}
+
+/* Bubbles shrink on small screens (80% of the chat width, 500px at most),
+   and a very long word with no spaces (e.g. "keyaaaa...") breaks onto the
+   next line instead of pushing past the bubble. */
+.chat-body .chat-bubble {
+  max-width: min(500px, 80%);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.chat-body .chat-bubble img,
+.chat-body .chat-bubble video {
+  max-width: 100% !important;
+}
+
 .chat-bubble.incoming {
   border-bottom-left-radius: 4px;
 }
