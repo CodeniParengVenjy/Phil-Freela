@@ -273,3 +273,94 @@ create policy "marketplace-images: admins can delete any file"
   on storage.objects for delete
   to authenticated
   using (bucket_id = 'marketplace-images' and public.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- Admin panel step 5: user reports.
+-- (Step 4, ID verification, is on hold.)
+-- ---------------------------------------------------------------------------
+
+-- One row per report. target_id points at a profile, service, or job post
+-- depending on target_type, so it can't be a normal foreign key; if the
+-- target is deleted later the report stays, and the admin page shows it as
+-- "(deleted)".
+create table public.reports (
+  id uuid primary key default gen_random_uuid(),
+  reporter_id uuid not null references public.profiles (id) on delete cascade,
+  target_type text not null check (target_type in ('user', 'service', 'job_post')),
+  target_id uuid not null,
+  reason text not null check (reason in ('spam', 'scam', 'inappropriate', 'harassment', 'fake_profile', 'other')),
+  details text check (details is null or char_length(details) <= 1000),
+  status text not null default 'pending' check (status in ('pending', 'resolved', 'dismissed')),
+  admin_note text check (admin_note is null or char_length(admin_note) <= 500),
+  reviewed_by uuid references public.admins (id) on delete set null,
+  reviewed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table public.reports enable row level security;
+
+-- The same person can't pile up reports on the same thing: only one of their
+-- reports per target can be pending at a time.
+create unique index reports_one_pending_per_target
+  on public.reports (reporter_id, target_type, target_id)
+  where status = 'pending';
+
+-- Users send reports as themselves, always as "pending" with no admin fields
+-- filled in, can't report themselves, and can't report while suspended.
+create policy "users can send reports"
+  on public.reports for insert
+  to authenticated
+  with check (
+    reporter_id = auth.uid()
+    and status = 'pending'
+    and admin_note is null
+    and reviewed_by is null
+    and reviewed_at is null
+    and not (target_type = 'user' and target_id = auth.uid())
+    and not public.is_suspended(auth.uid())
+  );
+
+create policy "users can read own reports"
+  on public.reports for select
+  to authenticated
+  using (reporter_id = auth.uid());
+
+create policy "admins can read all reports"
+  on public.reports for select
+  to authenticated
+  using (public.is_admin());
+
+-- Reviewing = changing status / note. Only admins, and only as themselves.
+create policy "admins can review reports"
+  on public.reports for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin() and reviewed_by = auth.uid());
+
+-- Same overview numbers as step 1, plus how many reports are still pending.
+create or replace function public.admin_stats()
+returns json
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can view stats.';
+  end if;
+
+  return json_build_object(
+    'total_users',   (select count(*) from public.profiles),
+    'freelancers',   (select count(*) from public.profiles where account_type = 'freelancer'),
+    'clients',       (select count(*) from public.profiles where account_type = 'client'),
+    'new_this_week', (select count(*) from public.profiles where created_at >= now() - interval '7 days'),
+    'services',      (select count(*) from public.services),
+    'job_posts',     (select count(*) from public.job_posts),
+    'conversations', (select count(*) from public.conversations),
+    'messages',      (select count(*) from public.messages),
+    'admins',        (select count(*) from public.admins),
+    'open_reports',  (select count(*) from public.reports where status = 'pending')
+  );
+end;
+$$;

@@ -29,6 +29,7 @@ import AdminOverviewView from "./pages/admin/views/AdminOverviewView";
 import AdminUsersView from "./pages/admin/views/AdminUsersView";
 import AdminAdminsView from "./pages/admin/views/AdminAdminsView";
 import AdminListingsView from "./pages/admin/views/AdminListingsView";
+import AdminReportsView from "./pages/admin/views/AdminReportsView";
 
 function App() {
   return (
@@ -65,6 +66,7 @@ function App() {
         <Route index element={<AdminOverviewView />} />
         <Route path="users" element={<AdminUsersView />} />
         <Route path="listings" element={<AdminListingsView />} />
+        <Route path="reports" element={<AdminReportsView />} />
         <Route path="browse-services" element={<BrowseServicesView />} />
         <Route path="browse-jobs" element={<FindJobsView />} />
         <Route path="admins" element={<AdminAdminsView />} />

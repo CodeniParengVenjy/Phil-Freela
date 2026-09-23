@@ -3,17 +3,20 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
+import ReportDialog from "../components/ReportDialog";
 
 const mediaStyle = { height: 140, width: "100%", objectFit: "cover" };
 
 export default function BrowseServicesView() {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Services): admins get a Remove button instead of Message.
-  const { openChat, isAdmin } = useOutletContext();
+  const { openChat, isAdmin, currentUserId, showToast } = useOutletContext();
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
   const [services, setServices] = useState(null);
   const [error, setError] = useState("");
+  // The service being reported (null = Report popup closed).
+  const [reportTarget, setReportTarget] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -125,13 +128,26 @@ export default function BrowseServicesView() {
                           <i className="bi bi-trash me-1"></i> Remove
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white"
-                          onClick={() => openChat(s.freelancer?.id)}
-                        >
-                          <i className="bi bi-chat-dots-fill me-1"></i> Message
-                        </button>
+                        <div className="d-flex gap-1">
+                          {s.freelancer?.id !== currentUserId && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-dark text-secondary rounded-pill px-2"
+                              title="Report this service"
+                              aria-label="Report this service"
+                              onClick={() => setReportTarget({ type: "service", id: s.id, name: s.title })}
+                            >
+                              <i className="bi bi-flag"></i>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white"
+                            onClick={() => openChat(s.freelancer?.id)}
+                          >
+                            <i className="bi bi-chat-dots-fill me-1"></i> Message
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -141,6 +157,8 @@ export default function BrowseServicesView() {
           })}
         </div>
       </div>
+
+      <ReportDialog target={reportTarget} currentUserId={currentUserId} onClose={() => setReportTarget(null)} onDone={showToast} />
     </section>
   );
 }

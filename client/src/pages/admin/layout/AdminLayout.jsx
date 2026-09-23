@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import "../admin.css";
 
-// Each later build step adds its page here (Verifications, Reports).
+// Step 4 (ID verification) will add its page here later.
 const sidebarLinks = [
   { to: "/admin", end: true, icon: "bi-speedometer2", label: "Overview" },
   { to: "/admin/users", icon: "bi-people-fill", label: "Users" },
   { to: "/admin/listings", icon: "bi-grid-fill", label: "Listings" },
+  { to: "/admin/reports", icon: "bi-flag-fill", label: "Reports", showPendingReports: true },
   { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins" },
   // The same Browse Services / Find Jobs pages users see, shown in admin mode.
   { to: "/admin/browse-services", icon: "bi-shop", label: "Browse Services" },
@@ -21,6 +22,18 @@ export default function AdminLayout() {
   // null while checking; the page stays blank until we know this is an admin,
   // so admin screens never flash for someone who isn't one.
   const [admin, setAdmin] = useState(null);
+  // Number shown on the Reports link.
+  const [pendingReports, setPendingReports] = useState(0);
+
+  // Counts pending reports (head: true = just the count, no rows). The Reports
+  // page calls this after resolving/dismissing so the badge stays correct.
+  const refreshPendingReports = useCallback(async () => {
+    const { count } = await supabase
+      .from("reports")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    setPendingReports(count || 0);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -49,10 +62,11 @@ export default function AdminLayout() {
       }
 
       setAdmin(adminRow);
+      refreshPendingReports();
     })();
 
     return () => { active = false; };
-  }, [navigate]);
+  }, [navigate, refreshPendingReports]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -95,6 +109,9 @@ export default function AdminLayout() {
                 >
                   <i className={`bi ${link.icon}`}></i>
                   <span>{link.label}</span>
+                  {link.showPendingReports && pendingReports > 0 && (
+                    <span className="badge bg-danger rounded-pill ms-auto">{pendingReports}</span>
+                  )}
                 </NavLink>
               ))}
             </aside>
@@ -103,7 +120,7 @@ export default function AdminLayout() {
           <main className="col-12 col-md-9 col-xl-10">
             {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                 to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true }} />
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, refreshPendingReports }} />
           </main>
         </div>
       </div>

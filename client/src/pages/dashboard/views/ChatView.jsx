@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
+import ReportDialog from "../components/ReportDialog";
 
 // Same upload rules as the Post a Service media dropzone.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -27,6 +28,8 @@ export default function ChatView() {
   const { currentUserId, showToast, refreshUnreadCount, openPreview } = useOutletContext();
   const navigate = useNavigate();
   const [otherProfile, setOtherProfile] = useState(null);
+  // The person being reported (null = Report popup closed).
+  const [reportTarget, setReportTarget] = useState(null);
   const [otherLastReadAt, setOtherLastReadAt] = useState(null);
   const [messages, setMessages] = useState(null);
   const [notFound, setNotFound] = useState(false);
@@ -368,6 +371,16 @@ export default function ChatView() {
           <div>
             <button className="btn btn-sm btn-outline-secondary text-white border-0"><i className="bi bi-telephone-fill fs-5"></i></button>
             <button className="btn btn-sm btn-outline-secondary text-white border-0"><i className="bi bi-camera-video-fill fs-5"></i></button>
+            {otherProfile && (
+              <button
+                className="btn btn-sm btn-outline-secondary text-white border-0"
+                title="Report this user"
+                aria-label="Report this user"
+                onClick={() => setReportTarget({ type: "user", id: otherProfile.id, name: recipientName })}
+              >
+                <i className="bi bi-flag-fill fs-5"></i>
+              </button>
+            )}
           </div>
         </div>
 
@@ -590,6 +603,8 @@ export default function ChatView() {
         onConfirm={confirmUnsend}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      <ReportDialog target={reportTarget} currentUserId={currentUserId} onClose={() => setReportTarget(null)} onDone={showToast} />
     </section>
   );
 }

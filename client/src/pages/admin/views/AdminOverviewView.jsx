@@ -12,7 +12,8 @@ const statCards = [
   { key: "job_posts", label: "Job Posts", icon: "bi-megaphone-fill", color: "cyan" },
   { key: "conversations", label: "Conversations", icon: "bi-chat-dots-fill", color: "green" },
   { key: "messages", label: "Messages Sent", icon: "bi-send-fill", color: "green" },
-  { key: "admins", label: "Admins", icon: "bi-shield-lock-fill", color: "cyan" }
+  { key: "admins", label: "Admins", icon: "bi-shield-lock-fill", color: "cyan" },
+  { key: "open_reports", label: "Open Reports", icon: "bi-flag-fill", color: "red" }
 ];
 
 export default function AdminOverviewView() {

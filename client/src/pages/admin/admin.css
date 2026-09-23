@@ -110,6 +110,7 @@ body {
 .admin-stat-orange { background: rgba(255, 107, 0, 0.15); color: #ff8a33; }
 .admin-stat-cyan { background: rgba(0, 200, 255, 0.12); color: #33d6ff; }
 .admin-stat-green { background: rgba(40, 200, 120, 0.12); color: #4ade80; }
+.admin-stat-red { background: rgba(239, 68, 68, 0.14); color: #f87171; }
 
 .admin-stat-value {
   font-size: 1.6rem;

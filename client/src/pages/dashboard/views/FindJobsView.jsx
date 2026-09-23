@@ -3,14 +3,17 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
+import ReportDialog from "../components/ReportDialog";
 
 export default function FindJobsView() {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Jobs): admins get a Remove button instead of the chat button.
-  const { openChat, isAdmin } = useOutletContext();
+  const { openChat, isAdmin, currentUserId, showToast } = useOutletContext();
   const [query, setQuery] = useState("");
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState("");
+  // The job post being reported (null = Report popup closed).
+  const [reportTarget, setReportTarget] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -100,15 +103,29 @@ export default function FindJobsView() {
                     <i className="bi bi-trash me-1"></i> Remove
                   </button>
                 ) : (
-                  <button className="btn btn-dark border border-secondary text-orange hover-bg-orange rounded-3 px-3 py-2" onClick={() => openChat(job.client?.id)}>
-                    <i className="bi bi-chat-dots-fill fs-5"></i>
-                  </button>
+                  <div className="d-flex gap-2 flex-shrink-0">
+                    {job.client?.id !== currentUserId && (
+                      <button
+                        className="btn btn-dark border border-secondary text-secondary rounded-3 px-3 py-2"
+                        title="Report this job post"
+                        aria-label="Report this job post"
+                        onClick={() => setReportTarget({ type: "job_post", id: job.id, name: job.title })}
+                      >
+                        <i className="bi bi-flag fs-5"></i>
+                      </button>
+                    )}
+                    <button className="btn btn-dark border border-secondary text-orange hover-bg-orange rounded-3 px-3 py-2" onClick={() => openChat(job.client?.id)}>
+                      <i className="bi bi-chat-dots-fill fs-5"></i>
+                    </button>
+                  </div>
                 )}
               </div>
             );
           })}
         </div>
       </div>
+
+      <ReportDialog target={reportTarget} currentUserId={currentUserId} onClose={() => setReportTarget(null)} onDone={showToast} />
     </section>
   );
 }
