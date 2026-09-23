@@ -16,6 +16,11 @@ export function dashboardRouteFor(accountType) {
 //    username/gender collected at signup time were preserved in
 //    user_metadata, so we can create the row now that a session exists.
 export async function resolvePostAuthRoute(user) {
+  // Admins have no freelancer/client profile, so send them straight to the
+  // admin panel instead of the profile checks below.
+  const { data: adminRow } = await supabase.from("admins").select("id").eq("id", user.id).maybeSingle();
+  if (adminRow) return "/admin";
+
   const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", user.id).maybeSingle();
   if (profile) return dashboardRouteFor(profile.account_type);
 
