@@ -3,10 +3,11 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import "../admin.css";
 
-// Each later build step adds its page here (Listings, Verifications, Reports).
+// Each later build step adds its page here (Verifications, Reports).
 const sidebarLinks = [
   { to: "/admin", end: true, icon: "bi-speedometer2", label: "Overview" },
   { to: "/admin/users", icon: "bi-people-fill", label: "Users" },
+  { to: "/admin/listings", icon: "bi-grid-fill", label: "Listings" },
   { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins" }
 ];
 

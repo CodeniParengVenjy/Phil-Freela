@@ -171,3 +171,26 @@ body {
   max-width: 460px;
   background: #161a26;
 }
+
+/* Listing "View" pop-up: wider, and scrolls if the listing is long. */
+.admin-modal-wide {
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.admin-modal-media {
+  max-height: 320px;
+  object-fit: cover;
+}
+
+/* Long titles and descriptions wrap instead of stretching the layout. */
+.admin-title-cell {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+
+.admin-description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

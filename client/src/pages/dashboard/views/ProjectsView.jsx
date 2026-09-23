@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { storagePathFromUrl } from "../../../lib/storage";
 import ServiceCard from "../components/ServiceCard";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 
@@ -13,14 +14,6 @@ const initialProjects = [
   { name: "Dennis Sandehas", icon: "bi-person-fill", avatar: "bg-success", state: "Ongoing" },
   { name: "Coffee Company", icon: "bi-building", avatar: "bg-secondary", state: "Done" }
 ];
-
-// Service photos and videos live in the "marketplace-images" bucket; this turns
-// a stored public URL back into the file's path inside that bucket.
-function storagePathFromUrl(url) {
-  const marker = "/marketplace-images/";
-  const index = url ? url.indexOf(marker) : -1;
-  return index === -1 ? null : decodeURIComponent(url.slice(index + marker.length));
-}
 
 export default function ProjectsView() {
   const { openPreview, showToast, accountType, currentUserId } = useOutletContext();

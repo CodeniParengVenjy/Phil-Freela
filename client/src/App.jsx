@@ -27,6 +27,7 @@ import AdminLayout from "./pages/admin/layout/AdminLayout";
 import AdminOverviewView from "./pages/admin/views/AdminOverviewView";
 import AdminUsersView from "./pages/admin/views/AdminUsersView";
 import AdminAdminsView from "./pages/admin/views/AdminAdminsView";
+import AdminListingsView from "./pages/admin/views/AdminListingsView";
 
 function App() {
   return (
@@ -62,6 +63,7 @@ function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminOverviewView />} />
         <Route path="users" element={<AdminUsersView />} />
+        <Route path="listings" element={<AdminListingsView />} />
         <Route path="admins" element={<AdminAdminsView />} />
       </Route>
     </Routes>

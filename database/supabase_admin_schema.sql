@@ -250,3 +250,26 @@ grant execute on function public.is_suspended(uuid) to authenticated;
 -- The old "Remove" only deleted the profile row, which was recreated on the
 -- user's next login. delete_user() above replaces it.
 drop policy "admins can delete profiles" on public.profiles;
+
+-- ---------------------------------------------------------------------------
+-- Admin panel step 3: moderating listings.
+-- (Admins can already see every listing, including suspended users', through
+-- the "signed-in users can view" rules updated in step 2.)
+-- ---------------------------------------------------------------------------
+
+create policy "services: admins can delete any"
+  on public.services for delete
+  to authenticated
+  using (public.is_admin());
+
+create policy "job_posts: admins can delete any"
+  on public.job_posts for delete
+  to authenticated
+  using (public.is_admin());
+
+-- Lets an admin also delete a removed service's photo/video, so no unused
+-- file is left behind in storage.
+create policy "marketplace-images: admins can delete any file"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'marketplace-images' and public.is_admin());
