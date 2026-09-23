@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import DashboardTopNav from "../components/DashboardTopNav";
 import DashboardOverlays from "../components/DashboardOverlays";
 import "../dashboard.css";
@@ -23,6 +23,10 @@ export default function FreelancerDashboardLayout({
   roleConfirm, resolveRoleConfirm,
   openChat, handleSignOut, switchRole, toggleSidebar
 }) {
+  // The welcome banner belongs on the dashboard home only, not every
+  // sub-page (chat, inbox, profile, ...) that reuses this same layout.
+  const isDashboardHome = useLocation().pathname === "/dashboard-freelancer";
+
   return (
     <div className="bg-dark text-light">
       <DashboardTopNav displayName={displayName} accountType={accountType} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} />
@@ -68,23 +72,25 @@ export default function FreelancerDashboardLayout({
         </aside>
 
         <main className="content-wrapper flex-grow-1 p-3 p-md-4">
-          <div className="welcome-banner glass-card p-4 rounded-4 mb-4 border border-secondary border-opacity-25 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-            <div>
-              <span className="badge bg-orange-subtle text-orange px-3 py-1 rounded-pill fw-bold text-uppercase fs-8 mb-2">PHILFREELA PORTAL</span>
-              <h1 className="welcome-title h2 text-white mb-1">Welcome, {displayName}</h1>
-              <p className="text-secondary mb-0 fs-7">
-                Manage your freelance portfolio, job proposals, messages, and settings seamlessly.
-              </p>
+          {isDashboardHome && (
+            <div className="welcome-banner glass-card p-4 rounded-4 mb-4 border border-secondary border-opacity-25 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+              <div>
+                <span className="badge bg-orange-subtle text-orange px-3 py-1 rounded-pill fw-bold text-uppercase fs-8 mb-2">PHILFREELA PORTAL</span>
+                <h1 className="welcome-title h2 text-white mb-1">Welcome, {displayName}</h1>
+                <p className="text-secondary mb-0 fs-7">
+                  Manage your freelance portfolio, job proposals, messages, and settings seamlessly.
+                </p>
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <NavLink to="/dashboard/services" className="btn btn-outline-role rounded-pill px-3 py-2 fs-7 fw-bold">
+                  <i className="bi bi-plus-lg me-1"></i> Post Service
+                </NavLink>
+                <NavLink to="/dashboard/find-jobs" className="btn btn-gradient-role rounded-pill px-3 py-2 fs-7 fw-bold text-white">
+                  <i className="bi bi-search me-1"></i> Find Jobs
+                </NavLink>
+              </div>
             </div>
-            <div className="d-flex align-items-center gap-2">
-              <NavLink to="/dashboard/services" className="btn btn-outline-role rounded-pill px-3 py-2 fs-7 fw-bold">
-                <i className="bi bi-plus-lg me-1"></i> Post Service
-              </NavLink>
-              <NavLink to="/dashboard/find-jobs" className="btn btn-gradient-role rounded-pill px-3 py-2 fs-7 fw-bold text-white">
-                <i className="bi bi-search me-1"></i> Find Jobs
-              </NavLink>
-            </div>
-          </div>
+          )}
 
           <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, showToast, openChat, openPreview, refreshUnreadCount }} />
         </main>
