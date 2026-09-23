@@ -393,9 +393,7 @@ export default function ChatView() {
               style={{ display: "none" }}
               onChange={handleFileChange}
             />
-            <button type="button" className="btn btn-dark text-secondary p-2" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video">
-              <i className="bi bi-paperclip fs-5"></i>
-            </button>
+            <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-paperclip fs-5"></i></button>
             <button type="button" className="btn btn-dark text-secondary p-2" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video">
               <i className="bi bi-image fs-5"></i>
             </button>
