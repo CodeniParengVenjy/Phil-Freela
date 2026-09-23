@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
+import { removeListing } from "../../../lib/adminListings";
 
 const mediaStyle = { height: 140, width: "100%", objectFit: "cover" };
 
 export default function BrowseServicesView() {
-  const { openChat } = useOutletContext();
+  // isAdmin is only set when this page is shown inside the admin panel
+  // (Browse Services): admins get a Remove button instead of Message.
+  const { openChat, isAdmin } = useOutletContext();
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
   const [services, setServices] = useState(null);
@@ -29,6 +32,15 @@ export default function BrowseServicesView() {
       active = false;
     };
   }, []);
+
+  const handleRemove = async (service) => {
+    if (!window.confirm(`Remove "${service.title}"? This cannot be undone.`)) return;
+    if (await removeListing("services", service)) {
+      setServices((prev) => prev.filter((s) => s.id !== service.id));
+    } else {
+      window.alert("Couldn't remove that service. Please try again.");
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!services) return [];
@@ -104,13 +116,23 @@ export default function BrowseServicesView() {
                       <span className="fw-bold text-role fs-7">
                         {s.price ? `From ₱${Number(s.price).toLocaleString()}` : "Price on request"}
                       </span>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white"
-                        onClick={() => openChat(s.freelancer?.id)}
-                      >
-                        <i className="bi bi-chat-dots-fill me-1"></i> Message
-                      </button>
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold"
+                          onClick={() => handleRemove(s)}
+                        >
+                          <i className="bi bi-trash me-1"></i> Remove
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white"
+                          onClick={() => openChat(s.freelancer?.id)}
+                        >
+                          <i className="bi bi-chat-dots-fill me-1"></i> Message
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

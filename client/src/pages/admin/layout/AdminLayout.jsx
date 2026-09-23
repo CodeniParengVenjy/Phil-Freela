@@ -8,7 +8,10 @@ const sidebarLinks = [
   { to: "/admin", end: true, icon: "bi-speedometer2", label: "Overview" },
   { to: "/admin/users", icon: "bi-people-fill", label: "Users" },
   { to: "/admin/listings", icon: "bi-grid-fill", label: "Listings" },
-  { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins" }
+  { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins" },
+  // The same Browse Services / Find Jobs pages users see, shown in admin mode.
+  { to: "/admin/browse-services", icon: "bi-shop", label: "Browse Services" },
+  { to: "/admin/browse-jobs", icon: "bi-briefcase-fill", label: "Browse Jobs" }
 ];
 
 // The shell every admin page shares: top bar, sidebar, and the admin-only
@@ -98,7 +101,9 @@ export default function AdminLayout() {
           </div>
 
           <main className="col-12 col-md-9 col-xl-10">
-            <Outlet context={{ adminId: admin.id, adminName }} />
+            {/* isAdmin tells the shared user pages (Browse Services / Jobs)
+                to show admin buttons instead of user ones. */}
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true }} />
           </main>
         </div>
       </div>

@@ -10,6 +10,7 @@ import FreelancerFYPView from "./pages/dashboard/views/FreelancerFYPView";
 import ClientHomepageView from "./pages/dashboard/views/ClientHomepageView";
 import ProfileView from "./pages/dashboard/views/ProfileView";
 import FindJobsView from "./pages/dashboard/views/FindJobsView";
+import BrowseServicesView from "./pages/dashboard/views/BrowseServicesView";
 import InboxView from "./pages/dashboard/views/InboxView";
 import ChatView from "./pages/dashboard/views/ChatView";
 import NotificationsView from "./pages/dashboard/views/NotificationsView";
@@ -64,6 +65,8 @@ function App() {
         <Route index element={<AdminOverviewView />} />
         <Route path="users" element={<AdminUsersView />} />
         <Route path="listings" element={<AdminListingsView />} />
+        <Route path="browse-services" element={<BrowseServicesView />} />
+        <Route path="browse-jobs" element={<FindJobsView />} />
         <Route path="admins" element={<AdminAdminsView />} />
       </Route>
     </Routes>

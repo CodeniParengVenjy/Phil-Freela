@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getCategory } from "../../../lib/categories";
+import { removeListing } from "../../../lib/adminListings";
 
 export default function FindJobsView() {
-  const { openChat } = useOutletContext();
+  // isAdmin is only set when this page is shown inside the admin panel
+  // (Browse Jobs): admins get a Remove button instead of the chat button.
+  const { openChat, isAdmin } = useOutletContext();
   const [query, setQuery] = useState("");
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState("");
@@ -26,6 +29,15 @@ export default function FindJobsView() {
       active = false;
     };
   }, []);
+
+  const handleRemove = async (job) => {
+    if (!window.confirm(`Remove "${job.title}"? This cannot be undone.`)) return;
+    if (await removeListing("job_posts", job)) {
+      setJobs((prev) => prev.filter((j) => j.id !== job.id));
+    } else {
+      window.alert("Couldn't remove that job post. Please try again.");
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!jobs) return [];
@@ -83,9 +95,15 @@ export default function FindJobsView() {
                     </div>
                   </div>
                 </div>
-                <button className="btn btn-dark border border-secondary text-orange hover-bg-orange rounded-3 px-3 py-2" onClick={() => openChat(job.client?.id)}>
-                  <i className="bi bi-chat-dots-fill fs-5"></i>
-                </button>
+                {isAdmin ? (
+                  <button className="btn btn-outline-danger rounded-3 px-3 py-2 fw-bold text-nowrap" onClick={() => handleRemove(job)}>
+                    <i className="bi bi-trash me-1"></i> Remove
+                  </button>
+                ) : (
+                  <button className="btn btn-dark border border-secondary text-orange hover-bg-orange rounded-3 px-3 py-2" onClick={() => openChat(job.client?.id)}>
+                    <i className="bi bi-chat-dots-fill fs-5"></i>
+                  </button>
+                )}
               </div>
             );
           })}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { storagePathFromUrl } from "../../../lib/storage";
+import { removeListing } from "../../../lib/adminListings";
 import { categories, getCategory } from "../../../lib/categories";
 
 // The two kinds of listings share one page. Each tab says which table it
@@ -81,21 +81,16 @@ export default function AdminListingsView() {
     setMessage({ text: "", type: "" });
   };
 
-  const removeListing = async (item) => {
+  const handleRemove = async (item) => {
     if (!window.confirm(`Remove "${item.title}"? The owner will no longer see it, and this cannot be undone.`)) return;
 
-    // The "admins can delete any" database rules allow this. .select("id")
-    // returns the deleted rows, so an empty result means nothing was deleted.
-    const { data, error } = await supabase.from(tab.table).delete().eq("id", item.id).select("id");
-    if (error || !data?.length) {
+    // Shared with the admin Browse pages (lib/adminListings.js): deletes the
+    // listing and, for services, its photo/video.
+    const removed = await removeListing(tab.table, item);
+    if (!removed) {
       setMessage({ text: "Couldn't remove that listing. Please try again.", type: "error" });
       return;
     }
-
-    // Services may have a photo/video in storage; delete it too so no unused
-    // file is left behind. A failure here only leaves a stray file.
-    const path = storagePathFromUrl(item.image_url);
-    if (path) await supabase.storage.from("marketplace-images").remove([path]);
 
     setListings((prev) => ({ ...prev, [activeTab]: prev[activeTab].filter((l) => l.id !== item.id) }));
     setViewing(null);
@@ -187,7 +182,7 @@ export default function AdminListingsView() {
                     <button className="btn btn-outline-light btn-sm me-2" onClick={() => setViewing(item)}>
                       <i className="bi bi-eye"></i> View
                     </button>
-                    <button className="btn btn-outline-danger btn-sm" onClick={() => removeListing(item)}>
+                    <button className="btn btn-outline-danger btn-sm" onClick={() => handleRemove(item)}>
                       <i className="bi bi-trash"></i> Remove
                     </button>
                   </td>
@@ -225,7 +220,7 @@ export default function AdminListingsView() {
             <p className="fs-7 text-white mb-4 admin-description">{viewing.description}</p>
 
             <div className="d-flex justify-content-end">
-              <button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={() => removeListing(viewing)}>
+              <button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={() => handleRemove(viewing)}>
                 <i className="bi bi-trash me-1"></i> Remove Listing
               </button>
             </div>
