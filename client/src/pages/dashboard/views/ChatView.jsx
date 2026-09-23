@@ -43,6 +43,7 @@ export default function ChatView() {
   const [forwarding, setForwarding] = useState(false);
 
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState(null); // { file, mediaType, previewUrl }
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -264,7 +265,9 @@ export default function ChatView() {
 
   const handleMediaButtonClick = () => fileInputRef.current?.click();
 
-  const handleFileChange = async (event) => {
+  // Picking a file only stages it for review -- confirmSendMedia (triggered
+  // by the preview's Send button) is what actually uploads and sends it.
+  const handleFileChange = (event) => {
     const file = event.target.files?.[0];
     event.target.value = ""; // lets the same file be picked again later
     if (!file) return;
@@ -287,7 +290,18 @@ export default function ChatView() {
       return;
     }
 
+    setPendingMedia({ file, mediaType, previewUrl: URL.createObjectURL(file) });
+  };
+
+  const cancelSendMedia = () => {
+    if (pendingMedia) URL.revokeObjectURL(pendingMedia.previewUrl);
+    setPendingMedia(null);
+  };
+
+  const confirmSendMedia = async () => {
+    const { file, mediaType, previewUrl } = pendingMedia;
     setUploadingMedia(true);
+
     const extension = file.type.split("/")[1];
     const path = `${conversationId}/${currentUserId}-${Date.now()}.${extension}`;
     const { error: uploadError } = await supabase.storage.from("chat-attachments").upload(path, file);
@@ -305,6 +319,8 @@ export default function ChatView() {
       attachment_type: mediaType
     });
     setUploadingMedia(false);
+    URL.revokeObjectURL(previewUrl);
+    setPendingMedia(null);
     if (insertError) showToast?.(`Couldn't send that ${mediaType}. Please try again.`);
   };
 
@@ -529,6 +545,37 @@ export default function ChatView() {
             <div className="text-end mt-3">
               <button type="button" className="btn btn-sm btn-outline-secondary text-white-50" onClick={() => { setForwardMessage(null); setForwardConversations(null); }}>
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingMedia && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ background: "rgba(0,0,0,0.65)", zIndex: 1300 }}
+          onClick={uploadingMedia ? undefined : cancelSendMedia}
+        >
+          <div
+            className="bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4"
+            style={{ maxWidth: 420, width: "100%" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h6 className="fw-bold mb-3">Send {pendingMedia.mediaType === "video" ? "video" : "photo"}?</h6>
+            <div className="text-center mb-3">
+              {pendingMedia.mediaType === "image" ? (
+                <img src={pendingMedia.previewUrl} alt="Preview" className="img-fluid rounded-3" style={{ maxHeight: 320 }} />
+              ) : (
+                <video src={pendingMedia.previewUrl} controls className="rounded-3" style={{ maxHeight: 320, maxWidth: "100%" }} />
+              )}
+            </div>
+            <div className="d-flex gap-2 justify-content-end">
+              <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 py-2 fw-bold" onClick={cancelSendMedia} disabled={uploadingMedia}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-gradient-role rounded-pill px-4 py-2 fw-bold text-white" onClick={confirmSendMedia} disabled={uploadingMedia}>
+                {uploadingMedia ? "Sending..." : "Send"}
               </button>
             </div>
           </div>

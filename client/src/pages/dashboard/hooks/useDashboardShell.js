@@ -24,6 +24,13 @@ export function useDashboardShell() {
   const [roleConfirm, setRoleConfirm] = useState({ visible: false, nextType: null });
   const toastTimer = useRef(null);
   const roleConfirmResolveRef = useRef(null);
+  // Read inside the realtime handler below instead of depending on
+  // location.pathname directly -- that would tear down and resubscribe the
+  // channel on every navigation, risking missed events during the churn.
+  const pathnameRef = useRef(location.pathname);
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
 
   useEffect(() => {
     // dashboard.css targets body.fixed-layout / body.sidebar-collapsed / body.sidebar-open
@@ -129,7 +136,7 @@ export function useDashboardShell() {
 
         await supabase.rpc("mark_messages_delivered");
 
-        const isViewingThisChat = location.pathname === `/dashboard/chat/${payload.new.conversation_id}`;
+        const isViewingThisChat = pathnameRef.current === `/dashboard/chat/${payload.new.conversation_id}`;
         if (isViewingThisChat) return;
 
         const { data: sender } = await supabase
@@ -150,7 +157,7 @@ export function useDashboardShell() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, refreshUnreadCount, location.pathname, showToast]);
+  }, [currentUserId, refreshUnreadCount, showToast]);
 
   const openPreview = useCallback((src, title) => {
     setPreview({ src, title, visible: true });
