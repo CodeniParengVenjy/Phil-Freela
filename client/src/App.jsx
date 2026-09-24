@@ -30,6 +30,7 @@ import AdminUsersView from "./pages/admin/views/AdminUsersView";
 import AdminAdminsView from "./pages/admin/views/AdminAdminsView";
 import AdminListingsView from "./pages/admin/views/AdminListingsView";
 import AdminReportsView from "./pages/admin/views/AdminReportsView";
+import AdminAnnouncementsView from "./pages/admin/views/AdminAnnouncementsView";
 import { usePageTitle } from "./lib/pageTitles";
 
 function App() {
@@ -71,6 +72,7 @@ function App() {
         <Route path="users" element={<AdminUsersView />} />
         <Route path="listings" element={<AdminListingsView />} />
         <Route path="reports" element={<AdminReportsView />} />
+        <Route path="announcements" element={<AdminAnnouncementsView />} />
         <Route path="browse-services" element={<BrowseServicesView />} />
         <Route path="browse-jobs" element={<FindJobsView />} />
         <Route path="admins" element={<AdminAdminsView />} />

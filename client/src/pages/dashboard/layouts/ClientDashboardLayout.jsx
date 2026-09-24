@@ -7,7 +7,7 @@ const sidebarLinks = [
   { to: "/dashboard-client", end: true, icon: "bi-speedometer2", label: "Dashboard" },
   { to: "/dashboard/profile", icon: "bi-person-circle", label: "Profile" },
   { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox" },
-  { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications", badge: "2", badgeClass: "bg-warning text-dark" },
+  { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications" },
   { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes" },
   { to: "/dashboard/settings", icon: "bi-gear-fill", label: "Settings" }
@@ -19,6 +19,7 @@ const sidebarLinks = [
 export default function ClientDashboardLayout({
   displayName, setDisplayName, accountType, currentUserId,
   unreadCount, refreshUnreadCount,
+  unreadAnnouncements, refreshUnreadAnnouncements,
   toast, closeToast, showToast,
   preview, openPreview, closePreview,
   roleConfirm, resolveRoleConfirm,
@@ -47,9 +48,13 @@ export default function ClientDashboardLayout({
               </div>
 
               {sidebarLinks.map((link) => {
+                // Live unread counts: messages on Inbox, announcements on Notifications.
                 const isInbox = link.to === "/dashboard/inbox";
-                const badge = isInbox ? (unreadCount > 0 ? String(unreadCount) : null) : link.badge;
-                const badgeClass = isInbox ? "bg-danger" : link.badgeClass;
+                const count = isInbox ? unreadCount
+                  : link.to === "/dashboard/notifications" ? unreadAnnouncements
+                  : 0;
+                const badge = count > 0 ? String(count) : null;
+                const badgeClass = isInbox ? "bg-danger" : "bg-warning text-dark";
                 return (
                   <NavLink
                     key={link.to}
@@ -93,7 +98,7 @@ export default function ClientDashboardLayout({
             </div>
           )}
 
-          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, showToast, openChat, openPreview, refreshUnreadCount }} />
+          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, showToast, openChat, openPreview, refreshUnreadCount, unreadAnnouncements, refreshUnreadAnnouncements }} />
         </main>
       </div>
 

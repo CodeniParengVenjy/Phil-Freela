@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getSuspensionReason } from "../../../lib/profile";
+import { countUnreadAnnouncements } from "../../../lib/announcements";
 
 // Everything the freelancer and client dashboard shells have in common:
 // the signed-in session (and redirect-to-login guard), the sidebar
@@ -20,6 +21,8 @@ export function useDashboardShell() {
   const [accountType, setAccountType] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  // Number on the Notifications link: admin announcements not read yet.
+  const [unreadAnnouncements, setUnreadAnnouncements] = useState(0);
   const [toast, setToast] = useState({ message: "", visible: false });
   const [preview, setPreview] = useState({ src: "", title: "", visible: false });
   const [roleConfirm, setRoleConfirm] = useState({ visible: false, nextType: null });
@@ -169,6 +172,33 @@ export function useDashboardShell() {
     };
   }, [currentUserId, refreshUnreadCount, showToast]);
 
+  // NotificationsView also calls this right after marking announcements
+  // read, so the badge drops back to 0.
+  const refreshUnreadAnnouncements = useCallback(async () => {
+    if (!currentUserId) return;
+    setUnreadAnnouncements(await countUnreadAnnouncements(currentUserId));
+  }, [currentUserId]);
+
+  // A new admin announcement updates the badge and pops a toast. The
+  // database rules only send each user the announcements meant for them.
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const channel = supabase
+      .channel(`announcements:${currentUserId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "announcements" }, (payload) => {
+        refreshUnreadAnnouncements();
+        showToast(`New announcement: ${payload.new.title}`);
+      })
+      .subscribe();
+
+    refreshUnreadAnnouncements();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, refreshUnreadAnnouncements, showToast]);
+
   const openPreview = useCallback((src, title) => {
     setPreview({ src, title, visible: true });
   }, []);
@@ -258,6 +288,7 @@ export function useDashboardShell() {
   return {
     displayName, setDisplayName, accountType, currentUserId,
     unreadCount, refreshUnreadCount,
+    unreadAnnouncements, refreshUnreadAnnouncements,
     toast, closeToast, showToast,
     preview, openPreview, closePreview,
     roleConfirm, resolveRoleConfirm,

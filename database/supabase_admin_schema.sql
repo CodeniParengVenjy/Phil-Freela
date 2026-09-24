@@ -364,3 +364,58 @@ begin
   );
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Admin panel step 6: announcements.
+-- An admin posts a message to all users, only freelancers, or only clients.
+-- It shows on the users' Notifications page, with an unread count on the bell.
+-- ---------------------------------------------------------------------------
+
+create table public.announcements (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check (char_length(title) between 1 and 120),
+  message text not null check (char_length(message) between 1 and 1000),
+  -- Who receives it: everyone, or only one account type.
+  audience text not null default 'all' check (audience in ('all', 'freelancer', 'client')),
+  created_by uuid references public.admins (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.announcements enable row level security;
+
+create index announcements_created_at_idx on public.announcements (created_at desc);
+create index announcements_created_by_idx on public.announcements (created_by);
+
+-- Users only see announcements meant for them: the ones for everyone, plus
+-- the ones for their account type. Admins see all of them.
+create policy "users can read their announcements"
+  on public.announcements for select
+  to authenticated
+  using (
+    audience = 'all'
+    or audience = (select account_type::text from public.profiles where id = (select auth.uid()))
+    or (select public.is_admin())
+  );
+
+-- Only admins can post, and only as themselves.
+create policy "admins can post announcements"
+  on public.announcements for insert
+  to authenticated
+  with check ((select public.is_admin()) and created_by = (select auth.uid()));
+
+-- There is no update rule, so announcements can't be edited. To fix a
+-- mistake, the admin deletes it and posts it again.
+create policy "admins can delete announcements"
+  on public.announcements for delete
+  to authenticated
+  using ((select public.is_admin()));
+
+-- When the user last opened their Notifications page. Announcements posted
+-- after this time count as unread. Users can already update their own
+-- profile row, so opening the page just sets this to now(). New users start
+-- at their sign-up time, so old announcements don't show up as unread.
+alter table public.profiles
+  add column notifications_seen_at timestamptz not null default now();
+
+-- Live updates, so a new announcement shows up without refreshing the page.
+alter publication supabase_realtime add table public.announcements;
