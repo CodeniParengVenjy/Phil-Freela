@@ -28,12 +28,12 @@ const pageTitles = {
   "/admin/login": "Admin Sign In",
   "/admin/setup": "Admin Setup",
   "/admin": "Admin Overview",
-  "/admin/users": "Admin Users",
-  "/admin/listings": "Admin Listings",
-  "/admin/reports": "Admin Reports",
-  "/admin/admins": "Admin Accounts",
-  "/admin/browse-services": "Admin Browse Services",
-  "/admin/browse-jobs": "Admin Browse Jobs"
+  "/admin/users": "Monitor Users",
+  "/admin/listings": "Monitor Listings",
+  "/admin/reports": "Monitor Reports",
+  "/admin/admins": "Monitor Accounts",
+  "/admin/browse-services": "Monitor Browse Services",
+  "/admin/browse-jobs": "Monitor Browse Jobs"
 };
 
 // Finds the title for a path. Chat links end with a conversation id
