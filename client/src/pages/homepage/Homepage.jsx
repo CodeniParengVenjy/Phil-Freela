@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
+import { resolvePostAuthRoute } from "../../lib/profile";
 import "./homepage.css";
 
 // Cross-page links below point at the old PHP site's relative paths, since those
@@ -6,6 +9,24 @@ import "./homepage.css";
 const LEGACY = "/pages";
 
 export default function Homepage() {
+  // Where the logo goes: "/" for visitors, or the signed-in user's own
+  // dashboard (freelancer, client, or admin) so they never land back here.
+  const [logoHref, setLogoHref] = useState("/");
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!active || !session) return;
+      try {
+        const destination = await resolvePostAuthRoute(session.user);
+        if (active) setLogoHref(destination);
+      } catch {
+        // Suspended account: it was signed out, so the logo stays on "/".
+      }
+    });
+    return () => { active = false; };
+  }, []);
+
   return (
     <div className="bg-dark text-light">
       <nav className="navbar navbar-expand-lg sticky-top border-bottom border-secondary border-opacity-25" id="mainNavbar">
@@ -14,7 +35,7 @@ export default function Homepage() {
             <button className="navbar-toggler text-white border-0 shadow-none p-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNav" aria-controls="mobileNav" aria-label="Toggle navigation">
               <i className="bi bi-list fs-1 text-warning"></i>
             </button>
-            <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
+            <Link className="navbar-brand d-flex align-items-center gap-2" to={logoHref}>
               <img src="/logo-philfreela.svg" alt="PhilFreela" className="logo-img" />
             </Link>
           </div>

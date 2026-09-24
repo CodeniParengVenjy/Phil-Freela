@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import "../admin.css";
 
@@ -9,6 +9,7 @@ const sidebarLinks = [
   { to: "/admin/users", icon: "bi-people-fill", label: "Users" },
   { to: "/admin/listings", icon: "bi-grid-fill", label: "Listings" },
   { to: "/admin/reports", icon: "bi-flag-fill", label: "Reports", showPendingReports: true },
+  { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements" },
   { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins" },
   // The same Browse Services / Find Jobs pages users see, shown in admin mode.
   { to: "/admin/browse-services", icon: "bi-shop", label: "Browse Services" },
@@ -19,6 +20,7 @@ const sidebarLinks = [
 // guard. The pages themselves render inside <Outlet />.
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   // null while checking; the page stays blank until we know this is an admin,
   // so admin screens never flash for someone who isn't one.
   const [admin, setAdmin] = useState(null);
@@ -82,10 +84,19 @@ export default function AdminLayout() {
   return (
     <div className="admin-shell text-light min-vh-100">
       <nav className="admin-topbar px-3 px-md-4">
-        <span className="d-flex align-items-center gap-2">
+        {/* Logo goes back to the admin Overview, or reloads it if already there. */}
+        <Link
+          to="/admin"
+          onClick={(event) => {
+            if (pathname === "/admin") {
+              event.preventDefault();
+              window.location.reload();
+            }
+          }}
+          className="d-flex align-items-center gap-2 text-light text-decoration-none">
           <img src="/logo-philfreela.svg" alt="PhilFreela" style={{ height: 28 }} />
           <span className="fw-bold">Admin Panel</span>
-        </span>
+        </Link>
         <div className="d-flex align-items-center gap-3">
           <span className="text-white-50 fs-7 d-none d-sm-inline">
             <i className="bi bi-person-circle me-1"></i> {adminName}

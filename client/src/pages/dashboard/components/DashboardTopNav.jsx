@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { dashboardRouteFor } from "../../../lib/profile";
 
 // Identical between the freelancer and client dashboards -- brand, search,
 // the three quick links, and the account dropdown -- so both layouts share
@@ -6,6 +7,19 @@ import { NavLink } from "react-router-dom";
 export default function DashboardTopNav({ displayName, accountType, onToggleSidebar, onSignOut, onSwitchRole }) {
   const switchLabel = accountType === "client" ? "Switch to Freelancer" : "Switch to Client";
   const switchHref = accountType === "client" ? "/dashboard-freelancer" : "/dashboard-client";
+  // The logo takes a signed-in user back to their own dashboard home, not the public homepage.
+  const homeHref = dashboardRouteFor(accountType);
+  const { pathname } = useLocation();
+
+  // Already on the dashboard home: reload the page instead. The role is read
+  // again from the database, so it stays the same.
+  const handleLogoClick = (event) => {
+    if (pathname === homeHref) {
+      event.preventDefault();
+      window.location.reload();
+    }
+  };
+
   return (
     <nav className="navbar navbar-expand-lg fixed-top border-bottom border-secondary border-opacity-25" id="topNavbar">
       <div className="container-fluid px-3 px-lg-4">
@@ -18,7 +32,7 @@ export default function DashboardTopNav({ displayName, accountType, onToggleSide
           >
             <i className="bi bi-list fs-2 text-warning"></i>
           </button>
-          <NavLink to="/" className="navbar-brand d-flex align-items-center gap-2 m-0">
+          <NavLink to={homeHref} onClick={handleLogoClick} className="navbar-brand d-flex align-items-center gap-2 m-0">
             <img src="/logo-philfreela.svg" alt="PhilFreela" className="logo-img" />
           </NavLink>
         </div>
