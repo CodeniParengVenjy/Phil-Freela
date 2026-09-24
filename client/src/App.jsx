@@ -30,8 +30,12 @@ import AdminUsersView from "./pages/admin/views/AdminUsersView";
 import AdminAdminsView from "./pages/admin/views/AdminAdminsView";
 import AdminListingsView from "./pages/admin/views/AdminListingsView";
 import AdminReportsView from "./pages/admin/views/AdminReportsView";
+import { usePageTitle } from "./lib/pageTitles";
 
 function App() {
+  // Sets the browser tab title for whichever page is open.
+  usePageTitle();
+
   return (
     <Routes>
       <Route path="/" element={<Homepage />} />
