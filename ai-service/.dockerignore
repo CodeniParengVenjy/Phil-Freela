@@ -1,0 +1,7 @@
+# Never copied into the Hugging Face container: the laptop's Python
+# environment and the real keys (on Hugging Face, keys go in the Space's
+# "Secrets" settings instead).
+.venv/
+.env
+__pycache__/
+*.pyc
