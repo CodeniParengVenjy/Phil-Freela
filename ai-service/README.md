@@ -29,9 +29,26 @@ From this folder:
 
 The website's dev server (`npm run dev` in `client`) forwards `/ai` to it.
 
-## Host it on Hugging Face Spaces (free)
+## Let the live site use it (free, with ngrok)
 
-1. Create a new Space: SDK **Docker**, hardware **CPU basic (free)**.
+The live site (phil-freela.pages.dev) can't run Python, so it reaches this
+service on the laptop through an ngrok link:
+
+1. Install ngrok (Microsoft Store) and log in once:
+   `ngrok config add-authtoken <token from dashboard.ngrok.com>`.
+2. Add `https://phil-freela.pages.dev` to `ALLOWED_ORIGINS` in `.env`.
+3. Double-click `start-ai.bat` (in the main project folder). It starts this
+   service and the ngrok link; keep both windows open.
+4. On Cloudflare Pages, set `VITE_AI_SERVICE_URL` to the ngrok link (no slash
+   at the end) and redeploy the website. The link stays the same every time.
+
+Verification on the live site works only while `start-ai.bat` is running.
+
+## Host it on Hugging Face Spaces (needs a paid plan)
+
+Hugging Face now charges for Docker Spaces. The `Dockerfile` is kept for this:
+
+1. Create a new Space: SDK **Docker**.
 2. Upload these files from this folder: `Dockerfile`, `README.md`,
    `requirements.txt`, `main.py`, `face_check.py`, `photo_checks.py`,
    `download_models.py`. (Never upload `.env`.)
