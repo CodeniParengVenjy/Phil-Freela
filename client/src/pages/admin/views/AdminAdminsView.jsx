@@ -73,14 +73,20 @@ export default function AdminAdminsView() {
       const { data, error } = await supabaseSignup.auth.signUp({
         email,
         password: form.password,
-        options: { data: { full_name: fullName, username } }
-      });
-      if (error) {
-        if (error.message.toLowerCase().includes("already registered")) {
-          throw new Error("That email already has an account. Use a different email for the new admin.");
+        options: {
+          // The new admin's confirmation link opens the Admin Sign In page.
+          emailRedirectTo: `${window.location.origin}/admin/login`,
+          data: { full_name: fullName, username }
         }
-        throw error;
+      });
+      // With "Confirm email" on, an email that's already used comes back as
+      // a user with no identities instead of an error.
+      if (error?.message.toLowerCase().includes("already registered") || data.user?.identities?.length === 0) {
+        throw new Error("That email already has an account. Use a different email for the new admin.");
       }
+      if (error) throw error;
+      // No session means Supabase is waiting for them to confirm their email.
+      const needsConfirm = !data.session;
 
       // 2) Mark the new account as an admin. The "admins can add admins"
       //    database rule only lets an existing admin do this.
@@ -94,7 +100,12 @@ export default function AdminAdminsView() {
       // Forget the new account's session; we only needed it to create the login.
       await supabaseSignup.auth.signOut({ scope: "local" });
 
-      setMessage({ text: `${fullName} is now an admin.`, type: "success" });
+      setMessage({
+        text: needsConfirm
+          ? `${fullName} is now an admin. They must click the confirmation link sent to ${email} before they can sign in.`
+          : `${fullName} is now an admin.`,
+        type: "success"
+      });
       setForm(emptyForm);
       setShowForm(false);
       setReloadKey((key) => key + 1);

@@ -28,11 +28,21 @@ export default function Login() {
   }));
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [message, setMessage] = useState(
-    location.state?.justReset
-      ? { text: "Password updated. Sign in with your new password.", type: "success" }
-      : { text: "", type: "" }
-  );
+  const [message, setMessage] = useState(() => {
+    if (location.state?.justReset) {
+      return { text: "Password updated. Sign in with your new password.", type: "success" };
+    }
+    // An expired or already-used confirmation link comes back here with the
+    // reason after the # in the address.
+    const linkError = new URLSearchParams(window.location.hash.slice(1)).get("error_description");
+    if (linkError) {
+      return { text: `${linkError}. Sign in below; if your email isn't confirmed yet, you can get a new link.`, type: "error" };
+    }
+    return { text: "", type: "" };
+  });
+  // The email that still needs confirming. While set, a "Resend
+  // confirmation email" button shows under the message.
+  const [resendEmail, setResendEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const cardRef = useRef(null);
@@ -151,6 +161,7 @@ export default function Login() {
 
     setSubmitting(true);
     setMessage({ text: isSignup ? "Creating account..." : "Signing in...", type: "" });
+    setResendEmail("");
     setRememberMe(form.keepLogin);
 
     try {
@@ -159,6 +170,10 @@ export default function Login() {
           email: normalizedEmail,
           password: form.password,
           options: {
+            // The confirmation email's link opens this site's Login page,
+            // which signs them in and sends them to their dashboard (see
+            // the getSession() check at the top).
+            emailRedirectTo: `${window.location.origin}/login`,
             data: {
               full_name: form.fullName.trim(),
               username: form.username.trim(),
@@ -169,6 +184,12 @@ export default function Login() {
         });
 
         if (error) throw new Error(error.message);
+
+        // With "Confirm email" on, Supabase doesn't report an email that's
+        // already used. It returns a user with no identities and sends nothing.
+        if (data.user?.identities?.length === 0) {
+          throw new Error("That email already has an account. Sign in instead, or use Forgot Password.");
+        }
 
         if (data.session) {
           const { error: profileError } = await supabase.from("profiles").insert({
@@ -191,7 +212,8 @@ export default function Login() {
         // Email confirmation is required on this project: there's no session
         // yet, so the profile row is created on first sign-in instead (see
         // resolvePostAuthRoute), once user_metadata has full_name/username/gender.
-        setMessage({ text: "Account created! Check your email to confirm your address, then sign in.", type: "success" });
+        setMessage({ text: "Account created! Check your email and click the confirmation link to open your dashboard.", type: "success" });
+        setResendEmail(normalizedEmail);
         setMode("signin");
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -207,9 +229,26 @@ export default function Login() {
       }
     } catch (error) {
       setMessage({ text: getFriendlyErrorMessage(error), type: "error" });
+      if (error.message?.toLowerCase().includes("email not confirmed")) setResendEmail(normalizedEmail);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Sends the confirmation email again, for someone who lost it or whose
+  // link expired.
+  const handleResend = async () => {
+    setSubmitting(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: resendEmail,
+      options: { emailRedirectTo: `${window.location.origin}/login` }
+    });
+    setSubmitting(false);
+
+    setMessage(error
+      ? { text: getFriendlyErrorMessage(error), type: "error" }
+      : { text: `A new confirmation link was sent to ${resendEmail}. Check your inbox (and spam folder).`, type: "success" });
   };
 
   return (
@@ -479,6 +518,14 @@ export default function Login() {
             <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">
               {message.text}
             </p>
+          )}
+
+          {message.text && resendEmail && (
+            <div className="text-center mt-2">
+              <button type="button" className="btn btn-link text-orange fs-7 fw-semibold text-decoration-none p-0 hover-orange" onClick={handleResend} disabled={submitting}>
+                <i className="bi bi-arrow-repeat me-1"></i> Resend confirmation email
+              </button>
+            </div>
           )}
 
           <div className="text-center pt-4 mt-3 border-top border-secondary border-opacity-25">
