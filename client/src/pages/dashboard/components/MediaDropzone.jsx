@@ -9,8 +9,9 @@ function formatSize(bytes) {
 // A styled replacement for the browser's plain "Choose File" button. Click it or
 // drag a file onto it; once a file is chosen it shows a preview, the name and size.
 // The parent owns the file and validates it: this only reports picks via onSelect
-// (a File, or null when the person removes it).
-export default function MediaDropzone({ file, onSelect, accept, hint, error }) {
+// (a File, or null when the person removes it). "prompt" replaces the default
+// "Click to choose a photo or video" text when a form only wants photos.
+export default function MediaDropzone({ file, onSelect, accept, hint, error, prompt = "Click to choose a photo or video" }) {
   const inputRef = useRef(null);
   const previewRef = useRef(null);
   const [dragging, setDragging] = useState(false);
@@ -88,7 +89,7 @@ export default function MediaDropzone({ file, onSelect, accept, hint, error }) {
             <i className="bi bi-cloud-arrow-up-fill"></i>
           </div>
           <div>
-            <p className="text-white fw-bold fs-7 mb-0">{dragging ? "Drop it here" : "Click to choose a photo or video"}</p>
+            <p className="text-white fw-bold fs-7 mb-0">{dragging ? "Drop it here" : prompt}</p>
             <p className="text-secondary fs-8 mb-0">{dragging ? "Release to add this file" : "or drag and drop it here"}</p>
           </div>
         </div>

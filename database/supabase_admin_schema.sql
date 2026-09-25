@@ -276,7 +276,7 @@ create policy "marketplace-images: admins can delete any file"
 
 -- ---------------------------------------------------------------------------
 -- Admin panel step 5: user reports.
--- (Step 4, ID verification, is on hold.)
+-- (Step 4, ID verification, was built later and is at the end of this file.)
 -- ---------------------------------------------------------------------------
 
 -- One row per report. target_id points at a profile, service, or job post
@@ -366,6 +366,126 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- Admin panel step 4: ID verification (eKYC).
+-- The user sends a photo of their government ID and a selfie. The Python AI
+-- service (ai-service folder) compares the two faces with DeepFace + ArcFace,
+-- saves the photos and the result here, and an admin approves or rejects it.
+-- The AI service uses the service role key, which skips these rules, so it is
+-- the only thing that can add rows or upload photos. Browsers can't.
+-- ---------------------------------------------------------------------------
+
+-- One row per verification attempt.
+create table public.identity_verifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  id_type text not null check (id_type in ('philsys', 'drivers_license', 'passport', 'umid', 'prc')),
+  -- Where the two photos are saved in the private "verification-docs" bucket.
+  id_photo_path text not null,
+  selfie_path text not null,
+  -- The AI result. face_distance is how different the two faces are: the
+  -- lower the number, the more alike they are.
+  face_match boolean not null,
+  face_distance real not null,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  admin_note text check (admin_note is null or char_length(admin_note) <= 500),
+  reviewed_by uuid references public.admins (id) on delete set null,
+  reviewed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table public.identity_verifications enable row level security;
+
+-- Only one pending or approved verification per user. After a rejection,
+-- they can send a new one.
+create unique index identity_verifications_one_active_per_user
+  on public.identity_verifications (user_id)
+  where status in ('pending', 'approved');
+
+create index identity_verifications_reviewed_by_idx
+  on public.identity_verifications (reviewed_by);
+
+-- Users see only their own verifications; admins see all of them.
+-- "(select ...)" makes Postgres run the check once per query, not per row.
+create policy "owners and admins can read verifications"
+  on public.identity_verifications for select
+  to authenticated
+  using (user_id = (select auth.uid()) or (select public.is_admin()));
+
+-- Reviewing = approving or rejecting. Only admins, and only as themselves.
+create policy "admins can review verifications"
+  on public.identity_verifications for update
+  to authenticated
+  using ((select public.is_admin()))
+  with check ((select public.is_admin()) and reviewed_by = (select auth.uid()));
+
+-- Admins can only change the review fields, never the AI result or photos.
+revoke update on public.identity_verifications from authenticated;
+grant update (status, admin_note, reviewed_by, reviewed_at)
+  on public.identity_verifications to authenticated;
+
+-- One-time links inside the QR code, for users without a webcam. The token
+-- is a random UUID, so it can't be guessed. It expires after 10 minutes and
+-- is marked used after one successful upload.
+create table public.verification_links (
+  token uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  expires_at timestamptz not null default now() + interval '10 minutes',
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index verification_links_user_id_idx
+  on public.verification_links (user_id);
+
+-- Rules on, but no policies = no browser can read or write this table.
+-- Only the AI service uses it, so tokens can't be looked up from the website.
+alter table public.verification_links enable row level security;
+revoke all on public.verification_links from anon, authenticated;
+
+-- Private bucket for ID photos and selfies (unlike marketplace-images, which
+-- is public). Saved as <user id>/<verification id>/id.jpg and selfie.jpg.
+-- JPG, PNG, or WEBP only, 5 MB max per file.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('verification-docs', 'verification-docs', false, 5242880,
+        array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do nothing;
+
+-- Admins need to see the photos to review them. There are no upload or
+-- delete rules, so users can't touch these files; only the AI service can.
+create policy "verification-docs: admins can view files"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'verification-docs' and public.is_admin());
+
+-- True when the user has an approved verification; used for the "Verified"
+-- badge. "security definer" lets it check any user, even though users can
+-- only read their own rows. It only returns true/false, never the photos.
+create or replace function public.is_verified(target uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.identity_verifications
+    where user_id = target and status = 'approved'
+  );
+$$;
+
+revoke execute on function public.is_verified(uuid) from public, anon;
+grant execute on function public.is_verified(uuid) to authenticated;
+
+-- Step 4 update: both sides of the ID. The back gives the admin more to
+-- check (QR code, barcode, details) when judging if an ID is real. Passports
+-- have no card back, so they're the only ID type allowed without one.
+alter table public.identity_verifications add column id_back_path text;
+
+alter table public.identity_verifications
+  add constraint identity_verifications_back_required
+  check (id_type = 'passport' or id_back_path is not null);
+
+-- ---------------------------------------------------------------------------
 -- Admin panel step 6: announcements.
 -- An admin posts a message to all users, only freelancers, or only clients.
 -- It shows on the users' Notifications page, with an unread count on the bell.
@@ -419,3 +539,13 @@ alter table public.profiles
 
 -- Live updates, so a new announcement shows up without refreshing the page.
 alter publication supabase_realtime add table public.announcements;
+
+-- Step 4 update: live face scan. Instead of one selfie, the browser records
+-- three frames: looking straight (selfie_path), then turned one way and the
+-- other. A printed photo or a phone screen can't turn its head, so this is a
+-- basic "liveness" check. The AI service re-checks the head angles and that
+-- all three frames are the same person, and saves the result here.
+alter table public.identity_verifications
+  add column selfie_left_path text not null,
+  add column selfie_right_path text not null,
+  add column liveness_passed boolean not null;

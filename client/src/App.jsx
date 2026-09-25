@@ -3,6 +3,7 @@ import Homepage from "./pages/homepage/Homepage";
 import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
 import ResetPassword from "./pages/login/ResetPassword";
+import VerifyPhone from "./pages/verify-phone/VerifyPhone";
 import DashboardLayout from "./pages/dashboard/layouts/DashboardLayout";
 import DashboardFreelancerRoute from "./pages/dashboard/layouts/DashboardFreelancerRoute";
 import DashboardClientRoute from "./pages/dashboard/layouts/DashboardClientRoute";
@@ -18,6 +19,7 @@ import ServicesView from "./pages/dashboard/views/ServicesView";
 import PostNeedView from "./pages/dashboard/views/PostNeedView";
 import ProjectsView from "./pages/dashboard/views/ProjectsView";
 import SettingsView from "./pages/dashboard/views/SettingsView";
+import VerifyIdentityView from "./pages/dashboard/views/VerifyIdentityView";
 import FeedbackView from "./pages/dashboard/views/FeedbackView";
 import JobDetailsView from "./pages/dashboard/views/JobDetailsView";
 import ProjectDetailsView from "./pages/dashboard/views/ProjectDetailsView";
@@ -31,6 +33,7 @@ import AdminAdminsView from "./pages/admin/views/AdminAdminsView";
 import AdminListingsView from "./pages/admin/views/AdminListingsView";
 import AdminReportsView from "./pages/admin/views/AdminReportsView";
 import AdminAnnouncementsView from "./pages/admin/views/AdminAnnouncementsView";
+import AdminVerificationsView from "./pages/admin/views/AdminVerificationsView";
 import { usePageTitle } from "./lib/pageTitles";
 
 function App() {
@@ -43,6 +46,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      {/* Opened from the QR code on the phone; no login (the link's token is the key). */}
+      <Route path="/verify-phone/:token" element={<VerifyPhone />} />
       <Route path="/dashboard-freelancer" element={<DashboardFreelancerRoute />}>
         <Route index element={<FreelancerFYPView />} />
       </Route>
@@ -60,6 +65,7 @@ function App() {
         <Route path="post-need" element={<PostNeedView />} />
         <Route path="projects" element={<ProjectsView />} />
         <Route path="settings" element={<SettingsView />} />
+        <Route path="verify-identity" element={<VerifyIdentityView />} />
         <Route path="feedback" element={<FeedbackView />} />
         <Route path="job-details" element={<JobDetailsView />} />
         <Route path="project-details" element={<ProjectDetailsView />} />
@@ -72,6 +78,7 @@ function App() {
         <Route path="users" element={<AdminUsersView />} />
         <Route path="listings" element={<AdminListingsView />} />
         <Route path="reports" element={<AdminReportsView />} />
+        <Route path="verifications" element={<AdminVerificationsView />} />
         <Route path="announcements" element={<AdminAnnouncementsView />} />
         <Route path="browse-services" element={<BrowseServicesView />} />
         <Route path="browse-jobs" element={<FindJobsView />} />

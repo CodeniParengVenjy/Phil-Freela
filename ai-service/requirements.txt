@@ -1,3 +1,9 @@
 fastapi>=0.110
 uvicorn>=0.29
 pydantic>=2
+# Identity verification (face check with DeepFace + ArcFace)
+deepface[tensorflow]>=0.0.101
+tf-keras>=2.21
+supabase>=2.31
+python-dotenv>=1.2
+python-multipart>=0.0.32

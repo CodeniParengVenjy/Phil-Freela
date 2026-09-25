@@ -1,11 +1,23 @@
-import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useOutletContext } from "react-router-dom";
+import { fetchIsVerified } from "../../../lib/verification";
 
 const initialSkills = ["Critical Thinker", "Web Developer", "Creativity", "Video Editing"];
 
 export default function ProfileView() {
-  const { displayName, showToast, openPreview } = useOutletContext();
+  const { displayName, currentUserId, showToast, openPreview } = useOutletContext();
   const [skills, setSkills] = useState(initialSkills);
+  // null while checking, then true/false (approved identity verification).
+  const [verified, setVerified] = useState(null);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    let active = true;
+    fetchIsVerified(currentUserId).then((result) => {
+      if (active) setVerified(result);
+    });
+    return () => { active = false; };
+  }, [currentUserId]);
 
   const addSkill = () => {
     const skill = window.prompt("Enter a new skill (e.g., Motion Graphics, Photoshop, React):");
@@ -108,9 +120,18 @@ export default function ProfileView() {
 
           <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
             <h5 className="text-white fw-bold mb-3"><i className="bi bi-shield-check text-success me-2"></i> Verifications</h5>
-            <div className="d-flex align-items-center gap-2 mb-2 text-success fs-7">
-              <i className="bi bi-check-circle-fill"></i> Identity Verified
-            </div>
+            {verified === null && <div className="text-secondary fs-7 mb-2">Checking identity...</div>}
+            {verified === true && (
+              <div className="d-flex align-items-center gap-2 mb-2 text-success fs-7">
+                <i className="bi bi-check-circle-fill"></i> Identity Verified
+              </div>
+            )}
+            {verified === false && (
+              <div className="d-flex align-items-center gap-2 mb-2 text-secondary fs-7 flex-wrap">
+                <i className="bi bi-shield-exclamation"></i> Identity not verified
+                <Link to="/dashboard/verify-identity" className="text-role fw-bold text-decoration-none ms-1">Verify now</Link>
+              </div>
+            )}
             <div className="d-flex align-items-center gap-2 text-success fs-7">
               <i className="bi bi-check-circle-fill"></i> Email Authenticated
             </div>
