@@ -14,8 +14,9 @@ function formatDate(value) {
 // The Verify Identity page's content. Shows the user's latest verification
 // status, or the step-by-step form (VerificationWizard):
 //   - on a phone: using the phone's cameras,
-//   - on a computer with a webcam: webcam or upload for the ID, webcam for the face scan,
-//   - on a computer without one (or "Use my phone instead"): a QR code to continue on a phone.
+//   - on a computer with a webcam: webcam or upload for the ID, webcam for the
+//     face scan, with a QR code beside Step 1 for doing it on a phone instead,
+//   - on a computer without one: only the QR code, to continue on a phone.
 // The AI results are only shown to admins, so nobody can keep retrying photos
 // until they fool the face check.
 export default function IdentityVerification() {
@@ -28,7 +29,6 @@ export default function IdentityVerification() {
   // at all are known to have no webcam right away.
   const [hasWebcam, setHasWebcam] = useState(() => (navigator.mediaDevices?.enumerateDevices ? null : false));
   const [onPhone] = useState(isPhone);
-  const [usePhone, setUsePhone] = useState(false);
   const [tryingAgain, setTryingAgain] = useState(false);
 
   useEffect(() => {
@@ -59,7 +59,6 @@ export default function IdentityVerification() {
   const showSubmitted = useCallback((verification) => {
     showToast("Photos submitted! An admin will review your verification.");
     setTryingAgain(false);
-    setUsePhone(false);
     setLatest(verification);
   }, [showToast]);
 
@@ -113,15 +112,13 @@ export default function IdentityVerification() {
   // Already on a phone: use its cameras directly, no QR code needed.
   if (onPhone) return <VerificationWizard mode="phone" onSubmit={sendAsLoggedInUser} />;
 
-  if (hasWebcam === false || usePhone) {
-    return (
-      <PhoneQrPanel
-        userId={currentUserId}
-        onDone={showSubmitted}
-        onUseWebcam={hasWebcam ? () => setUsePhone(false) : undefined}
-      />
-    );
-  }
+  if (hasWebcam === false) return <PhoneQrPanel userId={currentUserId} onDone={showSubmitted} />;
 
-  return <VerificationWizard mode="computer" onSubmit={sendAsLoggedInUser} onUsePhone={() => setUsePhone(true)} />;
+  return (
+    <VerificationWizard
+      mode="computer"
+      onSubmit={sendAsLoggedInUser}
+      phoneOption={<PhoneQrPanel compact userId={currentUserId} onDone={showSubmitted} />}
+    />
+  );
 }

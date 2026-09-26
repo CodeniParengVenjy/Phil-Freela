@@ -17,8 +17,8 @@ function formatCountdown(ms) {
 // The link inside is a one-time key: it expires after 10 minutes and works
 // once. Meanwhile this checks every few seconds whether the phone has sent
 // the photos, and calls onDone with the new "pending" verification when it has.
-// onUseWebcam is only given when the computer has a webcam to go back to.
-export default function PhoneQrPanel({ userId, onDone, onUseWebcam }) {
+// compact: the smaller version shown beside Step 1 on computers with a webcam.
+export default function PhoneQrPanel({ userId, onDone, compact = false }) {
   // { token, expires_at } once created.
   const [link, setLink] = useState(null);
   const [error, setError] = useState("");
@@ -76,10 +76,14 @@ export default function PhoneQrPanel({ userId, onDone, onUseWebcam }) {
   const usesLocalhost = /localhost|127\.0\.0\.1/.test(PUBLIC_APP_URL);
 
   return (
-    <div className="bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary border-opacity-25 text-center">
-      <p className="text-white fw-bold fs-5 mb-1"><i className="bi bi-phone me-2 text-info"></i>Verify with your phone</p>
-      <p className="text-secondary fs-7 mb-4">
-        Scan this QR code with your phone's camera, then take the photos on your phone. This page will update by itself when you're done.
+    <div className={`bg-dark bg-opacity-50 ${compact ? "p-3" : "p-4"} rounded-3 border border-secondary border-opacity-25 text-center`}>
+      <p className={`text-white fw-bold ${compact ? "fs-6" : "fs-5"} mb-1`}>
+        <i className="bi bi-phone me-2 text-info"></i>{compact ? "Or use your phone" : "Verify with your phone"}
+      </p>
+      <p className={`text-secondary ${compact ? "fs-8 mb-3" : "fs-7 mb-4"}`}>
+        {compact
+          ? "Scan this with your phone's camera to do every step there instead."
+          : "Scan this QR code with your phone's camera, then take the photos on your phone. This page will update by itself when you're done."}
       </p>
 
       {error && (
@@ -94,7 +98,7 @@ export default function PhoneQrPanel({ userId, onDone, onUseWebcam }) {
       {link && !expired && (
         <>
           <div className="d-inline-block bg-white p-3 rounded-3 mb-3">
-            <QRCodeSVG value={phoneUrl} size={200} />
+            <QRCodeSVG value={phoneUrl} size={compact ? 150 : 200} />
           </div>
           <p className="text-light-50 fs-7 mb-1">
             <span className="spinner-grow spinner-grow-sm text-info me-2" aria-hidden="true"></span>
@@ -118,14 +122,6 @@ export default function PhoneQrPanel({ userId, onDone, onUseWebcam }) {
             Make a new QR code
           </button>
         </>
-      )}
-
-      {onUseWebcam && (
-        <div className="mt-4">
-          <button type="button" className="btn btn-link text-secondary fs-8 text-decoration-none hover-role" onClick={onUseWebcam}>
-            <i className="bi bi-webcam me-1"></i> Use this computer's webcam instead
-          </button>
-        </div>
       )}
     </div>
   );
