@@ -67,16 +67,15 @@ UPLOAD_TRIES = 3
 app = FastAPI(title="PhilFreela AI Service")
 
 # Website addresses allowed to call this service directly from a browser
-# (CORS). On the laptop the website goes through its own /ai address, which
-# counts as the same site; the live site (phil-freela.pages.dev) calls it
-# directly through the ngrok link, so it must be listed in ALLOWED_ORIGINS.
+# (CORS). The website normally goes through its own /ai address instead (the
+# dev server on the laptop, a Cloudflare function on the live site), which
+# counts as the same site, so this only matters for direct calls.
 allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_methods=["GET", "POST"],
-    # The last one lets the website skip ngrok's warning page (see aiService.js).
-    allow_headers=["Content-Type", "Authorization", "ngrok-skip-browser-warning"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 

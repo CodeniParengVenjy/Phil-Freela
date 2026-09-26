@@ -1,28 +1,20 @@
 import { supabase } from "./supabaseClient";
 
-// Address of the Python AI service (the ai-service folder). By default it's
-// this website's own /ai address, which the dev server forwards to the
-// service (see vite.config.js), so it works the same on the laptop and on a
-// phone. VITE_AI_SERVICE_URL points somewhere else instead: on the live site
-// it's the laptop's ngrok link (see start-ai.bat).
-export const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL || "/ai";
+// Address of the Python AI service (the ai-service folder): always this
+// website's own /ai address, which forwards to the service. On the laptop the
+// dev server does the forwarding (see vite.config.js); on the live site a
+// Cloudflare function does (see functions/ai). The browser only ever talks to
+// this one site, so the AI service's own address never gets in the way.
+export const AI_SERVICE_URL = "/ai";
 
 const OFFLINE = "The verification service is offline right now. Please try again later.";
-
-// Free ngrok links show browsers a "you are about to visit" page first, which
-// would block the AI service's replies. This header skips that page; anywhere
-// else it's simply ignored.
-const SKIP_NGROK_WARNING = { "ngrok-skip-browser-warning": "true" };
 
 // Calls the AI service and turns its error replies ({ detail: "..." }) into
 // normal errors with a message that can be shown to the user.
 async function request(path, options) {
   let response;
   try {
-    response = await fetch(`${AI_SERVICE_URL}${path}`, {
-      ...options,
-      headers: { ...SKIP_NGROK_WARNING, ...options?.headers }
-    });
+    response = await fetch(`${AI_SERVICE_URL}${path}`, options);
   } catch {
     throw new Error(OFFLINE);
   }

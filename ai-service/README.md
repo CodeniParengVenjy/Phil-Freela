@@ -32,15 +32,16 @@ The website's dev server (`npm run dev` in `client`) forwards `/ai` to it.
 ## Let the live site use it (free, with ngrok)
 
 The live site (phil-freela.pages.dev) can't run Python, so it reaches this
-service on the laptop through an ngrok link:
+service on the laptop through an ngrok link. The browser still only talks to
+phil-freela.pages.dev/ai; a Cloudflare function (`client/functions/ai`)
+passes the requests on to the ngrok link, so every network works.
 
 1. Install ngrok (Microsoft Store) and log in once:
    `ngrok config add-authtoken <token from dashboard.ngrok.com>`.
-2. Add `https://phil-freela.pages.dev` to `ALLOWED_ORIGINS` in `.env`.
-3. Double-click `start-ai.bat` (in the main project folder). It starts this
+2. Double-click `start-ai.bat` (in the main project folder). It starts this
    service and the ngrok link; keep both windows open.
-4. On Cloudflare Pages, set `VITE_AI_SERVICE_URL` to the ngrok link (no slash
-   at the end) and redeploy the website. The link stays the same every time.
+3. On Cloudflare Pages, set `AI_SERVICE_URL` to the ngrok link (no slash at
+   the end) and redeploy the website. The link stays the same every time.
 
 Verification on the live site works only while `start-ai.bat` is running.
 
