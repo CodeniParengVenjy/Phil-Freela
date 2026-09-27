@@ -23,7 +23,10 @@ items. Every upload is protected automatically:
 
 A Check Ownership page reads the hidden code and shows the owner.
 Screenshot deterrents: no download / right-click / drag / picture-in-picture,
-reduced-size previews, the viewer's own @username shown faintly over slides.
+reduced-size previews, and the UPLOADER's @username shown faintly over slides
+(the user corrected this: it must be the uploader's name, not the viewer's).
+This is a page overlay (MediaCarousel `ownerName`); from Step 3 the visible
+watermark is also drawn into the saved image itself.
 
 All models run as ONNX with onnxruntime, because the AI service runs on
 Vercel's free plan (500 MB bundle, 4.5 MB per request, 5 minutes, 1 CPU).

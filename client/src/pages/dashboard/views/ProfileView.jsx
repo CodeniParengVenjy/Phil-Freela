@@ -6,7 +6,7 @@ import PortfolioSection from "../components/PortfolioSection";
 const initialSkills = ["Critical Thinker", "Web Developer", "Creativity", "Video Editing"];
 
 export default function ProfileView() {
-  const { displayName, currentUserId, accountType, showToast } = useOutletContext();
+  const { displayName, currentUserId, accountType, username, showToast } = useOutletContext();
   const [skills, setSkills] = useState(initialSkills);
   // null while checking, then true/false (approved identity verification).
   const [verified, setVerified] = useState(null);
@@ -69,7 +69,7 @@ export default function ProfileView() {
               {/* Only freelancers have a portfolio. */}
               {accountType === "freelancer" && currentUserId && (
                 <div className="text-start">
-                  <PortfolioSection freelancerId={currentUserId} isOwner />
+                  <PortfolioSection freelancerId={currentUserId} ownerName={username} isOwner />
                 </div>
               )}
             </div>

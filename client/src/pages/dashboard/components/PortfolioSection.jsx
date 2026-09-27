@@ -13,8 +13,8 @@ const blockSaveMenu = (event) => event.preventDefault();
 // A freelancer's portfolio as a grid of project cards (the first photo or
 // video is the cover); clicking one opens it big. Used on the owner's own
 // Profile page (isOwner: can add and delete) and on the public portfolio page.
-// viewerName: the visitor's @username, shown over the slides (see MediaCarousel).
-export default function PortfolioSection({ freelancerId, isOwner = false, viewerName }) {
+// ownerName: the freelancer's @username, shown over the slides (see MediaCarousel).
+export default function PortfolioSection({ freelancerId, ownerName, isOwner = false }) {
   const { showToast } = useOutletContext();
   const [items, setItems] = useState(null);
   const [loadError, setLoadError] = useState("");
@@ -107,7 +107,7 @@ export default function PortfolioSection({ freelancerId, isOwner = false, viewer
 
       <PortfolioViewer
         item={viewing}
-        viewerName={viewerName}
+        ownerName={ownerName}
         onDelete={isOwner ? setToDelete : undefined}
         onClose={() => setViewing(null)}
       />

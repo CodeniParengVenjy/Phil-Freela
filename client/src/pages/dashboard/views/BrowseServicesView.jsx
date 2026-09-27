@@ -12,8 +12,7 @@ import MediaCarousel from "../components/MediaCarousel";
 export default function BrowseServicesView() {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Services): admins get a Remove button instead of Message.
-  // username: shown faintly over other freelancers' slides (not in the admin panel).
-  const { openChat, isAdmin, currentUserId, username, showToast } = useOutletContext();
+  const { openChat, isAdmin, currentUserId, showToast } = useOutletContext();
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
   const [services, setServices] = useState(null);
@@ -115,7 +114,7 @@ export default function BrowseServicesView() {
                       slides={slides}
                       height={140}
                       alt={s.title}
-                      viewerName={s.freelancer?.id === currentUserId ? undefined : username}
+                      ownerName={s.freelancer?.username}
                     />
                   ) : (
                     <div className="d-flex align-items-center justify-content-center bg-role-subtle" style={{ height: 140 }}>

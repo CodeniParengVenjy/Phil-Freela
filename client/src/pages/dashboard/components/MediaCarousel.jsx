@@ -9,10 +9,10 @@ const blockSaveMenu = (event) => event.preventDefault();
 // swiping on phones. fit is "cover" (fill the box, trimming the edges) or
 // "contain" (show the whole photo). To make copying others' work harder there
 // is no Download button, right-click menu, dragging, or picture-in-picture,
-// and viewerName (the person looking, when it isn't their own work) is shown
-// faintly across the slide, so a screenshot shows who took it. Only the
-// current slide is on the page, so a playing video stops when you move on.
-export default function MediaCarousel({ slides, height = 140, fit = "cover", alt = "", viewerName }) {
+// and ownerName (the uploader's @username) is shown faintly across the slide,
+// so a screenshot still shows whose work it is. Only the current slide is on
+// the page, so a playing video stops when you move on.
+export default function MediaCarousel({ slides, height = 140, fit = "cover", alt = "", ownerName }) {
   const [index, setIndex] = useState(0);
   const swipeStartX = useRef(null);
 
@@ -59,9 +59,9 @@ export default function MediaCarousel({ slides, height = 140, fit = "cover", alt
 
       {/* Drawn on top of the page, not saved into the file, and clicks go
           through it, so the video controls still work. */}
-      {viewerName && (
-        <div className="media-carousel-viewer" aria-hidden="true">
-          {Array.from({ length: 60 }, (_, i) => <span key={i}>@{viewerName}</span>)}
+      {ownerName && (
+        <div className="media-carousel-owner" aria-hidden="true">
+          {Array.from({ length: 60 }, (_, i) => <span key={i}>@{ownerName}</span>)}
         </div>
       )}
 

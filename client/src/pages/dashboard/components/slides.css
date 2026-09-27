@@ -50,8 +50,8 @@
   right: 8px;
 }
 
-/* The viewer's @username, faint and repeated diagonally across the slide. */
-.media-carousel-viewer {
+/* The uploader's @username, faint and repeated diagonally across the slide. */
+.media-carousel-owner {
   position: absolute;
   inset: -40%;
   display: flex;

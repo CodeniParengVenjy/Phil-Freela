@@ -20,7 +20,7 @@ export function useDashboardShell() {
   // trees, each of which mounts its own fresh instance of this hook.
   const [accountType, setAccountType] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
-  // The signed-in user's @username (shown faintly over other people's slides).
+  // The signed-in user's @username (shown faintly over their own portfolio slides).
   const [username, setUsername] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   // Number on the Notifications link: admin announcements not read yet.

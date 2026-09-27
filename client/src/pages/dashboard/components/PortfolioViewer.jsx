@@ -4,10 +4,10 @@ import { itemSlides } from "../../../lib/slides";
 import MediaCarousel from "./MediaCarousel";
 
 // A portfolio project opened big: its slideshow, title and description.
-// Owners also get a Delete button (pass onDelete). viewerName: see
+// Owners also get a Delete button (pass onDelete). ownerName: see
 // MediaCarousel. Rendered straight into <body> so it covers the whole screen,
 // in the same look and animation as the other popups (role-confirm-* classes).
-export default function PortfolioViewer({ item, viewerName, onDelete, onClose }) {
+export default function PortfolioViewer({ item, ownerName, onDelete, onClose }) {
   // Escape closes it.
   useEffect(() => {
     if (!item) return undefined;
@@ -40,7 +40,7 @@ export default function PortfolioViewer({ item, viewerName, onDelete, onClose })
         onClick={(event) => event.stopPropagation()}
       >
         {slides.length > 0 ? (
-          <MediaCarousel slides={slides} height="min(60vh, 460px)" fit="contain" alt={item.title} viewerName={viewerName} />
+          <MediaCarousel slides={slides} height="min(60vh, 460px)" fit="contain" alt={item.title} ownerName={ownerName} />
         ) : (
           <div className="d-flex align-items-center justify-content-center bg-black text-secondary fs-7" style={{ height: 200 }}>
             This project has no photos or videos.

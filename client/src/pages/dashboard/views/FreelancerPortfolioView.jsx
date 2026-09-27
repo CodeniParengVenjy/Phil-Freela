@@ -7,11 +7,11 @@ import PortfolioSection from "../components/PortfolioSection";
 
 // A freelancer's public page (/dashboard/freelancers/:freelancerId): their
 // name, Verified badge, a Message button, and their portfolio. Reached from
-// "by <name>" on Browse Services. Visitors see their own @username faintly
-// over the slides, so a screenshot shows who took it.
+// "by <name>" on Browse Services. The freelancer's @username is shown faintly
+// over their slides, so a screenshot still shows whose work it is.
 export default function FreelancerPortfolioView() {
   const { freelancerId } = useParams();
-  const { currentUserId, username, openChat } = useOutletContext();
+  const { currentUserId, openChat } = useOutletContext();
   // undefined while loading, null when there's no such freelancer.
   const [freelancer, setFreelancer] = useState(undefined);
   const [verified, setVerified] = useState(false);
@@ -71,7 +71,7 @@ export default function FreelancerPortfolioView() {
 
       <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
         {/* key: start fresh when moving from one freelancer's page to another's. */}
-        <PortfolioSection key={freelancerId} freelancerId={freelancerId} viewerName={isOwnPage ? undefined : username} />
+        <PortfolioSection key={freelancerId} freelancerId={freelancerId} ownerName={freelancer.username} />
       </div>
     </section>
   );
