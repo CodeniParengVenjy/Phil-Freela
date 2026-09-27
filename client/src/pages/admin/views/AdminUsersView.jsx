@@ -41,6 +41,8 @@ export default function AdminUsersView() {
   const [blockTarget, setBlockTarget] = useState(null);
   // What the admin picked in the pop-up (see ViolationFields).
   const [fields, setFields] = useState(emptyViolationFields);
+  // The open Unsuspend / Unban pop-up: { user, status } (null = closed).
+  const [liftTarget, setLiftTarget] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -109,14 +111,19 @@ export default function AdminUsersView() {
     setBlockTarget(null);
   };
 
-  // Unsuspending and unbanning both just delete the row.
-  const liftBlock = async (user, status) => {
-    const word = status === "banned" ? "Unban" : "Unsuspend";
-    if (!window.confirm(`${word} ${user.full_name}? They will be able to log in again.`)) return;
+  // Unsuspending and unbanning both just delete the row. The pop-up below
+  // shows what's being lifted first.
+  const confirmLift = async () => {
+    const { user, status } = liftTarget;
+    const word = status === "banned" ? "unban" : "unsuspend";
 
+    setBusy(true);
     const { error } = await supabase.from("user_suspensions").delete().eq("user_id", user.id);
+    setBusy(false);
+    setLiftTarget(null);
+
     if (error) {
-      setMessage({ text: error.message || `Failed to ${word.toLowerCase()} user.`, type: "error" });
+      setMessage({ text: error.message || `Failed to ${word} user.`, type: "error" });
       return;
     }
 
@@ -231,7 +238,7 @@ export default function AdminUsersView() {
                     <td>{new Date(user.created_at).toLocaleDateString()}</td>
                     <td className="text-end text-nowrap">
                       {status ? (
-                        <button className="btn btn-outline-success btn-sm" onClick={() => liftBlock(user, status)}>
+                        <button className="btn btn-outline-success btn-sm" onClick={() => { setLiftTarget({ user, status }); setMessage({ text: "", type: "" }); }}>
                           <i className="bi bi-unlock"></i> {status === "banned" ? "Unban" : "Unsuspend"}
                         </button>
                       ) : (
@@ -275,6 +282,59 @@ export default function AdminUsersView() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Unsuspend / Unban pop-up: shows the penalty being lifted before the
+          admin confirms. */}
+      {liftTarget && (
+        <div className="admin-modal-backdrop" onClick={() => !busy && setLiftTarget(null)}>
+          <div
+            className="admin-card admin-modal rounded-4 p-4 text-center"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="liftTitle"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-lift-icon mx-auto mb-3">
+              <i className="bi bi-unlock-fill"></i>
+            </div>
+            <h2 id="liftTitle" className="h5 fw-bold text-white mb-2">
+              {liftTarget.status === "banned" ? "Unban" : "Unsuspend"} {liftTarget.user.full_name}?
+            </h2>
+            <p className="text-secondary fs-7 mb-3">
+              {liftTarget.status === "banned"
+                ? "They'll be able to log in again right away."
+                : "They'll be able to post and send messages again right away, instead of waiting for the end date."}
+            </p>
+
+            <div className="admin-lift-details text-start fs-7 mb-4">
+              <div>
+                <span className="text-white-50">Current penalty: </span>
+                {liftTarget.status === "banned" ? "Ban" : `Suspended until ${formatEndDate(suspensions[liftTarget.user.id].ends_at)}`}
+              </div>
+              {liftTarget.status === "suspended" && (
+                <div>
+                  <span className="text-white-50">Restrictions: </span>
+                  {restrictionText(suspensions[liftTarget.user.id].blocks_posting, suspensions[liftTarget.user.id].blocks_messaging)}
+                </div>
+              )}
+              <div className="admin-description">
+                <span className="text-white-50">Reason: </span>
+                {suspensions[liftTarget.user.id].reason}
+              </div>
+            </div>
+
+            <div className="d-flex justify-content-center gap-2">
+              <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-4" onClick={() => setLiftTarget(null)} disabled={busy}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-success btn-sm rounded-pill px-4 fw-bold" onClick={confirmLift} disabled={busy}>
+                <i className="bi bi-unlock me-1"></i>
+                {busy ? "Working..." : liftTarget.status === "banned" ? "Unban" : "Unsuspend"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
