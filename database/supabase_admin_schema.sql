@@ -627,3 +627,42 @@ alter policy "services: signed-in users can view" on public.services
     or freelancer_id = auth.uid()
     or public.is_admin()
   );
+-- ---------------------------------------------------------------------------
+-- Admin panel: bans, and suspensions that end on a set date.
+-- A row with an end date is a suspension that lifts by itself on that date.
+-- A row with no end date (ends_at is null) is a ban: it stays until an admin
+-- unbans the user. Ban replaces the old Delete button, so no account or data
+-- is ever lost because of a mistake.
+-- ---------------------------------------------------------------------------
+
+alter table public.user_suspensions add column ends_at timestamptz;
+
+-- A suspension can't end before it starts.
+alter table public.user_suspensions
+  add constraint user_suspensions_ends_after_start
+  check (ends_at is null or ends_at > created_at);
+
+-- Only bans and suspensions that haven't ended count. Every rule that already
+-- uses is_suspended() (no posting, no messages, hidden listings) now covers
+-- bans too, and switches off by itself on the end date. No scheduled job.
+create or replace function public.is_suspended(target uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.user_suspensions
+    where user_id = target
+      and (ends_at is null or ends_at > now())
+  );
+$$;
+
+-- There is one row per user, so suspending or banning someone again (after an
+-- old suspension ended, or to turn a suspension into a ban) replaces the row.
+-- Only admins, and only as themselves.
+create policy "admins can update suspensions"
+  on public.user_suspensions for update
+  using (public.is_admin())
+  with check (public.is_admin() and suspended_by = auth.uid());

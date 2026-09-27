@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { getSuspensionReason } from "../../../lib/profile";
+import { getActiveSuspension } from "../../../lib/profile";
 import { countUnreadAnnouncements } from "../../../lib/announcements";
 
 // Everything the freelancer and client dashboard shells have in common:
@@ -86,9 +86,9 @@ export function useDashboardShell() {
         .maybeSingle();
       if (!active) return;
 
-      // Suspended while already logged in: send them to the login page,
-      // which signs them out and shows the reason (see resolvePostAuthRoute).
-      if (await getSuspensionReason(session.user.id)) {
+      // Banned or suspended while already logged in: send them to the login
+      // page, which signs them out and shows the reason (see resolvePostAuthRoute).
+      if (await getActiveSuspension(session.user.id)) {
         if (active) navigate("/login", { replace: true });
         return;
       }
