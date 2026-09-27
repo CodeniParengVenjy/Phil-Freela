@@ -9,3 +9,5 @@ pillow>=10
 supabase>=2.31
 python-dotenv>=1.2
 python-multipart>=0.0.32
+# Watermarks: runs Meta's HiDDeN model (models/hidden_*.onnx, see export_hidden.py).
+onnxruntime>=1.20

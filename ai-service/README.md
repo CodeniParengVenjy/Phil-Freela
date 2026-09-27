@@ -13,6 +13,20 @@ The SFace file (37 MB) is too big to keep in GitHub comfortably, so
 `get_models.py` downloads it from OpenCV's model collection and checks its
 fingerprint. Vercel runs it while building; on a laptop, run it once.
 
+It also watermarks every photo that freelancers upload to their services and
+portfolio projects (`POST /slides`):
+
+- **Visible watermark** (`visible_watermark.py`): the freelancer's name drawn
+  in the style they picked in Settings > Watermark Settings, in the website's
+  own font, Plus Jakarta Sans (SIL Open Font License, `assets/OFL.txt`).
+- **Invisible code** (`hidden_watermark.py`): a random 48-bit code hidden with
+  **HiDDeN** ("Hiding Data with Deep Networks"), using Meta's pretrained model
+  from the Stable Signature project
+  (https://github.com/facebookresearch/stable_signature, weights licensed
+  CC BY-NC 4.0: free for non-commercial use such as this capstone, credit to
+  Meta). `export_hidden.py` turned it into the two small ONNX files in
+  `models/` once; it needs PyTorch, which isn't part of `requirements.txt`.
+
 ## Online: Vercel (free)
 
 The live website (phil-freela.pages.dev) can't run Python, so this service

@@ -80,6 +80,12 @@ export default function ServicesView() {
     setSlidesError("");
   };
 
+  // Protected <-> Promo. A promo (an ad, like "Are you looking for a video
+  // editor?") gets no visible watermark; it still gets the invisible code.
+  const handleTogglePromo = (key) => {
+    setSlideItems((prev) => prev.map((item) => (item.key === key ? { ...item, promo: !item.promo } : item)));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId) return;
@@ -214,10 +220,17 @@ export default function ServicesView() {
                     items={slideItems}
                     onAdd={handleAddSlides}
                     onRemove={handleRemoveSlide}
+                    onTogglePromo={handleTogglePromo}
                     hint={SLIDE_HINT}
                     error={slidesError}
                     disabled={submitting}
                   />
+                  {slideItems.length > 0 && (
+                    <p className="text-secondary fs-8 mb-0 mt-1">
+                      <i className="bi bi-shield-check text-info me-1"></i>Protected files get your watermark (Settings &gt; Watermark Settings).
+                      Tap it to switch a file to <strong className="text-warning">Promo</strong> if it's an ad, like "Are you looking for a video editor?".
+                    </p>
+                  )}
                 </div>
 
                 <div className="d-flex justify-content-end pt-2">

@@ -59,7 +59,9 @@ export default function MediaCarousel({ slides, height = 140, fit = "cover", alt
 
       {/* Drawn on top of the page, not saved into the file, and clicks go
           through it, so the video controls still work. */}
-      {ownerName && (
+      {/* Only over slides whose file has no watermark of its own (older
+          photos, videos for now) and that aren't promos. */}
+      {ownerName && current.showOwnerName !== false && (
         <div className="media-carousel-owner" aria-hidden="true">
           {Array.from({ length: 60 }, (_, i) => <span key={i}>@{ownerName}</span>)}
         </div>

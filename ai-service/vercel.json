@@ -4,8 +4,8 @@
   "regions": ["hnd1"],
   "functions": {
     "main.py": {
-      "maxDuration": 60,
-      "includeFiles": "models/**"
+      "maxDuration": 120,
+      "includeFiles": "{models,assets}/**"
     }
   }
 }

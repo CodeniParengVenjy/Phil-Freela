@@ -83,7 +83,67 @@ layouts (`username`), `ProfileView.jsx`, `FreelancerPortfolioView.jsx`,
 `itemSlides` rename in `ServiceCard.jsx`, `ProjectsView.jsx`,
 `AdminListingsView.jsx`, `lib/adminListings.js`.
 
+Step 3: built and pushed live (2026-09-27). `database/supabase_watermark_schema.sql`
+has been run on Supabase (migration "photo_watermarks"), so don't run it again.
+Still needs the user to test it on the live site (and how long a photo upload
+takes on Vercel). Next: plan Step 4 (Check Ownership).
+
+What Step 3 does (photos only; videos in Step 7):
+- Settings > Watermark Settings (freelancers): on/off, text (@username, full
+  name, custom), position (corners, center, tiled), opacity 10-80%, size,
+  color, PhilFreela logo, live preview (`lib/watermarkPreview.js`, same
+  layout as `ai-service/visible_watermark.py`). Stored in `watermark_settings`.
+- Promo switch (user's request): in Post a Service each picked file is
+  "Protected" (default) or "Promo" (an ad, like "Are you looking for a video
+  editor?"). Promo = no visible watermark and no name overlay, but it still
+  gets the invisible code and (Step 5) the copy check. Portfolio has no
+  switch: always protected. Stored as `media_slides.promo`.
+- Invisible code: random 48 bits per photo, HiDDeN (Meta's pretrained model,
+  `ai-service/export_hidden.py` -> `models/hidden_encoder.onnx` +
+  `hidden_decoder.onnx`, run with onnxruntime; JND masking in OpenCV).
+  The photo is shrunk to 256x256 for the model and the pattern is stretched
+  back (cubic). Adaptive strength: tries JND x1.5, x2.5, x4.0 and keeps the
+  faintest one where the saved JPEG reads back with <= 4 wrong bits and a
+  JPEG-70 copy with <= 6. Very plain pictures (flat color, very smooth
+  graphics) can't hold it: they are saved without a code (not rejected).
+  Codes live in the private `watermark_codes` table (no policies: only the AI
+  service reads it). `media_slides.watermarked` = has a code; the page
+  overlay with the uploader's name only shows on unwatermarked, non-promo slides.
+- Checked on the way: Meta's checkpoint was trained with scaling_w 0.3 and no
+  JND; their demo adds JND x1.5 afterwards. JND at x1.5 alone was too weak on
+  smooth photos, hence the adaptive strength.
+
+Step 3 test results (29 test pictures: Windows wallpapers, 2 site photos, 3
+posters; `ai-service` local run):
+- 25 of 29 got an invisible code; 4 were too plain (flat blue, smooth CGI).
+- Invisibility: PSNR average 35.2 dB, lowest 32.0 dB. Time: about 1.8 s per
+  photo on the laptop (expect several times slower on Vercel's 1 CPU).
+
+| Change to the photo | Bits read correctly (avg of 48) | Owner still found (<= 6 wrong bits) |
+|---|---|---|
+| Saved photo (JPEG 90) | 46.4 | 25 of 25 |
+| Re-saved as JPEG 70 | 45.5 | 25 of 25 |
+| Re-saved as JPEG 50 | 45.0 | 24 of 25 |
+| Resized to 50% | 45.7 | 24 of 25 |
+| Screenshot-like (80% size) | 46.1 | 24 of 25 |
+| Brightness +20% | 46.4 | 24 of 25 |
+| Cropped 10% off the edges | 41.6 | 14 of 25 |
+
+Step 3 files: `database/supabase_watermark_schema.sql`, `ai-service/main.py`
+(`watermark_photo`, `POST /slides` takes `promo`), `hidden_watermark.py`,
+`visible_watermark.py`, `export_hidden.py`, `models/hidden_*.onnx`, `assets/`
+(Plus Jakarta Sans Bold + OFL, PhilFreela logo), `requirements.txt`
+(onnxruntime), `vercel.json` (120 s, includes assets), `README.md`,
+`client/src/lib/watermarkSettings.js`, `lib/watermarkPreview.js`,
+`lib/slides.js`, `lib/aiService.js`, `components/WatermarkSettingsForm.jsx`,
+`SlidePicker.jsx`, `slides.css`, `MediaCarousel.jsx`, `SettingsView.jsx`,
+`ServicesView.jsx`.
+
 ## Reminders for later steps
+
+- Step 4 (Check Ownership): accept a match with up to 6 wrong bits, and only
+  if the best match is clearly better than the next one. Cropping is the
+  weak spot (14 of 25): try reading a few slightly shrunk/shifted copies.
 
 - Step 7: REMIND THE USER to decide the video size limit. Until Step 7
   compresses videos, they are saved as uploaded (up to 50 MB each, so only
@@ -91,8 +151,8 @@ layouts (`username`), `ProfileView.jsx`, `FreelancerPortfolioView.jsx`,
   The user said "let's plan it later, remind me when we're in that step."
 - Step 7: test how long video watermarking takes on Vercel (1 CPU, 5-minute
   limit) and through the Cloudflare /ai forwarding.
-- Step 3: credit Meta for HiDDeN (CC-BY-NC, non-commercial) in the README
-  and the paper.
+- Paper: credit Meta for HiDDeN (CC-BY-NC, non-commercial). The README
+  already does.
 - Step 5: tune the similarity cutoffs with real test files.
 - Supabase free plan: 1 GB storage, 5 GB bandwidth a month, and the project
   pauses after 1 week without activity (open it before the defense).

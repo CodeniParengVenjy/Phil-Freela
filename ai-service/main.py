@@ -32,7 +32,9 @@ from postgrest.exceptions import APIError
 from supabase import ClientOptions, create_client
 
 from face_check import NoFaceError, check_faces, prepare_image
+from hidden_watermark import new_code, protect_photo
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
+from visible_watermark import draw_visible_watermark
 
 load_dotenv()
 
@@ -531,16 +533,42 @@ def upload_slide_file(path, data, content_type):
             time.sleep(attempt + 1)
 
 
+def watermark_photo(user_id, image, promo):
+    """Step 3: draws the freelancer's visible watermark (in their style from
+    Settings > Watermark Settings, and not on promos), then hides a new
+    invisible code in the photo (HiDDeN, see hidden_watermark.py).
+    Returns (jpeg_bytes, code), where code is None for a picture too plain to
+    hold one."""
+    image = image.copy()
+    image.thumbnail((SLIDE_MAX_SIDE, SLIDE_MAX_SIDE))
+
+    if not promo:
+        settings = (
+            supabase.table("watermark_settings")
+            .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, show_badge")
+            .eq("freelancer_id", user_id).limit(1).execute().data
+        )
+        profile = supabase.table("profiles").select("username, full_name").eq("id", user_id).limit(1).execute().data
+        profile = profile[0] if profile else {}
+        image = draw_visible_watermark(image, settings[0] if settings else None, profile.get("username", ""), profile.get("full_name", ""))
+
+    code = new_code()
+    data, has_code = protect_photo(image, code)
+    return data, (code if has_code else None)
+
+
 @app.post("/slides")
 def add_slide(
     service_id: str | None = Form(default=None),
     portfolio_item_id: str | None = Form(default=None),
     image: UploadFile | None = File(default=None),
     video_path: str | None = Form(default=None),
+    promo: bool = Form(default=False),
     authorization: str | None = Header(default=None),
 ):
     """Adds one photo or video to the end of the caller's own service or
-    portfolio project (send service_id or portfolio_item_id).
+    portfolio project (send service_id or portfolio_item_id). promo: the
+    freelancer marked it as an ad, so it gets no visible watermark.
     Photos come with the request. Videos are too big for that (Vercel allows
     4.5 MB per request), so the browser uploads them to slide-uploads first
     and sends where it put them."""
@@ -556,12 +584,15 @@ def add_slide(
     media_type = "image" if image is not None else "video"
     position = next_slide_position(user_id, owner, item_id, media_type)
 
+    code = None
     if image is not None:
-        # Same checks as ID photos (a real JPG/PNG/WEBP under 5 MB), then saved
-        # as a clean, smaller JPEG.
-        data = to_clean_jpeg(read_image(image, "photo"), max_side=SLIDE_MAX_SIDE, quality=90)
+        # Same checks as ID photos (a real JPG/PNG/WEBP under 5 MB), then the
+        # watermarks, saved as a fresh JPEG (nothing hidden, like the GPS
+        # location phones store in photos, is copied over).
+        data, code = watermark_photo(user_id, read_image(image, "photo"), promo)
         extension, content_type = "jpg", "image/jpeg"
     else:
+        # Videos get their watermarks in step 7.
         data, extension = read_slide_video(user_id, video_path)
         content_type = f"video/{extension}"
 
@@ -577,6 +608,8 @@ def add_slide(
             "position": position,
             "media_type": media_type,
             "file_path": file_path,
+            "watermarked": code is not None,
+            "promo": promo,
         }).execute()
     except APIError as error:
         # Don't leave a file behind for a slide that wasn't saved.
@@ -587,4 +620,18 @@ def add_slide(
             raise HTTPException(404, f"That {name} no longer exists.")
         raise
 
-    return {"id": slide_id, "position": position, "media_type": media_type, "file_path": file_path}
+    # The invisible code goes in its own private table (only this service can read it).
+    if code is not None:
+        try:
+            supabase.table("watermark_codes").insert({"code": code, "slide_id": slide_id}).execute()
+        except APIError:
+            # Practically impossible (the same random code twice), but then undo the slide.
+            logger.exception("Saving the watermark code for slide %s failed", slide_id)
+            supabase.table("media_slides").delete().eq("id", slide_id).execute()
+            remove_quietly(SLIDE_BUCKET, file_path)
+            raise HTTPException(409, "Something went wrong while saving that photo. Please try again.")
+
+    return {
+        "id": slide_id, "position": position, "media_type": media_type, "file_path": file_path,
+        "watermarked": code is not None, "promo": promo,
+    }

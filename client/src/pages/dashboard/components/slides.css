@@ -170,6 +170,30 @@
   outline: none;
 }
 
+/* Protected / Promo switch along the bottom of a picked file. */
+.slide-picker-promo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3px 4px;
+  border: none;
+  background: rgba(0, 0, 0, 0.72);
+  color: #7dd3fc;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.slide-picker-promo.is-promo {
+  background: rgba(255, 107, 0, 0.9);
+  color: #fff;
+}
+
+.slide-picker-promo:disabled {
+  cursor: default;
+}
+
 .slide-picker-add {
   display: flex;
   flex-direction: column;

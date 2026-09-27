@@ -20,11 +20,13 @@ function SlideThumb({ file }) {
 }
 
 // Picks up to 10 photos and videos for a slideshow: click the "+" tile, or
-// drag files onto the box. The parent owns the list ([{ key, file }]) and
-// checks each file; this only reports new picks through onAdd (an array of
-// Files) and removals through onRemove (a key). Slides keep the order they
-// were picked in.
-export default function SlidePicker({ items, onAdd, onRemove, hint, error, disabled }) {
+// drag files onto the box. The parent owns the list ([{ key, file, promo }])
+// and checks each file; this only reports new picks through onAdd (an array
+// of Files) and removals through onRemove (a key). Slides keep the order they
+// were picked in. With onTogglePromo, each file also gets a Protected / Promo
+// switch: a promo (an ad, like "Are you looking for a video editor?") gets no
+// visible watermark.
+export default function SlidePicker({ items, onAdd, onRemove, onTogglePromo, hint, error, disabled }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const canAdd = !disabled && items.length < MAX_SLIDES;
@@ -56,7 +58,7 @@ export default function SlidePicker({ items, onAdd, onRemove, hint, error, disab
       <input ref={inputRef} type="file" multiple className="d-none" accept={SLIDE_ACCEPT} onChange={handleInputChange} />
 
       <div className={`slide-picker${dragging ? " is-dragging" : ""}`} {...dragProps}>
-        {items.map(({ key, file }, index) => (
+        {items.map(({ key, file, promo }, index) => (
           <div key={key} className="slide-picker-tile" title={file.name}>
             <SlideThumb file={file} />
             <span className="slide-picker-number">{index + 1}</span>
@@ -64,6 +66,19 @@ export default function SlidePicker({ items, onAdd, onRemove, hint, error, disab
             {!disabled && (
               <button type="button" className="slide-picker-remove" aria-label={`Remove ${file.name}`} onClick={() => onRemove(key)}>
                 <i className="bi bi-x-lg"></i>
+              </button>
+            )}
+            {onTogglePromo && (
+              <button
+                type="button"
+                className={`slide-picker-promo${promo ? " is-promo" : ""}`}
+                aria-pressed={promo}
+                title={promo ? "Promo: no visible watermark. Tap to protect it." : "Protected: gets your watermark. Tap if it's a promo/ad."}
+                onClick={() => onTogglePromo(key)}
+                disabled={disabled}
+              >
+                <i className={`bi ${promo ? "bi-megaphone-fill" : "bi-shield-check"} me-1`}></i>
+                {promo ? "Promo" : "Protected"}
               </button>
             )}
           </div>

@@ -22,7 +22,9 @@ export const SLIDE_ACCEPT = [...IMAGE_TYPES, ...VIDEO_TYPES].join(",");
 export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, WebM) up to 50 MB and 30 seconds.";
 
 // Add this to a services select to get each service's slides with it.
-export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file_path)";
+// watermarked: the file carries the watermark itself (photos from step 3 on).
+// promo: the freelancer marked it as a promo/ad, so it has no visible watermark.
+export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file_path, watermarked, promo)";
 
 export const isVideoFile = (file) => VIDEO_TYPES.includes(file.type);
 
@@ -72,7 +74,7 @@ export async function addPickedFiles(items, files) {
   for (const file of files) {
     const problem = await checkSlideFile(file);
     if (problem) problems.push(`${file.name}: ${problem}`);
-    else accepted.push({ key: nextSlideKey++, file });
+    else accepted.push({ key: nextSlideKey++, file, promo: false });
   }
 
   const room = MAX_SLIDES - items.length;
@@ -83,12 +85,13 @@ export async function addPickedFiles(items, files) {
 }
 
 // Adds one file to the end of a service's or project's slideshow and returns
-// the saved slide. Photos are shrunk first. Videos are too big to send to the
-// AI service directly, so they go to the private "slide-uploads" bucket first
-// and the AI service takes them from there.
-export async function uploadSlide(target, file, userId) {
+// the saved slide. promo: it's an ad, so no visible watermark. Photos are
+// shrunk first. Videos are too big to send to the AI service directly, so
+// they go to the private "slide-uploads" bucket first and the AI service
+// takes them from there.
+export async function uploadSlide(target, file, userId, promo = false) {
   if (!isVideoFile(file)) {
-    return addSlide({ ...target, image: await shrinkImage(file) });
+    return addSlide({ ...target, image: await shrinkImage(file), promo });
   }
 
   // Named by time + a random part only, so odd characters in the file name can't break it.
@@ -98,7 +101,7 @@ export async function uploadSlide(target, file, userId) {
   if (error) throw new Error("Couldn't upload that video. Please try again.");
 
   try {
-    return await addSlide({ ...target, videoPath });
+    return await addSlide({ ...target, videoPath, promo });
   } catch (err) {
     // The AI service deletes the temporary copy itself; this covers the case
     // where it couldn't be reached at all.
@@ -107,17 +110,18 @@ export async function uploadSlide(target, file, userId) {
   }
 }
 
-// Uploads the picked files ([{ key, file }]) one at a time: each request to
-// the AI service must stay small, and it lets the page show progress through
-// onProgress("Uploading 2 of 5..."). If one fails the rest still go.
-// Returns { slides, failed }: the saved slides, and a message per failed file.
+// Uploads the picked files ([{ key, file, promo }]) one at a time: each
+// request to the AI service must stay small, and it lets the page show
+// progress through onProgress("Uploading 2 of 5..."). If one fails the rest
+// still go. Returns { slides, failed }: the saved slides, and a message per
+// failed file.
 export async function uploadSlides(target, items, userId, onProgress) {
   const slides = [];
   const failed = [];
-  for (const [index, { file }] of items.entries()) {
+  for (const [index, { file, promo }] of items.entries()) {
     onProgress(`Uploading ${index + 1} of ${items.length}...`);
     try {
-      slides.push(await uploadSlide(target, file, userId));
+      slides.push(await uploadSlide(target, file, userId, promo));
     } catch (err) {
       failed.push(`${file.name}: ${err.message}`);
     }
@@ -130,16 +134,24 @@ export function slideUrl(filePath) {
   return supabase.storage.from("slide-media").getPublicUrl(filePath).data.publicUrl;
 }
 
-// A service's or project's slides in slideshow order, as [{ id, mediaType, url }].
+// A service's or project's slides in slideshow order, as
+// [{ id, mediaType, url, showOwnerName }]. showOwnerName: the page draws the
+// uploader's name faintly over it, because the file itself has no watermark
+// (older photos, videos until step 7) and it isn't a promo.
 // Services posted before slideshows existed have one photo or video
 // (image_url), shown as a one-slide slideshow.
 export function itemSlides(item) {
   if (item.slides?.length) {
     return [...item.slides]
       .sort((a, b) => a.position - b.position)
-      .map((slide) => ({ id: slide.id, mediaType: slide.media_type, url: slideUrl(slide.file_path) }));
+      .map((slide) => ({
+        id: slide.id,
+        mediaType: slide.media_type,
+        url: slideUrl(slide.file_path),
+        showOwnerName: !slide.watermarked && !slide.promo
+      }));
   }
-  if (item.image_url) return [{ id: "original", mediaType: item.media_type, url: item.image_url }];
+  if (item.image_url) return [{ id: "original", mediaType: item.media_type, url: item.image_url, showOwnerName: true }];
   return [];
 }
 

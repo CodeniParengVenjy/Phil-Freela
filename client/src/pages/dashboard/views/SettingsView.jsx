@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import VerificationStatusCard from "../components/VerificationStatusCard";
+import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Privacy & Notifications"];
 
 export default function SettingsView() {
-  const { displayName, setDisplayName, currentUserId, showToast } = useOutletContext();
+  const { displayName, setDisplayName, currentUserId, accountType, username, showToast } = useOutletContext();
   const [activeSubNav, setActiveSubNav] = useState("Profile Settings");
   const [nameInput, setNameInput] = useState(displayName);
 
@@ -75,6 +76,13 @@ export default function SettingsView() {
                   </div>
                 </form>
               </>
+            ) : activeSubNav === "Watermark Settings" ? (
+              // Only freelancers upload photos and videos, so only they have a watermark.
+              accountType === "freelancer" && currentUserId ? (
+                <WatermarkSettingsForm userId={currentUserId} username={username} fullName={displayName} showToast={showToast} />
+              ) : (
+                <p className="text-secondary fs-7">Only freelancers upload work, so there's nothing to set here.</p>
+              )
             ) : (
               <p className="text-secondary fs-7">This section isn't wired up yet.</p>
             )}
