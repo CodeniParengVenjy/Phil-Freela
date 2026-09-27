@@ -13,6 +13,11 @@ export default function ResetPassword() {
   const [ready, setReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
+  // An expired or already-used reset link comes back here with the reason
+  // after the # in the address instead of a recovery session.
+  const [linkError, setLinkError] = useState(
+    () => new URLSearchParams(window.location.hash.slice(1)).get("error_description") || ""
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -27,7 +32,14 @@ export default function ResetPassword() {
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (active && session) setReady(true);
+      if (!active) return;
+      if (session) {
+        setReady(true);
+        return;
+      }
+      // getSession() waits until Supabase has read the link, so no session
+      // here means the page was opened without a working reset link.
+      setLinkError((prev) => prev || "This reset link is invalid or has expired");
     });
 
     return () => {
@@ -88,13 +100,27 @@ export default function ResetPassword() {
             </div>
           )}
 
-          {isSupabaseConfigured && !ready && (
+          {isSupabaseConfigured && !ready && !linkError && (
             <p className="auth-message text-center fs-7 fw-semibold mb-0" aria-live="polite">
               Verifying your reset link...
             </p>
           )}
 
-          {isSupabaseConfigured && ready && (
+          {isSupabaseConfigured && linkError && (
+            <div className="text-center">
+              <p className="auth-message error fs-7 fw-semibold mb-3" aria-live="polite">
+                {linkError}. Reset links work only once and expire after a while.
+              </p>
+              <Link
+                to="/forgot-password"
+                className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2"
+              >
+                Request a new link
+              </Link>
+            </div>
+          )}
+
+          {isSupabaseConfigured && ready && !linkError && (
             <form className="d-flex flex-column gap-3" noValidate onSubmit={handleSubmit}>
               <div className="field">
                 <label htmlFor="password" className="form-label text-white-50 fw-semibold fs-7 mb-1">New Password</label>
@@ -154,11 +180,13 @@ export default function ResetPassword() {
             </p>
           )}
 
-          <div className="text-center pt-4 mt-3 border-top border-secondary border-opacity-25">
-            <Link to="/forgot-password" className="text-white-50 text-decoration-none fs-7 hover-orange">
-              <i className="bi bi-arrow-left me-1"></i> Request a new link
-            </Link>
-          </div>
+          {!linkError && (
+            <div className="text-center pt-4 mt-3 border-top border-secondary border-opacity-25">
+              <Link to="/forgot-password" className="text-white-50 text-decoration-none fs-7 hover-orange">
+                <i className="bi bi-arrow-left me-1"></i> Request a new link
+              </Link>
+            </div>
+          )}
         </section>
       </main>
     </div>
