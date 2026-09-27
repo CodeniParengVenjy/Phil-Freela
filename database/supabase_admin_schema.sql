@@ -775,3 +775,119 @@ alter policy "messages: participants can insert own" on public.messages
 -- (e.g. for harassment) could rewrite their old messages instead.
 alter policy "messages: sender can update own" on public.messages
   with check (sender_id = auth.uid() and not public.is_messaging_blocked(auth.uid()));
+
+-- ---------------------------------------------------------------------------
+-- Notifications for one user (announcements go to everyone).
+-- The database makes these itself with triggers, so no page has to remember
+-- to send them: when a verification is reviewed, and when a user is
+-- suspended. They show on the Notifications page next to announcements, and
+-- count toward the same unread number (profiles.notifications_seen_at).
+-- ---------------------------------------------------------------------------
+
+create table public.user_notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  -- What it's about; the Notifications page picks the icon from this.
+  type text not null check (type in ('verification_approved', 'verification_rejected', 'suspension')),
+  title text not null check (char_length(title) between 1 and 120),
+  message text not null check (char_length(message) between 1 and 1000),
+  -- The page the popup's button goes to (null = no button).
+  link text,
+  created_at timestamptz not null default now()
+);
+
+create index user_notifications_user_id_created_at_idx
+  on public.user_notifications (user_id, created_at desc);
+
+-- Users can only read their own. There are no insert/update/delete rules, so
+-- nobody can make or change one from the browser: only the triggers below.
+alter table public.user_notifications enable row level security;
+
+create policy "users can read own notifications"
+  on public.user_notifications for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
+-- Runs when an admin approves or rejects a verification (see the trigger's
+-- "when" below). "security definer" lets it add the row despite the rules.
+create or replace function public.notify_verification_reviewed()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status = 'approved' then
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.user_id, 'verification_approved', 'Identity verified',
+      'Your ID and face scan were approved. A Verified check now shows next to your name.',
+      '/dashboard/verify-identity'
+    );
+  else
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.user_id, 'verification_rejected', 'Verification not approved',
+      'Your identity verification was not approved. You can send a new one from the Verify Identity page.'
+        || E'\n\nReason: ' || coalesce(new.admin_note, 'No reason given.'),
+      '/dashboard/verify-identity'
+    );
+  end if;
+  return new;
+end;
+$$;
+
+create trigger identity_verifications_notify
+  after update of status on public.identity_verifications
+  for each row
+  when (old.status = 'pending' and new.status in ('approved', 'rejected'))
+  execute function public.notify_verification_reviewed();
+
+-- Runs on every new suspension, including one that replaces an old row (the
+-- admin pages always save a new created_at then). Bans are skipped: a banned
+-- user can't log in to read it. Times are shown in Philippine time.
+create or replace function public.notify_suspension()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  blocked text;
+begin
+  if new.ends_at is null then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and new.created_at = old.created_at then
+    return new;
+  end if;
+
+  blocked := case
+    when new.blocks_posting and new.blocks_messaging then 'can''t post or send messages'
+    when new.blocks_posting then 'can''t post services or job posts'
+    else 'can''t send messages'
+  end;
+
+  insert into public.user_notifications (user_id, type, title, message)
+  values (
+    new.user_id, 'suspension', 'Account suspended',
+    'Your account is suspended until '
+      || to_char(new.ends_at at time zone 'Asia/Manila', 'Mon FMDD, YYYY, FMHH12:MI AM')
+      || ' (Philippine time). Until then you ' || blocked || '.'
+      || E'\n\nReason: ' || new.reason
+  );
+  return new;
+end;
+$$;
+
+create trigger user_suspensions_notify
+  after insert or update on public.user_suspensions
+  for each row
+  execute function public.notify_suspension();
+
+-- Only the triggers use these functions.
+revoke execute on function public.notify_verification_reviewed() from public, anon, authenticated;
+revoke execute on function public.notify_suspension() from public, anon, authenticated;
+
+-- Live updates, so a new notification shows up without refreshing the page.
+alter publication supabase_realtime add table public.user_notifications;

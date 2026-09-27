@@ -139,8 +139,8 @@ export default function AdminVerificationsView() {
     setOpenId(null);
     setMessage({
       text: kind === "approve"
-        ? `${verification.user?.full_name || "The user"} is now verified.`
-        : `Verification rejected. ${verification.user?.full_name || "The user"} will see the reason and can try again.`,
+        ? `${verification.user?.full_name || "The user"} is now verified and will get a notification.`
+        : `Verification rejected. ${verification.user?.full_name || "The user"} will get a notification with the reason and can try again.`,
       type: "success"
     });
     // Update the number on the sidebar's Verifications link.

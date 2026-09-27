@@ -19,7 +19,7 @@ const sidebarLinks = [
 export default function FreelancerDashboardLayout({
   displayName, setDisplayName, accountType, currentUserId, username,
   unreadCount, refreshUnreadCount,
-  unreadAnnouncements, refreshUnreadAnnouncements,
+  unreadNotifications, refreshUnreadNotifications,
   suspension,
   toast, closeToast, showToast,
   preview, openPreview, closePreview,
@@ -49,10 +49,10 @@ export default function FreelancerDashboardLayout({
               </div>
 
               {sidebarLinks.map((link) => {
-                // Live unread counts: messages on Inbox, announcements on Notifications.
+                // Live unread counts: messages on Inbox, notifications on Notifications.
                 const isInbox = link.to === "/dashboard/inbox";
                 const count = isInbox ? unreadCount
-                  : link.to === "/dashboard/notifications" ? unreadAnnouncements
+                  : link.to === "/dashboard/notifications" ? unreadNotifications
                   : 0;
                 const badge = count > 0 ? String(count) : null;
                 const badgeClass = isInbox ? "bg-danger" : "bg-warning text-dark";
@@ -101,7 +101,7 @@ export default function FreelancerDashboardLayout({
             </div>
           )}
 
-          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadAnnouncements, refreshUnreadAnnouncements, suspension }} />
+          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, suspension }} />
         </main>
       </div>
 

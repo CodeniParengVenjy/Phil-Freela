@@ -914,3 +914,24 @@ body.sidebar-collapsed .sidebar-wrapper {
   background: rgba(255, 107, 0, 0.08) !important;
   box-shadow: 0 0 25px rgba(255, 107, 0, 0.2);
 }
+
+/* Notifications list: each item is a button that opens the full message. */
+.notification-item {
+  color: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.notification-item:hover,
+.notification-item:focus-visible {
+  border-color: var(--accent-role) !important;
+}
+
+/* Two-line preview; the popup shows the rest. */
+.notification-preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}

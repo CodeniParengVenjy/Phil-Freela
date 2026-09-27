@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getActiveSuspension } from "../../../lib/profile";
-import { countUnreadAnnouncements } from "../../../lib/announcements";
+import { countUnreadNotifications } from "../../../lib/notifications";
 
 // Everything the freelancer and client dashboard shells have in common:
 // the signed-in session (and redirect-to-login guard), the sidebar
@@ -23,8 +23,9 @@ export function useDashboardShell() {
   // The signed-in user's @username (shown faintly over their own portfolio slides).
   const [username, setUsername] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
-  // Number on the Notifications link: admin announcements not read yet.
-  const [unreadAnnouncements, setUnreadAnnouncements] = useState(0);
+  // Number on the Notifications link: announcements and the user's own
+  // notifications not read yet.
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   // The user's suspension while it's in effect (null = none). Pages use it
   // to disable posting / messaging; the layouts show a banner.
   const [suspension, setSuspension] = useState(null);
@@ -181,32 +182,39 @@ export function useDashboardShell() {
     };
   }, [currentUserId, refreshUnreadCount, showToast]);
 
-  // NotificationsView also calls this right after marking announcements
-  // read, so the badge drops back to 0.
-  const refreshUnreadAnnouncements = useCallback(async () => {
+  // NotificationsView also calls this right after marking everything read,
+  // so the badge drops back to 0.
+  const refreshUnreadNotifications = useCallback(async () => {
     if (!currentUserId) return;
-    setUnreadAnnouncements(await countUnreadAnnouncements(currentUserId));
+    setUnreadNotifications(await countUnreadNotifications(currentUserId));
   }, [currentUserId]);
 
-  // A new admin announcement updates the badge and pops a toast. The
-  // database rules only send each user the announcements meant for them.
+  // A new announcement or personal notification updates the badge and pops a
+  // toast. The database rules only send each user the ones meant for them.
   useEffect(() => {
     if (!currentUserId) return;
 
     const channel = supabase
-      .channel(`announcements:${currentUserId}`)
+      .channel(`notifications:${currentUserId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "announcements" }, (payload) => {
-        refreshUnreadAnnouncements();
+        refreshUnreadNotifications();
         showToast(`New announcement: ${payload.new.title}`);
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "user_notifications", filter: `user_id=eq.${currentUserId}` }, async (payload) => {
+        refreshUnreadNotifications();
+        showToast(`New notification: ${payload.new.title}`);
+        // Suspended while online: show the banner and block posting / chat
+        // right away, without a refresh.
+        if (payload.new.type === "suspension") setSuspension(await getActiveSuspension(currentUserId));
       })
       .subscribe();
 
-    refreshUnreadAnnouncements();
+    refreshUnreadNotifications();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, refreshUnreadAnnouncements, showToast]);
+  }, [currentUserId, refreshUnreadNotifications, showToast]);
 
   const openPreview = useCallback((src, title) => {
     setPreview({ src, title, visible: true });
@@ -297,7 +305,7 @@ export function useDashboardShell() {
   return {
     displayName, setDisplayName, accountType, currentUserId, username,
     unreadCount, refreshUnreadCount,
-    unreadAnnouncements, refreshUnreadAnnouncements,
+    unreadNotifications, refreshUnreadNotifications,
     suspension,
     toast, closeToast, showToast,
     preview, openPreview, closePreview,
