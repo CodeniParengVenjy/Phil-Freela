@@ -23,12 +23,10 @@ export default function ViolationFields({ kind, fields, setFields }) {
         autoFocus
         required
       >
-        <option value="">Choose a violation...</option>
-        {options.map((v) => (
-          <option key={v.value} value={v.value}>
-            {v.label}{kind === "suspend" && v.days ? ` (${v.days} days)` : ""}
-          </option>
-        ))}
+        {/* Placeholder only: disabled, so it can't be picked again once a violation is chosen. */}
+        <option value="" disabled>Choose a violation...</option>
+        {/* Just the name; the line below the form shows the penalty. */}
+        {options.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
       </select>
 
       {kind === "suspend" && isOther && (
