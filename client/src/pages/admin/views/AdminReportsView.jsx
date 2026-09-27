@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { SLIDES_SELECT } from "../../../lib/slides";
 import { reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
+import { blockedBadges, endDateToTimestamp, formatEndDate, saveSuspension, suspensionStatus, tomorrowDateValue } from "../../../lib/suspensions";
 
 const statusTabs = [
   { key: "pending", label: "Pending" },
@@ -28,13 +29,16 @@ export default function AdminReportsView() {
   // targetKey -> { name, ownerId, ownerName, item } for everything reported.
   // A missing entry means the user/listing was deleted after being reported.
   const [targets, setTargets] = useState({});
-  const [suspendedIds, setSuspendedIds] = useState(new Set());
+  // user id -> "banned" or "suspended", only for bans/suspensions still in effect.
+  const [blockedStatus, setBlockedStatus] = useState({});
   const [loadError, setLoadError] = useState("");
   const [activeStatus, setActiveStatus] = useState("pending");
   const [message, setMessage] = useState({ text: "", type: "" });
   // The open action pop-up: { kind, report } (null = closed).
   const [action, setAction] = useState(null);
   const [note, setNote] = useState("");
+  // The day a suspension lifts, as "YYYY-MM-DD" from the date picker.
+  const [endDate, setEndDate] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -46,7 +50,7 @@ export default function AdminReportsView() {
           .from("reports")
           .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
           .order("created_at", { ascending: false }),
-        supabase.from("user_suspensions").select("user_id")
+        supabase.from("user_suspensions").select("user_id, ends_at")
       ]);
 
       if (!active) return;
@@ -79,7 +83,9 @@ export default function AdminReportsView() {
       });
 
       setTargets(found);
-      setSuspendedIds(new Set(suspensionsResult.data.map((s) => s.user_id)));
+      setBlockedStatus(Object.fromEntries(
+        suspensionsResult.data.map((s) => [s.user_id, suspensionStatus(s)]).filter(([, status]) => status)
+      ));
       setReports(reportsResult.data);
     })();
 
@@ -94,6 +100,7 @@ export default function AdminReportsView() {
     setAction({ kind, report, target });
     // Suggest a suspension reason based on what the user was reported for.
     setNote(kind === "suspend" ? `Reported for: ${reportReasonLabel(report.reason)}` : "");
+    setEndDate("");
     setMessage({ text: "", type: "" });
   };
 
@@ -119,6 +126,7 @@ export default function AdminReportsView() {
     const { kind, report, target } = action;
     const text = note.trim();
     if (actionText[kind].noteRequired && !text) return;
+    if (kind === "suspend" && !endDate) return;
 
     setBusy(true);
     try {
@@ -134,13 +142,13 @@ export default function AdminReportsView() {
         await markReviewed(report, "resolved", `Listing removed.${text ? ` ${text}` : ""}`);
         setMessage({ text: "Listing removed and report resolved.", type: "success" });
       } else if (kind === "suspend") {
-        // Same suspension as the Users page: the user sees this reason at login.
-        const { error } = await supabase
-          .from("user_suspensions")
-          .insert({ user_id: target.ownerId, reason: text, suspended_by: adminId });
+        // Same suspension as the Users page: the user sees this reason at login,
+        // and it lifts by itself on the picked date.
+        const endsAt = endDateToTimestamp(endDate);
+        const { error } = await saveSuspension({ userId: target.ownerId, reason: text, endsAt, adminId });
         if (error) throw new Error("Couldn't suspend the user.");
-        setSuspendedIds((prev) => new Set(prev).add(target.ownerId));
-        await markReviewed(report, "resolved", `User suspended: ${text}`);
+        setBlockedStatus((prev) => ({ ...prev, [target.ownerId]: "suspended" }));
+        await markReviewed(report, "resolved", `User suspended until ${formatEndDate(endsAt)}: ${text}`);
         setMessage({ text: `${target.ownerName} was suspended and the report resolved.`, type: "success" });
       } else {
         await markReviewed(report, kind === "resolve" ? "resolved" : "dismissed", text);
@@ -188,7 +196,11 @@ export default function AdminReportsView() {
         {visibleReports.map((report) => {
           const target = targets[targetKey(report.target_type, report.target_id)];
           const isListing = report.target_type !== "user";
-          const ownerSuspended = target && suspendedIds.has(target.ownerId);
+          // "banned", "suspended", or undefined for the reported user / listing owner.
+          const ownerStatus = target && blockedStatus[target.ownerId];
+          const ownerBadge = ownerStatus && (
+            <span className={`badge ${blockedBadges[ownerStatus].className} fw-normal`}>{blockedBadges[ownerStatus].label}</span>
+          );
 
           return (
             <div key={report.id} className="admin-card rounded-4 p-3 p-md-4">
@@ -205,10 +217,10 @@ export default function AdminReportsView() {
               {isListing && target && (
                 <p className="fs-7 text-white-50 mb-1">
                   Posted by {target.ownerName || "Unknown"}
-                  {ownerSuspended && <span className="badge bg-danger fw-normal ms-2">Suspended</span>}
+                  {ownerBadge && <span className="ms-2">{ownerBadge}</span>}
                 </p>
               )}
-              {!isListing && ownerSuspended && <span className="badge bg-danger fw-normal mb-1">Suspended</span>}
+              {!isListing && ownerBadge && <div className="mb-1">{ownerBadge}</div>}
 
               <p className="fs-7 text-white-50 mb-2">
                 Reported by {report.reporter?.full_name || "a deleted user"}
@@ -233,7 +245,7 @@ export default function AdminReportsView() {
                       <i className="bi bi-trash"></i> Remove Listing
                     </button>
                   )}
-                  {target && !ownerSuspended && (
+                  {target && !ownerStatus && (
                     <button className="btn btn-outline-warning btn-sm" onClick={() => openAction("suspend", report)}>
                       <i className="bi bi-slash-circle"></i> Suspend {isListing ? "Owner" : "User"}
                     </button>
@@ -261,7 +273,7 @@ export default function AdminReportsView() {
             </h2>
             <p className="text-secondary fs-7 mb-3">
               {action.kind === "remove" && "The listing (and its photo/video) will be deleted, and this report marked resolved."}
-              {action.kind === "suspend" && "They will be signed out and can't log in, post, or send messages until unsuspended. This report will be marked resolved."}
+              {action.kind === "suspend" && "They will be signed out and can't log in, post, or send messages until the date below. This report will be marked resolved."}
               {action.kind === "resolve" && "Use this when the problem has been handled."}
               {action.kind === "dismiss" && "Use this when the report isn't a real problem."}
             </p>
@@ -270,14 +282,28 @@ export default function AdminReportsView() {
               id="actionNote"
               className="form-control admin-input mb-3"
               rows={3}
-              // Kept short enough that "User suspended: ..." / "Listing removed. ..."
-              // still fits the 500-character admin_note limit.
-              maxLength={action.kind === "suspend" ? 480 : 400}
+              // Kept short enough that "User suspended until <date>: ..." /
+              // "Listing removed. ..." still fits the 500-character admin_note limit.
+              maxLength={action.kind === "suspend" ? 460 : 400}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               autoFocus
               required={actionText[action.kind].noteRequired}
             />
+            {action.kind === "suspend" && (
+              <>
+                <label htmlFor="endDate" className="form-label text-white-50 fs-7 mb-1">Suspension lifts on</label>
+                <input
+                  id="endDate"
+                  type="date"
+                  className="form-control admin-input mb-3"
+                  min={tomorrowDateValue()}
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  required
+                />
+              </>
+            )}
             <div className="d-flex justify-content-end gap-2">
               <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-3" onClick={() => setAction(null)} disabled={busy}>
                 Cancel
@@ -285,7 +311,7 @@ export default function AdminReportsView() {
               <button
                 type="submit"
                 className={`btn ${actionText[action.kind].buttonClass} btn-sm rounded-pill px-3 fw-bold`}
-                disabled={busy || (actionText[action.kind].noteRequired && !note.trim())}
+                disabled={busy || (actionText[action.kind].noteRequired && !note.trim()) || (action.kind === "suspend" && !endDate)}
               >
                 {actionText[action.kind].button}
               </button>

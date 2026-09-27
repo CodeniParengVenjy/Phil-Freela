@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { categories, getCategory } from "../../../lib/categories";
+import { blockedBadges, suspensionStatus } from "../../../lib/suspensions";
 import { SLIDES_SELECT, serviceSlides } from "../../../lib/slides";
 import MediaCarousel from "../../dashboard/components/MediaCarousel";
 
@@ -32,7 +33,8 @@ export default function AdminListingsView() {
   const [activeTab, setActiveTab] = useState("services");
   // Both lists load once; switching tabs just shows the other one.
   const [listings, setListings] = useState({ services: null, jobs: null });
-  const [suspendedIds, setSuspendedIds] = useState(new Set());
+  // owner id -> "banned" or "suspended", only for bans/suspensions still in effect.
+  const [blockedStatus, setBlockedStatus] = useState({});
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -47,7 +49,7 @@ export default function AdminListingsView() {
       const [servicesResult, jobsResult, suspensionsResult] = await Promise.all([
         supabase.from("services").select(tabs.services.select).order("created_at", { ascending: false }),
         supabase.from("job_posts").select(tabs.jobs.select).order("created_at", { ascending: false }),
-        supabase.from("user_suspensions").select("user_id")
+        supabase.from("user_suspensions").select("user_id, ends_at")
       ]);
 
       if (!active) return;
@@ -58,7 +60,9 @@ export default function AdminListingsView() {
       }
 
       setListings({ services: servicesResult.data, jobs: jobsResult.data });
-      setSuspendedIds(new Set(suspensionsResult.data.map((s) => s.user_id)));
+      setBlockedStatus(Object.fromEntries(
+        suspensionsResult.data.map((s) => [s.user_id, suspensionStatus(s)]).filter(([, status]) => status)
+      ));
     })();
 
     return () => { active = false; };
@@ -99,15 +103,18 @@ export default function AdminListingsView() {
     setMessage({ text: `"${item.title}" was removed.`, type: "success" });
   };
 
-  const ownerCell = (item) => (
-    <>
-      <div>{item.owner?.full_name || "Unknown"}</div>
-      <div className="text-white-50 fs-8">
-        @{item.owner?.username || "?"}
-        {suspendedIds.has(item[tab.ownerColumn]) && <span className="badge bg-danger fw-normal ms-2">Suspended</span>}
-      </div>
-    </>
-  );
+  const ownerCell = (item) => {
+    const status = blockedStatus[item[tab.ownerColumn]];
+    return (
+      <>
+        <div>{item.owner?.full_name || "Unknown"}</div>
+        <div className="text-white-50 fs-8">
+          @{item.owner?.username || "?"}
+          {status && <span className={`badge ${blockedBadges[status].className} fw-normal ms-2`}>{blockedBadges[status].label}</span>}
+        </div>
+      </>
+    );
+  };
 
   return (
     <section>
