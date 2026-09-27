@@ -63,9 +63,10 @@ Step 1 files: `database/supabase_slides_schema.sql`, `ai-service/main.py`
 `ServiceCard.jsx`, `ProjectsView.jsx`, `AdminListingsView.jsx`,
 `AdminReportsView.jsx`, `functions/ai/[[path]].js` (offline message).
 
-Step 2: built, not committed yet (2026-09-27). Waiting for
-`database/supabase_portfolio_schema.sql` to be run on Supabase (checked:
-`portfolio_items` doesn't exist yet), then for the user to test it.
+Step 2: built and pushed live (2026-09-27, commit 444a7e3).
+`database/supabase_portfolio_schema.sql` has been run on Supabase (migration
+"portfolio_projects"), so don't run it again. Still needs the user to test it
+on the live site. Next: plan Step 3.
 
 Step 2 files: `database/supabase_portfolio_schema.sql`, `ai-service/main.py`
 (`POST /slides` also takes `portfolio_item_id`), `lib/slides.js`
