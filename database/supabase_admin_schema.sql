@@ -1413,3 +1413,6 @@ grant execute on function public.was_deleted_after_ban(text) to anon, authentica
 
 -- Every day at 16:00 UTC = 12:00 AM Philippine time.
 select cron.schedule('delete-expired-bans', '0 16 * * *', 'select public.delete_expired_bans()');
+
+-- Only the sign-up trigger uses this function.
+revoke execute on function public.clear_deleted_ban_email() from public, anon, authenticated;
