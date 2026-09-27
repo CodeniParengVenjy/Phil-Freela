@@ -5,6 +5,8 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import ReportDialog from "../components/ReportDialog";
+import BlockedNotice from "../components/BlockedNotice";
+import { isMessagingBlocked } from "../../../lib/suspensions";
 
 // Same upload rules as the Post a Service media dropzone.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -27,7 +29,10 @@ function formatRelativeTime(dateString) {
 
 export default function ChatView() {
   const { conversationId } = useParams();
-  const { currentUserId, showToast, refreshUnreadCount, openPreview } = useOutletContext();
+  const { currentUserId, showToast, refreshUnreadCount, openPreview, suspension } = useOutletContext();
+  // Suspended for a messaging violation (e.g. harassment): they can read this
+  // chat, but can't send, forward, or edit messages.
+  const messagingBlocked = isMessagingBlocked(suspension);
   const navigate = useNavigate();
   const [otherProfile, setOtherProfile] = useState(null);
   // The person being reported (null = Report popup closed).
@@ -458,33 +463,36 @@ export default function ChatView() {
         </div>
 
         <div className="chat-footer p-3 bg-dark border-top border-secondary border-opacity-25">
-          <form className="d-flex align-items-center gap-2" onSubmit={handleSubmit}>
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
-              style={{ display: "none" }}
-              onChange={handleFileChange}
-            />
-            <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-paperclip fs-5"></i></button>
-            <button type="button" className="btn btn-dark text-secondary p-2" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video">
-              <i className="bi bi-image fs-5"></i>
-            </button>
-            <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-mic fs-5"></i></button>
+          {messagingBlocked && <BlockedNotice suspension={suspension} what="send messages" compact />}
+          {!messagingBlocked && (
+            <form className="d-flex align-items-center gap-2" onSubmit={handleSubmit}>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+                style={{ display: "none" }}
+                onChange={handleFileChange}
+              />
+              <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-paperclip fs-5"></i></button>
+              <button type="button" className="btn btn-dark text-secondary p-2" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video">
+                <i className="bi bi-image fs-5"></i>
+              </button>
+              <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-mic fs-5"></i></button>
 
-            <input
-              type="text"
-              className="form-control bg-secondary bg-opacity-25 border-0 text-white rounded-pill px-4 py-2"
-              placeholder="Type a message..."
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              required
-            />
+              <input
+                type="text"
+                className="form-control bg-secondary bg-opacity-25 border-0 text-white rounded-pill px-4 py-2"
+                placeholder="Type a message..."
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                required
+              />
 
-            <button type="submit" className="btn btn-gradient-role rounded-circle p-2 text-white d-flex align-items-center justify-content-center" style={{ width: 42, height: 42 }}>
-              <i className="bi bi-send-fill fs-5"></i>
-            </button>
-          </form>
+              <button type="submit" className="btn btn-gradient-role rounded-circle p-2 text-white d-flex align-items-center justify-content-center" style={{ width: 42, height: 42 }}>
+                <i className="bi bi-send-fill fs-5"></i>
+              </button>
+            </form>
+          )}
         </div>
       </div>
 
@@ -497,14 +505,18 @@ export default function ChatView() {
           <button type="button" className="dropdown-item rounded-2 text-white d-flex align-items-center" onClick={() => handleCopy(contextMenu.message)}>
             <i className="bi bi-clipboard me-2 text-info"></i> Copy Text
           </button>
-          <button type="button" className="dropdown-item rounded-2 text-white d-flex align-items-center" onClick={() => openForwardPicker(contextMenu.message)}>
-            <i className="bi bi-arrow-90deg-right me-2 text-warning"></i> Forward Text
-          </button>
+          {!messagingBlocked && (
+            <button type="button" className="dropdown-item rounded-2 text-white d-flex align-items-center" onClick={() => openForwardPicker(contextMenu.message)}>
+              <i className="bi bi-arrow-90deg-right me-2 text-warning"></i> Forward Text
+            </button>
+          )}
           {contextMenu.message.sender_id === currentUserId && (
             <>
-              <button type="button" className="dropdown-item rounded-2 text-white d-flex align-items-center" onClick={() => startEdit(contextMenu.message)}>
-                <i className="bi bi-pencil me-2 text-orange"></i> Edit Text
-              </button>
+              {!messagingBlocked && (
+                <button type="button" className="dropdown-item rounded-2 text-white d-flex align-items-center" onClick={() => startEdit(contextMenu.message)}>
+                  <i className="bi bi-pencil me-2 text-orange"></i> Edit Text
+                </button>
+              )}
               <button type="button" className="dropdown-item rounded-2 text-danger d-flex align-items-center" onClick={() => requestUnsend(contextMenu.message)}>
                 <i className="bi bi-trash3 me-2"></i> Unsend
               </button>

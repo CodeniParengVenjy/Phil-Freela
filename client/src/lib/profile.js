@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { formatEndDate, suspensionStatus } from "./suspensions";
+import { SUSPENSION_COLUMNS, suspensionStatus } from "./suspensions";
 
 export function dashboardRouteFor(accountType) {
   return accountType === "freelancer" ? "/dashboard-freelancer" : "/dashboard-client";
@@ -8,7 +8,7 @@ export function dashboardRouteFor(accountType) {
 // Returns this user's ban or suspension if it's still in effect, or null.
 // Users can only read their own suspension row (database rule).
 export async function getActiveSuspension(userId) {
-  const { data } = await supabase.from("user_suspensions").select("reason, ends_at").eq("user_id", userId).maybeSingle();
+  const { data } = await supabase.from("user_suspensions").select(SUSPENSION_COLUMNS).eq("user_id", userId).maybeSingle();
   return suspensionStatus(data) ? data : null;
 }
 
@@ -29,14 +29,13 @@ export async function resolvePostAuthRoute(user) {
   const { data: adminRow } = await supabase.from("admins").select("id").eq("id", user.id).maybeSingle();
   if (adminRow) return "/admin";
 
-  // A banned or suspended user is signed out right away; the thrown message
-  // is what the login page shows them.
+  // A banned user is signed out right away; the thrown message is what the
+  // login page shows them. Suspended users can still log in (the dashboard
+  // shows them a banner and blocks posting and/or messaging).
   const suspension = await getActiveSuspension(user.id);
-  if (suspension) {
+  if (suspensionStatus(suspension) === "banned") {
     await supabase.auth.signOut();
-    throw new Error(suspension.ends_at
-      ? `Your account is suspended until ${formatEndDate(suspension.ends_at)}. Reason: ${suspension.reason}`
-      : `Your account has been banned. Reason: ${suspension.reason}`);
+    throw new Error(`Your account has been banned. Reason: ${suspension.reason}`);
   }
 
   const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", user.id).maybeSingle();

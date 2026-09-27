@@ -666,3 +666,112 @@ create policy "admins can update suspensions"
   on public.user_suspensions for update
   using (public.is_admin())
   with check (public.is_admin() and suspended_by = auth.uid());
+
+-- ---------------------------------------------------------------------------
+-- Admin panel: the violation decides the penalty.
+-- The admin only picks which rule was broken; the penalty chart in
+-- client/src/lib/violations.js decides how long it lasts and what it blocks
+-- (posting, messaging, or both). A suspended user can still log in; only a
+-- ban (no end date) keeps them out.
+-- ---------------------------------------------------------------------------
+
+alter table public.user_suspensions
+  add column violation text not null default 'other'
+    check (violation in ('spam', 'scam', 'inappropriate', 'harassment', 'fake_profile', 'other')),
+  add column blocks_posting boolean not null default true,
+  add column blocks_messaging boolean not null default true;
+
+-- The default only filled in old rows; new ones must say which violation.
+alter table public.user_suspensions alter column violation drop default;
+
+-- A ban blocks everything, and a suspension must block at least one thing.
+alter table public.user_suspensions
+  add constraint user_suspensions_ban_blocks_all
+  check (ends_at is not null or (blocks_posting and blocks_messaging)),
+  add constraint user_suspensions_blocks_something
+  check (blocks_posting or blocks_messaging);
+
+-- True when the user can't post right now (a ban, or a suspension that
+-- blocks posting and hasn't ended). "security definer" so the rules below
+-- can check any user.
+create or replace function public.is_posting_blocked(target uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.user_suspensions
+    where user_id = target
+      and blocks_posting
+      and (ends_at is null or ends_at > now())
+  );
+$$;
+
+-- Same, for sending messages.
+create or replace function public.is_messaging_blocked(target uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.user_suspensions
+    where user_id = target
+      and blocks_messaging
+      and (ends_at is null or ends_at > now())
+  );
+$$;
+
+-- Signed-in users (for the rules) and the AI service (for slide uploads).
+revoke execute on function public.is_posting_blocked(uuid) from public, anon;
+revoke execute on function public.is_messaging_blocked(uuid) from public, anon;
+grant execute on function public.is_posting_blocked(uuid) to authenticated, service_role;
+grant execute on function public.is_messaging_blocked(uuid) to authenticated, service_role;
+
+-- Posting services and job posts now checks only the posting block...
+alter policy "services: freelancers can insert own" on public.services
+  with check (
+    freelancer_id = auth.uid()
+    and exists (select 1 from public.profiles p where p.id = auth.uid() and p.account_type = 'freelancer')
+    and not public.is_posting_blocked(auth.uid())
+    and public.is_verified(auth.uid())
+  );
+
+alter policy "job_posts: clients can insert own" on public.job_posts
+  with check (
+    client_id = auth.uid()
+    and exists (select 1 from public.profiles p where p.id = auth.uid() and p.account_type = 'client')
+    and not public.is_posting_blocked(auth.uid())
+  );
+
+-- ...and so does hiding listings: someone suspended only from chatting
+-- (harassment) keeps their services and job posts visible.
+alter policy "services: signed-in users can view" on public.services
+  using (
+    (not public.is_posting_blocked(freelancer_id) and public.is_verified(freelancer_id))
+    or freelancer_id = auth.uid()
+    or public.is_admin()
+  );
+
+alter policy "job_posts: signed-in users can view" on public.job_posts
+  using (not public.is_posting_blocked(client_id) or client_id = auth.uid() or public.is_admin());
+
+-- Sending messages checks only the messaging block.
+alter policy "messages: participants can insert own" on public.messages
+  with check (
+    sender_id = auth.uid()
+    and exists (
+      select 1 from public.conversations c
+      where c.id = messages.conversation_id
+        and (c.user_a = auth.uid() or c.user_b = auth.uid())
+    )
+    and not public.is_messaging_blocked(auth.uid())
+  );
+
+-- Editing an old message is also blocked, or someone suspended from chatting
+-- (e.g. for harassment) could rewrite their old messages instead.
+alter policy "messages: sender can update own" on public.messages
+  with check (sender_id = auth.uid() and not public.is_messaging_blocked(auth.uid()));

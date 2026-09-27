@@ -147,9 +147,13 @@ body {
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* Dark calendar pop-up and a visible calendar icon on date pickers. */
-.admin-input[type="date"] {
-  color-scheme: dark;
+/* The "3-day suspension: can't post..." line in the Suspend / Ban pop-up. */
+.admin-penalty {
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.35);
+  border-radius: 0.5rem;
+  color: #ffd76a;
+  padding: 0.5rem 0.75rem;
 }
 
 /* Suspension reason under the status badge, cut off if it's long. */

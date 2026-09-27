@@ -3,20 +3,22 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
-import { blockedBadges, endDateToTimestamp, formatEndDate, saveSuspension, suspensionStatus, tomorrowDateValue } from "../../../lib/suspensions";
+import { SUSPENSION_COLUMNS, blockedBadges, formatEndDate, restrictionText, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
+import { buildPenalty, emptyViolationFields } from "../../../lib/violations";
+import ViolationFields from "../components/ViolationFields";
 
 // Text for the Suspend / Ban pop-up.
 const blockText = {
   suspend: {
     title: "Suspend",
-    info: "They will be signed out and can't log in, post, or send messages until the date below. You can unsuspend them early.",
+    info: "The violation decides how long it lasts and what they can't do. They can still log in, and you can unsuspend them early.",
     button: "Suspend User",
     buttonClass: "btn-warning",
     done: "has been suspended"
   },
   ban: {
     title: "Ban",
-    info: "They will be signed out and can't log in, post, or send messages until you unban them. Their account and data are kept.",
+    info: "They will be signed out and can't log in until you unban them. Their account and data are kept.",
     button: "Ban User",
     buttonClass: "btn-danger",
     done: "has been banned"
@@ -37,9 +39,8 @@ export default function AdminUsersView() {
   const [message, setMessage] = useState({ text: "", type: "" });
   // The open Suspend / Ban pop-up: { kind: "suspend" | "ban", user } (null = closed).
   const [blockTarget, setBlockTarget] = useState(null);
-  const [blockReason, setBlockReason] = useState("");
-  // The day the suspension lifts, as "YYYY-MM-DD" from the date picker.
-  const [endDate, setEndDate] = useState("");
+  // What the admin picked in the pop-up (see ViolationFields).
+  const [fields, setFields] = useState(emptyViolationFields);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function AdminUsersView() {
       // database function that adds each user's email (only admins can call it).
       const [profilesResult, suspensionsResult] = await Promise.all([
         supabase.rpc("admin_list_users"),
-        supabase.from("user_suspensions").select("user_id, reason, ends_at, created_at")
+        supabase.from("user_suspensions").select(SUSPENSION_COLUMNS)
       ]);
 
       if (!active) return;
@@ -83,25 +84,20 @@ export default function AdminUsersView() {
 
   const openBlockDialog = (kind, user) => {
     setBlockTarget({ kind, user });
-    setBlockReason("");
-    setEndDate("");
+    setFields(emptyViolationFields);
     setMessage({ text: "", type: "" });
   };
 
   const confirmBlock = async (event) => {
     event.preventDefault();
     const { kind, user } = blockTarget;
-    const reason = blockReason.trim();
-    if (!reason || (kind === "suspend" && !endDate)) return;
+    // The penalty chart (lib/violations.js) turns the violation into the
+    // length and what's blocked; a ban is saved with no end date.
+    const penalty = buildPenalty(kind, fields);
+    if (!penalty) return;
 
     setBusy(true);
-    // A ban is saved with no end date.
-    const { data, error } = await saveSuspension({
-      userId: user.id,
-      reason,
-      endsAt: kind === "suspend" ? endDateToTimestamp(endDate) : null,
-      adminId
-    });
+    const { data, error } = await saveSuspension({ userId: user.id, adminId, penalty });
     setBusy(false);
 
     if (error) {
@@ -221,7 +217,10 @@ export default function AdminUsersView() {
                         <>
                           <span className={`badge ${blockedBadges[status].className} fw-normal`}>{blockedBadges[status].label}</span>
                           {status === "suspended" && (
-                            <div className="text-white fs-8 mt-1">Until {formatEndDate(suspension.ends_at)}</div>
+                            <div className="text-white fs-8 mt-1">
+                              Until {formatEndDate(suspension.ends_at)}
+                              <div className="text-warning">{restrictionText(suspension.blocks_posting, suspension.blocks_messaging)}</div>
+                            </div>
                           )}
                           <div className="text-white-50 fs-8 mt-1 admin-reason" title={suspension.reason}>{suspension.reason}</div>
                         </>
@@ -255,39 +254,14 @@ export default function AdminUsersView() {
         </div>
       </div>
 
-      {/* Suspend / Ban pop-up: asks for a reason (shown to the user at login),
-          and for a suspension, the day it lifts. */}
+      {/* Suspend / Ban pop-up: the admin picks the violation, and the penalty
+          chart decides the rest. */}
       {blockTarget && (
         <div className="admin-modal-backdrop" onClick={() => !busy && setBlockTarget(null)}>
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmBlock}>
             <h2 className="h5 fw-bold text-white mb-1">{blockText[blockTarget.kind].title} {blockTarget.user.full_name}?</h2>
             <p className="text-secondary fs-7 mb-3">{blockText[blockTarget.kind].info}</p>
-            <label htmlFor="blockReason" className="form-label text-white-50 fs-7 mb-1">Reason (shown to the user)</label>
-            <textarea
-              id="blockReason"
-              className="form-control admin-input mb-3"
-              rows={3}
-              maxLength={500}
-              placeholder="e.g. Posting spam listings"
-              value={blockReason}
-              onChange={(e) => setBlockReason(e.target.value)}
-              autoFocus
-              required
-            />
-            {blockTarget.kind === "suspend" && (
-              <>
-                <label htmlFor="endDate" className="form-label text-white-50 fs-7 mb-1">Suspension lifts on</label>
-                <input
-                  id="endDate"
-                  type="date"
-                  className="form-control admin-input mb-3"
-                  min={tomorrowDateValue()}
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  required
-                />
-              </>
-            )}
+            <ViolationFields kind={blockTarget.kind} fields={fields} setFields={setFields} />
             <div className="d-flex justify-content-end gap-2">
               <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-3" onClick={() => setBlockTarget(null)} disabled={busy}>
                 Cancel
@@ -295,7 +269,7 @@ export default function AdminUsersView() {
               <button
                 type="submit"
                 className={`btn ${blockText[blockTarget.kind].buttonClass} btn-sm rounded-pill px-3 fw-bold`}
-                disabled={busy || !blockReason.trim() || (blockTarget.kind === "suspend" && !endDate)}
+                disabled={busy || !buildPenalty(blockTarget.kind, fields)}
               >
                 {blockText[blockTarget.kind].button}
               </button>

@@ -4,7 +4,9 @@ import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { SLIDES_SELECT } from "../../../lib/slides";
 import { reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
-import { blockedBadges, endDateToTimestamp, formatEndDate, saveSuspension, suspensionStatus, tomorrowDateValue } from "../../../lib/suspensions";
+import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
+import { buildPenalty, emptyViolationFields, getViolation } from "../../../lib/violations";
+import ViolationFields from "../components/ViolationFields";
 
 const statusTabs = [
   { key: "pending", label: "Pending" },
@@ -12,12 +14,14 @@ const statusTabs = [
   { key: "dismissed", label: "Dismissed" }
 ];
 
-// Text for the action pop-up. "noteRequired" = the admin must type something.
+// Text for the action pop-up. "penalty" = Suspend / Ban, which use the
+// violation dropdown (ViolationFields) instead of the note box.
 const actionText = {
   resolve: { title: "Resolve report", button: "Resolve", noteLabel: "Note (optional)", buttonClass: "btn-success" },
   dismiss: { title: "Dismiss report", button: "Dismiss", noteLabel: "Why is it being dismissed? (optional)", buttonClass: "btn-secondary" },
   remove: { title: "Remove listing", button: "Remove Listing", noteLabel: "Note (optional)", buttonClass: "btn-danger" },
-  suspend: { title: "Suspend user", button: "Suspend User", noteLabel: "Reason (shown to the user)", buttonClass: "btn-warning", noteRequired: true }
+  suspend: { title: "Suspend user", button: "Suspend User", buttonClass: "btn-warning", penalty: true },
+  ban: { title: "Ban user", button: "Ban User", buttonClass: "btn-danger", penalty: true }
 };
 
 // Key for looking up what a report points at, e.g. "service:<id>".
@@ -37,8 +41,8 @@ export default function AdminReportsView() {
   // The open action pop-up: { kind, report } (null = closed).
   const [action, setAction] = useState(null);
   const [note, setNote] = useState("");
-  // The day a suspension lifts, as "YYYY-MM-DD" from the date picker.
-  const [endDate, setEndDate] = useState("");
+  // What the admin picked in the Suspend / Ban pop-up (see ViolationFields).
+  const [fields, setFields] = useState(emptyViolationFields);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -98,9 +102,13 @@ export default function AdminReportsView() {
   const openAction = (kind, report) => {
     const target = targets[targetKey(report.target_type, report.target_id)];
     setAction({ kind, report, target });
-    // Suggest a suspension reason based on what the user was reported for.
-    setNote(kind === "suspend" ? `Reported for: ${reportReasonLabel(report.reason)}` : "");
-    setEndDate("");
+    setNote("");
+    // Start with the violation the user was reported for (the report reasons
+    // and violations share the same values), unless it's ban only and this
+    // is a suspension.
+    const reported = getViolation(report.reason);
+    const fits = reported && (kind === "ban" || !reported.banOnly);
+    setFields({ ...emptyViolationFields, violation: fits ? reported.value : "" });
     setMessage({ text: "", type: "" });
   };
 
@@ -125,8 +133,9 @@ export default function AdminReportsView() {
     event.preventDefault();
     const { kind, report, target } = action;
     const text = note.trim();
-    if (actionText[kind].noteRequired && !text) return;
-    if (kind === "suspend" && !endDate) return;
+    // For Suspend / Ban: the length and what's blocked, from the penalty chart.
+    const penalty = actionText[kind].penalty ? buildPenalty(kind, fields) : null;
+    if (actionText[kind].penalty && !penalty) return;
 
     setBusy(true);
     try {
@@ -141,15 +150,14 @@ export default function AdminReportsView() {
         });
         await markReviewed(report, "resolved", `Listing removed.${text ? ` ${text}` : ""}`);
         setMessage({ text: "Listing removed and report resolved.", type: "success" });
-      } else if (kind === "suspend") {
-        // Same suspension as the Users page: the user sees this reason at login,
-        // and it lifts by itself on the picked date.
-        const endsAt = endDateToTimestamp(endDate);
-        const { error } = await saveSuspension({ userId: target.ownerId, reason: text, endsAt, adminId });
-        if (error) throw new Error("Couldn't suspend the user.");
-        setBlockedStatus((prev) => ({ ...prev, [target.ownerId]: "suspended" }));
-        await markReviewed(report, "resolved", `User suspended until ${formatEndDate(endsAt)}: ${text}`);
-        setMessage({ text: `${target.ownerName} was suspended and the report resolved.`, type: "success" });
+      } else if (penalty) {
+        // Same Suspend / Ban as the Users page.
+        const done = kind === "ban" ? "banned" : "suspended";
+        const { error } = await saveSuspension({ userId: target.ownerId, adminId, penalty });
+        if (error) throw new Error(`Couldn't ${kind} the user.`);
+        setBlockedStatus((prev) => ({ ...prev, [target.ownerId]: done }));
+        await markReviewed(report, "resolved", kind === "ban" ? `Banned: ${penalty.reason}` : `Suspended ${penalty.days} days: ${penalty.reason}`);
+        setMessage({ text: `${target.ownerName} was ${done} and the report resolved.`, type: "success" });
       } else {
         await markReviewed(report, kind === "resolve" ? "resolved" : "dismissed", text);
         setMessage({ text: kind === "resolve" ? "Report resolved." : "Report dismissed.", type: "success" });
@@ -250,6 +258,12 @@ export default function AdminReportsView() {
                       <i className="bi bi-slash-circle"></i> Suspend {isListing ? "Owner" : "User"}
                     </button>
                   )}
+                  {/* A suspended user can still be banned; that replaces the suspension. */}
+                  {target && ownerStatus !== "banned" && (
+                    <button className="btn btn-outline-danger btn-sm" onClick={() => openAction("ban", report)}>
+                      <i className="bi bi-ban"></i> Ban {isListing ? "Owner" : "User"}
+                    </button>
+                  )}
                   <button className="btn btn-outline-success btn-sm" onClick={() => openAction("resolve", report)}>
                     <i className="bi bi-check-lg"></i> Resolve
                   </button>
@@ -269,38 +283,30 @@ export default function AdminReportsView() {
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmAction}>
             <h2 className="h5 fw-bold text-white mb-1">
               {actionText[action.kind].title}
-              {action.kind === "suspend" && action.target && ` — ${action.target.ownerName}`}
+              {actionText[action.kind].penalty && action.target && ` — ${action.target.ownerName}`}
             </h2>
             <p className="text-secondary fs-7 mb-3">
               {action.kind === "remove" && "The listing (and its photo/video) will be deleted, and this report marked resolved."}
-              {action.kind === "suspend" && "They will be signed out and can't log in, post, or send messages until the date below. This report will be marked resolved."}
+              {action.kind === "suspend" && "The violation decides how long it lasts and what they can't do. This report will be marked resolved."}
+              {action.kind === "ban" && "They will be signed out and can't log in until an admin unbans them. This report will be marked resolved."}
               {action.kind === "resolve" && "Use this when the problem has been handled."}
               {action.kind === "dismiss" && "Use this when the report isn't a real problem."}
             </p>
-            <label htmlFor="actionNote" className="form-label text-white-50 fs-7 mb-1">{actionText[action.kind].noteLabel}</label>
-            <textarea
-              id="actionNote"
-              className="form-control admin-input mb-3"
-              rows={3}
-              // Kept short enough that "User suspended until <date>: ..." /
-              // "Listing removed. ..." still fits the 500-character admin_note limit.
-              maxLength={action.kind === "suspend" ? 460 : 400}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              autoFocus
-              required={actionText[action.kind].noteRequired}
-            />
-            {action.kind === "suspend" && (
+            {actionText[action.kind].penalty ? (
+              <ViolationFields kind={action.kind} fields={fields} setFields={setFields} />
+            ) : (
               <>
-                <label htmlFor="endDate" className="form-label text-white-50 fs-7 mb-1">Suspension lifts on</label>
-                <input
-                  id="endDate"
-                  type="date"
+                <label htmlFor="actionNote" className="form-label text-white-50 fs-7 mb-1">{actionText[action.kind].noteLabel}</label>
+                <textarea
+                  id="actionNote"
                   className="form-control admin-input mb-3"
-                  min={tomorrowDateValue()}
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  required
+                  rows={3}
+                  // Kept short enough that "Listing removed. ..." still fits the
+                  // 500-character admin_note limit.
+                  maxLength={400}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  autoFocus
                 />
               </>
             )}
@@ -311,7 +317,7 @@ export default function AdminReportsView() {
               <button
                 type="submit"
                 className={`btn ${actionText[action.kind].buttonClass} btn-sm rounded-pill px-3 fw-bold`}
-                disabled={busy || (actionText[action.kind].noteRequired && !note.trim()) || (action.kind === "suspend" && !endDate)}
+                disabled={busy || (actionText[action.kind].penalty && !buildPenalty(action.kind, fields))}
               >
                 {actionText[action.kind].button}
               </button>

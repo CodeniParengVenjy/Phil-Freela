@@ -2,9 +2,13 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
+import { isPostingBlocked } from "../../../lib/suspensions";
+import BlockedNotice from "../components/BlockedNotice";
 
 export default function PostNeedView() {
-  const { currentUserId, showToast } = useOutletContext();
+  const { currentUserId, showToast, suspension } = useOutletContext();
+  // Suspended for a posting violation (e.g. spam): the form is replaced by a notice.
+  const postingBlocked = isPostingBlocked(suspension);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -69,58 +73,62 @@ export default function PostNeedView() {
           <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
             <h3 className="text-white fw-bold mb-4"><i className="bi bi-plus-circle text-role me-2"></i> Post What You Need</h3>
 
-            <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Listing Title:</label>
-                <input
-                  type="text"
-                  className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                  placeholder="e.g. Hiring a logo designer for our cafe business"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
+            {postingBlocked && <BlockedNotice suspension={suspension} what="post job listings" />}
 
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Select category:</label>
-                <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={category} onChange={(e) => setCategory(e.target.value)} required>
-                  <option value="" disabled>Select category...</option>
-                  {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </div>
+            {!postingBlocked && (
+              <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Listing Title:</label>
+                  <input
+                    type="text"
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    placeholder="e.g. Hiring a logo designer for our cafe business"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Describe what you need:</label>
-                <textarea
-                  className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
-                  rows="5"
-                  placeholder="Describe the project, timeline, and what you're looking for..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                ></textarea>
-              </div>
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Select category:</label>
+                  <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={category} onChange={(e) => setCategory(e.target.value)} required>
+                    <option value="" disabled>Select category...</option>
+                    {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
 
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Budget (₱):</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                  placeholder="e.g. 5000"
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                />
-              </div>
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Describe what you need:</label>
+                  <textarea
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
+                    rows="5"
+                    placeholder="Describe the project, timeline, and what you're looking for..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    required
+                  ></textarea>
+                </div>
 
-              <div className="pt-2">
-                <button type="submit" className="btn btn-gradient-role btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow-role" disabled={submitting}>
-                  {submitting ? "Publishing..." : "Post Listing"}
-                </button>
-              </div>
-            </form>
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Budget (₱):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    placeholder="e.g. 5000"
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button type="submit" className="btn btn-gradient-role btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow-role" disabled={submitting}>
+                    {submitting ? "Publishing..." : "Post Listing"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
 

@@ -6,6 +6,8 @@ import { fetchIsVerified } from "../../../lib/verification";
 import { SLIDE_HINT, SLIDES_SELECT, addPickedFiles, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
+import BlockedNotice from "../components/BlockedNotice";
+import { isPostingBlocked } from "../../../lib/suspensions";
 
 const skillOptions = [
   { value: "critical-thinker", label: "Critical Thinker" },
@@ -17,7 +19,9 @@ const skillOptions = [
 const SERVICE_COLUMNS = "id, title, category, price, image_url, media_type, created_at";
 
 export default function ServicesView() {
-  const { currentUserId, showToast } = useOutletContext();
+  const { currentUserId, showToast, suspension } = useOutletContext();
+  // Suspended for a posting violation (e.g. spam): the form is replaced by a notice.
+  const postingBlocked = isPostingBlocked(suspension);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -147,7 +151,9 @@ export default function ServicesView() {
               </div>
             )}
 
-            {isVerified && (
+            {isVerified && postingBlocked && <BlockedNotice suspension={suspension} what="post services" />}
+
+            {isVerified && !postingBlocked && (
               <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
                 <div>
                   <label className="form-label text-white fw-semibold fs-7">Service Title:</label>

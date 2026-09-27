@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import DashboardTopNav from "../components/DashboardTopNav";
 import DashboardOverlays from "../components/DashboardOverlays";
+import SuspensionBanner from "../components/SuspensionBanner";
 import "../dashboard.css";
 
 const sidebarLinks = [
@@ -20,6 +21,7 @@ export default function ClientDashboardLayout({
   displayName, setDisplayName, accountType, currentUserId, username,
   unreadCount, refreshUnreadCount,
   unreadAnnouncements, refreshUnreadAnnouncements,
+  suspension,
   toast, closeToast, showToast,
   preview, openPreview, closePreview,
   roleConfirm, resolveRoleConfirm,
@@ -78,6 +80,8 @@ export default function ClientDashboardLayout({
         </aside>
 
         <main className="content-wrapper flex-grow-1 p-3 p-md-4">
+          <SuspensionBanner suspension={suspension} />
+
           {isDashboardHome && (
             <div className="welcome-banner glass-card p-4 rounded-4 mb-4 border border-secondary border-opacity-25 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
               <div>
@@ -98,7 +102,7 @@ export default function ClientDashboardLayout({
             </div>
           )}
 
-          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadAnnouncements, refreshUnreadAnnouncements }} />
+          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadAnnouncements, refreshUnreadAnnouncements, suspension }} />
         </main>
       </div>
 

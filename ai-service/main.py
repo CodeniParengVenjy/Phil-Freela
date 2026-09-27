@@ -434,9 +434,10 @@ def ensure_own_item(user_id, owner, item_id):
     if rows[0]["freelancer_id"] != user_id:
         raise HTTPException(403, f"You can only add photos and videos to your own {name}s.")
 
-    # Same check the database rules use: a ban, or a suspension that hasn't ended.
-    if supabase.rpc("is_suspended", {"target": user_id}).execute().data:
-        raise HTTPException(403, "Your account is suspended or banned, so you can't upload right now.")
+    # Same check the posting rules use: a ban, or a suspension that blocks
+    # posting (e.g. for spam) and hasn't ended.
+    if supabase.rpc("is_posting_blocked", {"target": user_id}).execute().data:
+        raise HTTPException(403, "Your account is suspended from posting, so you can't upload right now.")
 
 
 def next_slide_position(user_id, owner, item_id, media_type):

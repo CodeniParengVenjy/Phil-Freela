@@ -25,6 +25,9 @@ export function useDashboardShell() {
   const [unreadCount, setUnreadCount] = useState(0);
   // Number on the Notifications link: admin announcements not read yet.
   const [unreadAnnouncements, setUnreadAnnouncements] = useState(0);
+  // The user's suspension while it's in effect (null = none). Pages use it
+  // to disable posting / messaging; the layouts show a banner.
+  const [suspension, setSuspension] = useState(null);
   const [toast, setToast] = useState({ message: "", visible: false });
   const [preview, setPreview] = useState({ src: "", title: "", visible: false });
   const [roleConfirm, setRoleConfirm] = useState({ visible: false, nextType: null });
@@ -88,13 +91,16 @@ export function useDashboardShell() {
         .maybeSingle();
       if (!active) return;
 
-      // Banned or suspended while already logged in: send them to the login
-      // page, which signs them out and shows the reason (see resolvePostAuthRoute).
-      if (await getActiveSuspension(session.user.id)) {
-        if (active) navigate("/login", { replace: true });
+      // Banned while already logged in: send them to the login page, which
+      // signs them out and shows the reason (see resolvePostAuthRoute).
+      // Suspended users stay, with posting and/or messaging blocked.
+      const activeSuspension = await getActiveSuspension(session.user.id);
+      if (!active) return;
+      if (activeSuspension && !activeSuspension.ends_at) {
+        navigate("/login", { replace: true });
         return;
       }
-      if (!active) return;
+      setSuspension(activeSuspension);
 
       // Client is the default role: only an explicit "freelancer" record
       // switches the dashboard to the freelancer view.
@@ -292,6 +298,7 @@ export function useDashboardShell() {
     displayName, setDisplayName, accountType, currentUserId, username,
     unreadCount, refreshUnreadCount,
     unreadAnnouncements, refreshUnreadAnnouncements,
+    suspension,
     toast, closeToast, showToast,
     preview, openPreview, closePreview,
     roleConfirm, resolveRoleConfirm,
