@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
+import { fetchIsVerified } from "../../../lib/verification";
 import MediaDropzone from "../components/MediaDropzone";
 import ServiceCard from "../components/ServiceCard";
 
@@ -41,6 +42,20 @@ export default function ServicesView() {
   const [mediaError, setMediaError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [services, setServices] = useState(null);
+  // Only freelancers with a verified identity can offer services (the
+  // database enforces this too). null while checking.
+  const [isVerified, setIsVerified] = useState(null);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    let active = true;
+    fetchIsVerified(currentUserId).then((result) => {
+      if (active) setIsVerified(result);
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentUserId]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -138,77 +153,95 @@ export default function ServicesView() {
           <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
             <h3 className="text-white fw-bold mb-4"><i className="bi bi-plus-circle text-orange me-2"></i> Post a Service Offered</h3>
 
-            <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Service Title:</label>
-                <input
-                  type="text"
-                  className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                  placeholder="e.g. Professional Video Editing for Ads & Reels"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
+            {isVerified === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
 
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Select services category:</label>
-                <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={category} onChange={(e) => setCategory(e.target.value)} required>
-                  <option value="" disabled>Select services...</option>
-                  {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
+            {isVerified === false && (
+              <div className="text-center py-4">
+                <i className="bi bi-shield-lock text-warning" style={{ fontSize: "2.75rem" }}></i>
+                <h5 className="text-white fw-bold mt-3 mb-2">Verify your identity to post services</h5>
+                <p className="text-secondary fs-7 mb-4 mx-auto" style={{ maxWidth: 460 }}>
+                  To keep clients safe, only freelancers with a verified identity can offer services.
+                  It takes a few minutes: a photo of your government ID and a quick face scan.
+                </p>
+                <Link to="/dashboard/verify-identity" className="btn btn-gradient-orange rounded-pill px-4 fw-bold text-white">
+                  <i className="bi bi-patch-check me-1"></i> Verify now
+                </Link>
               </div>
+            )}
 
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Enter Services Description:</label>
-                <textarea
-                  className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
-                  rows="5"
-                  placeholder="Describe your service offer, turnaround time, deliverables..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                ></textarea>
-              </div>
+            {isVerified && (
+              <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Service Title:</label>
+                  <input
+                    type="text"
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    placeholder="e.g. Professional Video Editing for Ads & Reels"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Specify skills:</label>
-                <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={skill} onChange={(e) => setSkill(e.target.value)}>
-                  <option value="" disabled>Specify skills...</option>
-                  {skillOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-              </div>
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Select services category:</label>
+                  <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={category} onChange={(e) => setCategory(e.target.value)} required>
+                    <option value="" disabled>Select services...</option>
+                    {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
 
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Starting Price (₱):</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                  placeholder="e.g. 2500"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                />
-              </div>
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Enter Services Description:</label>
+                  <textarea
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
+                    rows="5"
+                    placeholder="Describe your service offer, turnaround time, deliverables..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    required
+                  ></textarea>
+                </div>
 
-              <div>
-                <label className="form-label text-white fw-semibold fs-7">Upload a photo or video (optional):</label>
-                <MediaDropzone
-                  file={mediaFile}
-                  onSelect={handleMediaSelect}
-                  accept={MEDIA_ACCEPT}
-                  hint="Photos (JPG, PNG, WebP) up to 5 MB. Videos (MP4, WebM) up to 50 MB."
-                  error={mediaError}
-                />
-              </div>
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Specify skills:</label>
+                  <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={skill} onChange={(e) => setSkill(e.target.value)}>
+                    <option value="" disabled>Specify skills...</option>
+                    {skillOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
 
-              <div className="d-flex justify-content-end pt-2">
-                <button type="submit" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting}>
-                  {submitting ? "Publishing..." : "Upload & Publish"}
-                </button>
-              </div>
-            </form>
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Starting Price (₱):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    placeholder="e.g. 2500"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label text-white fw-semibold fs-7">Upload a photo or video (optional):</label>
+                  <MediaDropzone
+                    file={mediaFile}
+                    onSelect={handleMediaSelect}
+                    accept={MEDIA_ACCEPT}
+                    hint="Photos (JPG, PNG, WebP) up to 5 MB. Videos (MP4, WebM) up to 50 MB."
+                    error={mediaError}
+                  />
+                </div>
+
+                <div className="d-flex justify-content-end pt-2">
+                  <button type="submit" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting}>
+                    {submitting ? "Publishing..." : "Upload & Publish"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
 
@@ -218,6 +251,11 @@ export default function ServicesView() {
 
             {services === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
             {services !== null && services.length === 0 && <p className="text-secondary fs-7 mb-0">You haven't posted a service yet.</p>}
+            {isVerified === false && services?.length > 0 && (
+              <p className="text-warning fs-8 mb-3">
+                <i className="bi bi-eye-slash me-1"></i>Clients can't see these until your identity is verified.
+              </p>
+            )}
 
             <div className="d-flex flex-column gap-3">
               {services?.map((s) => <ServiceCard key={s.id} service={s} />)}

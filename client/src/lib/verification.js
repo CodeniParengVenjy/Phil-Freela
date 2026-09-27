@@ -52,6 +52,15 @@ export async function fetchIsVerified(userId) {
   return !error && data === true;
 }
 
+// Which of these users are verified, as a Set of their ids. Pages that show
+// many names (services, job posts, inbox, chat) ask once for all of them.
+export async function fetchVerifiedIds(userIds) {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (ids.length === 0) return new Set();
+  const { data, error } = await supabase.rpc("verified_user_ids", { ids });
+  return new Set(error ? [] : data);
+}
+
 // True on phones and tablets, which take photos with their own cameras
 // instead of a webcam and don't need a QR code.
 export function isPhone() {

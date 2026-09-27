@@ -587,3 +587,43 @@ $$;
 
 revoke execute on function public.admin_list_users() from public, anon;
 grant execute on function public.admin_list_users() to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Identity verification, part 2: the Verified check next to names, and only
+-- verified freelancers can offer services.
+-- ---------------------------------------------------------------------------
+
+-- Which of the given users are verified (an approved verification). Pages
+-- showing many names (services, job posts, inbox, chat) ask once for all of
+-- them. Like is_verified, it only answers yes/no per user, never the photos.
+create or replace function public.verified_user_ids(ids uuid[])
+returns setof uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select distinct user_id from public.identity_verifications
+  where user_id = any(ids) and status = 'approved';
+$$;
+
+revoke execute on function public.verified_user_ids(uuid[]) from public, anon;
+grant execute on function public.verified_user_ids(uuid[]) to authenticated;
+
+-- Freelancers must be verified before they can post a service...
+alter policy "services: freelancers can insert own" on public.services
+  with check (
+    freelancer_id = auth.uid()
+    and exists (select 1 from public.profiles p where p.id = auth.uid() and p.account_type = 'freelancer')
+    and not public.is_suspended(auth.uid())
+    and public.is_verified(auth.uid())
+  );
+
+-- ...and only verified freelancers' services show on Browse Services. A
+-- freelancer still sees their own, and admins see all.
+alter policy "services: signed-in users can view" on public.services
+  using (
+    (not public.is_suspended(freelancer_id) and public.is_verified(freelancer_id))
+    or freelancer_id = auth.uid()
+    or public.is_admin()
+  );

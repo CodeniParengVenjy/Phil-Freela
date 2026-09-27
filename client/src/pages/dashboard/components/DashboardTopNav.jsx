@@ -1,10 +1,13 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { dashboardRouteFor } from "../../../lib/profile";
+import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import VerifiedBadge from "../../../components/VerifiedBadge";
 
 // Identical between the freelancer and client dashboards -- brand, search,
 // the three quick links, and the account dropdown -- so both layouts share
 // this instead of each keeping their own copy.
-export default function DashboardTopNav({ displayName, accountType, onToggleSidebar, onSignOut, onSwitchRole }) {
+export default function DashboardTopNav({ displayName, accountType, currentUserId, onToggleSidebar, onSignOut, onSwitchRole }) {
+  const isVerified = useVerifiedIds([currentUserId]).has(currentUserId);
   const switchLabel = accountType === "client" ? "Switch to Freelancer" : "Switch to Client";
   const switchHref = accountType === "client" ? "/dashboard-freelancer" : "/dashboard-client";
   // The logo takes a signed-in user back to their own dashboard home, not the public homepage.
@@ -54,7 +57,10 @@ export default function DashboardTopNav({ displayName, accountType, onToggleSide
           <div className="dropdown">
             <button className="btn btn-dark border border-secondary border-opacity-50 rounded-pill d-flex align-items-center gap-2 px-3 py-1 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
               <span className="avatar-circle-sm bg-orange text-white fw-bold">{displayName.charAt(0).toUpperCase()}</span>
-              <span className="fw-semibold fs-7 text-truncate d-none d-sm-inline">{displayName}</span>
+              <span className="fw-semibold fs-7 text-truncate d-none d-sm-inline">
+                {displayName}
+                <VerifiedBadge verified={isVerified} />
+              </span>
             </button>
             <ul className="dropdown-menu dropdown-menu-end dropdown-menu-dark border border-secondary border-opacity-25 shadow-lg p-2">
               <li><NavLink className="dropdown-item rounded-2 text-white" to="/dashboard/profile"><i className="bi bi-person me-2 text-orange"></i> My Profile</NavLink></li>

@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import VerifiedBadge from "../../../components/VerifiedBadge";
 
 export default function AdminUsersView() {
   const { adminId } = useOutletContext();
   const [users, setUsers] = useState(null);
+  const verifiedIds = useVerifiedIds((users || []).map((user) => user.id));
   // user_id -> suspension row, so each table row can look up its status fast.
   const [suspensions, setSuspensions] = useState({});
   const [loadError, setLoadError] = useState("");
@@ -181,7 +184,10 @@ export default function AdminUsersView() {
                 const suspension = suspensions[user.id];
                 return (
                   <tr key={user.id}>
-                    <td>{user.full_name}</td>
+                    <td>
+                      {user.full_name}
+                      <VerifiedBadge verified={verifiedIds.has(user.id)} />
+                    </td>
                     <td>{user.username}</td>
                     <td>
                       {user.email}

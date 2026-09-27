@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import VerifiedBadge from "../../../components/VerifiedBadge";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import ReportDialog from "../components/ReportDialog";
 
@@ -48,6 +50,9 @@ export default function ChatView() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [pendingMedia, setPendingMedia] = useState(null); // { file, mediaType, previewUrl }
   const fileInputRef = useRef(null);
+
+  // The Verified check for the person in this chat and the forward list.
+  const verifiedIds = useVerifiedIds([otherProfile?.id, ...(forwardConversations || []).map((c) => c.otherId)]);
 
   useEffect(() => {
     if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight;
@@ -244,7 +249,7 @@ export default function ChatView() {
     setForwardConversations(
       (data || []).map((c) => {
         const other = c.user_a === currentUserId ? c.b : c.a;
-        return { id: c.id, name: other?.full_name || other?.username || "Unknown user" };
+        return { id: c.id, otherId: other?.id, name: other?.full_name || other?.username || "Unknown user" };
       })
     );
   };
@@ -365,7 +370,10 @@ export default function ChatView() {
               <i className="bi bi-person-fill fs-5"></i>
             </div>
             <div>
-              <h6 className="text-white fw-bold mb-0">{recipientName}</h6>
+              <h6 className="text-white fw-bold mb-0">
+                {recipientName}
+                <VerifiedBadge verified={verifiedIds.has(otherProfile?.id)} />
+              </h6>
             </div>
           </div>
           <div>
@@ -552,6 +560,7 @@ export default function ChatView() {
                   onClick={() => handleForward(c.id)}
                 >
                   {c.name}
+                  <VerifiedBadge verified={verifiedIds.has(c.otherId)} />
                 </button>
               ))}
             </div>

@@ -3,6 +3,8 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
+import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import VerifiedBadge from "../../../components/VerifiedBadge";
 import ReportDialog from "../components/ReportDialog";
 
 const mediaStyle = { height: 140, width: "100%", objectFit: "cover" };
@@ -44,6 +46,10 @@ export default function BrowseServicesView() {
       window.alert("Couldn't remove that service. Please try again.");
     }
   };
+
+  // The database only lists services from verified freelancers (plus your
+  // own), so this is mostly for the check mark next to each name.
+  const verifiedIds = useVerifiedIds((services || []).map((s) => s.freelancer?.id));
 
   const filtered = useMemo(() => {
     if (!services) return [];
@@ -114,7 +120,10 @@ export default function BrowseServicesView() {
                   <div className="p-3 d-flex flex-column flex-grow-1">
                     <span className="badge bg-black text-light-50 align-self-start mb-2 fs-8">{meta.label}</span>
                     <h6 className="text-white fw-bold mb-1">{s.title}</h6>
-                    <p className="fs-8 text-secondary mb-3 flex-grow-1">by {freelancerName}</p>
+                    <p className="fs-8 text-secondary mb-3 flex-grow-1">
+                      by {freelancerName}
+                      <VerifiedBadge verified={verifiedIds.has(s.freelancer?.id)} />
+                    </p>
                     <div className="d-flex align-items-center justify-content-between gap-2">
                       <span className="fw-bold text-role fs-7">
                         {s.price ? `From ₱${Number(s.price).toLocaleString()}` : "Price on request"}

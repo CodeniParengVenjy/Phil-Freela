@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import VerifiedBadge from "../../../components/VerifiedBadge";
 
 export default function InboxView() {
   const { currentUserId } = useOutletContext();
@@ -52,6 +54,7 @@ export default function InboxView() {
       const other = c.user_a === currentUserId ? c.b : c.a;
       return {
         id: c.id,
+        otherId: other?.id,
         name: other?.full_name || other?.username || "Unknown user",
         preview: c.last_message_preview || "No messages yet",
         lastMessageAt: c.last_message_at
@@ -63,6 +66,8 @@ export default function InboxView() {
     const q = query.toLowerCase();
     return rows.filter((c) => `${c.name} ${c.preview}`.toLowerCase().includes(q));
   }, [rows, query]);
+
+  const verifiedIds = useVerifiedIds(rows.map((c) => c.otherId));
 
   return (
     <section className="dashboard-view active-view">
@@ -107,7 +112,10 @@ export default function InboxView() {
                   <i className="bi bi-person-fill fs-4"></i>
                 </div>
                 <div>
-                  <h6 className="text-white fw-bold mb-1">{c.name}</h6>
+                  <h6 className="text-white fw-bold mb-1">
+                    {c.name}
+                    <VerifiedBadge verified={verifiedIds.has(c.otherId)} />
+                  </h6>
                   <p className="fs-7 mb-0 text-light-50">{c.preview}</p>
                 </div>
               </div>

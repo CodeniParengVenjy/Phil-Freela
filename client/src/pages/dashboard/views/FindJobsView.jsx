@@ -3,6 +3,8 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
+import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import VerifiedBadge from "../../../components/VerifiedBadge";
 import ReportDialog from "../components/ReportDialog";
 
 export default function FindJobsView() {
@@ -41,6 +43,9 @@ export default function FindJobsView() {
       window.alert("Couldn't remove that job post. Please try again.");
     }
   };
+
+  // Clients can post without verifying, so freelancers see who is verified.
+  const verifiedIds = useVerifiedIds((jobs || []).map((job) => job.client?.id));
 
   const filtered = useMemo(() => {
     if (!jobs) return [];
@@ -92,7 +97,10 @@ export default function FindJobsView() {
                   <div>
                     <h5 className="text-white fw-bold mb-1">{job.title}</h5>
                     <div className="d-flex align-items-center gap-2 fs-7 mb-2">
-                      <span className="text-white-50">{clientName}</span>
+                      <span className="text-white-50">
+                        {clientName}
+                        <VerifiedBadge verified={verifiedIds.has(job.client?.id)} showUnverified />
+                      </span>
                       {job.budget && <span className="text-warning">₱{Number(job.budget).toLocaleString()}</span>}
                       <span className="badge bg-black text-light px-3 py-1 rounded-pill">{categoryLabel}</span>
                     </div>
