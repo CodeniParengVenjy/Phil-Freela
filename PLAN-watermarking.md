@@ -50,10 +50,10 @@ Vercel's free plan (500 MB bundle, 4.5 MB per request, 5 minutes, 1 CPU).
 
 ## Current step
 
-Step 1: built, not committed yet. Waiting for the user to run
-`database/supabase_slides_schema.sql` in the Supabase SQL Editor and test it.
-The website's service pages ask for `media_slides`, so that SQL must be run
-BEFORE this code is pushed, or Browse Services stops loading on the live site.
+Step 1: built and pushed live (2026-09-27, together with the admin Ban /
+suspension end date change). `database/supabase_slides_schema.sql` has
+already been run on Supabase (migration "service_slideshows"), so don't run
+it again. Still needs the user to test it on the live site.
 
 Step 1 files: `database/supabase_slides_schema.sql`, `ai-service/main.py`
 (`POST /slides`), `client/src/lib/slides.js`, `lib/aiService.js`
