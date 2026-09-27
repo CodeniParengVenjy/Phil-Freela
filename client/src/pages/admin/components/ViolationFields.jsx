@@ -1,5 +1,5 @@
 import { buildPenalty, otherLengths, violations } from "../../../lib/violations";
-import { formatEndDate, restrictionText } from "../../../lib/suspensions";
+import { BAN_DELETE_DAYS, formatEndDate, restrictionText } from "../../../lib/suspensions";
 
 // The inside of the Suspend / Ban pop-up, shared by the Users and Reports
 // pages: the violation dropdown, a note, and for "Other" suspensions the
@@ -70,7 +70,7 @@ export default function ViolationFields({ kind, fields, setFields }) {
         <p className="admin-penalty fs-7 mb-3">
           <i className="bi bi-info-circle me-1"></i>
           {kind === "ban"
-            ? "Ban: they can't log in until an admin unbans them."
+            ? `Ban: they can't log in until an admin unbans them. If not unbanned within ${BAN_DELETE_DAYS} days, the account is deleted.`
             : `${penalty.days}-day suspension: ${restrictionText(penalty.blocksPosting, penalty.blocksMessaging)}. Lifts ${formatEndDate(penalty.endsAt)}.`}
         </p>
       )}

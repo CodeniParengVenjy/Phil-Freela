@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { getActiveSuspension, resolvePostAuthRoute } from "../../lib/profile";
-import { formatEndDate, restrictionText, suspensionStatus } from "../../lib/suspensions";
+import { banDeletionDay, formatEndDate, restrictionText, suspensionStatus } from "../../lib/suspensions";
 import { getViolation } from "../../lib/violations";
 import { APPEAL_MAX_LENGTH, APPEAL_MIN_LENGTH, getAppealFor, sendAppeal } from "../../lib/appeals";
 import "../../styles/auth.css";
@@ -117,6 +117,17 @@ export default function AppealPage() {
                 )}
                 <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}><span className="text-white-50">Reason: </span>{suspension.reason}</div>
               </div>
+
+              {/* Banned accounts are deleted after 100 days (a daily database
+                  job), but never while an appeal is waiting for review. */}
+              {banned && appeal !== undefined && (
+                <p className="rounded-3 p-3 mb-4 fs-7 text-white border border-danger border-opacity-50">
+                  <i className="bi bi-exclamation-octagon-fill text-danger me-2"></i>
+                  {appeal?.status === "pending"
+                    ? "Your account won't be deleted while your appeal is waiting for review."
+                    : `If the ban isn't lifted by ${banDeletionDay(suspension)}, your account and everything in it will be deleted for good.`}
+                </p>
+              )}
 
               {appeal === undefined && <p className="text-secondary text-center mb-0">Loading...</p>}
 

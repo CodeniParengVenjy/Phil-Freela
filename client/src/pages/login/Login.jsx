@@ -221,7 +221,19 @@ export default function Login() {
           password: form.password
         });
 
-        if (error) throw error;
+        if (error) {
+          // Supabase says "Invalid login credentials" both for a wrong
+          // password and for an account that doesn't exist. If this email's
+          // account was deleted after a ban, say that instead (the database
+          // only answers yes/no).
+          if (error.code === "invalid_credentials" || /invalid login credentials/i.test(error.message || "")) {
+            const { data: wasDeleted } = await supabase.rpc("was_deleted_after_ban", { email: normalizedEmail });
+            if (wasDeleted) {
+              throw new Error("This account was deleted after a ban and can no longer be used. You can create a new account with this email.");
+            }
+          }
+          throw error;
+        }
 
         setMessage({ text: "Signed in successfully.", type: "success" });
         const destination = await resolvePostAuthRoute(data.user);

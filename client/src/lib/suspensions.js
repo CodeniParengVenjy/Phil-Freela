@@ -35,6 +35,18 @@ export function formatEndDate(endsAt) {
   return new Date(endsAt).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
+// A ban that isn't lifted within this many days deletes the account (the
+// database's daily delete_expired_bans() job, which waits while an appeal is
+// pending).
+export const BAN_DELETE_DAYS = 100;
+
+// The day a ban's account gets deleted, as e.g. "Jan 5, 2027": 100 days
+// after the ban date. The daily job runs at 12:00 AM Philippine time.
+export function banDeletionDay(row) {
+  const deleteAt = new Date(new Date(row.created_at).getTime() + BAN_DELETE_DAYS * 24 * 60 * 60 * 1000);
+  return deleteAt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
 // Saves a penalty from buildPenalty() (lib/violations.js). There is one row
 // per user, so this replaces any older row: a suspension that already ended,
 // or a suspension being turned into a ban. The database rules only let admins

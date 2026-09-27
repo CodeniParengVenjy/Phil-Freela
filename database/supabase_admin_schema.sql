@@ -1295,3 +1295,121 @@ $$;
 alter table public.user_notifications drop constraint user_notifications_message_check;
 alter table public.user_notifications add constraint user_notifications_message_check
   check (char_length(message) between 1 and 2000);
+
+-- ---------------------------------------------------------------------------
+-- Banned accounts are deleted after 100 days.
+-- A ban that isn't lifted within 100 days of the ban date deletes the whole
+-- account (login, profile, services, job posts, portfolio, chats,
+-- notifications, appeals, verifications). It waits while an appeal is
+-- pending. A daily job (pg_cron, Supabase's built-in scheduler) does it.
+-- Afterwards, logging in with that email says the account was deleted, but
+-- the email can sign up again as a brand-new account.
+-- ---------------------------------------------------------------------------
+
+-- Supabase's built-in scheduler, for the daily job below.
+create extension if not exists pg_cron with schema pg_catalog;
+grant usage on schema cron to postgres;
+grant all privileges on all tables in schema cron to postgres;
+
+-- A one-way scrambled copy (SHA-256) of an email, so the deleted list never
+-- stores real emails. Same email in any case / with spaces = same result.
+create or replace function public.email_hash(email text)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select encode(sha256(convert_to(lower(trim(email)), 'UTF8')), 'hex');
+$$;
+
+-- Scrambled emails of accounts deleted after a ban. No rules and no grants,
+-- so no browser can read it; only the functions below use it.
+create table public.deleted_banned_emails (
+  email_hash text primary key,
+  deleted_at timestamptz not null default now()
+);
+
+alter table public.deleted_banned_emails enable row level security;
+revoke all on public.deleted_banned_emails from anon, authenticated;
+
+-- The daily job: deletes every account banned 100+ days ago that has no
+-- appeal waiting. Deleting the login (auth.users) deletes everything linked
+-- to it too ("on delete cascade"). Returns how many were deleted.
+create or replace function public.delete_expired_bans()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  expired record;
+  deleted_count integer := 0;
+begin
+  for expired in
+    select s.user_id, u.email
+    from public.user_suspensions s
+    join auth.users u on u.id = s.user_id
+    where s.ends_at is null
+      and s.created_at <= now() - interval '100 days'
+      and not exists (
+        select 1 from public.appeals a
+        where a.user_id = s.user_id
+          and a.suspension_started_at = s.created_at
+          and a.status = 'pending'
+      )
+  loop
+    if expired.email is not null then
+      insert into public.deleted_banned_emails (email_hash)
+      values (public.email_hash(expired.email))
+      on conflict (email_hash) do update set deleted_at = now();
+    end if;
+    delete from auth.users where id = expired.user_id;
+    deleted_count := deleted_count + 1;
+  end loop;
+  return deleted_count;
+end;
+$$;
+
+-- For the login page: after a failed login, "was this email's account
+-- deleted after a ban?" Only answers true/false, never any account details.
+create or replace function public.was_deleted_after_ban(email text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.deleted_banned_emails
+    where email_hash = public.email_hash(was_deleted_after_ban.email)
+  );
+$$;
+
+-- When someone signs up with that email again, it's a new account: take the
+-- email off the deleted list so logging in works normally.
+create or replace function public.clear_deleted_ban_email()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.email is not null then
+    delete from public.deleted_banned_emails where email_hash = public.email_hash(new.email);
+  end if;
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created_clear_deleted_ban
+  after insert on auth.users
+  for each row
+  execute function public.clear_deleted_ban_email();
+
+revoke execute on function public.delete_expired_bans() from public, anon, authenticated;
+revoke execute on function public.email_hash(text) from public, anon, authenticated;
+-- Logged-out visitors need this one: it runs on the login page.
+grant execute on function public.was_deleted_after_ban(text) to anon, authenticated;
+
+-- Every day at 16:00 UTC = 12:00 AM Philippine time.
+select cron.schedule('delete-expired-bans', '0 16 * * *', 'select public.delete_expired_bans()');

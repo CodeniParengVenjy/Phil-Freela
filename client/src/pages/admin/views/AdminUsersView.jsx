@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
-import { SUSPENSION_COLUMNS, blockedBadges, formatEndDate, restrictionText, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
+import { BAN_DELETE_DAYS, SUSPENSION_COLUMNS, banDeletionDay, blockedBadges, formatEndDate, restrictionText, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
 
@@ -18,7 +18,7 @@ const blockText = {
   },
   ban: {
     title: "Ban",
-    info: "They will be signed out and can't log in until you unban them. Their account and data are kept.",
+    info: `They will be signed out and can't log in until you unban them. If they aren't unbanned within ${BAN_DELETE_DAYS} days, the account and everything in it is deleted for good.`,
     button: "Ban User",
     buttonClass: "btn-danger",
     done: "has been banned"
@@ -228,6 +228,10 @@ export default function AdminUsersView() {
                               Until {formatEndDate(suspension.ends_at)}
                               <div className="text-warning">{restrictionText(suspension.blocks_posting, suspension.blocks_messaging)}</div>
                             </div>
+                          )}
+                          {/* A daily database job deletes accounts banned 100 days ago. */}
+                          {status === "banned" && (
+                            <div className="text-danger fs-8 mt-1">Deleted on {banDeletionDay(suspension)}</div>
                           )}
                           <div className="text-white-50 fs-8 mt-1 admin-reason" title={suspension.reason}>{suspension.reason}</div>
                         </>
