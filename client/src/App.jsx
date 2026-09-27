@@ -38,6 +38,7 @@ import AdminAnnouncementsView from "./pages/admin/views/AdminAnnouncementsView";
 import AdminVerificationsView from "./pages/admin/views/AdminVerificationsView";
 import AdminAppealsView from "./pages/admin/views/AdminAppealsView";
 import { usePageTitle } from "./lib/pageTitles";
+import PageNotFound from "./components/PageNotFound";
 
 function App() {
   // Sets the browser tab title for whichever page is open.
@@ -76,6 +77,7 @@ function App() {
         <Route path="job-details" element={<JobDetailsView />} />
         <Route path="project-details" element={<ProjectDetailsView />} />
         <Route path="submit-project" element={<SubmitProjectView />} />
+        <Route path="*" element={<PageNotFound />} />
       </Route>
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin/setup" element={<AdminSetup />} />
@@ -90,7 +92,11 @@ function App() {
         <Route path="browse-services" element={<BrowseServicesView />} />
         <Route path="browse-jobs" element={<FindJobsView />} />
         <Route path="admins" element={<AdminAdminsView />} />
+        <Route path="*" element={<PageNotFound />} />
       </Route>
+      {/* Any other address: usually an open tab that's older than the site
+          (it reloads once to get the new version). */}
+      <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 }

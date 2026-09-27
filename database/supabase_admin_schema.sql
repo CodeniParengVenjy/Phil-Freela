@@ -1131,3 +1131,167 @@ revoke execute on function public.fill_appeal_penalty() from public, anon, authe
 revoke execute on function public.handle_appeal_reviewed() from public, anon, authenticated;
 revoke execute on function public.notify_suspension_lifted() from public, anon, authenticated;
 revoke execute on function public.notify_suspension() from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Notification wording: every notification the database sends is now a short
+-- two-paragraph statement: what happened, then what the user can do next.
+-- (Same functions as above, only the text changed. rtrim(..., '.') avoids a
+-- double period when an admin's note already ends with one.)
+-- ---------------------------------------------------------------------------
+
+create or replace function public.notify_verification_reviewed()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status = 'approved' then
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.user_id, 'verification_approved', 'Identity verified',
+      'Your identity verification has been approved. Your ID and face scan matched, and a Verified check now appears next to your name everywhere on PhilFreela.'
+        || E'\n\n'
+        || 'A verified account earns more trust from clients and freelancers. If you''re a freelancer, you can now post services for clients to find.',
+      '/dashboard/verify-identity'
+    );
+  else
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.user_id, 'verification_rejected', 'Verification not approved',
+      'Your identity verification was not approved. Reason: ' || rtrim(coalesce(new.admin_note, 'No reason given'), '.') || '.'
+        || E'\n\n'
+        || 'You can send a new verification anytime from the Verify Identity page. Make sure your ID is valid and not expired, the photos are clear, and your face scan matches your ID.',
+      '/dashboard/verify-identity'
+    );
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.notify_suspension()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  blocked text;
+begin
+  if new.ends_at is null then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and new.created_at = old.created_at then
+    return new;
+  end if;
+
+  blocked := case
+    when new.blocks_posting and new.blocks_messaging then 'can''t post or send messages'
+    when new.blocks_posting then 'can''t post services or job posts'
+    else 'can''t send messages'
+  end;
+
+  insert into public.user_notifications (user_id, type, title, message, link)
+  values (
+    new.user_id, 'suspension', 'Account suspended',
+    'Your PhilFreela account has been suspended until '
+      || to_char(new.ends_at at time zone 'Asia/Manila', 'Mon FMDD, YYYY, FMHH12:MI AM')
+      || ' (Philippine time) for breaking our community rules. Reason: ' || rtrim(new.reason, '.') || '. '
+      || 'Until then, you ' || blocked || ', but you can still log in and use the rest of PhilFreela.'
+      || E'\n\n'
+      || 'If you believe this was a mistake, you can send one appeal for this suspension and an admin will review it. Please take this time to review our community rules, as repeated violations may lead to a longer suspension or a permanent ban.',
+    '/appeal'
+  );
+  return new;
+end;
+$$;
+
+create or replace function public.notify_suspension_lifted()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if old.ends_at is not null and old.ends_at <= now() then
+    return old;
+  end if;
+  if not exists (select 1 from public.profiles where id = old.user_id) then
+    return old;
+  end if;
+  if exists (
+    select 1 from public.appeals
+    where user_id = old.user_id and suspension_started_at = old.created_at and status = 'accepted'
+  ) then
+    return old;
+  end if;
+
+  insert into public.user_notifications (user_id, type, title, message)
+  values (
+    old.user_id, 'suspension_lifted',
+    case when old.ends_at is null then 'Ban lifted' else 'Suspension lifted' end,
+    case when old.ends_at is null
+      then 'An admin has lifted the ban on your PhilFreela account. You can log in and use all of PhilFreela again.'
+      else 'An admin has lifted your suspension early. Your account is back in good standing, and you can post and send messages again.'
+    end
+      || E'\n\n'
+      || 'Please keep following PhilFreela''s community rules. Another violation may lead to a new suspension or a permanent ban.'
+  );
+  return old;
+end;
+$$;
+
+create or replace function public.handle_appeal_reviewed()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  what text := case when new.penalty_ends_at is null then 'ban' else 'suspension' end;
+begin
+  if new.status = 'accepted' then
+    delete from public.user_suspensions
+    where user_id = new.user_id
+      and created_at = new.suspension_started_at
+      and (ends_at is null or ends_at > now());
+    if not found then
+      raise exception 'This % has already ended or been replaced, so there is nothing to lift. Reject the appeal instead.', what;
+    end if;
+
+    insert into public.user_notifications (user_id, type, title, message)
+    values (
+      new.user_id, 'appeal_accepted', 'Appeal accepted',
+      'An admin reviewed your appeal and accepted it. Your ' || what || ' has been lifted, and your account is back in good standing.'
+        || coalesce(' Admin''s note: ' || rtrim(new.admin_note, '.') || '.', '')
+        || E'\n\n'
+        || 'Thank you for your patience. Please keep following PhilFreela''s community rules to avoid future penalties.'
+    );
+  else
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.user_id, 'appeal_rejected', 'Appeal not accepted',
+      'An admin reviewed your appeal and decided to keep your '
+        || case
+             when new.penalty_ends_at is null then 'ban'
+             else 'suspension until ' || to_char(new.penalty_ends_at at time zone 'Asia/Manila', 'Mon FMDD, YYYY, FMHH12:MI AM') || ' (Philippine time)'
+           end
+        || '. Admin''s note: ' || rtrim(new.admin_note, '.') || '.'
+        || E'\n\n'
+        || case
+             when new.penalty_ends_at is null then 'Each penalty can only be appealed once, so this decision is final.'
+             else 'Each penalty can only be appealed once, so this decision is final. Your suspension will end on its own on the date above, and you''ll be able to use PhilFreela fully again.'
+           end,
+      '/appeal'
+    );
+  end if;
+  return new;
+end;
+$$;
+
+-- The two-paragraph messages can run long when the reason is long, so
+-- notifications allow up to 2000 characters (the longest possible today is
+-- under 1000).
+alter table public.user_notifications drop constraint user_notifications_message_check;
+alter table public.user_notifications add constraint user_notifications_message_check
+  check (char_length(message) between 1 and 2000);
