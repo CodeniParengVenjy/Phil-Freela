@@ -17,11 +17,13 @@ Run it:
 import io
 import logging
 import os
+import tempfile
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
+import cv2
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -143,13 +145,13 @@ def read_image(upload, photo_name):
     return prepare_image(image)
 
 
-def to_clean_jpeg(image):
+def to_clean_jpeg(image, max_side=STORED_MAX_SIDE, quality=85):
     """Saves a smaller copy as a fresh JPEG. Nothing hidden (like the GPS
     location phones store in photos) is copied over."""
     stored = image.copy()
-    stored.thumbnail((STORED_MAX_SIDE, STORED_MAX_SIDE))
+    stored.thumbnail((max_side, max_side))
     buffer = io.BytesIO()
-    stored.save(buffer, format="JPEG", quality=85)
+    stored.save(buffer, format="JPEG", quality=quality)
     return buffer.getvalue()
 
 
@@ -382,3 +384,190 @@ def submit_from_phone(
     # Mark it used only after success, so a rejected photo can be retaken.
     supabase.table("verification_links").update({"used_at": datetime.now(timezone.utc).isoformat()}).eq("token", token).execute()
     return result
+
+
+# ---------------------------------------------------------------------------
+# Service slideshows (watermarking system, step 1)
+# A service shows up to 10 photos and videos. Every one goes through here
+# (browsers can't upload to the "slide-media" bucket themselves), so each is
+# checked, and from step 3 on it also gets watermarked here.
+# ---------------------------------------------------------------------------
+
+SLIDE_BUCKET = "slide-media"
+SLIDE_UPLOADS_BUCKET = "slide-uploads"
+MAX_SLIDES_PER_SERVICE = 10
+MAX_SLIDES_PER_FREELANCER = 50
+MAX_VIDEOS_PER_FREELANCER = 5
+MAX_VIDEO_SIZE = 50 * 1024 * 1024  # same limit as the storage buckets
+MAX_VIDEO_SECONDS = 30
+# Saved photos are at most this many pixels wide or tall: sharp in the
+# slideshow, but never the freelancer's full-quality original.
+SLIDE_MAX_SIDE = 1200
+
+
+def remove_quietly(bucket, path):
+    """Deletes a file. If that fails it only leaves an unused file behind."""
+    try:
+        supabase.storage.from_(bucket).remove([path])
+    except Exception:
+        logger.warning("Couldn't delete %s from %s", path, bucket)
+
+
+def ensure_own_service(user_id, service_id):
+    """Slides can only be added by the service's owner, and not while suspended."""
+    try:
+        uuid.UUID(service_id)
+    except ValueError:
+        raise HTTPException(404, "That service no longer exists.")
+
+    rows = supabase.table("services").select("freelancer_id").eq("id", service_id).limit(1).execute().data
+    if not rows:
+        raise HTTPException(404, "That service no longer exists.")
+    if rows[0]["freelancer_id"] != user_id:
+        raise HTTPException(403, "You can only add photos and videos to your own services.")
+
+    # Same check the database rules use: a ban, or a suspension that hasn't ended.
+    if supabase.rpc("is_suspended", {"target": user_id}).execute().data:
+        raise HTTPException(403, "Your account is suspended or banned, so you can't upload right now.")
+
+
+def next_slide_position(user_id, service_id, media_type):
+    """Checks the upload limits and returns the first free spot (1-10) in the
+    service's slideshow."""
+    used = {row["position"] for row in supabase.table("media_slides").select("position").eq("service_id", service_id).execute().data}
+    if len(used) >= MAX_SLIDES_PER_SERVICE:
+        raise HTTPException(409, f"A service can have at most {MAX_SLIDES_PER_SERVICE} photos and videos.")
+
+    # Limits across all of the freelancer's services, to save storage space.
+    mine = supabase.table("media_slides").select("media_type").eq("freelancer_id", user_id).execute().data
+    if len(mine) >= MAX_SLIDES_PER_FREELANCER:
+        raise HTTPException(409, f"You've reached the limit of {MAX_SLIDES_PER_FREELANCER} photos and videos. Delete a service to add more.")
+    if media_type == "video" and sum(row["media_type"] == "video" for row in mine) >= MAX_VIDEOS_PER_FREELANCER:
+        raise HTTPException(409, f"You can have at most {MAX_VIDEOS_PER_FREELANCER} videos. Delete a service with a video to add another.")
+
+    return next(spot for spot in range(1, MAX_SLIDES_PER_SERVICE + 1) if spot not in used)
+
+
+def video_seconds(data, extension):
+    """How long the video is, in seconds (None if it can't be played).
+    OpenCV reads videos from a file, so it's written to a temporary one first."""
+    handle, path = tempfile.mkstemp(suffix=f".{extension}")
+    try:
+        with os.fdopen(handle, "wb") as file:
+            file.write(data)
+        video = cv2.VideoCapture(path)
+        try:
+            if not video.isOpened() or not video.grab():
+                return None
+            # Step through the frames to the end: the last frame's time is the
+            # length. Stops early once it's clearly too long.
+            while True:
+                seconds = video.get(cv2.CAP_PROP_POS_MSEC) / 1000
+                if seconds > MAX_VIDEO_SECONDS + 1 or not video.grab():
+                    return seconds
+        finally:
+            video.release()
+    finally:
+        os.remove(path)
+
+
+def read_slide_video(user_id, video_path):
+    """Takes the video the browser put in slide-uploads and checks it's a real
+    MP4 or WEBM of at most 50 MB and 30 seconds. Returns (data, extension)."""
+    # Only from the caller's own folder, so nobody can take someone else's upload.
+    if not video_path.startswith(f"{user_id}/") or ".." in video_path:
+        raise HTTPException(403, "That video upload isn't yours.")
+
+    try:
+        data = supabase.storage.from_(SLIDE_UPLOADS_BUCKET).download(video_path)
+    except Exception:
+        raise HTTPException(404, "The video upload wasn't found. Please try again.")
+    finally:
+        # The temporary copy is never needed again, whatever happens next.
+        remove_quietly(SLIDE_UPLOADS_BUCKET, video_path)
+
+    if len(data) > MAX_VIDEO_SIZE:
+        raise HTTPException(400, "That video is too big (max 50 MB).")
+
+    # The first bytes show the real file type, whatever the file is called.
+    if data[4:8] == b"ftyp":
+        extension = "mp4"
+    elif data[:4] == b"\x1a\x45\xdf\xa3":
+        extension = "webm"
+    else:
+        raise HTTPException(400, "Videos must be MP4 or WEBM.")
+
+    seconds = video_seconds(data, extension)
+    if seconds is None:
+        raise HTTPException(400, "That video couldn't be opened. Please try another one.")
+    if seconds > MAX_VIDEO_SECONDS + 0.5:
+        raise HTTPException(400, f"Videos can be at most {MAX_VIDEO_SECONDS} seconds long.")
+    return data, extension
+
+
+def upload_slide_file(path, data, content_type):
+    """Saves a slide to slide-media, with up to 3 tries on a bad connection."""
+    storage = supabase.storage.from_(SLIDE_BUCKET)
+    for attempt in range(UPLOAD_TRIES):
+        try:
+            storage.upload(path, data, {"content-type": content_type, "upsert": "true"})
+            return
+        except Exception:
+            if attempt == UPLOAD_TRIES - 1:
+                logger.exception("Uploading slide %s failed", path)
+                raise HTTPException(503, "Couldn't save that file because of a connection problem. Please try again.")
+            logger.warning("Upload of %s failed, trying again", path)
+            time.sleep(attempt + 1)
+
+
+@app.post("/slides")
+def add_slide(
+    service_id: str = Form(...),
+    image: UploadFile | None = File(default=None),
+    video_path: str | None = Form(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Adds one photo or video to the end of the caller's own service.
+    Photos come with the request. Videos are too big for that (Vercel allows
+    4.5 MB per request), so the browser uploads them to slide-uploads first
+    and sends where it put them."""
+    user_id = get_user_id(authorization)
+    if (image is None) == (video_path is None):
+        raise HTTPException(400, "Send one photo or one video.")
+
+    ensure_own_service(user_id, service_id)
+    media_type = "image" if image is not None else "video"
+    position = next_slide_position(user_id, service_id, media_type)
+
+    if image is not None:
+        # Same checks as ID photos (a real JPG/PNG/WEBP under 5 MB), then saved
+        # as a clean, smaller JPEG.
+        data = to_clean_jpeg(read_image(image, "photo"), max_side=SLIDE_MAX_SIDE, quality=90)
+        extension, content_type = "jpg", "image/jpeg"
+    else:
+        data, extension = read_slide_video(user_id, video_path)
+        content_type = f"video/{extension}"
+
+    slide_id = str(uuid.uuid4())
+    file_path = f"{user_id}/{slide_id}.{extension}"
+    upload_slide_file(file_path, data, content_type)
+
+    try:
+        supabase.table("media_slides").insert({
+            "id": slide_id,
+            "freelancer_id": user_id,
+            "service_id": service_id,
+            "position": position,
+            "media_type": media_type,
+            "file_path": file_path,
+        }).execute()
+    except APIError as error:
+        # Don't leave a file behind for a slide that wasn't saved.
+        remove_quietly(SLIDE_BUCKET, file_path)
+        if error.code == "23505":  # another upload took the same spot at the same moment
+            raise HTTPException(409, "Another upload was saving at the same time. Please try again.")
+        if error.code == "23503":  # the service was deleted meanwhile
+            raise HTTPException(404, "That service no longer exists.")
+        raise
+
+    return {"id": slide_id, "position": position, "media_type": media_type, "file_path": file_path}

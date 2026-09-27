@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { storagePathFromUrl } from "../../../lib/storage";
+import { SLIDES_SELECT, removeServiceFiles } from "../../../lib/slides";
 import ServiceCard from "../components/ServiceCard";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 
@@ -32,7 +32,7 @@ export default function ProjectsView() {
 
     supabase
       .from("services")
-      .select("id, title, category, price, image_url, media_type, created_at")
+      .select(`id, title, category, price, image_url, media_type, created_at, ${SLIDES_SELECT}`)
       .eq("freelancer_id", currentUserId)
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -58,10 +58,9 @@ export default function ProjectsView() {
       return;
     }
 
-    // The row is gone, so remove its photo or video from Storage too. If that
-    // fails it only leaves an unused file behind, so it isn't treated as an error.
-    const path = storagePathFromUrl(service.image_url);
-    if (path) await supabase.storage.from("marketplace-images").remove([path]);
+    // The row is gone, so remove its photos and videos from Storage too. If
+    // that fails it only leaves unused files behind, so it isn't treated as an error.
+    await removeServiceFiles(service);
 
     setServices((prev) => prev.filter((s) => s.id !== service.id));
     setServiceToDelete(null);

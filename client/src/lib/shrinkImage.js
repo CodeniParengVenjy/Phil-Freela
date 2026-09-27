@@ -22,7 +22,12 @@ export async function shrinkImage(file) {
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(img.naturalWidth * scale);
     canvas.height = Math.round(img.naturalHeight * scale);
-    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    const context = canvas.getContext("2d");
+    // JPEGs can't be see-through, so transparent parts (e.g. a PNG logo)
+    // become white instead of black.
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
     if (!blob) throw new Error("This photo couldn't be processed. Please try another one.");

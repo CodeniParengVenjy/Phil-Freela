@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { categories, getCategory } from "../../../lib/categories";
+import { SLIDES_SELECT, serviceSlides } from "../../../lib/slides";
+import MediaCarousel from "../../dashboard/components/MediaCarousel";
 
 // The two kinds of listings share one page. Each tab says which table it
 // reads, which column holds the owner, and how its price is labeled.
@@ -12,7 +14,7 @@ const tabs = {
     ownerColumn: "freelancer_id",
     priceColumn: "price",
     priceLabel: "Price",
-    select: "id, title, category, description, price, skill, image_url, media_type, created_at, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username)"
+    select: `id, title, category, description, price, skill, image_url, media_type, created_at, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`
   },
   jobs: {
     label: "Job Posts",
@@ -208,11 +210,11 @@ export default function AdminListingsView() {
               {getCategory(viewing.category).label} • {tab.priceLabel}: {formatPeso(viewing[tab.priceColumn])} • Posted {new Date(viewing.created_at).toLocaleDateString()}
             </p>
 
-            {viewing.image_url && viewing.media_type === "video" && (
-              <video src={viewing.image_url} controls className="rounded-3 w-100 mb-3 admin-modal-media" />
-            )}
-            {viewing.image_url && viewing.media_type !== "video" && (
-              <img src={viewing.image_url} alt={viewing.title} className="rounded-3 w-100 mb-3 admin-modal-media" />
+            {/* A service's photos and videos (job posts have none). */}
+            {serviceSlides(viewing).length > 0 && (
+              <div className="rounded-3 overflow-hidden mb-3">
+                <MediaCarousel slides={serviceSlides(viewing)} height={320} fit="contain" alt={viewing.title} />
+              </div>
             )}
 
             <div className="mb-3">{ownerCell(viewing)}</div>

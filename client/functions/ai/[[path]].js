@@ -11,7 +11,7 @@
 // and secrets as AI_SERVICE_URL (no slash at the end). VITE_AI_SERVICE_URL is
 // the older name for the same setting and still works.
 
-const OFFLINE = "The verification service is offline right now. Please try again later.";
+const OFFLINE = "The AI service is offline right now. Please try again later.";
 
 // Only these request headers are passed on (the login token, and the photo
 // form's type). Cookies and anything else from the browser stay here.

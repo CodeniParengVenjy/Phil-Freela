@@ -3,7 +3,8 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
 import { fetchIsVerified } from "../../../lib/verification";
-import MediaDropzone from "../components/MediaDropzone";
+import { MAX_SLIDES, SLIDE_HINT, SLIDES_SELECT, checkSlideFile, uploadSlide } from "../../../lib/slides";
+import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
 
 const skillOptions = [
@@ -13,23 +14,10 @@ const skillOptions = [
   { value: "video-editor", label: "Video Editor" }
 ];
 
-// Upload rules. The Supabase bucket enforces the same limits on the server.
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const VIDEO_TYPES = ["video/mp4", "video/webm"];
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
-const MEDIA_ACCEPT = "image/jpeg,image/png,image/webp,video/mp4,video/webm";
+const SERVICE_COLUMNS = "id, title, category, price, image_url, media_type, created_at";
 
-// Returns a message when the file is not allowed, or "" when it is fine.
-function checkMediaFile(file) {
-  if (IMAGE_TYPES.includes(file.type)) {
-    return file.size > MAX_IMAGE_BYTES ? "Photos must be 5 MB or smaller." : "";
-  }
-  if (VIDEO_TYPES.includes(file.type)) {
-    return file.size > MAX_VIDEO_BYTES ? "Videos must be 50 MB or smaller." : "";
-  }
-  return "Only JPG, PNG or WebP photos, or MP4 or WebM videos, are allowed.";
-}
+// Gives each picked file its own key, so the picker can tell them apart.
+let nextSlideKey = 0;
 
 export default function ServicesView() {
   const { currentUserId, showToast } = useOutletContext();
@@ -38,9 +26,12 @@ export default function ServicesView() {
   const [description, setDescription] = useState("");
   const [skill, setSkill] = useState("");
   const [price, setPrice] = useState("");
-  const [mediaFile, setMediaFile] = useState(null);
-  const [mediaError, setMediaError] = useState("");
+  // The photos and videos picked for the slideshow: [{ key, file }].
+  const [slideItems, setSlideItems] = useState([]);
+  const [slidesError, setSlidesError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // "Uploading 2 of 5..." while the slides are being sent.
+  const [progress, setProgress] = useState("");
   const [services, setServices] = useState(null);
   // Only freelancers with a verified identity can offer services (the
   // database enforces this too). null while checking.
@@ -63,7 +54,7 @@ export default function ServicesView() {
 
     supabase
       .from("services")
-      .select("id, title, category, price, image_url, media_type, created_at")
+      .select(`${SERVICE_COLUMNS}, ${SLIDES_SELECT}`)
       .eq("freelancer_id", currentUserId)
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -76,21 +67,27 @@ export default function ServicesView() {
     };
   }, [currentUserId]);
 
-  // Called by the drop zone with the picked or dropped file (null = removed).
-  const handleMediaSelect = (file) => {
-    if (!file) {
-      setMediaFile(null);
-      setMediaError("");
-      return;
+  // Called by the picker with newly picked or dropped files.
+  const handleAddSlides = async (files) => {
+    const problems = [];
+    const accepted = [];
+    for (const file of files) {
+      const problem = await checkSlideFile(file);
+      if (problem) problems.push(`${file.name}: ${problem}`);
+      else accepted.push({ key: nextSlideKey++, file });
     }
-    const problem = checkMediaFile(file);
-    if (problem) {
-      setMediaError(problem);
-      setMediaFile(null);
-      return;
+
+    const room = MAX_SLIDES - slideItems.length;
+    if (accepted.length > room) {
+      problems.push(`Only ${MAX_SLIDES} photos and videos fit, so ${accepted.length - room} were left out.`);
     }
-    setMediaError("");
-    setMediaFile(file);
+    setSlideItems((prev) => [...prev, ...accepted].slice(0, MAX_SLIDES));
+    setSlidesError(problems.join(" "));
+  };
+
+  const handleRemoveSlide = (key) => {
+    setSlideItems((prev) => prev.filter((item) => item.key !== key));
+    setSlidesError("");
   };
 
   const handleSubmit = async (event) => {
@@ -98,24 +95,8 @@ export default function ServicesView() {
     if (!currentUserId) return;
     setSubmitting(true);
 
-    let mediaUrl = null;
-    let mediaType = "image";
-    if (mediaFile) {
-      mediaType = VIDEO_TYPES.includes(mediaFile.type) ? "video" : "image";
-      // Name the file by time + extension only, so odd characters in the
-      // original file name can't break the upload.
-      const extension = mediaFile.type.split("/")[1];
-      const path = `${currentUserId}/${Date.now()}.${extension}`;
-      const { error: uploadError } = await supabase.storage.from("marketplace-images").upload(path, mediaFile);
-      if (uploadError) {
-        setSubmitting(false);
-        showToast(`Couldn't upload that ${mediaType}. Please try again.`);
-        return;
-      }
-      mediaUrl = supabase.storage.from("marketplace-images").getPublicUrl(path).data.publicUrl;
-    }
-
-    const { data, error } = await supabase
+    // 1. Save the service itself. Its photos and videos are added next.
+    const { data: service, error } = await supabase
       .from("services")
       .insert({
         freelancer_id: currentUserId,
@@ -123,27 +104,48 @@ export default function ServicesView() {
         category,
         description: description.trim(),
         skill: skill || null,
-        price: price ? Number(price) : null,
-        image_url: mediaUrl,
-        media_type: mediaType
+        price: price ? Number(price) : null
       })
-      .select("id, title, category, price, image_url, media_type, created_at")
+      .select(SERVICE_COLUMNS)
       .single();
 
-    setSubmitting(false);
     if (error) {
+      setSubmitting(false);
       showToast("Couldn't publish that service. Please try again.");
       return;
     }
 
-    setServices((prev) => [data, ...(prev || [])]);
+    // 2. Send the photos and videos one at a time through the AI service
+    // (each request must stay small, and this shows progress). If one fails,
+    // the service keeps the ones that worked.
+    const slides = [];
+    const failed = [];
+    for (const [index, { file }] of slideItems.entries()) {
+      setProgress(`Uploading ${index + 1} of ${slideItems.length}...`);
+      try {
+        slides.push(await uploadSlide(service.id, file, currentUserId));
+      } catch (err) {
+        failed.push(`${file.name}: ${err.message}`);
+      }
+    }
+
+    setSubmitting(false);
+    setProgress("");
+    setServices((prev) => [{ ...service, slides }, ...(prev || [])]);
     setTitle("");
     setCategory("");
     setDescription("");
     setSkill("");
     setPrice("");
-    setMediaFile(null);
-    showToast(`Your new service "${data.title}" is live!`);
+    setSlideItems([]);
+
+    if (failed.length) {
+      setSlidesError(`Your service is live, but ${failed.length === 1 ? "1 file" : `${failed.length} files`} couldn't be added. ${failed.join(" ")}`);
+      showToast(`"${service.title}" is live, but some files couldn't be added.`);
+    } else {
+      setSlidesError("");
+      showToast(`Your new service "${service.title}" is live!`);
+    }
   };
 
   return (
@@ -225,19 +227,20 @@ export default function ServicesView() {
                 </div>
 
                 <div>
-                  <label className="form-label text-white fw-semibold fs-7">Upload a photo or video (optional):</label>
-                  <MediaDropzone
-                    file={mediaFile}
-                    onSelect={handleMediaSelect}
-                    accept={MEDIA_ACCEPT}
-                    hint="Photos (JPG, PNG, WebP) up to 5 MB. Videos (MP4, WebM) up to 50 MB."
-                    error={mediaError}
+                  <label className="form-label text-white fw-semibold fs-7">Upload photos or videos for a slideshow (optional):</label>
+                  <SlidePicker
+                    items={slideItems}
+                    onAdd={handleAddSlides}
+                    onRemove={handleRemoveSlide}
+                    hint={SLIDE_HINT}
+                    error={slidesError}
+                    disabled={submitting}
                   />
                 </div>
 
                 <div className="d-flex justify-content-end pt-2">
                   <button type="submit" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting}>
-                    {submitting ? "Publishing..." : "Upload & Publish"}
+                    {submitting ? progress || "Publishing..." : "Upload & Publish"}
                   </button>
                 </div>
               </form>

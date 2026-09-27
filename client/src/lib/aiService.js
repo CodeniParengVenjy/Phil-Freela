@@ -7,7 +7,7 @@ import { supabase } from "./supabaseClient";
 // this one site, so the AI service's own address never gets in the way.
 export const AI_SERVICE_URL = "/ai";
 
-const OFFLINE = "The verification service is offline right now. Please try again later.";
+const OFFLINE = "The AI service is offline right now. Please try again later.";
 
 // Calls the AI service and turns its error replies ({ detail: "..." }) into
 // normal errors with a message that can be shown to the user.
@@ -110,4 +110,15 @@ export function submitFromPhone(token, photos) {
     method: "POST",
     body: photoForm(photos)
   });
+}
+
+// Adds one photo (a File) or one video (its path in the "slide-uploads"
+// bucket) to the end of a service's slideshow. Returns the saved slide:
+// { id, position, media_type, file_path }. See lib/slides.js.
+export async function addSlide({ serviceId, image, videoPath }) {
+  const form = new FormData();
+  form.append("service_id", serviceId);
+  if (image) form.append("image", image, image.name);
+  if (videoPath) form.append("video_path", videoPath);
+  return request("/slides", { method: "POST", headers: await authHeader(), body: form });
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
+import { SLIDES_SELECT } from "../../../lib/slides";
 import { reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 
 const statusTabs = [
@@ -59,7 +60,8 @@ export default function AdminReportsView() {
       const idsOf = (type) => [...new Set(reportsResult.data.filter((r) => r.target_type === type).map((r) => r.target_id))];
       const [usersResult, servicesResult, jobsResult] = await Promise.all([
         supabase.from("profiles").select("id, full_name, username").in("id", idsOf("user")),
-        supabase.from("services").select("id, title, image_url, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username)").in("id", idsOf("service")),
+        // The slides are only needed so Remove can delete the service's files too.
+        supabase.from("services").select(`id, title, image_url, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`).in("id", idsOf("service")),
         supabase.from("job_posts").select("id, title, client_id, owner:profiles!job_posts_client_id_fkey(full_name, username)").in("id", idsOf("job_post"))
       ]);
 

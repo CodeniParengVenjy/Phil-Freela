@@ -1,18 +1,21 @@
 import { getCategory } from "../../../lib/categories";
+import { serviceSlides } from "../../../lib/slides";
 
 const mediaBox = { width: 64, height: 64 };
 
-// One posted service as a row: its photo or video (or the category icon when it
-// has none), title, category, price and date. Pass onDelete to show a Delete button.
+// One posted service as a row: its first photo or video (or the category icon
+// when it has none), title, category, price and date. Pass onDelete to show a
+// Delete button.
 export default function ServiceCard({ service, onDelete }) {
   const category = getCategory(service.category);
+  const cover = serviceSlides(service)[0];
 
   return (
     <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 d-flex gap-3 align-items-center">
-      {service.image_url ? (
-        service.media_type === "video"
-          ? <video src={`${service.image_url}#t=0.1`} muted preload="metadata" className="rounded-3 flex-shrink-0" style={{ ...mediaBox, objectFit: "cover" }} />
-          : <img src={service.image_url} alt="" className="rounded-3 flex-shrink-0" style={{ ...mediaBox, objectFit: "cover" }} />
+      {cover ? (
+        cover.mediaType === "video"
+          ? <video src={`${cover.url}#t=0.1`} muted preload="metadata" className="rounded-3 flex-shrink-0" style={{ ...mediaBox, objectFit: "cover" }} />
+          : <img src={cover.url} alt="" className="rounded-3 flex-shrink-0" style={{ ...mediaBox, objectFit: "cover" }} />
       ) : (
         <div className="rounded-3 flex-shrink-0 bg-role-subtle text-role d-flex align-items-center justify-content-center fs-3" style={mediaBox}>
           <i className={`bi ${category.icon}`}></i>

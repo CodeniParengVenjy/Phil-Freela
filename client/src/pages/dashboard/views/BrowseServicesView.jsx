@@ -4,10 +4,10 @@ import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import { SLIDES_SELECT, serviceSlides } from "../../../lib/slides";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import ReportDialog from "../components/ReportDialog";
-
-const mediaStyle = { height: 140, width: "100%", objectFit: "cover" };
+import MediaCarousel from "../components/MediaCarousel";
 
 export default function BrowseServicesView() {
   // isAdmin is only set when this page is shown inside the admin panel
@@ -25,7 +25,7 @@ export default function BrowseServicesView() {
 
     supabase
       .from("services")
-      .select("id, title, category, price, image_url, media_type, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)")
+      .select(`id, title, category, price, image_url, media_type, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username), ${SLIDES_SELECT}`)
       .order("created_at", { ascending: false })
       .then(({ data, error: fetchError }) => {
         if (!active) return;
@@ -105,13 +105,12 @@ export default function BrowseServicesView() {
           {filtered.map((s) => {
             const meta = getCategory(s.category);
             const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "Freelancer";
+            const slides = serviceSlides(s);
             return (
               <div className="col-md-6 col-lg-4" key={s.id}>
                 <div className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
-                  {s.image_url ? (
-                    s.media_type === "video"
-                      ? <video src={s.image_url} controls preload="metadata" style={mediaStyle} />
-                      : <img src={s.image_url} alt={s.title} style={mediaStyle} />
+                  {slides.length > 0 ? (
+                    <MediaCarousel slides={slides} height={140} alt={s.title} />
                   ) : (
                     <div className="d-flex align-items-center justify-content-center bg-role-subtle" style={{ height: 140 }}>
                       <i className={`bi ${meta.icon} text-role`} style={{ fontSize: "2.75rem" }}></i>

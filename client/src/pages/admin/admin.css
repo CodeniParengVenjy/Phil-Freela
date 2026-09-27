@@ -180,11 +180,6 @@ body {
   overflow-y: auto;
 }
 
-.admin-modal-media {
-  max-height: 320px;
-  object-fit: cover;
-}
-
 /* Long titles and descriptions wrap instead of stretching the layout. */
 .admin-title-cell {
   max-width: 260px;
