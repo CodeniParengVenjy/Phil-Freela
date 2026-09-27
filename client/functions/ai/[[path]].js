@@ -29,9 +29,7 @@ export async function onRequest({ request, env, params }) {
   const path = [].concat(params.path || []).map(encodeURIComponent).join("/");
   const target = `${serviceUrl}/${path}${new URL(request.url).search}`;
 
-  // The ngrok header only matters when the AI service is shared from a laptop
-  // through a free ngrok link (it skips ngrok's warning page); Vercel ignores it.
-  const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
+  const headers = new Headers();
   for (const name of FORWARDED_HEADERS) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
