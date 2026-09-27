@@ -4,6 +4,7 @@ import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
 import ResetPassword from "./pages/login/ResetPassword";
 import VerifyPhone from "./pages/verify-phone/VerifyPhone";
+import AppealPage from "./pages/appeal/AppealPage";
 import DashboardLayout from "./pages/dashboard/layouts/DashboardLayout";
 import DashboardFreelancerRoute from "./pages/dashboard/layouts/DashboardFreelancerRoute";
 import DashboardClientRoute from "./pages/dashboard/layouts/DashboardClientRoute";
@@ -35,6 +36,7 @@ import AdminListingsView from "./pages/admin/views/AdminListingsView";
 import AdminReportsView from "./pages/admin/views/AdminReportsView";
 import AdminAnnouncementsView from "./pages/admin/views/AdminAnnouncementsView";
 import AdminVerificationsView from "./pages/admin/views/AdminVerificationsView";
+import AdminAppealsView from "./pages/admin/views/AdminAppealsView";
 import { usePageTitle } from "./lib/pageTitles";
 
 function App() {
@@ -49,6 +51,8 @@ function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
       {/* Opened from the QR code on the phone; no login (the link's token is the key). */}
       <Route path="/verify-phone/:token" element={<VerifyPhone />} />
+      {/* Suspended and banned users appeal here (banned users can't use anything else). */}
+      <Route path="/appeal" element={<AppealPage />} />
       <Route path="/dashboard-freelancer" element={<DashboardFreelancerRoute />}>
         <Route index element={<FreelancerFYPView />} />
       </Route>
@@ -81,6 +85,7 @@ function App() {
         <Route path="listings" element={<AdminListingsView />} />
         <Route path="reports" element={<AdminReportsView />} />
         <Route path="verifications" element={<AdminVerificationsView />} />
+        <Route path="appeals" element={<AdminAppealsView />} />
         <Route path="announcements" element={<AdminAnnouncementsView />} />
         <Route path="browse-services" element={<BrowseServicesView />} />
         <Route path="browse-jobs" element={<FindJobsView />} />

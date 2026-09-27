@@ -57,10 +57,16 @@ export const notificationIcons = {
   announcement: { icon: "bi-megaphone-fill", className: "bg-role text-white" },
   verification_approved: { icon: "bi-patch-check-fill", className: "bg-success text-white" },
   verification_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" },
-  suspension: { icon: "bi-exclamation-triangle-fill", className: "bg-warning text-dark" }
+  suspension: { icon: "bi-exclamation-triangle-fill", className: "bg-warning text-dark" },
+  suspension_lifted: { icon: "bi-unlock-fill", className: "bg-success text-white" },
+  appeal_accepted: { icon: "bi-check-circle-fill", className: "bg-success text-white" },
+  appeal_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" }
 };
 
-// Text for the popup's button, by the page it goes to.
+// Text for the popup's button (only for kinds that have a link).
 export const notificationLinkLabels = {
-  "/dashboard/verify-identity": "Go to Verify Identity"
+  verification_approved: "Go to Verify Identity",
+  verification_rejected: "Go to Verify Identity",
+  suspension: "Appeal this suspension",
+  appeal_rejected: "View appeal"
 };

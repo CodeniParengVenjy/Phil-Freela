@@ -92,13 +92,13 @@ export function useDashboardShell() {
         .maybeSingle();
       if (!active) return;
 
-      // Banned while already logged in: send them to the login page, which
-      // signs them out and shows the reason (see resolvePostAuthRoute).
+      // Banned (even while already logged in): send them to the appeal page,
+      // which is the only page a banned user can use (see resolvePostAuthRoute).
       // Suspended users stay, with posting and/or messaging blocked.
       const activeSuspension = await getActiveSuspension(session.user.id);
       if (!active) return;
       if (activeSuspension && !activeSuspension.ends_at) {
-        navigate("/login", { replace: true });
+        navigate("/appeal", { replace: true });
         return;
       }
       setSuspension(activeSuspension);

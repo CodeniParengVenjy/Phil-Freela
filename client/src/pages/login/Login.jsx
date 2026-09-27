@@ -60,8 +60,8 @@ export default function Login() {
         const destination = await resolvePostAuthRoute(session.user);
         if (active) navigate(destination, { replace: true });
       } catch (error) {
-        // e.g. a suspended user: resolvePostAuthRoute signed them out and
-        // the error says why.
+        // If the account checks fail, say why instead of doing nothing.
+        // (Banned users aren't an error: they're sent to /appeal.)
         if (active) setMessage({ text: error.message, type: "error" });
       }
     });

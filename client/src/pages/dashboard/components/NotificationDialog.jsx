@@ -65,7 +65,7 @@ export default function NotificationDialog({ item, onClose }) {
           </button>
           {item.link && (
             <button type="button" className="btn btn-gradient-role rounded-pill px-4 py-2 fw-bold text-white" onClick={goToLink}>
-              {notificationLinkLabels[item.link] || "Open"}
+              {notificationLinkLabels[item.type] || "Open"}
             </button>
           )}
         </div>

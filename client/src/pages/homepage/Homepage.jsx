@@ -21,7 +21,7 @@ export default function Homepage() {
         const destination = await resolvePostAuthRoute(session.user);
         if (active) setLogoHref(destination);
       } catch {
-        // Suspended account: it was signed out, so the logo stays on "/".
+        // The account checks failed, so the logo stays on "/".
       }
     });
     return () => { active = false; };

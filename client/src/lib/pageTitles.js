@@ -7,6 +7,7 @@ const pageTitles = {
   "/login": "Sign In & Register",
   "/forgot-password": "Forgot Password",
   "/reset-password": "Reset Password",
+  "/appeal": "Appeal",
 
   "/dashboard-freelancer": "Dashboard",
   "/dashboard-client": "Dashboard",
@@ -32,6 +33,7 @@ const pageTitles = {
   "/admin/users": "Monitor Users",
   "/admin/listings": "Monitor Listings",
   "/admin/reports": "Monitor Reports",
+  "/admin/appeals": "Monitor Appeals",
   "/admin/announcements": "Monitor Announcements",
   "/admin/admins": "Monitor Accounts",
   "/admin/browse-services": "Monitor Browse Services",

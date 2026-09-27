@@ -891,3 +891,243 @@ revoke execute on function public.notify_suspension() from public, anon, authent
 
 -- Live updates, so a new notification shows up without refreshing the page.
 alter publication supabase_realtime add table public.user_notifications;
+
+-- ---------------------------------------------------------------------------
+-- Appeals: a suspended or banned user asks an admin to lift their penalty.
+-- Suspended users appeal from the dashboard banner; banned users are sent to
+-- the /appeal page after logging in (they can't reach the dashboard). Each
+-- penalty can be appealed once. Accepting lifts the penalty; both results
+-- send the user a notification.
+-- ---------------------------------------------------------------------------
+
+create table public.appeals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  -- Which penalty: the created_at of the user's user_suspensions row (one
+  -- row per user, and every new penalty gets a new time).
+  suspension_started_at timestamptz not null,
+  -- Copied from the penalty when the appeal is sent, so the admin still sees
+  -- it after the penalty is lifted or replaced. ends_at null = ban.
+  violation text not null,
+  penalty_reason text not null,
+  penalty_ends_at timestamptz,
+  message text not null check (char_length(message) between 10 and 1000),
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'rejected')),
+  admin_note text check (admin_note is null or char_length(admin_note) <= 500),
+  reviewed_by uuid references public.admins (id) on delete set null,
+  reviewed_at timestamptz,
+  created_at timestamptz not null default now(),
+  -- One appeal per penalty.
+  unique (user_id, suspension_started_at),
+  -- The user must be told why an appeal was rejected.
+  constraint appeals_reject_needs_note check (status <> 'rejected' or admin_note is not null)
+);
+
+create index appeals_status_created_at_idx on public.appeals (status, created_at);
+create index appeals_reviewed_by_idx on public.appeals (reviewed_by);
+
+alter table public.appeals enable row level security;
+
+-- The browser only sends the message; this fills in which penalty it's
+-- about from the user's current one, so nobody can appeal a penalty they
+-- don't have (or change what it says).
+create or replace function public.fill_appeal_penalty()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  penalty public.user_suspensions;
+begin
+  select * into penalty from public.user_suspensions
+  where user_id = new.user_id and (ends_at is null or ends_at > now());
+  if not found then
+    raise exception 'There is no suspension or ban to appeal.';
+  end if;
+
+  new.suspension_started_at := penalty.created_at;
+  new.violation := penalty.violation;
+  new.penalty_reason := penalty.reason;
+  new.penalty_ends_at := penalty.ends_at;
+  return new;
+end;
+$$;
+
+create trigger appeals_fill_penalty
+  before insert on public.appeals
+  for each row
+  execute function public.fill_appeal_penalty();
+
+-- Users see their own appeals; admins see all of them.
+create policy "users and admins can read appeals"
+  on public.appeals for select
+  to authenticated
+  using (user_id = (select auth.uid()) or (select public.is_admin()));
+
+-- Users can only appeal for themselves, as a new, unreviewed appeal.
+create policy "users can appeal their own penalty"
+  on public.appeals for insert
+  to authenticated
+  with check (
+    user_id = (select auth.uid())
+    and status = 'pending'
+    and admin_note is null
+    and reviewed_by is null
+    and reviewed_at is null
+  );
+
+-- Admins review each appeal once (pending -> accepted/rejected), as themselves.
+create policy "admins can review pending appeals"
+  on public.appeals for update
+  to authenticated
+  using ((select public.is_admin()) and status = 'pending')
+  with check ((select public.is_admin()) and reviewed_by = (select auth.uid()) and status in ('accepted', 'rejected'));
+
+-- Only the review fields can change, never the message or the penalty.
+revoke update on public.appeals from authenticated;
+grant update (status, admin_note, reviewed_by, reviewed_at) on public.appeals to authenticated;
+
+-- New kinds of notifications for this step.
+alter table public.user_notifications drop constraint user_notifications_type_check;
+alter table public.user_notifications add constraint user_notifications_type_check
+  check (type in ('verification_approved', 'verification_rejected', 'suspension',
+                  'suspension_lifted', 'appeal_accepted', 'appeal_rejected'));
+
+-- Runs when an admin reviews an appeal. Accepted: lifts the penalty (only if
+-- it's still the same one and hasn't ended) and tells the user. Rejected:
+-- tells the user, with the admin's note.
+create or replace function public.handle_appeal_reviewed()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  what text := case when new.penalty_ends_at is null then 'ban' else 'suspension' end;
+begin
+  if new.status = 'accepted' then
+    delete from public.user_suspensions
+    where user_id = new.user_id
+      and created_at = new.suspension_started_at
+      and (ends_at is null or ends_at > now());
+    if not found then
+      raise exception 'This % has already ended or been replaced, so there is nothing to lift. Reject the appeal instead.', what;
+    end if;
+
+    insert into public.user_notifications (user_id, type, title, message)
+    values (
+      new.user_id, 'appeal_accepted', 'Appeal accepted',
+      'Your appeal was accepted and your ' || what || ' has been lifted. You can use PhilFreela normally again.'
+        || coalesce(E'\n\nAdmin''s note: ' || new.admin_note, '')
+    );
+  else
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.user_id, 'appeal_rejected', 'Appeal not accepted',
+      'Your appeal was reviewed, but your ' || what || ' stays'
+        || case
+             when new.penalty_ends_at is null then '.'
+             else ' until ' || to_char(new.penalty_ends_at at time zone 'Asia/Manila', 'Mon FMDD, YYYY, FMHH12:MI AM') || ' (Philippine time).'
+           end
+        || E'\n\nAdmin''s note: ' || new.admin_note,
+      '/appeal'
+    );
+  end if;
+  return new;
+end;
+$$;
+
+create trigger appeals_reviewed
+  after update of status on public.appeals
+  for each row
+  when (old.status = 'pending' and new.status in ('accepted', 'rejected'))
+  execute function public.handle_appeal_reviewed();
+
+-- Runs when a penalty row is deleted, i.e. an admin clicked Unsuspend /
+-- Unban. Skipped when the penalty had already ended, when the whole account
+-- is being deleted, or when an accepted appeal lifted it (that already sent
+-- "Appeal accepted").
+create or replace function public.notify_suspension_lifted()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if old.ends_at is not null and old.ends_at <= now() then
+    return old;
+  end if;
+  if not exists (select 1 from public.profiles where id = old.user_id) then
+    return old;
+  end if;
+  if exists (
+    select 1 from public.appeals
+    where user_id = old.user_id and suspension_started_at = old.created_at and status = 'accepted'
+  ) then
+    return old;
+  end if;
+
+  insert into public.user_notifications (user_id, type, title, message)
+  values (
+    old.user_id, 'suspension_lifted',
+    case when old.ends_at is null then 'Ban lifted' else 'Suspension lifted' end,
+    case when old.ends_at is null
+      then 'An admin lifted your ban. You can use PhilFreela normally again.'
+      else 'An admin lifted your suspension early. You can post and send messages again.'
+    end
+  );
+  return old;
+end;
+$$;
+
+create trigger user_suspensions_notify_lifted
+  after delete on public.user_suspensions
+  for each row
+  execute function public.notify_suspension_lifted();
+
+-- Suspension notifications now link to the appeal page (same function as
+-- before, plus the link).
+create or replace function public.notify_suspension()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  blocked text;
+begin
+  if new.ends_at is null then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and new.created_at = old.created_at then
+    return new;
+  end if;
+
+  blocked := case
+    when new.blocks_posting and new.blocks_messaging then 'can''t post or send messages'
+    when new.blocks_posting then 'can''t post services or job posts'
+    else 'can''t send messages'
+  end;
+
+  insert into public.user_notifications (user_id, type, title, message, link)
+  values (
+    new.user_id, 'suspension', 'Account suspended',
+    'Your account is suspended until '
+      || to_char(new.ends_at at time zone 'Asia/Manila', 'Mon FMDD, YYYY, FMHH12:MI AM')
+      || ' (Philippine time). Until then you ' || blocked || '.'
+      || E'\n\nReason: ' || new.reason,
+    '/appeal'
+  );
+  return new;
+end;
+$$;
+
+-- Older suspension notifications get the link too.
+update public.user_notifications set link = '/appeal' where type = 'suspension' and link is null;
+
+-- Only the triggers use these functions.
+revoke execute on function public.fill_appeal_penalty() from public, anon, authenticated;
+revoke execute on function public.handle_appeal_reviewed() from public, anon, authenticated;
+revoke execute on function public.notify_suspension_lifted() from public, anon, authenticated;
+revoke execute on function public.notify_suspension() from public, anon, authenticated;

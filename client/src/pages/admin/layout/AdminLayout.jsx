@@ -9,6 +9,7 @@ const sidebarLinks = [
   { to: "/admin/listings", icon: "bi-grid-fill", label: "Listings" },
   { to: "/admin/reports", icon: "bi-flag-fill", label: "Reports", showPendingReports: true },
   { to: "/admin/verifications", icon: "bi-person-vcard-fill", label: "Verifications", showPendingVerifications: true },
+  { to: "/admin/appeals", icon: "bi-envelope-paper-fill", label: "Appeals", showPendingAppeals: true },
   { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements" },
   { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins" },
   // The same Browse Services / Find Jobs pages users see, shown in admin mode.
@@ -28,6 +29,8 @@ export default function AdminLayout() {
   const [pendingReports, setPendingReports] = useState(0);
   // Number shown on the Verifications link.
   const [pendingVerifications, setPendingVerifications] = useState(0);
+  // Number shown on the Appeals link.
+  const [pendingAppeals, setPendingAppeals] = useState(0);
 
   // Counts pending reports (head: true = just the count, no rows). The Reports
   // page calls this after resolving/dismissing so the badge stays correct.
@@ -47,6 +50,16 @@ export default function AdminLayout() {
       .select("id", { count: "exact", head: true })
       .eq("status", "pending");
     setPendingVerifications(count || 0);
+  }, []);
+
+  // Counts appeals waiting for an admin. The Appeals page calls this after
+  // accepting/rejecting so the badge stays correct.
+  const refreshPendingAppeals = useCallback(async () => {
+    const { count } = await supabase
+      .from("appeals")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    setPendingAppeals(count || 0);
   }, []);
 
   useEffect(() => {
@@ -78,10 +91,11 @@ export default function AdminLayout() {
       setAdmin(adminRow);
       refreshPendingReports();
       refreshPendingVerifications();
+      refreshPendingAppeals();
     })();
 
     return () => { active = false; };
-  }, [navigate, refreshPendingReports, refreshPendingVerifications]);
+  }, [navigate, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -139,6 +153,9 @@ export default function AdminLayout() {
                   {link.showPendingVerifications && pendingVerifications > 0 && (
                     <span className="badge bg-danger rounded-pill ms-auto">{pendingVerifications}</span>
                   )}
+                  {link.showPendingAppeals && pendingAppeals > 0 && (
+                    <span className="badge bg-danger rounded-pill ms-auto">{pendingAppeals}</span>
+                  )}
                 </NavLink>
               ))}
             </aside>
@@ -147,7 +164,7 @@ export default function AdminLayout() {
           <main className="col-12 col-md-9 col-xl-10">
             {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                 to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, refreshPendingReports, refreshPendingVerifications }} />
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals }} />
           </main>
         </div>
       </div>

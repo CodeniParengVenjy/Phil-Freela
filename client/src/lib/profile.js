@@ -29,14 +29,11 @@ export async function resolvePostAuthRoute(user) {
   const { data: adminRow } = await supabase.from("admins").select("id").eq("id", user.id).maybeSingle();
   if (adminRow) return "/admin";
 
-  // A banned user is signed out right away; the thrown message is what the
-  // login page shows them. Suspended users can still log in (the dashboard
-  // shows them a banner and blocks posting and/or messaging).
+  // A banned user goes to the appeal page instead of the dashboard: it shows
+  // why, lets them appeal once, and has a Sign out button. Suspended users can
+  // still log in (the dashboard shows a banner and blocks posting/messaging).
   const suspension = await getActiveSuspension(user.id);
-  if (suspensionStatus(suspension) === "banned") {
-    await supabase.auth.signOut();
-    throw new Error(`Your account has been banned. Reason: ${suspension.reason}`);
-  }
+  if (suspensionStatus(suspension) === "banned") return "/appeal";
 
   const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", user.id).maybeSingle();
   if (profile) return dashboardRouteFor(profile.account_type);
