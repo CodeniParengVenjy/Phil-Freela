@@ -1,9 +1,11 @@
 fastapi>=0.110
 uvicorn>=0.29
 pydantic>=2
-# Identity verification (face check with DeepFace + ArcFace)
-deepface[tensorflow]>=0.0.101
-tf-keras>=2.21
+# Identity verification: the face models (YuNet + SFace) run on OpenCV.
+# "headless" = without the desktop-window parts, which a server doesn't need.
+opencv-python-headless>=4.10
+numpy>=1.26
+pillow>=10
 supabase>=2.31
 python-dotenv>=1.2
 python-multipart>=0.0.32

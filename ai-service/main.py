@@ -1,16 +1,17 @@
 """PhilFreela AI service.
 
-First time only, from this folder:
+Online, it runs on Vercel (free), which finds `app` in this file by itself;
+the live website reaches it through its own /ai address (a Cloudflare
+function forwards it, see client/functions/ai). See README.md.
+
+To run it on a laptop instead, first time only, from this folder:
     py -3.10 -m venv .venv
     .venv\\Scripts\\python -m pip install -r requirements.txt
+    .venv\\Scripts\\python get_models.py
     copy .env.example .env      (then fill in the real values)
 
 Run it:
     .venv\\Scripts\\python -m uvicorn main:app --port 8000
-
-It only needs to listen on this computer: the website (and phones on the same
-Wi-Fi) reach it through the website's own /ai address, which the Vite dev
-server forwards here (see client/vite.config.js).
 """
 
 import io
@@ -40,7 +41,7 @@ logger = logging.getLogger("uvicorn.error")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-    raise RuntimeError("Fill in SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in ai-service/.env (see .env.example).")
+    raise RuntimeError("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (in ai-service/.env on a laptop, or the host's environment variables).")
 
 # The service role key skips the database rules, which is why only this
 # service may hold it. That's what lets it save verifications that users

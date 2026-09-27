@@ -4,22 +4,19 @@ These take well under a second and don't train anything. They use:
   - OpenCV's "Laplacian variance" to measure sharpness. It measures how much
     the brightness jumps between neighbouring pixels: sharp photos have crisp
     edges (big jumps), blurry photos have soft edges (small jumps).
-  - YuNet, the same pretrained face finder the face check uses. Besides each
-    face's box, it returns 5 points: both eyes, the nose tip and the mouth
-    corners. When a head turns, the nose moves toward one side of the eyes,
-    which shows which way (and how far) it's turned.
+  - YuNet, the same pretrained face finder the face check uses (see
+    face_check.py). Besides each face's box, it returns 5 points: both eyes,
+    the nose tip and the mouth corners. When a head turns, the nose moves
+    toward one side of the eyes, which shows which way (and how far) it's turned.
 
 The numbers below were picked by measuring sample photos: sharp ones, the
 same ones blurred on purpose, and faces looking straight or turned.
 """
 
-import os
-import threading
-
 import cv2
 import numpy as np
-from deepface import DeepFace
-from deepface.commons import folder_utils
+
+from face_check import find_biggest_face, to_pixels
 
 # Front of the ID: the face must be at least this wide (in pixels)...
 MIN_ID_FACE_WIDTH = 120
@@ -40,28 +37,12 @@ class PhotoProblem(Exception):
     """A photo isn't good enough; the message tells the user what to do."""
 
 
-def _load_detector():
-    # Asking DeepFace for YuNet downloads its model file the first time.
-    DeepFace.build_model(model_name="yunet", task="face_detector")
-    model_file = os.path.join(folder_utils.get_deepface_home(), ".deepface", "weights", "face_detection_yunet_2023mar.onnx")
-    return cv2.FaceDetectorYN.create(model_file, "", (320, 320), 0.8)
-
-
-_detector = _load_detector()
-# The detector isn't safe to use from several requests at once, so they take turns.
-_lock = threading.Lock()
-
-
 def _biggest_face(image):
     """The biggest face in a photo as {"box": (x, y, w, h), "turn": number}, or None."""
-    pixels = np.array(image)[:, :, ::-1].copy()  # OpenCV wants BGR color order
-    with _lock:
-        _detector.setInputSize((pixels.shape[1], pixels.shape[0]))
-        _, faces = _detector.detect(pixels)
-    if faces is None:
+    face = find_biggest_face(to_pixels(image))
+    if face is None:
         return None
 
-    face = max(faces, key=lambda f: f[2] * f[3])
     x, y, w, h = face[:4]
     right_eye_x, _, left_eye_x, _, nose_x = face[4:9]
     eyes_middle = (right_eye_x + left_eye_x) / 2

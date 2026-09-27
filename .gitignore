@@ -4,3 +4,6 @@ node_modules/
 dist/
 __pycache__/
 .venv/
+.vercel/
+# Downloaded by ai-service/get_models.py (too big for GitHub)
+ai-service/models/face_recognition_sface_2021dec.onnx

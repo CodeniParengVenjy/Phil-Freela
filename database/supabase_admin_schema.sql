@@ -368,7 +368,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Admin panel step 4: ID verification (eKYC).
 -- The user sends a photo of their government ID and a selfie. The Python AI
--- service (ai-service folder) compares the two faces with DeepFace + ArcFace,
+-- service (ai-service folder) compares the two faces with OpenCV's YuNet + SFace,
 -- saves the photos and the result here, and an admin approves or rejects it.
 -- The AI service uses the service role key, which skips these rules, so it is
 -- the only thing that can add rows or upload photos. Browsers can't.

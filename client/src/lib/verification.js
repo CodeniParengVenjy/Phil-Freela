@@ -18,12 +18,12 @@ export function idTypeHasBack(value) {
   return ID_TYPES.find((type) => type.value === value)?.hasBack ?? true;
 }
 
-// ArcFace "distance" between the ID face and the face scan: the lower, the
-// more alike. 0.68 or lower counts as the same person (the AI service's
-// cutoff); 0.55 or lower is a strong match (same-person test photos
-// measured 0.20 to 0.54).
-export const MATCH_DISTANCE = 0.68;
-export const STRONG_MATCH_DISTANCE = 0.55;
+// SFace "distance" between the ID face and the face scan: the lower, the more
+// alike. 0.637 or lower counts as the same person (the AI service's cutoff,
+// OpenCV's recommended value); 0.50 or lower is a strong match (on sample
+// photos, the same person measured 0.49 or lower, different people 0.64 or higher).
+export const MATCH_DISTANCE = 0.637;
+export const STRONG_MATCH_DISTANCE = 0.5;
 
 // The AI's suggestion for the admin: level "good", "careful" or "reject",
 // with the text shown. It only reads the results the AI service saved.

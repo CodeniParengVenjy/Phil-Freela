@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "python get_models.py",
+  "regions": ["hnd1"],
+  "functions": {
+    "main.py": {
+      "maxDuration": 60,
+      "includeFiles": "models/**"
+    }
+  }
+}
