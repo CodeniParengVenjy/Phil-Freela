@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { MAX_NAME_LENGTH, saveDisplayName } from "../../../lib/profile";
 import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 
@@ -8,12 +9,28 @@ const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings
 export default function SettingsView() {
   const { displayName, setDisplayName, currentUserId, accountType, username, showToast } = useOutletContext();
   const [activeSubNav, setActiveSubNav] = useState("Profile Settings");
-  const [nameInput, setNameInput] = useState(displayName);
+  // null = not edited yet, so the box shows the saved name. (Copying it in
+  // once at the start would keep "User", the placeholder shown while the
+  // dashboard is still loading.)
+  const [nameInput, setNameInput] = useState(null);
+  const shownName = nameInput ?? displayName;
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (event) => {
+  // Saves the name to the database (not just the screen), so it stays
+  // after a refresh and other users see it too.
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    const newName = nameInput.trim() || "User";
-    setDisplayName(newName);
+    if (!currentUserId || saving) return;
+
+    setSaving(true);
+    const problem = await saveDisplayName(currentUserId, shownName);
+    setSaving(false);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+    setDisplayName(shownName.trim());
+    setNameInput(null);
     showToast("Settings saved successfully!");
   };
 
@@ -64,14 +81,15 @@ export default function SettingsView() {
                     <input
                       type="text"
                       className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                      value={nameInput}
+                      value={shownName}
                       onChange={(e) => setNameInput(e.target.value)}
+                      maxLength={MAX_NAME_LENGTH}
                     />
                   </div>
 
                   <div>
-                    <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role">
-                      Save Changes
+                    <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role" disabled={saving || !currentUserId}>
+                      {saving ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
                 </form>

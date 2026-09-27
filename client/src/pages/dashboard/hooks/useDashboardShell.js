@@ -78,6 +78,8 @@ export function useDashboardShell() {
         return;
       }
       const meta = session.user.user_metadata || {};
+      // A quick first value while the profile loads; the saved name from
+      // profiles (below) replaces it.
       setDisplayName(meta.full_name || meta.username || session.user.email || "User");
       setCurrentUserId(session.user.id);
 
@@ -87,7 +89,7 @@ export function useDashboardShell() {
       // role if the two ever fall out of sync.
       const { data: profile } = await supabase
         .from("profiles")
-        .select("account_type, username")
+        .select("account_type, username, full_name")
         .eq("id", session.user.id)
         .maybeSingle();
       if (!active) return;
@@ -107,6 +109,9 @@ export function useDashboardShell() {
       // switches the dashboard to the freelancer view.
       setAccountType(profile?.account_type === "freelancer" ? "freelancer" : "client");
       setUsername(profile?.username || "");
+      // profiles.full_name is the name saved in Settings, so a changed name
+      // stays after a refresh. The username is the fallback if it's empty.
+      setDisplayName(profile?.full_name || profile?.username || meta.full_name || session.user.email || "User");
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {

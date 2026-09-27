@@ -12,6 +12,28 @@ export async function getActiveSuspension(userId) {
   return suspensionStatus(data) ? data : null;
 }
 
+// Longest display name allowed -- the same limit as the sign-up form.
+export const MAX_NAME_LENGTH = 100;
+
+// Saves a new display name (Settings > Display Name). It goes into
+// profiles.full_name, the name other people see in chat, jobs and services,
+// and into the login's user_metadata, the copy the emails use ("Reset your
+// password, Venj"). Returns "" when saved, or a message to show the user.
+export async function saveDisplayName(userId, name) {
+  const fullName = name.trim();
+  if (!fullName) return "Please enter a name.";
+  if (fullName.length > MAX_NAME_LENGTH) return `Your name can't be longer than ${MAX_NAME_LENGTH} characters.`;
+
+  // .select("id") returns the updated row, so an empty result means nothing was saved.
+  const { data, error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId).select("id");
+  if (error || !data?.length) return "Couldn't save your name. Please try again.";
+
+  // The dashboard reads the name from profiles, so if only this second copy
+  // fails, the new name still shows everywhere; it isn't treated as an error.
+  await supabase.auth.updateUser({ data: { full_name: fullName } });
+  return "";
+}
+
 // Ensures a `profiles` row exists for an authenticated user, returning the
 // route to send them to next.
 //
