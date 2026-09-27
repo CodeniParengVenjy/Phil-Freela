@@ -13,11 +13,12 @@ function loadImage(url) {
   });
 }
 
-export async function shrinkImage(file) {
+// maxSide is optional: profile pictures pass a smaller size (lib/avatar.js).
+export async function shrinkImage(file, maxSide = MAX_SIDE) {
   const url = URL.createObjectURL(file);
   try {
     const img = await loadImage(url);
-    const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
 
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(img.naturalWidth * scale);

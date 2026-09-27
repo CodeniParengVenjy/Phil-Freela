@@ -3,6 +3,7 @@ import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import Avatar from "../../../components/Avatar";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import ReportDialog from "../components/ReportDialog";
 import BlockedNotice from "../components/BlockedNotice";
@@ -93,8 +94,8 @@ export default function ChatView() {
         .from("conversations")
         .select(`
           id, user_a, user_b, user_a_last_read_at, user_b_last_read_at,
-          a:profiles!conversations_user_a_fkey(id, full_name, username),
-          b:profiles!conversations_user_b_fkey(id, full_name, username)
+          a:profiles!conversations_user_a_fkey(id, full_name, username, avatar_path),
+          b:profiles!conversations_user_b_fkey(id, full_name, username, avatar_path)
         `)
         .eq("id", conversationId)
         .maybeSingle();
@@ -371,9 +372,7 @@ export default function ChatView() {
             <button className="btn btn-sm btn-dark text-secondary" onClick={() => navigate("/dashboard/inbox")}>
               <i className="bi bi-arrow-left fs-5"></i>
             </button>
-            <div className="avatar-circle bg-success text-white fw-bold d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
-              <i className="bi bi-person-fill fs-5"></i>
-            </div>
+            <Avatar path={otherProfile?.avatar_path} name={otherProfile ? recipientName : ""} size={40} />
             <div>
               <h6 className="text-white fw-bold mb-0">
                 {recipientName}

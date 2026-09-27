@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { MAX_NAME_LENGTH, saveDisplayName } from "../../../lib/profile";
+import { checkAvatarFile, uploadAvatar } from "../../../lib/avatar";
+import Avatar from "../../../components/Avatar";
 import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Privacy & Notifications"];
 
 export default function SettingsView() {
-  const { displayName, setDisplayName, currentUserId, accountType, username, showToast } = useOutletContext();
+  const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
   const [activeSubNav, setActiveSubNav] = useState("Profile Settings");
   // null = not edited yet, so the box shows the saved name. (Copying it in
   // once at the start would keep "User", the placeholder shown while the
@@ -15,22 +17,58 @@ export default function SettingsView() {
   const [nameInput, setNameInput] = useState(null);
   const shownName = nameInput ?? displayName;
   const [saving, setSaving] = useState(false);
+  // A picture that was picked but not saved yet; it's previewed until Save Changes.
+  const [pickedPicture, setPickedPicture] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const pictureInputRef = useRef(null);
 
-  // Saves the name to the database (not just the screen), so it stays
-  // after a refresh and other users see it too.
+  // Frees the old preview's memory whenever it's replaced or the page closes.
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  const handlePicturePick = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // lets the same file be picked again later
+    if (!file) return;
+    const problem = checkAvatarFile(file);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+    setPickedPicture(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  // Saves the name and the picked picture to the database (not just the
+  // screen), so they stay after a refresh and other users see them too.
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId || saving) return;
 
     setSaving(true);
-    const problem = await saveDisplayName(currentUserId, shownName);
-    setSaving(false);
-    if (problem) {
-      showToast(problem);
+    const nameProblem = await saveDisplayName(currentUserId, shownName);
+    if (nameProblem) {
+      setSaving(false);
+      showToast(nameProblem);
       return;
     }
     setDisplayName(shownName.trim());
     setNameInput(null);
+
+    if (pickedPicture) {
+      const { path, error } = await uploadAvatar(currentUserId, pickedPicture, avatarPath);
+      if (error) {
+        setSaving(false);
+        showToast(error);
+        return;
+      }
+      setAvatarPath(path);
+      setPickedPicture(null);
+      setPreviewUrl(null);
+    }
+
+    setSaving(false);
     showToast("Settings saved successfully!");
   };
 
@@ -65,13 +103,13 @@ export default function SettingsView() {
                   <div>
                     <label className="form-label text-white-50 fw-semibold fs-7 mb-2">Upload Profile Picture:</label>
                     <div className="d-flex align-items-center gap-4">
-                      <div className="avatar-circle bg-secondary text-white fw-bold d-flex align-items-center justify-content-center border border-2 border-secondary" style={{ width: 90, height: 90 }}>
-                        <i className="bi bi-person fs-1"></i>
-                      </div>
+                      <Avatar path={avatarPath} previewUrl={previewUrl} name={displayName} size={90} className="border border-2 border-secondary" />
                       <div className="d-flex flex-column gap-2">
-                        <input type="file" className="d-none" id="avatarFileInput" accept="image/*" />
-                        <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => document.getElementById("avatarFileInput")?.click()}>Upload Picture</button>
-                        <small className="text-secondary fs-8">JPG, PNG or GIF. Max 5MB.</small>
+                        <input type="file" className="d-none" ref={pictureInputRef} accept="image/jpeg,image/png,image/webp,image/gif" onChange={handlePicturePick} />
+                        <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => pictureInputRef.current?.click()} disabled={saving}>Upload Picture</button>
+                        <small className="text-secondary fs-8">
+                          {pickedPicture ? "Press Save Changes to keep this picture." : "JPG, PNG, WebP or GIF. Max 5 MB."}
+                        </small>
                       </div>
                     </div>
                   </div>

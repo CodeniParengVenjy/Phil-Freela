@@ -22,6 +22,9 @@ export function useDashboardShell() {
   const [currentUserId, setCurrentUserId] = useState(null);
   // The signed-in user's @username (shown faintly over their own portfolio slides).
   const [username, setUsername] = useState("");
+  // Where the signed-in user's profile picture is in the avatars bucket
+  // ("" = no picture). Settings updates it after an upload.
+  const [avatarPath, setAvatarPath] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   // Number on the Notifications link: announcements and the user's own
   // notifications not read yet.
@@ -89,7 +92,7 @@ export function useDashboardShell() {
       // role if the two ever fall out of sync.
       const { data: profile } = await supabase
         .from("profiles")
-        .select("account_type, username, full_name")
+        .select("account_type, username, full_name, avatar_path")
         .eq("id", session.user.id)
         .maybeSingle();
       if (!active) return;
@@ -112,6 +115,7 @@ export function useDashboardShell() {
       // profiles.full_name is the name saved in Settings, so a changed name
       // stays after a refresh. The username is the fallback if it's empty.
       setDisplayName(profile?.full_name || profile?.username || meta.full_name || session.user.email || "User");
+      setAvatarPath(profile?.avatar_path || "");
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -309,6 +313,7 @@ export function useDashboardShell() {
 
   return {
     displayName, setDisplayName, accountType, currentUserId, username,
+    avatarPath, setAvatarPath,
     unreadCount, refreshUnreadCount,
     unreadNotifications, refreshUnreadNotifications,
     suspension,

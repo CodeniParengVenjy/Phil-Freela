@@ -19,6 +19,7 @@ const sidebarLinks = [
 // calling the hook itself, so the auth session isn't fetched twice.
 export default function ClientDashboardLayout({
   displayName, setDisplayName, accountType, currentUserId, username,
+  avatarPath, setAvatarPath,
   unreadCount, refreshUnreadCount,
   unreadNotifications, refreshUnreadNotifications,
   suspension,
@@ -33,7 +34,7 @@ export default function ClientDashboardLayout({
 
   return (
     <div className="bg-dark text-light">
-      <DashboardTopNav displayName={displayName} accountType={accountType} currentUserId={currentUserId} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} />
+      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} />
 
       <div className="app-container d-flex">
         <aside className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
@@ -102,7 +103,7 @@ export default function ClientDashboardLayout({
             </div>
           )}
 
-          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, suspension }} />
+          <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, suspension }} />
         </main>
       </div>
 

@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { fetchIsVerified } from "../../../lib/verification";
 import PortfolioSection from "../components/PortfolioSection";
+import Avatar from "../../../components/Avatar";
 
 const initialSkills = ["Critical Thinker", "Web Developer", "Creativity", "Video Editing"];
 
 export default function ProfileView() {
-  const { displayName, currentUserId, accountType, username, showToast } = useOutletContext();
+  const { displayName, avatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
   const [skills, setSkills] = useState(initialSkills);
   // null while checking, then true/false (approved identity verification).
   const [verified, setVerified] = useState(null);
@@ -37,9 +38,7 @@ export default function ProfileView() {
 
             <div className="position-relative z-2">
               <div className="profile-avatar-container mx-auto mb-3">
-                <div className="profile-avatar-box rounded-circle bg-success d-flex align-items-center justify-content-center text-white border border-4 border-dark shadow-2xl mx-auto" style={{ width: 120, height: 120, fontSize: "3rem" }}>
-                  <i className="bi bi-person-fill"></i>
-                </div>
+                <Avatar path={avatarPath} name={displayName} size={120} className="border border-4 border-dark shadow-2xl" />
               </div>
 
               <h2 className="fw-bold text-white mb-4">{displayName}</h2>

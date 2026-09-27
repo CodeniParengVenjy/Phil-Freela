@@ -255,5 +255,17 @@ Step 1 files: `lib/profile.js` (`saveDisplayName`, `MAX_NAME_LENGTH`),
 `views/SettingsView.jsx`, `hooks/useDashboardShell.js` (reads `full_name`
 from `profiles`).
 
-Next: plan Step 2 (Upload Profile Picture) in detail. It needs SQL, so the
-Supabase connector should be authorized first (or the user pastes the SQL).
+Step 2 (Upload Profile Picture): built and pushed live (2026-09-27).
+`database/supabase_avatar_schema.sql` has been run on Supabase (migration
+"profile_pictures"), so don't run it again. Still needs the user to test it
+on the live site. Change from the plan: the column is `avatar_path` (the
+file's path, checked to be in the user's own folder), not a full
+`avatar_url` link.
+
+Next: plan Step 3 (Google sign up) in detail.
+
+Step 2 files: `database/supabase_avatar_schema.sql`, `lib/avatar.js`,
+`lib/shrinkImage.js` (optional size), `components/Avatar.jsx`,
+`useDashboardShell.js`, both dashboard layouts, `DashboardTopNav.jsx`,
+`SettingsView.jsx`, `ProfileView.jsx`, `InboxView.jsx`, `ChatView.jsx`,
+`FreelancerPortfolioView.jsx`.

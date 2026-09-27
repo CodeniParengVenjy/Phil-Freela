@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import Avatar from "../../../components/Avatar";
 
 export default function InboxView() {
   const { currentUserId } = useOutletContext();
@@ -20,8 +21,8 @@ export default function InboxView() {
         .from("conversations")
         .select(`
           id, last_message_at, last_message_preview, user_a, user_b,
-          a:profiles!conversations_user_a_fkey(id, full_name, username, account_type),
-          b:profiles!conversations_user_b_fkey(id, full_name, username, account_type)
+          a:profiles!conversations_user_a_fkey(id, full_name, username, account_type, avatar_path),
+          b:profiles!conversations_user_b_fkey(id, full_name, username, account_type, avatar_path)
         `)
         .or(`user_a.eq.${currentUserId},user_b.eq.${currentUserId}`)
         .order("last_message_at", { ascending: false });
@@ -56,6 +57,7 @@ export default function InboxView() {
         id: c.id,
         otherId: other?.id,
         name: other?.full_name || other?.username || "Unknown user",
+        avatarPath: other?.avatar_path,
         preview: c.last_message_preview || "No messages yet",
         lastMessageAt: c.last_message_at
       };
@@ -108,9 +110,7 @@ export default function InboxView() {
               onClick={() => navigate(`/dashboard/chat/${c.id}`)}
             >
               <div className="d-flex align-items-center gap-3">
-                <div className="avatar-circle bg-secondary text-white fw-bold flex-shrink-0 d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
-                  <i className="bi bi-person-fill fs-4"></i>
-                </div>
+                <Avatar path={c.avatarPath} name={c.name} size={48} />
                 <div>
                   <h6 className="text-white fw-bold mb-1">
                     {c.name}

@@ -2,11 +2,12 @@ import { NavLink, useLocation } from "react-router-dom";
 import { dashboardRouteFor } from "../../../lib/profile";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import Avatar from "../../../components/Avatar";
 
 // Identical between the freelancer and client dashboards -- brand, search,
 // the three quick links, and the account dropdown -- so both layouts share
 // this instead of each keeping their own copy.
-export default function DashboardTopNav({ displayName, accountType, currentUserId, onToggleSidebar, onSignOut, onSwitchRole }) {
+export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, onToggleSidebar, onSignOut, onSwitchRole }) {
   const isVerified = useVerifiedIds([currentUserId]).has(currentUserId);
   const switchLabel = accountType === "client" ? "Switch to Freelancer" : "Switch to Client";
   const switchHref = accountType === "client" ? "/dashboard-freelancer" : "/dashboard-client";
@@ -56,7 +57,7 @@ export default function DashboardTopNav({ displayName, accountType, currentUserI
 
           <div className="dropdown">
             <button className="btn btn-dark border border-secondary border-opacity-50 rounded-pill d-flex align-items-center gap-2 px-3 py-1 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <span className="avatar-circle-sm bg-orange text-white fw-bold">{displayName.charAt(0).toUpperCase()}</span>
+              <Avatar path={avatarPath} name={displayName} size={32} />
               <span className="fw-semibold fs-7 text-truncate d-none d-sm-inline">
                 {displayName}
                 <VerifiedBadge verified={isVerified} />
