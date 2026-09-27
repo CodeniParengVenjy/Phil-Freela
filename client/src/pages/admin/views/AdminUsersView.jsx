@@ -21,9 +21,10 @@ export default function AdminUsersView() {
     let active = true;
 
     (async () => {
-      // Load users and suspensions at the same time.
+      // Load users and suspensions at the same time. admin_list_users() is a
+      // database function that adds each user's email (only admins can call it).
       const [profilesResult, suspensionsResult] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, username, account_type, created_at").order("created_at", { ascending: false }),
+        supabase.rpc("admin_list_users"),
         supabase.from("user_suspensions").select("user_id, reason, created_at")
       ]);
 
@@ -46,7 +47,8 @@ export default function AdminUsersView() {
   const visibleUsers = (users || []).filter((user) => {
     const matchesSearch = !searchText
       || (user.full_name || "").toLowerCase().includes(searchText)
-      || (user.username || "").toLowerCase().includes(searchText);
+      || (user.username || "").toLowerCase().includes(searchText)
+      || (user.email || "").toLowerCase().includes(searchText);
     const matchesRole = roleFilter === "all" || user.account_type === roleFilter;
     const isSuspended = Boolean(suspensions[user.id]);
     const matchesStatus = statusFilter === "all" || (statusFilter === "suspended" ? isSuspended : !isSuspended);
@@ -125,7 +127,7 @@ export default function AdminUsersView() {
             <input
               type="search"
               className="form-control admin-input"
-              placeholder="Search by name or username..."
+              placeholder="Search by name, username, or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -158,6 +160,7 @@ export default function AdminUsersView() {
               <tr>
                 <th>Full Name</th>
                 <th>Username</th>
+                <th>Email</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Joined</th>
@@ -166,13 +169,13 @@ export default function AdminUsersView() {
             </thead>
             <tbody>
               {loadError && (
-                <tr><td colSpan={6} className="text-center text-white-50 py-4">{loadError}</td></tr>
+                <tr><td colSpan={7} className="text-center text-white-50 py-4">{loadError}</td></tr>
               )}
               {!loadError && users === null && (
-                <tr><td colSpan={6} className="text-center text-white-50 py-4">Loading users...</td></tr>
+                <tr><td colSpan={7} className="text-center text-white-50 py-4">Loading users...</td></tr>
               )}
               {!loadError && users !== null && visibleUsers.length === 0 && (
-                <tr><td colSpan={6} className="text-center text-white-50 py-4">No users found.</td></tr>
+                <tr><td colSpan={7} className="text-center text-white-50 py-4">No users found.</td></tr>
               )}
               {!loadError && visibleUsers.map((user) => {
                 const suspension = suspensions[user.id];
@@ -180,6 +183,13 @@ export default function AdminUsersView() {
                   <tr key={user.id}>
                     <td>{user.full_name}</td>
                     <td>{user.username}</td>
+                    <td>
+                      {user.email}
+                      {/* The user signed up but never clicked the link in the confirmation email. */}
+                      {!user.email_confirmed_at && (
+                        <div><span className="badge bg-secondary fw-normal mt-1">Unconfirmed</span></div>
+                      )}
+                    </td>
                     <td>
                       <span className={`badge ${user.account_type === "client" ? "bg-info" : "admin-badge-orange"} text-white fw-normal`}>
                         {user.account_type === "client" ? "Client" : "Freelancer"}

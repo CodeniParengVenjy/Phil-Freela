@@ -549,3 +549,41 @@ alter table public.identity_verifications
   add column selfie_left_path text not null,
   add column selfie_right_path text not null,
   add column liveness_passed boolean not null;
+
+-- ---------------------------------------------------------------------------
+-- Admin panel: show each user's email on the Users page.
+-- Emails live in Supabase's private auth.users table, which the browser can't
+-- read. This function joins it with profiles, but only for admins.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.admin_list_users()
+returns table (
+  id uuid,
+  full_name text,
+  username text,
+  account_type text,
+  created_at timestamptz,
+  email text,
+  email_confirmed_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can view users.';
+  end if;
+
+  return query
+    select p.id, p.full_name::text, p.username::text, p.account_type::text,
+           p.created_at, u.email::text, u.email_confirmed_at
+    from public.profiles p
+    join auth.users u on u.id = p.id
+    order by p.created_at desc;
+end;
+$$;
+
+revoke execute on function public.admin_list_users() from public, anon;
+grant execute on function public.admin_list_users() to authenticated;
