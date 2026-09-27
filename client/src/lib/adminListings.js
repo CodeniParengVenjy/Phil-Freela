@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { removeServiceFiles } from "./slides";
+import { removeItemFiles } from "./slides";
 
 // Admin "Remove" for a service or job post, shared by the admin Listings page
 // and the admin Browse pages. table is "services" or "job_posts".
@@ -12,7 +12,7 @@ export async function removeListing(table, item) {
 
   // Services have photos/videos in storage; delete them too so no unused
   // files are left behind. A failure here only leaves stray files.
-  if (table === "services") await removeServiceFiles(item);
+  if (table === "services") await removeItemFiles(item);
 
   return true;
 }

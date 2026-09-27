@@ -1,0 +1,146 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH, createPortfolioItem } from "../../../lib/portfolio";
+import { SLIDE_HINT, addPickedFiles, uploadSlides } from "../../../lib/slides";
+import SlidePicker from "./SlidePicker";
+
+// The "+ Add to Portfolio" popup: a title, a short description, and up to 10
+// photos and videos. It saves the project first, then uploads the files one
+// at a time (like Post a Service) and calls onSaved(project, failed), where
+// failed lists files that couldn't be added. It can't be closed mid-upload.
+export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  // The picked photos and videos: [{ key, file }].
+  const [slideItems, setSlideItems] = useState([]);
+  const [slidesError, setSlidesError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
+  // "Uploading 2 of 5..." while the files are being sent.
+  const [progress, setProgress] = useState("");
+
+  // Escape closes it, unless it's uploading.
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !saving) onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [saving, onClose]);
+
+  const handleAddSlides = async (files) => {
+    const result = await addPickedFiles(slideItems, files);
+    setSlideItems(result.items);
+    setSlidesError(result.error);
+  };
+
+  const handleRemoveSlide = (key) => {
+    setSlideItems((prev) => prev.filter((item) => item.key !== key));
+    setSlidesError("");
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!title.trim() || slideItems.length === 0) return;
+    setSaving(true);
+    setFormError("");
+
+    // 1. Save the project itself. Its photos and videos are added next.
+    let project;
+    try {
+      project = await createPortfolioItem(userId, { title, description });
+    } catch (err) {
+      setSaving(false);
+      setFormError(err.message);
+      return;
+    }
+
+    // 2. Send the files one at a time through the AI service.
+    const { slides, failed } = await uploadSlides({ portfolioItemId: project.id }, slideItems, userId, setProgress);
+    onSaved({ ...project, slides }, failed);
+  };
+
+  return createPortal(
+    <div
+      className="role-confirm-backdrop"
+      style={{
+        position: "fixed", inset: 0, zIndex: 1250,
+        background: "rgba(0,0,0,0.75)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
+      }}
+      onClick={saving ? undefined : onClose}
+    >
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="portfolio-upload-title"
+        className="role-confirm-card bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4 d-flex flex-column gap-3"
+        style={{ maxWidth: 620, width: "100%", maxHeight: "92vh", overflowY: "auto" }}
+        onClick={(event) => event.stopPropagation()}
+        onSubmit={handleSubmit}
+      >
+        <div className="d-flex justify-content-between align-items-start gap-3">
+          <h5 id="portfolio-upload-title" className="fw-bold mb-0">
+            <i className="bi bi-plus-circle text-orange me-2"></i>Add to Portfolio
+          </h5>
+          <button type="button" className="btn btn-sm btn-outline-light rounded-circle flex-shrink-0" aria-label="Close" onClick={onClose} disabled={saving}>
+            <i className="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div>
+          <label htmlFor="portfolioTitle" className="form-label text-white fw-semibold fs-7">Project title:</label>
+          <input
+            id="portfolioTitle"
+            type="text"
+            className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+            placeholder="e.g. Brand identity for a Cebu coffee shop"
+            maxLength={MAX_TITLE_LENGTH}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={saving}
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="portfolioDescription" className="form-label text-white fw-semibold fs-7">Short description (optional):</label>
+          <textarea
+            id="portfolioDescription"
+            className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
+            rows="3"
+            placeholder="What you made, the tools you used, and your role..."
+            maxLength={MAX_DESCRIPTION_LENGTH}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={saving}
+          ></textarea>
+        </div>
+
+        <div>
+          <label className="form-label text-white fw-semibold fs-7">Photos and videos (at least one):</label>
+          <SlidePicker
+            items={slideItems}
+            onAdd={handleAddSlides}
+            onRemove={handleRemoveSlide}
+            hint={SLIDE_HINT}
+            error={slidesError}
+            disabled={saving}
+          />
+        </div>
+
+        {formError && <p className="text-warning fs-8 mb-0">{formError}</p>}
+
+        <div className="d-flex justify-content-end gap-2 pt-1">
+          <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 fw-bold" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-gradient-orange rounded-pill px-4 fw-bold text-white" disabled={saving || !title.trim() || slideItems.length === 0}>
+            {saving ? progress || "Saving..." : "Add to Portfolio"}
+          </button>
+        </div>
+      </form>
+    </div>,
+    document.body
+  );
+}

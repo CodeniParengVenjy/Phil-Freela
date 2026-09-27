@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { SLIDES_SELECT, removeServiceFiles } from "../../../lib/slides";
+import { SLIDES_SELECT, removeItemFiles } from "../../../lib/slides";
 import ServiceCard from "../components/ServiceCard";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 
@@ -60,7 +60,7 @@ export default function ProjectsView() {
 
     // The row is gone, so remove its photos and videos from Storage too. If
     // that fails it only leaves unused files behind, so it isn't treated as an error.
-    await removeServiceFiles(service);
+    await removeItemFiles(service);
 
     setServices((prev) => prev.filter((s) => s.id !== service.id));
     setServiceToDelete(null);

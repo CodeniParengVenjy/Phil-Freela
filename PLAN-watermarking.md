@@ -63,6 +63,22 @@ Step 1 files: `database/supabase_slides_schema.sql`, `ai-service/main.py`
 `ServiceCard.jsx`, `ProjectsView.jsx`, `AdminListingsView.jsx`,
 `AdminReportsView.jsx`, `functions/ai/[[path]].js` (offline message).
 
+Step 2: built, not committed yet (2026-09-27). Waiting for
+`database/supabase_portfolio_schema.sql` to be run on Supabase (checked:
+`portfolio_items` doesn't exist yet), then for the user to test it.
+
+Step 2 files: `database/supabase_portfolio_schema.sql`, `ai-service/main.py`
+(`POST /slides` also takes `portfolio_item_id`), `lib/slides.js`
+(`itemSlides`, `removeItemFiles`, `addPickedFiles`, `uploadSlides`),
+`lib/portfolio.js`, `lib/aiService.js`, `lib/pageTitles.js`, `App.jsx`,
+`components/PortfolioSection.jsx`, `PortfolioViewer.jsx`,
+`PortfolioUploadDialog.jsx`, `portfolio.css`, `MediaCarousel.jsx` +
+`slides.css` (viewer-name overlay), `useDashboardShell.js` + both dashboard
+layouts (`username`), `ProfileView.jsx`, `FreelancerPortfolioView.jsx`,
+`BrowseServicesView.jsx`, `ServicesView.jsx`, and the `serviceSlides` ->
+`itemSlides` rename in `ServiceCard.jsx`, `ProjectsView.jsx`,
+`AdminListingsView.jsx`, `lib/adminListings.js`.
+
 ## Reminders for later steps
 
 - Step 7: REMIND THE USER to decide the video size limit. Until Step 7

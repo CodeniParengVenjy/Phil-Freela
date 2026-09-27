@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
-import { SLIDES_SELECT, serviceSlides } from "../../../lib/slides";
+import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import ReportDialog from "../components/ReportDialog";
 import MediaCarousel from "../components/MediaCarousel";
@@ -12,7 +12,8 @@ import MediaCarousel from "../components/MediaCarousel";
 export default function BrowseServicesView() {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Services): admins get a Remove button instead of Message.
-  const { openChat, isAdmin, currentUserId, showToast } = useOutletContext();
+  // username: shown faintly over other freelancers' slides (not in the admin panel).
+  const { openChat, isAdmin, currentUserId, username, showToast } = useOutletContext();
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
   const [services, setServices] = useState(null);
@@ -105,12 +106,17 @@ export default function BrowseServicesView() {
           {filtered.map((s) => {
             const meta = getCategory(s.category);
             const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "Freelancer";
-            const slides = serviceSlides(s);
+            const slides = itemSlides(s);
             return (
               <div className="col-md-6 col-lg-4" key={s.id}>
                 <div className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
                   {slides.length > 0 ? (
-                    <MediaCarousel slides={slides} height={140} alt={s.title} />
+                    <MediaCarousel
+                      slides={slides}
+                      height={140}
+                      alt={s.title}
+                      viewerName={s.freelancer?.id === currentUserId ? undefined : username}
+                    />
                   ) : (
                     <div className="d-flex align-items-center justify-content-center bg-role-subtle" style={{ height: 140 }}>
                       <i className={`bi ${meta.icon} text-role`} style={{ fontSize: "2.75rem" }}></i>
@@ -120,7 +126,13 @@ export default function BrowseServicesView() {
                     <span className="badge bg-black text-light-50 align-self-start mb-2 fs-8">{meta.label}</span>
                     <h6 className="text-white fw-bold mb-1">{s.title}</h6>
                     <p className="fs-8 text-secondary mb-3 flex-grow-1">
-                      by {freelancerName}
+                      by{" "}
+                      {/* Opens their public portfolio page (admins stay in the admin panel). */}
+                      {!isAdmin && s.freelancer?.id ? (
+                        <Link to={`/dashboard/freelancers/${s.freelancer.id}`} className="text-secondary text-decoration-underline">
+                          {freelancerName}
+                        </Link>
+                      ) : freelancerName}
                       <VerifiedBadge verified={verifiedIds.has(s.freelancer?.id)} />
                     </p>
                     <div className="d-flex align-items-center justify-content-between gap-2">

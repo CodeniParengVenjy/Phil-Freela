@@ -16,7 +16,7 @@ const sidebarLinks = [
 // DashboardLayout (which calls useDashboardShell() once) rather than
 // calling the hook itself, so the auth session isn't fetched twice.
 export default function FreelancerDashboardLayout({
-  displayName, setDisplayName, accountType, currentUserId,
+  displayName, setDisplayName, accountType, currentUserId, username,
   unreadCount, refreshUnreadCount,
   unreadAnnouncements, refreshUnreadAnnouncements,
   toast, closeToast, showToast,
@@ -97,7 +97,7 @@ export default function FreelancerDashboardLayout({
             </div>
           )}
 
-          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, showToast, openChat, openPreview, refreshUnreadCount, unreadAnnouncements, refreshUnreadAnnouncements }} />
+          <Outlet context={{ displayName, setDisplayName, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadAnnouncements, refreshUnreadAnnouncements }} />
         </main>
       </div>
 

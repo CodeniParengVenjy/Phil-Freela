@@ -3,7 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
 import { fetchIsVerified } from "../../../lib/verification";
-import { MAX_SLIDES, SLIDE_HINT, SLIDES_SELECT, checkSlideFile, uploadSlide } from "../../../lib/slides";
+import { SLIDE_HINT, SLIDES_SELECT, addPickedFiles, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
 
@@ -15,9 +15,6 @@ const skillOptions = [
 ];
 
 const SERVICE_COLUMNS = "id, title, category, price, image_url, media_type, created_at";
-
-// Gives each picked file its own key, so the picker can tell them apart.
-let nextSlideKey = 0;
 
 export default function ServicesView() {
   const { currentUserId, showToast } = useOutletContext();
@@ -69,20 +66,9 @@ export default function ServicesView() {
 
   // Called by the picker with newly picked or dropped files.
   const handleAddSlides = async (files) => {
-    const problems = [];
-    const accepted = [];
-    for (const file of files) {
-      const problem = await checkSlideFile(file);
-      if (problem) problems.push(`${file.name}: ${problem}`);
-      else accepted.push({ key: nextSlideKey++, file });
-    }
-
-    const room = MAX_SLIDES - slideItems.length;
-    if (accepted.length > room) {
-      problems.push(`Only ${MAX_SLIDES} photos and videos fit, so ${accepted.length - room} were left out.`);
-    }
-    setSlideItems((prev) => [...prev, ...accepted].slice(0, MAX_SLIDES));
-    setSlidesError(problems.join(" "));
+    const result = await addPickedFiles(slideItems, files);
+    setSlideItems(result.items);
+    setSlidesError(result.error);
   };
 
   const handleRemoveSlide = (key) => {
@@ -115,19 +101,9 @@ export default function ServicesView() {
       return;
     }
 
-    // 2. Send the photos and videos one at a time through the AI service
-    // (each request must stay small, and this shows progress). If one fails,
-    // the service keeps the ones that worked.
-    const slides = [];
-    const failed = [];
-    for (const [index, { file }] of slideItems.entries()) {
-      setProgress(`Uploading ${index + 1} of ${slideItems.length}...`);
-      try {
-        slides.push(await uploadSlide(service.id, file, currentUserId));
-      } catch (err) {
-        failed.push(`${file.name}: ${err.message}`);
-      }
-    }
+    // 2. Send the photos and videos one at a time through the AI service.
+    // If one fails, the service keeps the ones that worked.
+    const { slides, failed } = await uploadSlides({ serviceId: service.id }, slideItems, currentUserId, setProgress);
 
     setSubmitting(false);
     setProgress("");

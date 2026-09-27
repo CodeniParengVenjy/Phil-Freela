@@ -387,15 +387,21 @@ def submit_from_phone(
 
 
 # ---------------------------------------------------------------------------
-# Service slideshows (watermarking system, step 1)
-# A service shows up to 10 photos and videos. Every one goes through here
-# (browsers can't upload to the "slide-media" bucket themselves), so each is
-# checked, and from step 3 on it also gets watermarked here.
+# Slideshows for services and portfolio projects (watermarking system,
+# steps 1-2). Each shows up to 10 photos and videos. Every one goes through
+# here (browsers can't upload to the "slide-media" bucket themselves), so each
+# is checked, and from step 3 on it also gets watermarked here.
 # ---------------------------------------------------------------------------
 
 SLIDE_BUCKET = "slide-media"
 SLIDE_UPLOADS_BUCKET = "slide-uploads"
-MAX_SLIDES_PER_SERVICE = 10
+# What a slide can belong to: its table, the media_slides column pointing at
+# it, and what to call it in messages.
+SLIDE_OWNERS = {
+    "service": ("services", "service_id", "service"),
+    "portfolio": ("portfolio_items", "portfolio_item_id", "project"),
+}
+MAX_SLIDES_PER_ITEM = 10
 MAX_SLIDES_PER_FREELANCER = 50
 MAX_VIDEOS_PER_FREELANCER = 5
 MAX_VIDEO_SIZE = 50 * 1024 * 1024  # same limit as the storage buckets
@@ -413,39 +419,43 @@ def remove_quietly(bucket, path):
         logger.warning("Couldn't delete %s from %s", path, bucket)
 
 
-def ensure_own_service(user_id, service_id):
-    """Slides can only be added by the service's owner, and not while suspended."""
+def ensure_own_item(user_id, owner, item_id):
+    """Slides can only be added by the service's or project's owner, and not
+    while suspended or banned."""
+    table, _, name = SLIDE_OWNERS[owner]
     try:
-        uuid.UUID(service_id)
+        uuid.UUID(item_id)
     except ValueError:
-        raise HTTPException(404, "That service no longer exists.")
+        raise HTTPException(404, f"That {name} no longer exists.")
 
-    rows = supabase.table("services").select("freelancer_id").eq("id", service_id).limit(1).execute().data
+    rows = supabase.table(table).select("freelancer_id").eq("id", item_id).limit(1).execute().data
     if not rows:
-        raise HTTPException(404, "That service no longer exists.")
+        raise HTTPException(404, f"That {name} no longer exists.")
     if rows[0]["freelancer_id"] != user_id:
-        raise HTTPException(403, "You can only add photos and videos to your own services.")
+        raise HTTPException(403, f"You can only add photos and videos to your own {name}s.")
 
     # Same check the database rules use: a ban, or a suspension that hasn't ended.
     if supabase.rpc("is_suspended", {"target": user_id}).execute().data:
         raise HTTPException(403, "Your account is suspended or banned, so you can't upload right now.")
 
 
-def next_slide_position(user_id, service_id, media_type):
+def next_slide_position(user_id, owner, item_id, media_type):
     """Checks the upload limits and returns the first free spot (1-10) in the
-    service's slideshow."""
-    used = {row["position"] for row in supabase.table("media_slides").select("position").eq("service_id", service_id).execute().data}
-    if len(used) >= MAX_SLIDES_PER_SERVICE:
-        raise HTTPException(409, f"A service can have at most {MAX_SLIDES_PER_SERVICE} photos and videos.")
+    service's or project's slideshow."""
+    _, column, name = SLIDE_OWNERS[owner]
+    used = {row["position"] for row in supabase.table("media_slides").select("position").eq(column, item_id).execute().data}
+    if len(used) >= MAX_SLIDES_PER_ITEM:
+        raise HTTPException(409, f"A {name} can have at most {MAX_SLIDES_PER_ITEM} photos and videos.")
 
-    # Limits across all of the freelancer's services, to save storage space.
+    # Limits across all of the freelancer's services and projects together,
+    # to save storage space.
     mine = supabase.table("media_slides").select("media_type").eq("freelancer_id", user_id).execute().data
     if len(mine) >= MAX_SLIDES_PER_FREELANCER:
-        raise HTTPException(409, f"You've reached the limit of {MAX_SLIDES_PER_FREELANCER} photos and videos. Delete a service to add more.")
+        raise HTTPException(409, f"You've reached the limit of {MAX_SLIDES_PER_FREELANCER} photos and videos. Delete a service or project to add more.")
     if media_type == "video" and sum(row["media_type"] == "video" for row in mine) >= MAX_VIDEOS_PER_FREELANCER:
-        raise HTTPException(409, f"You can have at most {MAX_VIDEOS_PER_FREELANCER} videos. Delete a service with a video to add another.")
+        raise HTTPException(409, f"You can have at most {MAX_VIDEOS_PER_FREELANCER} videos. Delete a service or project with a video to add another.")
 
-    return next(spot for spot in range(1, MAX_SLIDES_PER_SERVICE + 1) if spot not in used)
+    return next(spot for spot in range(1, MAX_SLIDES_PER_ITEM + 1) if spot not in used)
 
 
 def video_seconds(data, extension):
@@ -522,22 +532,28 @@ def upload_slide_file(path, data, content_type):
 
 @app.post("/slides")
 def add_slide(
-    service_id: str = Form(...),
+    service_id: str | None = Form(default=None),
+    portfolio_item_id: str | None = Form(default=None),
     image: UploadFile | None = File(default=None),
     video_path: str | None = Form(default=None),
     authorization: str | None = Header(default=None),
 ):
-    """Adds one photo or video to the end of the caller's own service.
+    """Adds one photo or video to the end of the caller's own service or
+    portfolio project (send service_id or portfolio_item_id).
     Photos come with the request. Videos are too big for that (Vercel allows
     4.5 MB per request), so the browser uploads them to slide-uploads first
     and sends where it put them."""
     user_id = get_user_id(authorization)
+    if (service_id is None) == (portfolio_item_id is None):
+        raise HTTPException(400, "Send one service or one project.")
     if (image is None) == (video_path is None):
         raise HTTPException(400, "Send one photo or one video.")
 
-    ensure_own_service(user_id, service_id)
+    owner, item_id = ("service", service_id) if service_id is not None else ("portfolio", portfolio_item_id)
+    _, column, name = SLIDE_OWNERS[owner]
+    ensure_own_item(user_id, owner, item_id)
     media_type = "image" if image is not None else "video"
-    position = next_slide_position(user_id, service_id, media_type)
+    position = next_slide_position(user_id, owner, item_id, media_type)
 
     if image is not None:
         # Same checks as ID photos (a real JPG/PNG/WEBP under 5 MB), then saved
@@ -556,7 +572,7 @@ def add_slide(
         supabase.table("media_slides").insert({
             "id": slide_id,
             "freelancer_id": user_id,
-            "service_id": service_id,
+            column: item_id,
             "position": position,
             "media_type": media_type,
             "file_path": file_path,
@@ -566,8 +582,8 @@ def add_slide(
         remove_quietly(SLIDE_BUCKET, file_path)
         if error.code == "23505":  # another upload took the same spot at the same moment
             raise HTTPException(409, "Another upload was saving at the same time. Please try again.")
-        if error.code == "23503":  # the service was deleted meanwhile
-            raise HTTPException(404, "That service no longer exists.")
+        if error.code == "23503":  # the service or project was deleted meanwhile
+            raise HTTPException(404, f"That {name} no longer exists.")
         raise
 
     return {"id": slide_id, "position": position, "media_type": media_type, "file_path": file_path}

@@ -113,11 +113,13 @@ export function submitFromPhone(token, photos) {
 }
 
 // Adds one photo (a File) or one video (its path in the "slide-uploads"
-// bucket) to the end of a service's slideshow. Returns the saved slide:
+// bucket) to the end of a service's or portfolio project's slideshow (pass
+// serviceId or portfolioItemId). Returns the saved slide:
 // { id, position, media_type, file_path }. See lib/slides.js.
-export async function addSlide({ serviceId, image, videoPath }) {
+export async function addSlide({ serviceId, portfolioItemId, image, videoPath }) {
   const form = new FormData();
-  form.append("service_id", serviceId);
+  if (serviceId) form.append("service_id", serviceId);
+  if (portfolioItemId) form.append("portfolio_item_id", portfolioItemId);
   if (image) form.append("image", image, image.name);
   if (videoPath) form.append("video_path", videoPath);
   return request("/slides", { method: "POST", headers: await authHeader(), body: form });

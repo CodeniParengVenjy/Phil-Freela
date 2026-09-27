@@ -10,6 +10,7 @@ import DashboardClientRoute from "./pages/dashboard/layouts/DashboardClientRoute
 import FreelancerFYPView from "./pages/dashboard/views/FreelancerFYPView";
 import ClientHomepageView from "./pages/dashboard/views/ClientHomepageView";
 import ProfileView from "./pages/dashboard/views/ProfileView";
+import FreelancerPortfolioView from "./pages/dashboard/views/FreelancerPortfolioView";
 import FindJobsView from "./pages/dashboard/views/FindJobsView";
 import BrowseServicesView from "./pages/dashboard/views/BrowseServicesView";
 import InboxView from "./pages/dashboard/views/InboxView";
@@ -56,6 +57,7 @@ function App() {
       </Route>
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route path="profile" element={<ProfileView />} />
+        <Route path="freelancers/:freelancerId" element={<FreelancerPortfolioView />} />
         <Route path="find-jobs" element={<FindJobsView />} />
         <Route path="inbox" element={<InboxView />} />
         <Route path="chat" element={<ChatView />} />

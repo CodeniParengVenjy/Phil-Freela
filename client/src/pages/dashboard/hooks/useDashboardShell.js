@@ -20,6 +20,8 @@ export function useDashboardShell() {
   // trees, each of which mounts its own fresh instance of this hook.
   const [accountType, setAccountType] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  // The signed-in user's @username (shown faintly over other people's slides).
+  const [username, setUsername] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   // Number on the Notifications link: admin announcements not read yet.
   const [unreadAnnouncements, setUnreadAnnouncements] = useState(0);
@@ -81,7 +83,7 @@ export function useDashboardShell() {
       // role if the two ever fall out of sync.
       const { data: profile } = await supabase
         .from("profiles")
-        .select("account_type")
+        .select("account_type, username")
         .eq("id", session.user.id)
         .maybeSingle();
       if (!active) return;
@@ -97,6 +99,7 @@ export function useDashboardShell() {
       // Client is the default role: only an explicit "freelancer" record
       // switches the dashboard to the freelancer view.
       setAccountType(profile?.account_type === "freelancer" ? "freelancer" : "client");
+      setUsername(profile?.username || "");
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -286,7 +289,7 @@ export function useDashboardShell() {
   }, []);
 
   return {
-    displayName, setDisplayName, accountType, currentUserId,
+    displayName, setDisplayName, accountType, currentUserId, username,
     unreadCount, refreshUnreadCount,
     unreadAnnouncements, refreshUnreadAnnouncements,
     toast, closeToast, showToast,

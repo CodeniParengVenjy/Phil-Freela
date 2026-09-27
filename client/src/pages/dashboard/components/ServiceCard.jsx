@@ -1,5 +1,5 @@
 import { getCategory } from "../../../lib/categories";
-import { serviceSlides } from "../../../lib/slides";
+import { itemSlides } from "../../../lib/slides";
 
 const mediaBox = { width: 64, height: 64 };
 
@@ -8,7 +8,7 @@ const mediaBox = { width: 64, height: 64 };
 // Delete button.
 export default function ServiceCard({ service, onDelete }) {
   const category = getCategory(service.category);
-  const cover = serviceSlides(service)[0];
+  const cover = itemSlides(service)[0];
 
   return (
     <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 d-flex gap-3 align-items-center">

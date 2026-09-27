@@ -50,6 +50,25 @@
   right: 8px;
 }
 
+/* The viewer's @username, faint and repeated diagonally across the slide. */
+.media-carousel-viewer {
+  position: absolute;
+  inset: -40%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 2.25rem 3rem;
+  transform: rotate(-25deg);
+  color: rgba(255, 255, 255, 0.16);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
 .media-carousel-counter {
   position: absolute;
   top: 8px;

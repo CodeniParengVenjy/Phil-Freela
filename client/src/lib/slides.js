@@ -3,10 +3,13 @@ import { addSlide } from "./aiService";
 import { shrinkImage } from "./shrinkImage";
 import { storagePathFromUrl } from "./storage";
 
-// Service slideshows (watermarking system, step 1). Every photo and video goes
-// through the AI service, which checks it (and, from step 3, watermarks it)
-// before saving it in the "slide-media" bucket. The AI service checks all of
-// these rules again; the browser checks first only to answer faster.
+// Slideshows for services and portfolio projects (watermarking system, steps
+// 1-2). Every photo and video goes through the AI service, which checks it
+// (and, from step 3, watermarks it) before saving it in the "slide-media"
+// bucket. The AI service checks all of these rules again; the browser checks
+// first only to answer faster.
+//
+// "target" says what the slides are for: { serviceId } or { portfolioItemId }.
 
 export const MAX_SLIDES = 10;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -57,13 +60,35 @@ export async function checkSlideFile(file) {
   return "Only JPG, PNG or WebP photos, or MP4 or WebM videos, are allowed.";
 }
 
-// Adds one file to the end of a service's slideshow and returns the saved
-// slide. Photos are shrunk first. Videos are too big to send to the AI
-// service directly, so they go to the private "slide-uploads" bucket first
+// Gives each picked file its own key, so the picker can tell them apart.
+let nextSlideKey = 0;
+
+// Checks newly picked files and adds the good ones after the files already
+// picked ([{ key, file }], at most 10). Returns { items, error }: the new
+// list, and a message about any file that was left out ("" if none were).
+export async function addPickedFiles(items, files) {
+  const problems = [];
+  const accepted = [];
+  for (const file of files) {
+    const problem = await checkSlideFile(file);
+    if (problem) problems.push(`${file.name}: ${problem}`);
+    else accepted.push({ key: nextSlideKey++, file });
+  }
+
+  const room = MAX_SLIDES - items.length;
+  if (accepted.length > room) {
+    problems.push(`Only ${MAX_SLIDES} photos and videos fit, so ${accepted.length - room} were left out.`);
+  }
+  return { items: [...items, ...accepted].slice(0, MAX_SLIDES), error: problems.join(" ") };
+}
+
+// Adds one file to the end of a service's or project's slideshow and returns
+// the saved slide. Photos are shrunk first. Videos are too big to send to the
+// AI service directly, so they go to the private "slide-uploads" bucket first
 // and the AI service takes them from there.
-export async function uploadSlide(serviceId, file, userId) {
+export async function uploadSlide(target, file, userId) {
   if (!isVideoFile(file)) {
-    return addSlide({ serviceId, image: await shrinkImage(file) });
+    return addSlide({ ...target, image: await shrinkImage(file) });
   }
 
   // Named by time + a random part only, so odd characters in the file name can't break it.
@@ -73,7 +98,7 @@ export async function uploadSlide(serviceId, file, userId) {
   if (error) throw new Error("Couldn't upload that video. Please try again.");
 
   try {
-    return await addSlide({ serviceId, videoPath });
+    return await addSlide({ ...target, videoPath });
   } catch (err) {
     // The AI service deletes the temporary copy itself; this covers the case
     // where it couldn't be reached at all.
@@ -82,30 +107,49 @@ export async function uploadSlide(serviceId, file, userId) {
   }
 }
 
+// Uploads the picked files ([{ key, file }]) one at a time: each request to
+// the AI service must stay small, and it lets the page show progress through
+// onProgress("Uploading 2 of 5..."). If one fails the rest still go.
+// Returns { slides, failed }: the saved slides, and a message per failed file.
+export async function uploadSlides(target, items, userId, onProgress) {
+  const slides = [];
+  const failed = [];
+  for (const [index, { file }] of items.entries()) {
+    onProgress(`Uploading ${index + 1} of ${items.length}...`);
+    try {
+      slides.push(await uploadSlide(target, file, userId));
+    } catch (err) {
+      failed.push(`${file.name}: ${err.message}`);
+    }
+  }
+  return { slides, failed };
+}
+
 // The public link of a saved slide.
 export function slideUrl(filePath) {
   return supabase.storage.from("slide-media").getPublicUrl(filePath).data.publicUrl;
 }
 
-// A service's slides in slideshow order, as [{ id, mediaType, url }]. Services
-// posted before slideshows existed have one photo or video (image_url), shown
-// as a one-slide slideshow.
-export function serviceSlides(service) {
-  if (service.slides?.length) {
-    return [...service.slides]
+// A service's or project's slides in slideshow order, as [{ id, mediaType, url }].
+// Services posted before slideshows existed have one photo or video
+// (image_url), shown as a one-slide slideshow.
+export function itemSlides(item) {
+  if (item.slides?.length) {
+    return [...item.slides]
       .sort((a, b) => a.position - b.position)
       .map((slide) => ({ id: slide.id, mediaType: slide.media_type, url: slideUrl(slide.file_path) }));
   }
-  if (service.image_url) return [{ id: "original", mediaType: service.media_type, url: service.image_url }];
+  if (item.image_url) return [{ id: "original", mediaType: item.media_type, url: item.image_url }];
   return [];
 }
 
-// After a service is deleted, deletes its files too: its slides, or the one
-// photo/video of an older service. A failure only leaves unused files behind.
-export async function removeServiceFiles(service) {
-  const slidePaths = (service.slides || []).map((slide) => slide.file_path);
+// After a service or project is deleted, deletes its files too: its slides,
+// or the one photo/video of an older service. A failure only leaves unused
+// files behind.
+export async function removeItemFiles(item) {
+  const slidePaths = (item.slides || []).map((slide) => slide.file_path);
   if (slidePaths.length) await supabase.storage.from("slide-media").remove(slidePaths);
 
-  const oldPath = storagePathFromUrl(service.image_url);
+  const oldPath = storagePathFromUrl(item.image_url);
   if (oldPath) await supabase.storage.from("marketplace-images").remove([oldPath]);
 }

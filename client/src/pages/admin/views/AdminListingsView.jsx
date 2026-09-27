@@ -3,7 +3,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { categories, getCategory } from "../../../lib/categories";
 import { blockedBadges, suspensionStatus } from "../../../lib/suspensions";
-import { SLIDES_SELECT, serviceSlides } from "../../../lib/slides";
+import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
 import MediaCarousel from "../../dashboard/components/MediaCarousel";
 
 // The two kinds of listings share one page. Each tab says which table it
@@ -218,9 +218,9 @@ export default function AdminListingsView() {
             </p>
 
             {/* A service's photos and videos (job posts have none). */}
-            {serviceSlides(viewing).length > 0 && (
+            {itemSlides(viewing).length > 0 && (
               <div className="rounded-3 overflow-hidden mb-3">
-                <MediaCarousel slides={serviceSlides(viewing)} height={320} fit="contain" alt={viewing.title} />
+                <MediaCarousel slides={itemSlides(viewing)} height={320} fit="contain" alt={viewing.title} />
               </div>
             )}
 

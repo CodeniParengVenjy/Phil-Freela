@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { fetchIsVerified } from "../../../lib/verification";
+import PortfolioSection from "../components/PortfolioSection";
 
 const initialSkills = ["Critical Thinker", "Web Developer", "Creativity", "Video Editing"];
 
 export default function ProfileView() {
-  const { displayName, currentUserId, showToast, openPreview } = useOutletContext();
+  const { displayName, currentUserId, accountType, showToast } = useOutletContext();
   const [skills, setSkills] = useState(initialSkills);
   // null while checking, then true/false (approved identity verification).
   const [verified, setVerified] = useState(null);
@@ -65,34 +66,12 @@ export default function ProfileView() {
                 </div>
               </div>
 
-              <div className="text-start">
-                <h5 className="text-white fw-bold mb-3"><i className="bi bi-grid-3x3-gap-fill text-orange me-2"></i> Portfolio</h5>
-                <div className="row g-3">
-                  <div className="col-6 col-md-4">
-                    <div className="portfolio-item rounded-3 overflow-hidden position-relative hover-zoom border border-secondary border-opacity-25">
-                      <img src="/images/Freelancers.png" alt="Portfolio 1" className="img-fluid w-100 object-fit-cover" style={{ height: 140 }} />
-                      <div className="portfolio-overlay d-flex align-items-center justify-content-center">
-                        <button className="btn btn-sm btn-warning fw-bold rounded-pill" onClick={() => openPreview("/images/Freelancers.png", "Portfolio Piece Preview")}>Preview</button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-6 col-md-4">
-                    <div className="portfolio-item rounded-3 overflow-hidden position-relative hover-zoom border border-secondary border-opacity-25">
-                      <img src="/images/Client.png" alt="Portfolio 2" className="img-fluid w-100 object-fit-cover" style={{ height: 140 }} />
-                      <div className="portfolio-overlay d-flex align-items-center justify-content-center">
-                        <button className="btn btn-sm btn-warning fw-bold rounded-pill" onClick={() => openPreview("/images/Client.png", "Portfolio Piece Preview")}>Preview</button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-6 col-md-4">
-                    <div className="portfolio-item rounded-3 overflow-hidden position-relative hover-zoom border border-secondary border-opacity-25 bg-dark d-flex flex-column align-items-center justify-content-center p-3 text-center" style={{ height: 140 }}>
-                      <i className="bi bi-file-earmark-code fs-1 text-info mb-1"></i>
-                      <span className="fs-8 text-white-50">Web Store App</span>
-                      <button className="btn btn-xs btn-outline-info rounded-pill mt-2 fs-8" onClick={() => openPreview("/images/Freelancers.png", "Portfolio Piece Preview")}>View Details</button>
-                    </div>
-                  </div>
+              {/* Only freelancers have a portfolio. */}
+              {accountType === "freelancer" && currentUserId && (
+                <div className="text-start">
+                  <PortfolioSection freelancerId={currentUserId} isOwner />
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

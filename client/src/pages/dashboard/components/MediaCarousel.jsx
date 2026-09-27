@@ -4,13 +4,15 @@ import "./slides.css";
 // Stops the browser's "Save image/video as..." menu.
 const blockSaveMenu = (event) => event.preventDefault();
 
-// A service's photos and videos as a slideshow (slides come from
-// serviceSlides in lib/slides.js). Arrows, a "2 / 5" counter, and swiping on
-// phones. fit is "cover" (fill the box, trimming the edges) or "contain" (show
-// the whole photo). To make copying others' work harder there is no Download
-// button, right-click menu, dragging, or picture-in-picture. Only the current
-// slide is on the page, so a playing video stops when you move to another slide.
-export default function MediaCarousel({ slides, height = 140, fit = "cover", alt = "" }) {
+// A service's or portfolio project's photos and videos as a slideshow (slides
+// come from itemSlides in lib/slides.js). Arrows, a "2 / 5" counter, and
+// swiping on phones. fit is "cover" (fill the box, trimming the edges) or
+// "contain" (show the whole photo). To make copying others' work harder there
+// is no Download button, right-click menu, dragging, or picture-in-picture,
+// and viewerName (the person looking, when it isn't their own work) is shown
+// faintly across the slide, so a screenshot shows who took it. Only the
+// current slide is on the page, so a playing video stops when you move on.
+export default function MediaCarousel({ slides, height = 140, fit = "cover", alt = "", viewerName }) {
   const [index, setIndex] = useState(0);
   const swipeStartX = useRef(null);
 
@@ -53,6 +55,14 @@ export default function MediaCarousel({ slides, height = 140, fit = "cover", alt
         />
       ) : (
         <img key={current.id} src={current.url} alt={alt} draggable={false} onContextMenu={blockSaveMenu} className="media-carousel-item" style={{ objectFit: fit }} />
+      )}
+
+      {/* Drawn on top of the page, not saved into the file, and clicks go
+          through it, so the video controls still work. */}
+      {viewerName && (
+        <div className="media-carousel-viewer" aria-hidden="true">
+          {Array.from({ length: 60 }, (_, i) => <span key={i}>@{viewerName}</span>)}
+        </div>
       )}
 
       {count > 1 && (
