@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { checkIdBack, checkIdFront } from "../../../lib/aiService";
+import { loadFaceTracker } from "../../../lib/faceTracker";
 import { ID_TYPES, idTypeHasBack } from "../../../lib/verification";
 import FaceScan from "./FaceScan";
 import PhotoPreview from "./PhotoPreview";
@@ -27,6 +28,13 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  // Starts downloading the face scanner (about 7 MB) in the background while
+  // the user does the ID steps, so the face scan opens right away at its step
+  // even on slow mobile data. If this fails, the scan simply tries again.
+  useEffect(() => {
+    loadFaceTracker().catch(() => {});
+  }, []);
 
   const needsBack = idTypeHasBack(idType);
   const isPassport = idType === "passport";
