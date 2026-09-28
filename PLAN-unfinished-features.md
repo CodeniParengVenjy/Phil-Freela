@@ -1,11 +1,12 @@
 # Unfinished Features: plan and progress
 
-Last updated: 2026-09-27. To continue in a new Claude session, say:
+Last updated: 2026-09-28. To continue in a new Claude session, say:
 "Read PLAN-unfinished-features.md and continue from the current step."
 
 These things show on screen but don't work yet. They are built one step at
-a time, from easiest to hardest. Each step gets its own detailed plan,
-approved by the user, before any code.
+a time, from easiest to hardest. The 3 hardest (AI search box, SMS log in,
+voice + video call) moved to PLAN-hard-features.md for a separate session.
+Each step gets its own detailed plan, approved by the user, before any code.
 
 ## Why each one doesn't work (checked 2026-09-27)
 
@@ -13,17 +14,16 @@ approved by the user, before any code.
   updated, so a refresh brings the old name back.
 - Upload Profile Picture: the file picker opens, but the chosen file is
   ignored. There's no column or storage bucket for a profile picture.
-- Top search box: moved out of this list. It will be the entry point to
-  the AI Content-based filtering main function, which gets its own plan.
+- Top search box: moved to PLAN-hard-features.md. It will be the entry
+  point to the AI Content-based filtering main function.
 - Google sign up: the code exists, but Google is OFF in Supabase, and
   `/complete-profile` (where new Google users are sent) was never built.
 - Applications & Resume: the job page is a hardcoded demo ("Coffee
   Company"), the resume is never uploaded, and the applicants list is
   hardcoded.
 - Inbox: the paperclip, mic, call and video call buttons have no code.
-  (The photo/video button works.)
-- SMS log in: not built, phone login is OFF in Supabase, and it needs an
-  SMS provider.
+  (The photo/video button works.) Calls moved to PLAN-hard-features.md.
+- SMS log in: moved to PLAN-hard-features.md.
 
 ## Order: easiest to hardest
 
@@ -34,20 +34,16 @@ approved by the user, before any code.
 4. Applications & Resume (Medium): new table, private bucket, three pages.
 5. Inbox attach a file + voice message (Medium): attaching is easy;
    recording a voice message is the harder half.
-6. SMS log in (Hard): Twilio setup, codes by SMS, adding a phone number to
-   existing accounts.
-7. Voice call + video call (Hardest): WebRTC, ringing on every page, new
-   table and live channel.
 
-Step 6 reuses the Complete Profile page from Step 3.
+The hard session waits for Step 3 before SMS log in (it reuses the
+Complete Profile page) and for Step 5 before calls (both change
+`ChatView.jsx` and `useDashboardShell.js`).
 
 ## Defaults picked (the user can change these)
 
 - Resume: PDF only, up to 5 MB, so "View" always opens in the browser.
 - Applying to a job: the freelancer must be verified, the same rule as
   posting a service.
-- SMS provider: Twilio free trial.
-- Calls: built into the app with WebRTC (free), not an outside service.
 
 ## What the user does outside the code
 
@@ -56,10 +52,6 @@ Step 6 reuses the Complete Profile page from Step 3.
   over the SQL to paste into the Supabase SQL Editor.
 - Step 3: create a Google OAuth client in Google Cloud Console and turn on
   Google in Supabase. Claude guides this one screen at a time.
-- Step 6: make a free Twilio trial account and verify the phone numbers
-  used for testing (the trial can only text verified numbers).
-- Step 7: nothing required. A free TURN account (Metered) is optional; it
-  helps calls connect on strict networks such as some school Wi-Fi.
 
 ## Step 1: Display Name (Easy)
 
@@ -187,63 +179,6 @@ Code:
    players.
 4. `useDashboardShell.js`: the pop-up says "sent a file" / "sent a voice
    message".
-
-## Step 6: SMS log in (Hard)
-
-User: make a Twilio trial account, then in Supabase turn on the Phone
-provider and paste the Twilio Account SID, Auth Token and Message Service
-SID. Trial texts start with "Sent from your Twilio trial account".
-
-How it works:
-
-- Login page, "Continue with phone": type a PH mobile number, get a
-  6-digit code by SMS, type it in, signed in.
-- A new number goes to the Complete Profile page from Step 3.
-- Email accounts can add a phone number in Settings, Account Security
-  (confirmed with a code), then log in by SMS too.
-
-Code:
-
-1. New `pages/login/PhoneLogin.jsx`: send the code, check the code, resend
-   after 60 seconds.
-2. `lib/validators.js`: PH mobile number check, converted to +63 format.
-3. `SettingsView.jsx`, Account Security: add and confirm a phone number.
-
-Database: none (Supabase keeps the phone on the login account).
-
-## Step 7: Voice call + video call (Hardest)
-
-How it works (for the defense): WebRTC connects the two browsers directly,
-so the voice and video don't pass through our server. Supabase only
-carries the short "calling / answer / connection details" messages. Free
-Google STUN servers help the two browsers find each other.
-
-- The call buttons in the chat header start a voice or video call.
-- The other person gets a ringing pop-up on any dashboard page, with Accept
-  and Decline. After 30 seconds with no answer, it becomes a missed call.
-- During the call: mute, camera on/off, hang up, and a timer.
-- The chat shows a line such as "Video call, 3:12" or "Missed voice call".
-- Someone suspended from messaging can't call.
-
-Database, new file `database/supabase_calls_schema.sql`:
-
-1. Table `calls`: id, conversation_id, caller_id, callee_id, kind (voice
-   or video), status (ringing, accepted, declined, missed, ended),
-   created_at, answered_at, ended_at. Only the two people in the
-   conversation can see or change it.
-2. Realtime on `calls` for the ringing pop-up, and a rule so only those
-   two can join the call's private channel.
-
-Code:
-
-1. New `lib/calls.js`: start, answer and end a call; WebRTC setup.
-2. New `components/CallDialog.jsx`: ringing screen and in-call screen.
-3. `useDashboardShell.js` and `DashboardOverlays.jsx`: listen for incoming
-   calls on every page.
-4. `ChatView.jsx`: wires the two buttons and shows the call lines.
-
-Limits: one-to-one only; both people keep the page open; on strict
-networks a call may fail to connect without a TURN server.
 
 ## Current step
 
