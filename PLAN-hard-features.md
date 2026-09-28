@@ -244,6 +244,20 @@ migration "voice_video_calls_fixes" applied, it's the last section of
    dashboard layout closes), instead of the voice going on with no window.
 Tests after the fixes: database rules 33/33, browser 46/46.
 
+Relay (TURN), added 2026-09-28 after the user's first real test stayed on
+"Connecting..." (answered calls never connected: two devices on different
+networks need a relay). New Cloudflare Pages Function
+`client/functions/turn.js` at /turn: checks the login, then returns the
+relay servers from Cloudflare's secret settings, never from the website's
+code. Cloudflare Realtime TURN (free up to 1,000 GB a month): secrets
+`TURN_KEY_ID` + `TURN_KEY_API_TOKEN`, short-lived passwords per call. Or a
+fixed TURN login such as ExpressTURN: `TURN_URL`, `TURN_USERNAME`,
+`TURN_PASSWORD`. `lib/calls.js` asks /turn before each call (Google STUN
++ relay; without it, a direct connection only). The laptop dev server
+forwards /turn to the live site (`vite.config.js`). The user is creating
+the Cloudflare TURN key; after that: relay-only browser test, then the
+user's phone + laptop test.
+
 Step 3 files: `database/supabase_calls_schema.sql`, `client/src/lib/calls.js`,
 `pages/dashboard/components/CallDialog.jsx`, `components/calls.css`,
 `components/DashboardOverlays.jsx`, `hooks/useDashboardShell.js`,
