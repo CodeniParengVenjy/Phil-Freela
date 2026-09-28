@@ -11,11 +11,15 @@ const MAX_INPUT_BYTES = 25 * 1024 * 1024;
 
 // One ID photo step of the verification form (front or back of the ID).
 //   mode "computer": upload a photo, or take it with the webcam.
-//   mode "phone":    a button that opens the phone's back camera.
+//   mode "phone":    open the phone's back camera, or pick a photo of the ID
+//                    already saved on the phone (gallery or files).
+// Either way the photo gets the same instant check (sharp, face found, looks
+// like an ID). Only the ID photos can be uploaded: the face scan is always live.
 // "side" is { file, status, message }, where status is "idle", "checking",
 // "ok" or "error". The parent runs the instant check in onPhoto(file).
 export default function WizardPhotoStep({ mode, instructions, prompt, cameraHint, buttonText, side, onPhoto }) {
   const phoneInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [pickError, setPickError] = useState("");
   const [preparing, setPreparing] = useState(false);
@@ -49,6 +53,14 @@ export default function WizardPhotoStep({ mode, instructions, prompt, cameraHint
   };
 
   const openPhoneCamera = () => phoneInputRef.current?.click();
+  const openPhoneGallery = () => galleryInputRef.current?.click();
+
+  // Both hidden inputs hand the picked photo to acceptFile.
+  const handlePicked = (event) => {
+    const picked = event.target.files?.[0];
+    event.target.value = ""; // so picking the same photo again still counts as a change
+    acceptFile(picked);
+  };
 
   return (
     <div className="d-flex flex-column gap-3">
@@ -56,31 +68,31 @@ export default function WizardPhotoStep({ mode, instructions, prompt, cameraHint
 
       {mode === "phone" ? (
         <>
-          <input
-            ref={phoneInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="d-none"
-            onChange={(event) => {
-              const picked = event.target.files?.[0];
-              event.target.value = ""; // so retaking still counts as a change
-              acceptFile(picked);
-            }}
-          />
+          {/* capture="environment" opens the back camera; without it, the
+              phone offers its gallery and files instead. */}
+          <input ref={phoneInputRef} type="file" accept="image/*" capture="environment" className="d-none" onChange={handlePicked} />
+          <input ref={galleryInputRef} type="file" accept="image/*" className="d-none" onChange={handlePicked} />
           {side.file ? (
             <div className="media-dropzone is-filled">
               <PhotoPreview photo={side.file} alt="Your ID photo" />
-              <div className="flex-grow-1">
+              <div className="flex-grow-1 d-flex flex-wrap gap-2">
                 <button type="button" className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold" onClick={openPhoneCamera} disabled={busy}>
-                  Retake
+                  <i className="bi bi-camera me-1"></i> Retake
+                </button>
+                <button type="button" className="btn btn-sm btn-outline-secondary text-white rounded-pill px-3 fw-bold" onClick={openPhoneGallery} disabled={busy}>
+                  <i className="bi bi-images me-1"></i> Choose another
                 </button>
               </div>
             </div>
           ) : (
-            <button type="button" className="btn btn-outline-role rounded-3 w-100 py-3 fw-bold" onClick={openPhoneCamera} disabled={busy}>
-              <i className="bi bi-camera-fill me-2"></i>{buttonText}
-            </button>
+            <div className="d-flex flex-column gap-2">
+              <button type="button" className="btn btn-outline-role rounded-3 w-100 py-3 fw-bold" onClick={openPhoneCamera} disabled={busy}>
+                <i className="bi bi-camera-fill me-2"></i>{buttonText}
+              </button>
+              <button type="button" className="btn btn-outline-secondary text-white rounded-3 w-100 py-3 fw-bold" onClick={openPhoneGallery} disabled={busy}>
+                <i className="bi bi-images me-2"></i>Upload from your photos
+              </button>
+            </div>
           )}
         </>
       ) : cameraOpen ? (
