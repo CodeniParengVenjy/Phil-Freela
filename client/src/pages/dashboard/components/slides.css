@@ -69,6 +69,20 @@
   user-select: none;
 }
 
+/* "Under review": a photo the copy check held back (only its uploader and admins see it). */
+.media-carousel-review {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.95);
+  color: #111;
+  font-size: 0.72rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 .media-carousel-counter {
   position: absolute;
   top: 8px;

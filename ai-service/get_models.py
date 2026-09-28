@@ -1,11 +1,12 @@
-"""Downloads the SFace face model (37 MB) into the models folder.
+"""Downloads the models too big to keep in GitHub into the models folder:
+the SFace face model (37 MB) and the copy check's ViT (23 MB).
 
-It's too big to keep in GitHub comfortably, so it's fetched from OpenCV's own
-model collection instead: Vercel runs this while building (see vercel.json),
-and on a laptop you run it once:
+They're fetched from OpenCV's model collection and Hugging Face instead:
+Vercel runs this while building (see vercel.json), and on a laptop you run it
+once:
     .venv\\Scripts\\python get_models.py
 
-The file's fingerprint (SHA-256) is checked, so a changed or broken download
+Each file's fingerprint (SHA-256) is checked, so a changed or broken download
 is refused instead of used.
 """
 
@@ -19,6 +20,12 @@ FILES = {
     "face_recognition_sface_2021dec.onnx": (
         "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx",
         "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+    ),
+    # The copy check's Vision Transformer (Meta's DINO ViT-S/16, Apache 2.0),
+    # the 8-bit ONNX version from Hugging Face (23 MB). See similarity.py.
+    "dino_vits16_model_quantized.onnx": (
+        "https://huggingface.co/Xenova/dino-vits16/resolve/main/onnx/model_quantized.onnx",
+        "686df030e42d721ce72c8e89edc95cc9107068039298e3500d724727d69f172a",
     ),
 }
 

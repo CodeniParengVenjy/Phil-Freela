@@ -24,7 +24,9 @@ export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, Web
 // Add this to a services select to get each service's slides with it.
 // watermarked: the file carries the watermark itself (photos from step 3 on).
 // promo: the freelancer marked it as a promo/ad, so it has no visible watermark.
-export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file_path, watermarked, promo)";
+// status: "flagged" = nearly the same as another freelancer's photo, so only
+// its uploader and the admins see it until an admin reviews it (step 5).
+export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file_path, watermarked, promo, status)";
 
 export const isVideoFile = (file) => VIDEO_TYPES.includes(file.type);
 
@@ -110,6 +112,14 @@ export async function uploadSlide(target, file, userId, promo = false) {
   }
 }
 
+// The message to show after uploading when the copy check held some photos
+// back ("" when none were).
+export function underReviewMessage(slides) {
+  const held = slides.filter((slide) => slide.status === "flagged").length;
+  if (!held) return "";
+  return `${held === 1 ? "1 photo is" : `${held} photos are`} waiting for an admin to review, because ${held === 1 ? "it looks" : "they look"} very similar to another freelancer's work. Until then only you can see ${held === 1 ? "it" : "them"}.`;
+}
+
 // Uploads the picked files ([{ key, file, promo }]) one at a time: each
 // request to the AI service must stay small, and it lets the page show
 // progress through onProgress("Uploading 2 of 5..."). If one fails the rest
@@ -135,9 +145,10 @@ export function slideUrl(filePath) {
 }
 
 // A service's or project's slides in slideshow order, as
-// [{ id, mediaType, url, showOwnerName }]. showOwnerName: the page draws the
-// uploader's name faintly over it, because the file itself has no watermark
-// (older photos, videos until step 7) and it isn't a promo.
+// [{ id, mediaType, url, showOwnerName, underReview }]. showOwnerName: the
+// page draws the uploader's name faintly over it, because the file itself has
+// no watermark (older photos, videos until step 7) and it isn't a promo.
+// underReview: flagged by the copy check, waiting for an admin.
 // Services posted before slideshows existed have one photo or video
 // (image_url), shown as a one-slide slideshow.
 export function itemSlides(item) {
@@ -148,7 +159,8 @@ export function itemSlides(item) {
         id: slide.id,
         mediaType: slide.media_type,
         url: slideUrl(slide.file_path),
-        showOwnerName: !slide.watermarked && !slide.promo
+        showOwnerName: !slide.watermarked && !slide.promo,
+        underReview: slide.status === "flagged"
       }));
   }
   if (item.image_url) return [{ id: "original", mediaType: item.media_type, url: item.image_url, showOwnerName: true }];

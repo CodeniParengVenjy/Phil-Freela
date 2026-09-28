@@ -59,6 +59,13 @@ export default function MediaCarousel({ slides, height = 140, fit = "cover", alt
 
       {/* Drawn on top of the page, not saved into the file, and clicks go
           through it, so the video controls still work. */}
+      {/* Held back by the copy check: only its uploader and the admins see it. */}
+      {current.underReview && (
+        <span className="media-carousel-review" title="Waiting for an admin: it looks very similar to another freelancer's work">
+          <i className="bi bi-hourglass-split me-1"></i>Under review
+        </span>
+      )}
+
       {/* Only over slides whose file has no watermark of its own (older
           photos, videos for now) and that aren't promos. */}
       {ownerName && current.showOwnerName !== false && (

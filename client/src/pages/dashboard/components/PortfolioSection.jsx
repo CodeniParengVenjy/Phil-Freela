@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { deletePortfolioItem, fetchPortfolio } from "../../../lib/portfolio";
-import { itemSlides } from "../../../lib/slides";
+import { itemSlides, underReviewMessage } from "../../../lib/slides";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import PortfolioUploadDialog from "./PortfolioUploadDialog";
 import PortfolioViewer from "./PortfolioViewer";
@@ -42,9 +42,11 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
   const handleSaved = (project, failed) => {
     setItems((prev) => [project, ...(prev || [])]);
     setAdding(false);
-    showToast(failed.length
+    // Photos the copy check held back for an admin (step 5) are mentioned too.
+    const heldBack = underReviewMessage(project.slides);
+    showToast(`${failed.length
       ? `"${project.title}" was added, but ${failed.length === 1 ? "1 file" : `${failed.length} files`} couldn't be. ${failed.join(" ")}`
-      : `"${project.title}" was added to your portfolio!`);
+      : `"${project.title}" was added to your portfolio!`} ${heldBack}`.trim());
   };
 
   const handleDelete = async () => {

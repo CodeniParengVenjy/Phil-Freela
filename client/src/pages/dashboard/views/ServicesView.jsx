@@ -3,7 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
 import { fetchIsVerified } from "../../../lib/verification";
-import { SLIDE_HINT, SLIDES_SELECT, addPickedFiles, uploadSlides } from "../../../lib/slides";
+import { SLIDE_HINT, SLIDES_SELECT, addPickedFiles, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
 import BlockedNotice from "../components/BlockedNotice";
@@ -125,12 +125,14 @@ export default function ServicesView() {
     setPrice("");
     setSlideItems([]);
 
+    // Photos the copy check held back for an admin (step 5).
+    const heldBack = underReviewMessage(slides);
     if (failed.length) {
-      setSlidesError(`Your service is live, but ${failed.length === 1 ? "1 file" : `${failed.length} files`} couldn't be added. ${failed.join(" ")}`);
+      setSlidesError(`Your service is live, but ${failed.length === 1 ? "1 file" : `${failed.length} files`} couldn't be added. ${failed.join(" ")} ${heldBack}`.trim());
       showToast(`"${service.title}" is live, but some files couldn't be added.`);
     } else {
-      setSlidesError("");
-      showToast(`Your new service "${service.title}" is live!`);
+      setSlidesError(heldBack);
+      showToast(heldBack ? `"${service.title}" is live. ${heldBack}` : `Your new service "${service.title}" is live!`);
     }
   };
 

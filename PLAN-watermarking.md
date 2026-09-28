@@ -145,7 +145,7 @@ Pushed live (commit 9f68d3f). Database: migrations "check_ownership" and
 "check_ownership_owner_required" are both applied, so don't run
 `supabase_ownership_schema.sql` again. Still needs the user to test it live
 (no photo had been watermarked on the live site yet when Step 4 shipped).
-Next: plan Step 5 (ViT copy check + admin Flagged Content page).
+Next: Step 5 (see below).
 
 What Step 4 does:
 - Page /dashboard/check-ownership (sidebar "Check Ownership", freelancers and
@@ -178,6 +178,65 @@ Step 4 files: `database/supabase_ownership_schema.sql`, `ai-service/main.py`
 (`read_uncropped_codes`), `client/src/lib/aiService.js` (`checkOwnership`),
 `views/CheckOwnershipView.jsx`, `App.jsx`, `lib/pageTitles.js`, both
 dashboard layouts (sidebar link).
+
+Step 5 (ViT copy check + admin Flagged Content): built and pushed live
+2026-09-28 (the user said "go"). Database: migration "copy_check" is applied
+(pgvector 0.8.2 turned on in the `extensions` schema; the AI search plan in
+PLAN-hard-features.md should reuse it). Don't run
+`supabase_copy_check_schema.sql` again. Still needs a live test.
+
+What Step 5 does (photos only; video frames come with Step 7):
+- Model: Meta's DINO ViT-S/16 (facebook/dino-vits16, Apache 2.0), the 8-bit
+  ONNX from Xenova/dino-vits16, downloaded by `get_models.py` (23 MB, SHA-256
+  checked). 384 numbers per picture (CLS token), cosine similarity.
+  8-bit gave the same results as the full model, 9x faster (70 vs 624 ms).
+- Each photo stores two fingerprints in the private `slide_embeddings`:
+  as uploaded and as shown (with the owner's visible watermark), because a
+  thief usually screenshots the shown version.
+- A new photo scoring >= 0.88 (`COPY_CUTOFF` in main.py) against another
+  freelancer's ACTIVE photo is saved with status 'flagged' (+
+  matched_slide_id, match_score): hidden from everyone but the uploader and
+  admins. Flagged photos are left out of later comparisons, so a flagged copy
+  can't get the real owner's next upload flagged too (bug found in testing).
+- Uploader: "Under review" tag on the slide + a message after uploading.
+- Admin > Flagged Content (/admin/flagged, sidebar count badge): the flagged
+  photo next to its match, both owners and dates, "N% similar", Promo tag;
+  "Looks fine, show it" (status active) or "Remove the copy" (delete).
+- PostgREST note: the self-link is written `media_slides!matched_slide_id`;
+  the constraint-name hint does NOT work for a table linked to itself.
+
+Step 5 test results (30 test pictures; wallpapers grouped by design):
+| A thief uploads... | Lowest similarity | Average |
+|---|---|---|
+| a screenshot of the watermarked photo | 0.968 | 0.997 |
+| the watermarked photo with its watermark cropped off | 0.900 | 0.971 |
+| the original, JPEG 50 | 0.951 | 0.989 |
+| the original, resized 50% | 0.905 | 0.995 |
+| the original, cropped 10% on all sides | 0.932 | 0.976 |
+| the original, bottom 20% cropped | 0.903 | 0.967 |
+| the original, brightness +20% | 0.977 | 0.994 |
+| the original, mirrored | 0.987 | 0.995 |
+| the original, grayscale | 0.861 | 0.925 |
+| the original + their own big tiled watermark | 0.550 | 0.821 |
+- At the 0.88 cutoff: 279 of 300 copies flagged (misses: some grayscale
+  copies, and copies under a big tiled watermark of the thief's own).
+- Different designs: 389 pairs, average 0.34; only 1 above the cutoff: two
+  posters from the same layout with different words and colors (0.951). The
+  ViT judges look and layout, not words, so same-template posters may be
+  flagged; the admin clears them in one click.
+- Same design in another color / Windows lock-screen crops: 16 of 46 flagged
+  (recolors of someone's design are fair to send to an admin).
+- Endpoint (fake database, two freelancers): screenshot of the shown photo
+  0.98, cropped original 0.98, "Promo" disguise 0.98 all flagged; a different
+  picture and the owner's own re-upload stay active.
+
+Step 5 files: `database/supabase_copy_check_schema.sql`, `ai-service/similarity.py`,
+`main.py` (`copy_check`, embeddings saved, `watermark_photo` returns them),
+`get_models.py`, `.gitignore`, `client/src/lib/slides.js` (`status`,
+`underReview`, `underReviewMessage`), `MediaCarousel.jsx` + `slides.css`
+(tag), `ServicesView.jsx`, `PortfolioSection.jsx`,
+`admin/views/AdminFlaggedView.jsx`, `admin/layout/AdminLayout.jsx`,
+`App.jsx`, `lib/pageTitles.js`.
 
 ## Reminders for later steps
 

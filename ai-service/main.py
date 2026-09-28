@@ -34,6 +34,7 @@ from supabase import ClientOptions, create_client
 from face_check import NoFaceError, check_faces, prepare_image
 from hidden_watermark import new_code, protect_photo, read_code, read_uncropped_codes
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
+from similarity import image_embedding
 from visible_watermark import draw_visible_watermark
 
 load_dotenv()
@@ -537,11 +538,15 @@ def watermark_photo(user_id, image, promo):
     """Step 3: draws the freelancer's visible watermark (in their style from
     Settings > Watermark Settings, and not on promos), then hides a new
     invisible code in the photo (HiDDeN, see hidden_watermark.py).
-    Returns (jpeg_bytes, code), where code is None for a picture too plain to
-    hold one."""
+    Also makes the copy check's numbers (step 5, see similarity.py) for the
+    photo as uploaded and, if a visible watermark was drawn, as shown.
+    Returns (jpeg_bytes, code, embeddings), where code is None for a picture
+    too plain to hold one."""
     image = image.copy()
     image.thumbnail((SLIDE_MAX_SIDE, SLIDE_MAX_SIDE))
+    embeddings = {"uploaded": image_embedding(image)}
 
+    shown = image
     if not promo:
         settings = (
             supabase.table("watermark_settings")
@@ -550,11 +555,37 @@ def watermark_photo(user_id, image, promo):
         )
         profile = supabase.table("profiles").select("username, full_name").eq("id", user_id).limit(1).execute().data
         profile = profile[0] if profile else {}
-        image = draw_visible_watermark(image, settings[0] if settings else None, profile.get("username", ""), profile.get("full_name", ""))
+        shown = draw_visible_watermark(image, settings[0] if settings else None, profile.get("username", ""), profile.get("full_name", ""))
+        if shown is not image:
+            embeddings["shown"] = image_embedding(shown)
 
     code = new_code()
-    data, has_code = protect_photo(image, code)
-    return data, (code if has_code else None)
+    data, has_code = protect_photo(shown, code)
+    return data, (code if has_code else None), embeddings
+
+
+# Step 5, the copy check: a new photo whose ViT numbers are at least this
+# similar to another freelancer's photo is flagged for an admin. Chosen from
+# tests: edited copies (compressed, resized, cropped, screenshots, mirrored)
+# scored 0.90-1.00, while different pictures stayed below 0.88 (except the
+# same poster template with other words, which an admin can clear).
+COPY_CUTOFF = 0.88
+
+
+def vector_text(numbers):
+    """The numbers in the text form the database's vector type reads."""
+    return "[" + ",".join(f"{x:.6f}" for x in numbers) + "]"
+
+
+def copy_check(user_id, embedding):
+    """Compares a new photo with other freelancers' photos (as uploaded and as
+    shown). Returns (status, matched_slide_id, match_score)."""
+    rows = supabase.rpc(
+        "closest_slide_embeddings", {"query": vector_text(embedding), "exclude_freelancer": user_id, "how_many": 1}
+    ).execute().data
+    if rows and rows[0]["similarity"] >= COPY_CUTOFF:
+        return "flagged", rows[0]["slide_id"], round(rows[0]["similarity"], 4)
+    return "active", None, None
 
 
 @app.post("/slides")
@@ -584,13 +615,16 @@ def add_slide(
     media_type = "image" if image is not None else "video"
     position = next_slide_position(user_id, owner, item_id, media_type)
 
-    code = None
+    code, embeddings = None, {}
+    status, matched_slide_id, match_score = "active", None, None
     if image is not None:
         # Same checks as ID photos (a real JPG/PNG/WEBP under 5 MB), then the
         # watermarks, saved as a fresh JPEG (nothing hidden, like the GPS
         # location phones store in photos, is copied over).
-        data, code = watermark_photo(user_id, read_image(image, "photo"), promo)
+        data, code, embeddings = watermark_photo(user_id, read_image(image, "photo"), promo)
         extension, content_type = "jpg", "image/jpeg"
+        # Nearly the same as another freelancer's photo? Then it waits for an admin.
+        status, matched_slide_id, match_score = copy_check(user_id, embeddings["uploaded"])
     else:
         # Videos get their watermarks in step 7.
         data, extension = read_slide_video(user_id, video_path)
@@ -610,6 +644,9 @@ def add_slide(
             "file_path": file_path,
             "watermarked": code is not None,
             "promo": promo,
+            "status": status,
+            "matched_slide_id": matched_slide_id,
+            "match_score": match_score,
         }).execute()
     except APIError as error:
         # Don't leave a file behind for a slide that wasn't saved.
@@ -631,9 +668,20 @@ def add_slide(
             remove_quietly(SLIDE_BUCKET, file_path)
             raise HTTPException(409, "Something went wrong while saving that photo. Please try again.")
 
+    # The copy check's numbers, for comparing future uploads with this photo
+    # (private table). If saving them fails, the photo itself is still fine.
+    if embeddings:
+        try:
+            supabase.table("slide_embeddings").insert([
+                {"slide_id": slide_id, "version": version, "freelancer_id": user_id, "embedding": vector_text(numbers)}
+                for version, numbers in embeddings.items()
+            ]).execute()
+        except APIError:
+            logger.exception("Saving the copy check numbers for slide %s failed", slide_id)
+
     return {
         "id": slide_id, "position": position, "media_type": media_type, "file_path": file_path,
-        "watermarked": code is not None, "promo": promo,
+        "watermarked": code is not None, "promo": promo, "status": status,
     }
 
 
