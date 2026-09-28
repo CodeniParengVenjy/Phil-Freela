@@ -141,11 +141,11 @@ Step 3 files: `database/supabase_watermark_schema.sql`, `ai-service/main.py`
 
 Step 4 (Check Ownership = the paper's "Extraction API"): built 2026-09-28
 (the user said "plan, and if I don't respond in 2 minutes, go for it").
-Database: migration "check_ownership" (part 1) is applied. Part 2, run AFTER
-the new AI service is live (it saves the owner with each code):
-`update watermark_codes w set freelancer_id = s.freelancer_id from media_slides s
-where s.id = w.slide_id and w.freelancer_id is null;` then
-`alter table watermark_codes alter column freelancer_id set not null;`.
+Pushed live (commit 9f68d3f). Database: migrations "check_ownership" and
+"check_ownership_owner_required" are both applied, so don't run
+`supabase_ownership_schema.sql` again. Still needs the user to test it live
+(no photo had been watermarked on the live site yet when Step 4 shipped).
+Next: plan Step 5 (ViT copy check + admin Flagged Content page).
 
 What Step 4 does:
 - Page /dashboard/check-ownership (sidebar "Check Ownership", freelancers and
