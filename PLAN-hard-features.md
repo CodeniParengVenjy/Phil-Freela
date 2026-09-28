@@ -254,9 +254,55 @@ code. Cloudflare Realtime TURN (free up to 1,000 GB a month): secrets
 fixed TURN login such as ExpressTURN: `TURN_URL`, `TURN_USERNAME`,
 `TURN_PASSWORD`. `lib/calls.js` asks /turn before each call (Google STUN
 + relay; without it, a direct connection only). The laptop dev server
-forwards /turn to the live site (`vite.config.js`). The user is creating
-the Cloudflare TURN key; after that: relay-only browser test, then the
-user's phone + laptop test.
+forwards /turn to the live site (`vite.config.js`).
+
+Relay status (2026-09-28): the user created the Cloudflare TURN key
+("philfreela-calls") and saved both secrets in Cloudflare Pages
+(Production); /turn now returns 401 to logged-out visitors and Cloudflare's
+relay servers to logged-in users. Tests on the live site with both browsers
+forced to "relay only": 11/11, and the full browser test 46/46. Speed-ups:
+the connection details go out 1 second after the first relay address
+(instead of up to 4 seconds), the relay login is fetched while it rings, and
+with a relay set up it waits up to 10 seconds for the first relay address
+(a slow network needs it, or the call can't connect). Plain port 80 is left
+out (it stalled calls on a filtered network; encrypted 443 stays).
+Findings: the user's laptop network only reached the relay over TCP/TLS
+(UDP blocked), which is why their direct calls stayed on "Connecting...".
+On healthy stretches relayed calls connected in 2.5-6 seconds; when that
+network was congested (pings averaging 253 ms, spikes over 1 second)
+calls were slow or failed. Next: the user's phone (mobile data) + laptop
+test on a steady connection.
+
+Weak-internet handling (2026-09-28, after a classmate's calls "ended by
+themselves"; the database showed they had connected, ran 21-46 seconds,
+and were ended by a browser, most likely the old 10-second "connection
+lost" rule; migration "voice_video_calls_end_reasons"):
+1. "Reconnecting..." cover with a spinner when the connection drops; the
+   call waits 30 seconds (was 10) before ending with "The connection was
+   lost (weak internet)."
+2. "Weak connection..." cover while the other person's video is frozen for
+   2 seconds, over a fifth of their sound is lost, or the round trip is over
+   1 second (checked every second from the browser's own report).
+3. Spinner + "Connecting...", and after 8 seconds "Still connecting... a
+   weak internet can take longer."
+4. The clean-up job waits 2 minutes without a keep-alive (was 75 seconds);
+   leaving the dashboard ends a call after 10 seconds (was 3).
+5. Each call saves why it ended (`end_reason`: hung_up, no_answer,
+   connection_lost, could_not_connect, page_closed, left_dashboard,
+   signed_out, setup_failed, suspended, caller_gone, no_keep_alive),
+   `ended_by`, and `route` (direct or relay). An answered call that never
+   connected now says "Video call couldn't connect" in the chat.
+Tests: database rules 37/38 (the miss: a 2-second call measured 4 seconds
+on the slow laptop internet); browser 55/57 and 54/57 on two runs (every
+check passed in at least one; each miss matched a network drop on the
+laptop), including all 11 new loading-screen checks.
+To see why real calls ended: `select created_at, status, end_reason,
+route, ended_by from calls order by created_at desc limit 20;`
+
+Before the defense: the TURN key's API token was visible in a screenshot
+in chat. Make a new TURN key (Cloudflare > Realtime > TURN Server), update
+both secrets, and redeploy, together with the Supabase key swap listed in
+HANDOFF-identity-verification.md.
 
 Step 3 files: `database/supabase_calls_schema.sql`, `client/src/lib/calls.js`,
 `pages/dashboard/components/CallDialog.jsx`, `components/calls.css`,

@@ -4,6 +4,8 @@ import { acceptCall, hangUp, toggleCamera, toggleMute, useCall } from "../../../
 import "./calls.css";
 
 const STAGE_TEXT = { starting: "Starting...", calling: "Calling...", connecting: "Connecting..." };
+// After this long on "Connecting...", explain that a weak internet is slower.
+const SLOW_CONNECT_MS = 8000;
 
 // The voice / video call window, shown on every dashboard page (see
 // DashboardOverlays). The call itself lives in lib/calls.js; this only draws
@@ -59,8 +61,11 @@ function CallWindow({ call, small, onToggleSize }) {
           <Avatar path={other.avatarPath} name={other.name} size={32} />
           <div className="flex-grow-1 overflow-hidden">
             <div className="fw-semibold fs-7 text-truncate">{other.name}</div>
-            <div className={`fs-8 ${stage === "ended" ? "text-warning" : "text-secondary"}`}>
-              {stage === "ended" ? call.message : live ? <CallTimer since={call.connectedAt} /> : STAGE_TEXT[stage]}
+            <div className={`fs-8 ${stage === "ended" || call.reconnecting ? "text-warning" : "text-secondary"}`}>
+              {stage === "ended" ? call.message
+                : live && call.reconnecting ? "Reconnecting..."
+                : live ? <CallTimer since={call.connectedAt} />
+                : STAGE_TEXT[stage]}
             </div>
           </div>
           {stage !== "ended" && (
@@ -85,7 +90,24 @@ function CallWindow({ call, small, onToggleSize }) {
               {isVideo && live && call.remoteCameraOff && (
                 <span className="fs-8 text-white-50"><i className="bi bi-camera-video-off-fill me-1"></i>Camera off</span>
               )}
+              {/* Loading while the camera turns on and the devices connect. */}
+              {(stage === "starting" || stage === "connecting") && (
+                <span className="fs-8 text-white-50 d-flex align-items-center gap-2 px-3 text-center">
+                  <span className="spinner-border spinner-border-sm flex-shrink-0" aria-hidden="true"></span>
+                  {stage === "starting" ? "Starting..." : <ConnectingText since={call.connectingAt} />}
+                </span>
+              )}
             </div>
+          )}
+
+          {/* The connection dropped: waiting for it to come back. */}
+          {live && call.reconnecting && (
+            <CallLoading strong text="Reconnecting..." note={small ? "" : "Your internet or theirs is weak. The call will continue when it's back."} />
+          )}
+
+          {/* Laggy (frozen video, lost sound): shown until it recovers. */}
+          {live && call.weak && !call.reconnecting && (
+            <CallLoading text="Weak connection..." note={small ? "" : "Waiting for a better connection."} />
           )}
 
           {/* Your own camera, small in the corner (mirrored, like a mirror). */}
@@ -152,6 +174,31 @@ function StreamPlayer({ stream, audioOnly = false, muted = false, className }) {
   return audioOnly
     ? <audio ref={ref} autoPlay />
     : <video ref={ref} autoPlay playsInline muted={muted} className={className} />;
+}
+
+// A loading cover over the call: a spinner, a short title and an optional
+// note. `strong` covers the video completely (the call dropped); otherwise
+// the frozen video still shows faintly behind it.
+function CallLoading({ text, note, strong = false }) {
+  return (
+    <div className={`call-loading${strong ? " call-loading-strong" : ""}`} role="status">
+      <span className="spinner-border text-light" aria-hidden="true"></span>
+      <span className="fw-semibold fs-7">{text}</span>
+      {note && <span className="fs-8 text-white-50 px-3 text-center">{note}</span>}
+    </div>
+  );
+}
+
+// "Connecting...", and after a while "Still connecting..." with the reason.
+function ConnectingText({ since }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return since && now - since > SLOW_CONNECT_MS
+    ? "Still connecting... a weak internet can take longer."
+    : "Connecting...";
 }
 
 // "3:12" since the call connected, counting up every second.

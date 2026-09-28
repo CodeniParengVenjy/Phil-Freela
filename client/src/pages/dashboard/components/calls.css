@@ -89,6 +89,23 @@
   background: radial-gradient(circle at center, var(--accent-role-subtle), #000 70%);
 }
 
+/* Loading covers: "Weak connection..." (the frozen video shows faintly
+   behind) and "Reconnecting..." (covers it completely). */
+.call-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.call-loading-strong {
+  background: rgba(0, 0, 0, 0.8);
+}
+
 .call-local-video {
   position: absolute;
   right: 0.75rem;

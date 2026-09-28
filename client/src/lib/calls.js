@@ -21,13 +21,16 @@ const KEEP_ALIVE_SECONDS = 20;
 const GATHER_MS = 4000;
 const RELAY_GATHER_MS = 10000;
 const RELAY_GRACE_MS = 1000;
-// A dropped connection gets this long to come back before the call ends.
-const RECONNECT_MS = 10000;
+// A dropped connection gets this long to come back before the call ends
+// (the call window shows "Reconnecting..." meanwhile).
+const RECONNECT_MS = 30000;
+// How often the call's quality is checked (for "Weak connection...").
+const QUALITY_CHECK_MS = 1000;
 // How long "Call ended", "No answer" and the like stay on screen.
 const MESSAGE_MS = 3000;
 // Leaving the dashboard ends the call after this long (moving between its
-// two layouts restarts the listener sooner, which keeps the call going).
-const LEAVE_MS = 3000;
+// two layouts restarts the listener sooner, even on a slow connection).
+const LEAVE_MS = 10000;
 
 // Free Google STUN servers tell each browser its public address, so the two
 // can find each other directly. When that's impossible (a phone on mobile
@@ -57,10 +60,15 @@ const FINISHED = ["declined", "missed", "ended"];
 //              "connecting" -> "active"; "ended" shows `message` briefly
 //   kind, conversationId, other { id, name, avatarPath }
 //   localStream, remoteStream, muted, cameraOff, connectedAt (for the timer)
+//   connectingAt     when "Connecting..." started (for "Still connecting...")
 //   remoteCameraOff  the other person turned their camera off
+//   reconnecting     the connection dropped; waiting for it to come back
+//   weak             the connection is laggy (frozen video, lost sound)
 let call = null;
 let nextKey = 1;
 let peer = null; // the RTCPeerConnection
+let route = null; // "direct" or "relay" once connected, saved when the call ends
+let quality = { frames: null, lost: 0, received: 0, frozen: 0 }; // see checkQuality
 let statusChannel = null; // the side channel for "camera off" (see openStatusChannel)
 let leaveTimer = null; // see listenForCalls
 let timers = []; // timeouts and intervals to stop when the call finishes
@@ -99,10 +107,14 @@ async function rememberToken() {
   accessToken = session?.access_token || "";
 }
 
-// Tells the database the call is over. (A Supabase request only goes out
+// Tells the database the call is over, why (e.g. "hung_up",
+// "connection_lost") and whether it went through the relay, so a call that
+// ended by itself can be explained later. (A Supabase request only goes out
 // once something waits for it, hence the .then.)
-function endInDatabase(callId) {
-  return supabase.rpc("end_call", { target_call: callId }).then(() => {}, () => {});
+function endInDatabase(callId, reason) {
+  return supabase
+    .rpc("end_call", { target_call: callId, reason, via: route })
+    .then(() => {}, () => {});
 }
 
 // Turns the database's messages (start_call / answer_call raise them) into
@@ -202,23 +214,92 @@ function createPeer(key, localStream, isCaller, servers) {
   };
 
   let reconnectTimer = null;
-  connection.onconnectionstatechange = () => {
+  connection.onconnectionstatechange = async () => {
     const state = connection.connectionState;
+    if (!isCurrent(key)) return;
     if (state === "connected") {
       clearTimeout(reconnectTimer);
-      if (call?.key === key && call.stage !== "active") {
-        updateCall(key, { stage: "active", connectedAt: call.connectedAt || Date.now() });
+      if (call.stage !== "active") {
+        updateCall(key, { stage: "active", connectedAt: call.connectedAt || Date.now(), reconnecting: false });
+        timers.push(setInterval(() => checkQuality(key), QUALITY_CHECK_MS));
+      } else {
+        updateCall(key, { reconnecting: false });
       }
+      route = (await readRoute(connection)) || route;
     } else if (state === "disconnected") {
-      // Often comes back by itself (e.g. Wi-Fi hiccup); give it a moment.
+      // Often comes back by itself (a weak or switching network): show
+      // "Reconnecting..." and give it time before ending the call.
       clearTimeout(reconnectTimer);
-      reconnectTimer = setTimeout(() => { if (isCurrent(key)) hangUp("The connection was lost."); }, RECONNECT_MS);
+      updateCall(key, { reconnecting: true });
+      reconnectTimer = setTimeout(() => {
+        if (isCurrent(key)) hangUp("The connection was lost (weak internet).", "connection_lost");
+      }, RECONNECT_MS);
       timers.push(reconnectTimer);
     } else if (state === "failed") {
-      hangUp("The call couldn't connect. The network may be blocking calls.");
+      if (call.stage === "active") hangUp("The connection was lost (weak internet).", "connection_lost");
+      else hangUp("The call couldn't connect. The internet may be too weak or blocking calls.", "could_not_connect");
     }
   };
   return connection;
+}
+
+// Whether the connection goes straight between the two devices or through
+// the relay (read from the browser's own connection report).
+async function readRoute(connection) {
+  try {
+    const stats = await connection.getStats();
+    let pair = null;
+    stats.forEach((report) => {
+      if (report.type === "transport" && report.selectedCandidatePairId) pair = stats.get(report.selectedCandidatePairId);
+    });
+    if (!pair) {
+      stats.forEach((report) => {
+        if (report.type === "candidate-pair" && report.nominated && report.state === "succeeded") pair = report;
+      });
+    }
+    if (!pair) return null;
+    const types = [stats.get(pair.localCandidateId)?.candidateType, stats.get(pair.remoteCandidateId)?.candidateType];
+    return types.includes("relay") ? "relay" : "direct";
+  } catch {
+    return null;
+  }
+}
+
+// Every second during a call: is it laggy? "Weak" when the other person's
+// video has frozen for 2 seconds, more than a fifth of their sound is lost,
+// or messages take over a second to go back and forth.
+async function checkQuality(key) {
+  if (!peer || !isCurrent(key) || call.stage !== "active") return;
+  let stats;
+  try {
+    stats = await peer.getStats();
+  } catch {
+    return;
+  }
+  let frames = null;
+  let lost = 0;
+  let received = 0;
+  let roundTrip = 0;
+  stats.forEach((report) => {
+    if (report.type === "inbound-rtp" && report.kind === "video") frames = report.framesDecoded ?? null;
+    if (report.type === "inbound-rtp" && report.kind === "audio") {
+      lost = report.packetsLost || 0;
+      received = report.packetsReceived || 0;
+    }
+    if (report.type === "candidate-pair" && report.nominated && report.state === "succeeded") {
+      roundTrip = report.currentRoundTripTime || 0;
+    }
+  });
+  if (!isCurrent(key)) return;
+
+  const videoFrozen = call.kind === "video" && !call.remoteCameraOff && frames !== null && frames === quality.frames;
+  const newLost = lost - quality.lost;
+  const newReceived = received - quality.received;
+  const soundLost = newLost + newReceived >= 10 && newLost / (newLost + newReceived) > 0.2;
+  quality = { frames, lost, received, frozen: videoFrozen ? quality.frozen + 1 : 0 };
+
+  const weak = quality.frozen >= 2 || soundLost || roundTrip > 1;
+  if (weak !== Boolean(call.weak)) updateCall(key, { weak });
 }
 
 // Waits until the browser has collected its connection details (its own
@@ -263,6 +344,8 @@ function finish(message) {
     peer = null;
   }
   statusChannel = null;
+  route = null;
+  quality = { frames: null, lost: 0, received: 0, frozen: 0 };
   stopStream(call.localStream);
 
   if (!message) {
@@ -306,11 +389,11 @@ export async function startCall({ conversationId, kind, other }) {
     if (error) throw new Error(callError(error, "Couldn't start the call. Please try again."));
     if (!isCurrent(key)) {
       // Cancelled while the call was being saved.
-      endInDatabase(callId);
+      endInDatabase(callId, "hung_up");
       return;
     }
     updateCall(key, { id: callId, stage: "calling" });
-    later(key, () => { if (call.stage === "calling") hangUp("No answer."); }, RING_SECONDS * 1000);
+    later(key, () => { if (call.stage === "calling") hangUp("No answer.", "no_answer"); }, RING_SECONDS * 1000);
   } catch (error) {
     if (!isCurrent(key)) return stopStream(localStream);
     finish(error.message);
@@ -321,7 +404,7 @@ export async function startCall({ conversationId, kind, other }) {
 export async function acceptCall() {
   if (call?.stage !== "ringing") return;
   const { key, id, kind, offer } = call;
-  updateCall(key, { stage: "connecting" });
+  updateCall(key, { stage: "connecting", connectingAt: Date.now() });
 
   let localStream = null;
   try {
@@ -343,19 +426,20 @@ export async function acceptCall() {
   } catch (error) {
     if (!isCurrent(key)) return stopStream(localStream);
     // The caller sees it as declined.
-    endInDatabase(id);
+    endInDatabase(id, "setup_failed");
     finish(error.message);
   }
 }
 
 // Hang up, cancel, or decline (the database decides which from the status).
 // Also closes a finished call's message. Resolves once the database knows.
-export function hangUp(message) {
+// `reason` is saved with the call; the buttons leave it as "hung_up".
+export function hangUp(message, reason = "hung_up") {
   if (!inCall()) {
     setCall(null);
     return Promise.resolve();
   }
-  const saved = call.id ? endInDatabase(call.id) : Promise.resolve();
+  const saved = call.id ? endInDatabase(call.id, reason) : Promise.resolve();
   finish(message);
   return saved;
 }
@@ -425,12 +509,12 @@ async function handleChange(row) {
     if (call.direction === "incoming" && call.stage === "ringing") {
       finish(); // answered in another tab of the same account
     } else if (call.direction === "outgoing" && call.stage === "calling" && row.answer) {
-      updateCall(key, { stage: "connecting" });
+      updateCall(key, { stage: "connecting", connectingAt: Date.now() });
       try {
         await peer.setRemoteDescription({ type: "answer", sdp: row.answer });
         startKeepAlive(key, row.id);
       } catch {
-        if (isCurrent(key)) hangUp("The call couldn't connect.");
+        if (isCurrent(key)) hangUp("The call couldn't connect.", "could_not_connect");
       }
     }
   }
@@ -473,7 +557,7 @@ export function listenForCalls(userId) {
     .subscribe((status) => { if (status === "SUBSCRIBED") catchUp(userId); });
   return () => {
     supabase.removeChannel(channel);
-    leaveTimer = setTimeout(() => hangUp(), LEAVE_MS);
+    leaveTimer = setTimeout(() => hangUp(undefined, "left_dashboard"), LEAVE_MS);
   };
 }
 
@@ -492,7 +576,7 @@ if (typeof window !== "undefined") {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ target_call: call.id })
+      body: JSON.stringify({ target_call: call.id, reason: "page_closed", via: route })
     }).catch(() => {});
   });
 }

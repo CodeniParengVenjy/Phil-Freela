@@ -286,7 +286,7 @@ export function useDashboardShell() {
 
   const handleSignOut = useCallback(async (event) => {
     event.preventDefault();
-    await hangUp(); // a call in progress ends with the session
+    await hangUp(undefined, "signed_out"); // a call in progress ends with the session
     await supabase.auth.signOut();
     navigate("/login", { replace: true });
   }, [navigate]);

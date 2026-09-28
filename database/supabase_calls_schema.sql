@@ -353,3 +353,150 @@ revoke execute on function public.end_calls_when_suspended() from public, anon, 
 create trigger user_suspensions_end_calls
   after insert or update on public.user_suspensions
   for each row execute function public.end_calls_when_suspended();
+
+-- ---------------------------------------------------------------------------
+-- Why a call ended (2026-09-28, migration "voice_video_calls_end_reasons")
+-- ---------------------------------------------------------------------------
+
+-- Saved when a call finishes, so a call that ended by itself can be
+-- explained later: why (hung_up, no_answer, connection_lost,
+-- could_not_connect, page_closed, left_dashboard, signed_out, setup_failed,
+-- suspended, caller_gone, no_keep_alive), who ended it, and whether the
+-- connection went straight between the devices or through the relay.
+alter table public.calls
+  add column end_reason text,
+  add column ended_by uuid references public.profiles (id) on delete set null,
+  add column route text check (route in ('direct', 'relay'));
+
+drop function public.finish_call(uuid, text, timestamptz);
+
+create or replace function public.finish_call(target_call uuid, final_status text, reason text default null, by_user uuid default null, via text default null)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.calls
+  set status = final_status, ended_at = now(), offer = null, answer = null,
+      end_reason = reason, ended_by = by_user, route = coalesce(via, route)
+  where id = target_call and status in ('ringing', 'accepted');
+$$;
+
+revoke execute on function public.finish_call(uuid, text, text, uuid, text) from public, anon, authenticated;
+
+-- A call's browsers now get 2 minutes without a keep-alive (was 75 seconds),
+-- so a slow internet whose keep-alives arrive late doesn't end a call that's
+-- still going.
+create or replace function public.finish_stale_calls()
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.calls
+  set status = 'missed', ended_at = now(), offer = null, answer = null, end_reason = 'caller_gone'
+  where status = 'ringing' and created_at < now() - interval '45 seconds';
+
+  update public.calls
+  set status = 'ended', ended_at = last_active_at, offer = null, answer = null, end_reason = 'no_keep_alive'
+  where status = 'accepted' and last_active_at < now() - interval '2 minutes';
+$$;
+
+-- end_call now also takes the reason and the route (both optional).
+drop function public.end_call(uuid);
+
+create or replace function public.end_call(target_call uuid, reason text default null, via text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  me uuid := auth.uid();
+  the_call public.calls;
+begin
+  select * into the_call
+  from public.calls
+  where id = target_call and me in (caller_id, callee_id)
+  for update;
+  if not found then
+    raise exception 'Call not found.';
+  end if;
+
+  -- Only known values are saved.
+  if reason not in ('hung_up', 'no_answer', 'connection_lost', 'could_not_connect', 'page_closed', 'left_dashboard', 'signed_out', 'setup_failed') then
+    reason := null;
+  end if;
+  if via not in ('direct', 'relay') then
+    via := null;
+  end if;
+
+  if the_call.status = 'ringing' then
+    perform public.finish_call(the_call.id, case when me = the_call.caller_id then 'missed' else 'declined' end, reason, me, via);
+  elsif the_call.status = 'accepted' then
+    perform public.finish_call(the_call.id, 'ended', reason, me, via);
+  end if;
+end;
+$$;
+
+revoke execute on function public.end_call(uuid, text, text) from public, anon;
+grant execute on function public.end_call(uuid, text, text) to authenticated;
+
+-- Suspended during a call: the reason is saved too.
+create or replace function public.end_calls_when_suspended()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  active_call record;
+begin
+  if not new.blocks_messaging or (new.ends_at is not null and new.ends_at <= now()) then
+    return new;
+  end if;
+
+  for active_call in
+    select id, status from public.calls
+    where status in ('ringing', 'accepted') and new.user_id in (caller_id, callee_id)
+  loop
+    perform public.finish_call(active_call.id, case when active_call.status = 'ringing' then 'missed' else 'ended' end, 'suspended');
+  end loop;
+  return new;
+end;
+$$;
+
+-- The chat line says so when an answered call never managed to connect
+-- ("Video call couldn't connect" instead of "Video call, 0:12").
+create or replace function public.add_call_chat_line()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  seconds int;
+  call_length text;
+  line text;
+begin
+  if new.status = 'ended' and new.end_reason = 'could_not_connect' then
+    line := format('%s call couldn''t connect', initcap(new.kind));
+  elsif new.status = 'ended' then
+    seconds := greatest(0, round(extract(epoch from (new.ended_at - coalesce(new.answered_at, new.ended_at)))))::int;
+    -- "3:12", or "1:05:09" past an hour
+    call_length := case
+      when seconds >= 3600 then format('%s:%s:%s', seconds / 3600, lpad((seconds % 3600 / 60)::text, 2, '0'), lpad((seconds % 60)::text, 2, '0'))
+      else format('%s:%s', seconds / 60, lpad((seconds % 60)::text, 2, '0'))
+    end;
+    line := format('%s call, %s', initcap(new.kind), call_length);
+  elsif new.status = 'missed' then
+    line := format('Missed %s call', new.kind);
+  else
+    line := format('Declined %s call', new.kind);
+  end if;
+
+  insert into public.messages (conversation_id, sender_id, body, call_id)
+  values (new.conversation_id, new.caller_id, line, new.id);
+  return new;
+end;
+$$;
