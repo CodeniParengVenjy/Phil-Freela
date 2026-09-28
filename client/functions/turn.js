@@ -48,9 +48,12 @@ export async function onRequestGet({ request, env }) {
   if (!response.ok) return noServers();
 
   const { iceServers = [] } = await response.json();
-  // Browsers block port 53, and waiting for it only slows the call down.
+  // Left out: port 53, which browsers block, and plain port 80, which many
+  // networks pass through a web filter that stalls the call (15 seconds to
+  // connect in our tests). Strict networks still get the encrypted port 443.
+  const blocked = (url) => /:53(\?|$)/.test(url) || /^turn:[^?]*:80(\?|$)/.test(url);
   const usable = iceServers
-    .map((server) => ({ ...server, urls: [].concat(server.urls).filter((url) => !/:53(\?|$)/.test(url)) }))
+    .map((server) => ({ ...server, urls: [].concat(server.urls).filter((url) => !blocked(url)) }))
     .filter((server) => server.urls.length > 0);
   return json({ iceServers: usable });
 }
