@@ -123,6 +123,30 @@ export async function checkOwnership(picture) {
   return request("/watermarks/extract", { method: "POST", headers: await authHeader(), body: form });
 }
 
+// Adds writing to the caller's portfolio (watermarking step 6): pasted text,
+// or a TXT, DOCX or PDF file. The AI service hides the invisible code in it,
+// adds the footer, and runs the copy check. Returns the saved document:
+// { id, kind: "document", title, description, body, status, created_at }.
+export async function addDocument({ title, description, text, file }) {
+  const form = new FormData();
+  form.append("title", title);
+  if (description) form.append("description", description);
+  if (text) form.append("text", text);
+  if (file) form.append("document", file, file.name);
+  return request("/portfolio/documents", { method: "POST", headers: await authHeader(), body: form });
+}
+
+// Check Ownership for writing: pasted text or a TXT, DOCX or PDF file.
+// Returns { found: false }, or { found: true, how: "code" | "similarity",
+// similarity, is_you, owner: { id, full_name, username, verified },
+// document: { id, title, created_at } (null if deleted), uploaded_at }.
+export async function checkTextOwnership({ text, file }) {
+  const form = new FormData();
+  if (text) form.append("text", text);
+  if (file) form.append("document", file, file.name);
+  return request("/watermarks/extract-text", { method: "POST", headers: await authHeader(), body: form });
+}
+
 // Adds one photo (a File) or one video (its path in the "slide-uploads"
 // bucket) to the end of a service's or portfolio project's slideshow (pass
 // serviceId or portfolioItemId). promo: it's an ad, so no visible watermark.

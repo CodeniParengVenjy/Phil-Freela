@@ -1,14 +1,25 @@
 import { supabase } from "./supabaseClient";
 import { SLIDES_SELECT, removeItemFiles } from "./slides";
 
-// Portfolio projects (watermarking system, step 2): a title, a short
-// description, and up to 10 photos and videos (slides, see lib/slides.js).
-// The database rules decide who can see, add, and delete them.
+// Portfolio items (watermarking system, steps 2 and 6): projects (a title, a
+// short description, and up to 10 photos and videos, see lib/slides.js) and
+// documents (writing, added through the AI service so it gets watermarked,
+// see addDocument in lib/aiService.js). The database rules decide who can
+// see, add, and delete them.
 
 export const MAX_TITLE_LENGTH = 100;
 export const MAX_DESCRIPTION_LENGTH = 1000;
+export const MAX_DOCUMENT_CHARACTERS = 20000;
+export const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
+export const DOCUMENT_ACCEPT = ".txt,.docx,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-const PORTFOLIO_COLUMNS = `id, freelancer_id, title, description, created_at, ${SLIDES_SELECT}`;
+// Invisible characters (the hidden code), removed where text is only
+// previewed; the full text keeps them so copies carry the code.
+export const withoutHiddenCharacters = (text) => (text || "").replace(/[​-‏⁠-⁤﻿]/g, "");
+
+// kind: "project" (photos/videos) or "document" (writing in body, step 6).
+// status: "flagged" = held back by the copy check until an admin reviews it.
+const PORTFOLIO_COLUMNS = `id, freelancer_id, kind, title, description, body, status, created_at, ${SLIDES_SELECT}`;
 
 // A freelancer's projects, newest first.
 export async function fetchPortfolio(freelancerId) {

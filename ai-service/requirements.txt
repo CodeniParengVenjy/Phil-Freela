@@ -11,3 +11,7 @@ python-dotenv>=1.2
 python-multipart>=0.0.32
 # Watermarks: runs Meta's HiDDeN model (models/hidden_*.onnx, see export_hidden.py).
 onnxruntime>=1.20
+# Documents: the text model's tokenizer, and reading DOCX and PDF files.
+tokenizers>=0.20
+python-docx>=1.1
+pypdf>=5

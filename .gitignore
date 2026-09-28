@@ -8,3 +8,5 @@ __pycache__/
 # Downloaded by ai-service/get_models.py (too big for GitHub)
 ai-service/models/face_recognition_sface_2021dec.onnx
 ai-service/models/dino_vits16_model_quantized.onnx
+ai-service/models/minilm_l6_v2_quantized.onnx
+ai-service/models/minilm_tokenizer.json

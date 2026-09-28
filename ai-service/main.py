@@ -24,17 +24,24 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 import cv2
+from docx import Document as DocxDocument
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from postgrest.exceptions import APIError
+from pypdf import PdfReader
 from supabase import ClientOptions, create_client
 
 from face_check import NoFaceError, check_faces, prepare_image
 from hidden_watermark import new_code, protect_photo, read_code, read_uncropped_codes
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
 from similarity import image_embedding
+from text_embedder import embed_texts
+from text_watermark import add_code as add_text_code
+from text_watermark import footer as text_footer
+from text_watermark import paragraphs_for_check, strip_hidden
+from text_watermark import read_code as read_text_code
 from visible_watermark import draw_visible_watermark
 
 load_dotenv()
@@ -443,6 +450,18 @@ def ensure_own_item(user_id, owner, item_id):
         raise HTTPException(403, "Your account is suspended from posting, so you can't upload right now.")
 
 
+def ensure_room_for_one_more(user_id):
+    """Each freelancer can have 50 items in all: photos and videos (in
+    services and portfolio projects) plus portfolio documents."""
+    slides = supabase.table("media_slides").select("id", count="exact").eq("freelancer_id", user_id).limit(1).execute().count or 0
+    documents = (
+        supabase.table("portfolio_items").select("id", count="exact")
+        .eq("freelancer_id", user_id).eq("kind", "document").limit(1).execute().count or 0
+    )
+    if slides + documents >= MAX_SLIDES_PER_FREELANCER:
+        raise HTTPException(409, f"You've reached the limit of {MAX_SLIDES_PER_FREELANCER} photos, videos and documents. Delete something to add more.")
+
+
 def next_slide_position(user_id, owner, item_id, media_type):
     """Checks the upload limits and returns the first free spot (1-10) in the
     service's or project's slideshow."""
@@ -453,9 +472,8 @@ def next_slide_position(user_id, owner, item_id, media_type):
 
     # Limits across all of the freelancer's services and projects together,
     # to save storage space.
+    ensure_room_for_one_more(user_id)
     mine = supabase.table("media_slides").select("media_type").eq("freelancer_id", user_id).execute().data
-    if len(mine) >= MAX_SLIDES_PER_FREELANCER:
-        raise HTTPException(409, f"You've reached the limit of {MAX_SLIDES_PER_FREELANCER} photos and videos. Delete a service or project to add more.")
     if media_type == "video" and sum(row["media_type"] == "video" for row in mine) >= MAX_VIDEOS_PER_FREELANCER:
         raise HTTPException(409, f"You can have at most {MAX_VIDEOS_PER_FREELANCER} videos. Delete a service or project with a video to add another.")
 
@@ -765,5 +783,189 @@ def extract_watermark(image: UploadFile = File(...), authorization: str | None =
     rows = closest_codes(read_uncropped_codes(picture))
     if is_match(rows, MAX_WRONG_BITS_GUESS):
         return describe_match(rows[0], user_id)
+
+    return {"found": False}
+
+
+# ---------------------------------------------------------------------------
+# Documents (watermarking system, step 6): writing in portfolios gets an
+# invisible code (text_watermark.py), a visible footer, and a copy check with
+# a text model (text_embedder.py).
+# ---------------------------------------------------------------------------
+
+MAX_DOCUMENT_BYTES = 4 * 1024 * 1024  # under Vercel's 4.5 MB per request
+MAX_DOCUMENT_CHARACTERS = 20000
+MIN_DOCUMENT_WORDS = 10
+# A piece of a new document at least this similar in meaning to a piece of
+# another freelancer's document counts as copied. Chosen from tests: copies
+# with some words changed scored 0.96-0.99; full rewordings 0.59-0.72 and
+# different texts on the same topic at most 0.57.
+TEXT_COPY_CUTOFF = 0.80
+
+
+def read_document(text, document):
+    """The writing from pasted text or an uploaded TXT, DOCX or PDF file."""
+    if text is not None:
+        raw = text
+    elif document is not None:
+        data = document.file.read(MAX_DOCUMENT_BYTES + 1)
+        if len(data) > MAX_DOCUMENT_BYTES:
+            raise HTTPException(400, "That file is too big (max 4 MB).")
+        # The first bytes show the real file type, whatever the file is called.
+        try:
+            if data[:5] == b"%PDF-":
+                pdf = PdfReader(io.BytesIO(data))
+                raw = "\n\n".join(page.extract_text() or "" for page in pdf.pages)
+            elif data[:2] == b"PK":
+                raw = "\n".join(paragraph.text for paragraph in DocxDocument(io.BytesIO(data)).paragraphs)
+            else:
+                raw = data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise HTTPException(400, "Please upload a TXT, DOCX or PDF file (TXT files must be saved as UTF-8).")
+        except Exception:
+            raise HTTPException(400, "That file couldn't be read. Please upload a TXT, DOCX or PDF file.")
+    else:
+        raise HTTPException(400, "Paste some text or choose a file.")
+
+    raw = raw.replace("\r\n", "\n").replace("\r", "\n")
+    words = len(strip_hidden(raw).split())
+    if words < MIN_DOCUMENT_WORDS:
+        if document is not None and document.filename and document.filename.lower().endswith(".pdf"):
+            raise HTTPException(400, "This PDF has no text we can read (it may be a scan). Please use a text PDF, DOCX or TXT.")
+        raise HTTPException(400, f"Please add at least {MIN_DOCUMENT_WORDS} words.")
+    if len(strip_hidden(raw)) > MAX_DOCUMENT_CHARACTERS:
+        raise HTTPException(400, f"That's too long: documents can have up to {MAX_DOCUMENT_CHARACTERS:,} characters.")
+    return raw
+
+
+def closest_documents(piece_embeddings, exclude_freelancer, how_many=1):
+    """The documents with a piece closest to any of these pieces (the database
+    function closest_document_pieces, only this service may call it)."""
+    return supabase.rpc("closest_document_pieces", {
+        "queries": [vector_text(e) for e in piece_embeddings],
+        "exclude_freelancer": exclude_freelancer,
+        "how_many": how_many,
+    }).execute().data
+
+
+@app.post("/portfolio/documents")
+def add_document(
+    title: str = Form(...),
+    description: str | None = Form(default=None),
+    text: str | None = Form(default=None),
+    document: UploadFile | None = File(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Adds writing to the caller's portfolio: pasted text, or a TXT, DOCX or
+    PDF file (only the text is kept). It gets the invisible code, the footer,
+    and the copy check before it's saved."""
+    user_id = get_user_id(authorization)
+    title = title.strip()
+    if not 1 <= len(title) <= 100:
+        raise HTTPException(400, "Please give the document a title (up to 100 characters).")
+    description = (description or "").strip() or None
+    if description and len(description) > 1000:
+        raise HTTPException(400, "The description can be at most 1,000 characters.")
+
+    profile = supabase.table("profiles").select("account_type, username, full_name").eq("id", user_id).limit(1).execute().data
+    if not profile or profile[0]["account_type"] != "freelancer":
+        raise HTTPException(403, "Only freelancers can add to a portfolio.")
+    if supabase.rpc("is_posting_blocked", {"target": user_id}).execute().data:
+        raise HTTPException(403, "Your account is suspended from posting, so you can't upload right now.")
+    ensure_room_for_one_more(user_id)
+
+    raw = read_document(text, document)
+    clean = strip_hidden(raw).strip()
+    pieces = paragraphs_for_check(clean)
+    embeddings = embed_texts(pieces)
+
+    # Copy check 1: pasted from another freelancer's document, hidden code and all.
+    status, matched_item_id, match_score = "active", None, None
+    found_code = read_text_code(raw)
+    if found_code is not None:
+        owner = supabase.table("watermark_codes").select("freelancer_id, portfolio_item_id").eq("code", found_code).limit(1).execute().data
+        if owner and owner[0]["freelancer_id"] != user_id:
+            status, matched_item_id, match_score = "flagged", owner[0]["portfolio_item_id"], 1.0
+    # Copy check 2: nearly the same meaning as a piece of another freelancer's document.
+    if status == "active":
+        rows = closest_documents(embeddings, user_id)
+        if rows and rows[0]["similarity"] >= TEXT_COPY_CUTOFF:
+            status, matched_item_id, match_score = "flagged", rows[0]["portfolio_item_id"], round(rows[0]["similarity"], 4)
+
+    # The watermark: the visible footer (unless turned off), then the invisible
+    # code after the first word of every paragraph.
+    settings = (
+        supabase.table("watermark_settings").select("text_mode, custom_text, document_footer")
+        .eq("freelancer_id", user_id).limit(1).execute().data
+    )
+    settings = settings[0] if settings else {}
+    body = clean
+    if settings.get("document_footer", True):
+        body += "\n\n" + text_footer(settings, profile[0]["username"], profile[0]["full_name"])
+    code = new_code()
+    body = add_text_code(body, code)
+
+    item = supabase.table("portfolio_items").insert({
+        "freelancer_id": user_id, "kind": "document", "title": title, "description": description, "body": body,
+        "status": status, "matched_item_id": matched_item_id, "match_score": match_score,
+    }).execute().data[0]
+    try:
+        supabase.table("watermark_codes").insert({"code": code, "portfolio_item_id": item["id"], "freelancer_id": user_id}).execute()
+        supabase.table("document_embeddings").insert([
+            {"portfolio_item_id": item["id"], "piece": i, "freelancer_id": user_id, "embedding": vector_text(e)}
+            for i, e in enumerate(embeddings)
+        ]).execute()
+    except APIError:
+        # Practically impossible (the same random code twice): undo the document.
+        logger.exception("Saving the code or copy check numbers for document %s failed", item["id"])
+        supabase.table("portfolio_items").delete().eq("id", item["id"]).execute()
+        raise HTTPException(409, "Something went wrong while saving that document. Please try again.")
+
+    return {key: item[key] for key in ("id", "freelancer_id", "kind", "title", "description", "body", "status", "created_at")}
+
+
+def describe_document_match(owner_id, item_id, user_id, how, similarity=None, found_at=None):
+    """What Check Ownership shows for writing: the owner and the document."""
+    owner = supabase.table("profiles").select("id, full_name, username").eq("id", owner_id).limit(1).execute().data
+    owner = owner[0] if owner else {"id": owner_id, "full_name": None, "username": None}
+    owner["verified"] = bool(supabase.rpc("is_verified", {"target": owner_id}).execute().data)
+    item = []
+    if item_id:
+        item = supabase.table("portfolio_items").select("id, title, created_at").eq("id", item_id).limit(1).execute().data
+    return {
+        "found": True,
+        "how": how,  # "code" (the hidden code) or "similarity" (the text model)
+        "similarity": similarity,
+        "is_you": owner_id == user_id,
+        "owner": owner,
+        "document": item[0] if item else None,
+        "uploaded_at": item[0]["created_at"] if item else found_at,
+    }
+
+
+@app.post("/watermarks/extract-text")
+def extract_text_watermark(
+    text: str | None = Form(default=None),
+    document: UploadFile | None = File(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Check Ownership for writing: whose document is this text from? First
+    the hidden code; if it was removed (retyped, pasted as plain text), the
+    text model looks for a document with nearly the same meaning."""
+    user_id = get_user_id(authorization)
+    raw = read_document(text, document)
+
+    code = read_text_code(raw)
+    if code is not None:
+        row = (
+            supabase.table("watermark_codes").select("freelancer_id, portfolio_item_id, created_at")
+            .eq("code", code).limit(1).execute().data
+        )
+        if row:
+            return describe_document_match(row[0]["freelancer_id"], row[0]["portfolio_item_id"], user_id, "code", found_at=row[0]["created_at"])
+
+    rows = closest_documents(embed_texts(paragraphs_for_check(strip_hidden(raw))), None)
+    if rows and rows[0]["similarity"] >= TEXT_COPY_CUTOFF:
+        return describe_document_match(rows[0]["freelancer_id"], rows[0]["portfolio_item_id"], user_id, "similarity", round(rows[0]["similarity"], 4))
 
     return {"found": False}

@@ -238,6 +238,58 @@ Step 5 files: `database/supabase_copy_check_schema.sql`, `ai-service/similarity.
 `admin/views/AdminFlaggedView.jsx`, `admin/layout/AdminLayout.jsx`,
 `App.jsx`, `lib/pageTitles.js`.
 
+Step 6 (Documents / writing): built and pushed live 2026-09-28 (the user
+said "go"). Database: migration "portfolio_documents" is applied, so don't
+run `supabase_documents_schema.sql` again. Still needs a live test.
+
+What Step 6 does:
+- Add to Portfolio > "Writing": pasted text or TXT/DOCX/PDF (text only, up
+  to 4 MB and 20,000 characters). Created only by the AI service
+  (`POST /portfolio/documents`); the database refuses documents from browsers.
+- Invisible code (`text_watermark.py`): a random 48-bit code written with
+  zero-width characters (U+200B = 0, U+200C = 1) between two word joiners
+  (U+2060), after the first word of EVERY sentence, so copying any sentence
+  carries it. Stored in `watermark_codes.portfolio_item_id`.
+- Footer "© <name> · PhilFreela" (same name choice as the photo watermark),
+  switch "document_footer" in Watermark Settings (default on).
+- Copy check: all-MiniLM-L6-v2 (8-bit ONNX, `text_embedder.py`, shared with
+  the planned AI search) on pieces of 40-150 words (`document_embeddings`);
+  flagged if a piece is >= 0.80 similar (`TEXT_COPY_CUTOFF`) to another
+  freelancer's active document, or if the text still carries another
+  freelancer's hidden code (score 1.0). Flagged documents: "Under review" for
+  the owner, listed with photos on Admin > Flagged Content.
+- Check Ownership > Text tab (`POST /watermarks/extract-text`): the hidden
+  code first; if it was removed, the closest document by meaning (>= 0.80).
+- The 50-item limit per freelancer now counts documents too.
+
+Step 6 test results:
+- Text model check: "A man is eating food." vs "... a piece of bread." =
+  0.755, matching the model's published value.
+- Cutoff (6 topics x original / light edit / full rewording / different text
+  on the same topic): light edits 0.96-0.99, full rewordings 0.59-0.72, same
+  topic different text 0.22-0.57, different topics <= 0.40. At 0.80: all
+  light edits flagged, nothing else. Full rewordings count as new writing.
+- Invisible code: text looks identical; 40 of 40 copies of any ~120 visible
+  characters (about a sentence) carried it; survives a Word (DOCX) round
+  trip, extra spaces and Windows line endings; removing hidden characters
+  removes it (then the similarity fallback finds the source).
+- Endpoint (fake database): paste of another's document flagged (1.0);
+  retyped with some words changed flagged (0.97); different writing and the
+  owner's own re-upload stay active; DOCX/TXT work; broken PDF, too few
+  words and client accounts refused; Check Ownership finds one copied
+  sentence by its code and retyped text by similarity (0.97), and nothing
+  for unrelated text.
+
+Step 6 files: `database/supabase_documents_schema.sql`, `ai-service/text_watermark.py`,
+`text_embedder.py`, `main.py` (documents + extract-text, shared 50-item
+limit), `requirements.txt` (tokenizers, python-docx, pypdf), `get_models.py`,
+`.gitignore`, `client/src/lib/aiService.js` (`addDocument`,
+`checkTextOwnership`), `lib/portfolio.js`, `lib/watermarkSettings.js`,
+`components/PortfolioUploadDialog.jsx`, `PortfolioSection.jsx`,
+`PortfolioViewer.jsx`, `portfolio.css`, `WatermarkSettingsForm.jsx`,
+`TextOwnershipCheck.jsx`, `views/CheckOwnershipView.jsx`,
+`admin/views/AdminFlaggedView.jsx`, `admin/layout/AdminLayout.jsx`.
+
 ## Reminders for later steps
 
 - Step 7: REMIND THE USER to decide the video size limit. Until Step 7

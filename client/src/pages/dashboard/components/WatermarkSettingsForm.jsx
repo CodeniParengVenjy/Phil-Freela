@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   COLORS, MAX_CUSTOM_TEXT, POSITIONS, SIZES,
-  loadWatermarkSettings, saveWatermarkSettings
+  loadWatermarkSettings, saveWatermarkSettings, watermarkText
 } from "../../../lib/watermarkSettings";
 import { drawWatermark, loadWatermarkFont } from "../../../lib/watermarkPreview";
 
@@ -185,6 +185,20 @@ export default function WatermarkSettingsForm({ userId, username, fullName, show
           </div>
         </div>
       </fieldset>
+
+      <div className="form-check form-switch">
+        <input
+          id="wmFooter"
+          className="form-check-input"
+          type="checkbox"
+          role="switch"
+          checked={settings.document_footer}
+          onChange={(e) => change("document_footer", e.target.checked)}
+        />
+        <label htmlFor="wmFooter" className="form-check-label text-white fw-semibold fs-7">
+          Add a footer to my documents: <span className="text-secondary fw-normal">"© {watermarkText(settings, { username, fullName })} · PhilFreela"</span>
+        </label>
+      </div>
 
       <div>
         <label className="form-label text-white fw-semibold fs-7">Preview:</label>

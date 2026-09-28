@@ -15,7 +15,9 @@ export const DEFAULT_WATERMARK = {
   opacity: 40,
   size: "medium",
   color: "white",
-  show_badge: true
+  show_badge: true,
+  // Documents (step 6): the "© @username · PhilFreela" line at the end.
+  document_footer: true
 };
 
 export const MAX_CUSTOM_TEXT = 40;
@@ -45,7 +47,7 @@ export const COLORS = [
 export async function loadWatermarkSettings(freelancerId) {
   const { data, error } = await supabase
     .from("watermark_settings")
-    .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, show_badge")
+    .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, show_badge, document_footer")
     .eq("freelancer_id", freelancerId)
     .maybeSingle();
   if (error) throw new Error("Couldn't load your watermark settings right now.");
@@ -65,6 +67,7 @@ export async function saveWatermarkSettings(freelancerId, settings) {
     size: settings.size,
     color: settings.color,
     show_badge: settings.show_badge,
+    document_footer: settings.document_footer,
     updated_at: new Date().toISOString()
   });
   if (error) throw new Error("Couldn't save your watermark settings. Please try again.");

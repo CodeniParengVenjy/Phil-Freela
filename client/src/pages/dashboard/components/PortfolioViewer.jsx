@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { itemSlides } from "../../../lib/slides";
 import MediaCarousel from "./MediaCarousel";
+import "./portfolio.css";
 
-// A portfolio project opened big: its slideshow, title and description.
+// A portfolio project opened big: its slideshow (or, for a document, its
+// text), title and description.
 // Owners also get a Delete button (pass onDelete). ownerName: see
 // MediaCarousel. Rendered straight into <body> so it covers the whole screen,
 // in the same look and animation as the other popups (role-confirm-* classes).
@@ -39,7 +41,14 @@ export default function PortfolioViewer({ item, ownerName, onDelete, onClose }) 
         style={{ maxWidth: 760, width: "100%", maxHeight: "92vh", overflowY: "auto" }}
         onClick={(event) => event.stopPropagation()}
       >
-        {slides.length > 0 ? (
+        {item.kind === "document" ? (
+          // Writing: shown as text. It can be selected and copied on purpose,
+          // because the invisible code in every sentence goes along with any copy.
+          <div className="p-4 pb-0">
+            {item.status === "flagged" && <span className="badge bg-warning text-dark mb-2"><i className="bi bi-hourglass-split me-1"></i>Under review</span>}
+            <div className="portfolio-document-text">{item.body}</div>
+          </div>
+        ) : slides.length > 0 ? (
           <MediaCarousel slides={slides} height="min(60vh, 460px)" fit="contain" alt={item.title} ownerName={ownerName} />
         ) : (
           <div className="d-flex align-items-center justify-content-center bg-black text-secondary fs-7" style={{ height: 200 }}>
@@ -60,7 +69,7 @@ export default function PortfolioViewer({ item, ownerName, onDelete, onClose }) 
           {onDelete && (
             <div className="d-flex justify-content-end mt-4">
               <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={() => onDelete(item)}>
-                <i className="bi bi-trash3 me-1"></i> Delete project
+                <i className="bi bi-trash3 me-1"></i> Delete {item.kind === "document" ? "document" : "project"}
               </button>
             </div>
           )}

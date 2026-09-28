@@ -65,14 +65,15 @@ export default function AdminLayout() {
     setPendingAppeals(count || 0);
   }, []);
 
-  // Counts photos the copy check held back (watermarking step 5). The Flagged
-  // Content page calls this after each review so the badge stays correct.
+  // Counts photos and documents the copy check held back (watermarking steps
+  // 5-6). The Flagged Content page calls this after each review so the badge
+  // stays correct.
   const refreshPendingFlagged = useCallback(async () => {
-    const { count } = await supabase
-      .from("media_slides")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "flagged");
-    setPendingFlagged(count || 0);
+    const [photos, documents] = await Promise.all([
+      supabase.from("media_slides").select("id", { count: "exact", head: true }).eq("status", "flagged"),
+      supabase.from("portfolio_items").select("id", { count: "exact", head: true }).eq("kind", "document").eq("status", "flagged")
+    ]);
+    setPendingFlagged((photos.count || 0) + (documents.count || 0));
   }, []);
 
   useEffect(() => {

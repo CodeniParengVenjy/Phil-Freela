@@ -1,5 +1,6 @@
 """Downloads the models too big to keep in GitHub into the models folder:
-the SFace face model (37 MB) and the copy check's ViT (23 MB).
+the SFace face model (37 MB), the copy check's ViT (23 MB), and the
+documents' text model (23 MB).
 
 They're fetched from OpenCV's model collection and Hugging Face instead:
 Vercel runs this while building (see vercel.json), and on a laptop you run it
@@ -26,6 +27,16 @@ FILES = {
     "dino_vits16_model_quantized.onnx": (
         "https://huggingface.co/Xenova/dino-vits16/resolve/main/onnx/model_quantized.onnx",
         "686df030e42d721ce72c8e89edc95cc9107068039298e3500d724727d69f172a",
+    ),
+    # The documents copy check's text model (all-MiniLM-L6-v2, Apache 2.0),
+    # 8-bit ONNX (23 MB) and its tokenizer. See text_embedder.py.
+    "minilm_l6_v2_quantized.onnx": (
+        "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model_quantized.onnx",
+        "afdb6f1a0e45b715d0bb9b11772f032c399babd23bfc31fed1c170afc848bdb1",
+    ),
+    "minilm_tokenizer.json": (
+        "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer.json",
+        "da0e79933b9ed51798a3ae27893d3c5fa4a201126cef75586296df9b4d2c62a0",
     ),
 }
 

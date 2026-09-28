@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { deletePortfolioItem, fetchPortfolio } from "../../../lib/portfolio";
+import { deletePortfolioItem, fetchPortfolio, withoutHiddenCharacters } from "../../../lib/portfolio";
 import { itemSlides, underReviewMessage } from "../../../lib/slides";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import PortfolioUploadDialog from "./PortfolioUploadDialog";
@@ -10,8 +10,9 @@ import "./portfolio.css";
 // Stops the browser's "Save image as..." menu on the cover pictures.
 const blockSaveMenu = (event) => event.preventDefault();
 
-// A freelancer's portfolio as a grid of project cards (the first photo or
-// video is the cover); clicking one opens it big. Used on the owner's own
+// A freelancer's portfolio as a grid of cards: projects (the first photo or
+// video is the cover) and documents (the first lines of the writing);
+// clicking one opens it big. Used on the owner's own
 // Profile page (isOwner: can add and delete) and on the public portfolio page.
 // ownerName: the freelancer's @username, shown over the slides (see MediaCarousel).
 export default function PortfolioSection({ freelancerId, ownerName, isOwner = false }) {
@@ -42,8 +43,10 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
   const handleSaved = (project, failed) => {
     setItems((prev) => [project, ...(prev || [])]);
     setAdding(false);
-    // Photos the copy check held back for an admin (step 5) are mentioned too.
-    const heldBack = underReviewMessage(project.slides);
+    // Anything the copy check held back for an admin (steps 5-6) is mentioned too.
+    const heldBack = project.kind === "document"
+      ? (project.status === "flagged" ? "It's waiting for an admin to review, because it looks very similar to another freelancer's writing. Until then only you can see it." : "")
+      : underReviewMessage(project.slides);
     showToast(`${failed.length
       ? `"${project.title}" was added, but ${failed.length === 1 ? "1 file" : `${failed.length} files`} couldn't be. ${failed.join(" ")}`
       : `"${project.title}" was added to your portfolio!`} ${heldBack}`.trim());
@@ -78,7 +81,7 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
       {!loadError && items === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
       {items?.length === 0 && (
         <p className="text-secondary fs-7 mb-0">
-          {isOwner ? "You haven't added any projects yet. Show clients your best work!" : "No portfolio projects yet."}
+          {isOwner ? "You haven't added anything yet. Show clients your best work!" : "No portfolio projects yet."}
         </p>
       )}
 
@@ -90,11 +93,18 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
             <div className="col-6 col-md-4" key={item.id}>
               <button type="button" className="portfolio-card" onClick={() => setViewing(item)} aria-label={`Open ${item.title}`}>
                 <div className="portfolio-card-cover">
+                  {item.kind === "document" && (
+                    <div className="portfolio-card-text">
+                      <i className="bi bi-file-earmark-text-fill me-1"></i>
+                      {withoutHiddenCharacters(item.body).slice(0, 180)}
+                    </div>
+                  )}
+                  {item.status === "flagged" && <span className="portfolio-card-review"><i className="bi bi-hourglass-split me-1"></i>Under review</span>}
                   {cover?.mediaType === "video" && (
                     <video src={`${cover.url}#t=0.1`} muted preload="metadata" onContextMenu={blockSaveMenu} />
                   )}
                   {cover?.mediaType === "image" && <img src={cover.url} alt="" draggable={false} onContextMenu={blockSaveMenu} />}
-                  {!cover && <i className="bi bi-images portfolio-card-empty"></i>}
+                  {!cover && item.kind !== "document" && <i className="bi bi-images portfolio-card-empty"></i>}
                   {cover?.mediaType === "video" && <i className="bi bi-play-circle-fill portfolio-card-play"></i>}
                   {slides.length > 1 && (
                     <span className="portfolio-card-count"><i className="bi bi-collection me-1"></i>{slides.length}</span>

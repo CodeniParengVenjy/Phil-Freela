@@ -5,6 +5,7 @@ import { shrinkImage } from "../../../lib/shrinkImage";
 import { slideUrl } from "../../../lib/slides";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import MediaDropzone from "../components/MediaDropzone";
+import TextOwnershipCheck from "../components/TextOwnershipCheck";
 
 const PICTURE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 10 * 1024 * 1024; // shrunk before sending
@@ -12,10 +13,13 @@ const MAX_BYTES = 10 * 1024 * 1024; // shrunk before sending
 // Stops the browser's "Save image as..." menu on the original.
 const blockSaveMenu = (event) => event.preventDefault();
 
-// Check Ownership (watermarking system, step 4): upload a picture you found
-// somewhere (a screenshot, a download, a repost) and the AI service reads the
-// invisible code PhilFreela hides in every photo, to show whose work it is.
+// Check Ownership (watermarking system, steps 4 and 6): upload a picture you
+// found somewhere (a screenshot, a download, a repost), or paste text, and the
+// AI service reads the invisible code PhilFreela hides in every photo and
+// document, to show whose work it is.
 export default function CheckOwnershipView() {
+  // "picture" or "text" (the Text tab is TextOwnershipCheck).
+  const [mode, setMode] = useState("picture");
   const [file, setFile] = useState(null);
   const [fileError, setFileError] = useState("");
   const [checking, setChecking] = useState(false);
@@ -70,10 +74,26 @@ export default function CheckOwnershipView() {
       <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
         <h3 className="text-white fw-bold mb-2"><i className="bi bi-shield-check text-role me-2"></i> Check Ownership</h3>
         <p className="text-secondary fs-7 mb-4" style={{ maxWidth: 640 }}>
-          Found someone's work somewhere else, like a screenshot, a download, or a repost? Upload it here. Every photo posted
-          on PhilFreela carries an <strong className="text-white">invisible code</strong>, and we'll tell you who it belongs to.
+          Found someone's work somewhere else, like a screenshot, a download, a repost, or copied text? Check it here. Every
+          photo and document posted on PhilFreela carries an <strong className="text-white">invisible code</strong>, and
+          we'll tell you who it belongs to.
         </p>
 
+        <div className="d-flex gap-2 mb-4">
+          {[["picture", "bi-image", "Picture"], ["text", "bi-file-earmark-text", "Text"]].map(([value, icon, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={`btn btn-sm rounded-pill px-4 fw-bold ${mode === value ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`}
+              onClick={() => setMode(value)}
+            >
+              <i className={`bi ${icon} me-1`}></i>{label}
+            </button>
+          ))}
+        </div>
+
+        {mode === "text" ? <TextOwnershipCheck /> : (
+        <>
         <div className="d-flex flex-column gap-3" style={{ maxWidth: 640 }}>
           <MediaDropzone
             file={file}
@@ -158,6 +178,8 @@ export default function CheckOwnershipView() {
               )}
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
     </section>
