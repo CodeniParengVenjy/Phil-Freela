@@ -14,9 +14,12 @@ export const RING_SECONDS = 30;
 // During a call both browsers tell the database "still here" this often, so
 // a call whose browsers both closed still gets ended (finish_stale_calls).
 const KEEP_ALIVE_SECONDS = 20;
-// The longest wait for this browser to collect its connection details, and
-// how long to wait once a relay address has arrived (enough to connect).
+// The longest wait for this browser to collect its connection details: a
+// few seconds, or longer when a relay is set up, because on a slow network
+// its address can take several seconds and without it the call may not
+// connect at all. Once a relay address has arrived, a second more is enough.
 const GATHER_MS = 4000;
+const RELAY_GATHER_MS = 10000;
 const RELAY_GRACE_MS = 1000;
 // A dropped connection gets this long to come back before the call ends.
 const RECONNECT_MS = 10000;
@@ -156,6 +159,9 @@ async function iceServers() {
   return [...STUN_SERVERS, ...turnCache.servers];
 }
 
+// True when the list includes a TURN relay (not only STUN servers).
+const hasRelay = (servers) => servers.some((server) => [].concat(server.urls).some((url) => /^turns?:/.test(url)));
+
 function stopStream(stream) {
   stream?.getTracks().forEach((track) => track.stop());
 }
@@ -218,13 +224,12 @@ function createPeer(key, localStream, isCaller, servers) {
 // Waits until the browser has collected its connection details (its own
 // addresses, found with the STUN servers, and a relay address from the TURN
 // server), then returns them all as text for the database. It doesn't wait
-// for every last one: a second after the first relay address is enough, and
-// GATHER_MS at most.
-function connectionDetails(connection) {
+// for every last one: a second after the first relay address is enough.
+function connectionDetails(connection, withRelay) {
   return new Promise((resolve) => {
     const done = () => resolve(connection.localDescription.sdp);
     if (connection.iceGatheringState === "complete") return done();
-    setTimeout(done, GATHER_MS);
+    setTimeout(done, withRelay ? RELAY_GATHER_MS : GATHER_MS);
     connection.addEventListener("icegatheringstatechange", () => {
       if (connection.iceGatheringState === "complete") done();
     });
@@ -289,7 +294,7 @@ export async function startCall({ conversationId, kind, other }) {
 
     peer = createPeer(key, localStream, true, servers);
     await peer.setLocalDescription(await peer.createOffer());
-    const offer = await connectionDetails(peer);
+    const offer = await connectionDetails(peer, hasRelay(servers));
     if (!isCurrent(key)) return;
 
     await rememberToken();
@@ -328,7 +333,7 @@ export async function acceptCall() {
     peer = createPeer(key, localStream, false, servers);
     await peer.setRemoteDescription({ type: "offer", sdp: offer });
     await peer.setLocalDescription(await peer.createAnswer());
-    const answer = await connectionDetails(peer);
+    const answer = await connectionDetails(peer, hasRelay(servers));
     if (!isCurrent(key)) return;
 
     await rememberToken();
