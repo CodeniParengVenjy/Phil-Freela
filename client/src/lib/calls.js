@@ -14,9 +14,10 @@ export const RING_SECONDS = 30;
 // During a call both browsers tell the database "still here" this often, so
 // a call whose browsers both closed still gets ended (finish_stale_calls).
 const KEEP_ALIVE_SECONDS = 20;
-// The longest wait for this browser to collect its connection details
-// (a relay address can take a moment longer than the others).
+// The longest wait for this browser to collect its connection details, and
+// how long to wait once a relay address has arrived (enough to connect).
 const GATHER_MS = 4000;
+const RELAY_GRACE_MS = 1000;
 // A dropped connection gets this long to come back before the call ends.
 const RECONNECT_MS = 10000;
 // How long "Call ended", "No answer" and the like stay on screen.
@@ -214,9 +215,11 @@ function createPeer(key, localStream, isCaller, servers) {
   return connection;
 }
 
-// Waits until the browser has collected its connection details (its
-// addresses, found with the STUN servers), or GATHER_MS at most, then
-// returns them all as text for the database.
+// Waits until the browser has collected its connection details (its own
+// addresses, found with the STUN servers, and a relay address from the TURN
+// server), then returns them all as text for the database. It doesn't wait
+// for every last one: a second after the first relay address is enough, and
+// GATHER_MS at most.
 function connectionDetails(connection) {
   return new Promise((resolve) => {
     const done = () => resolve(connection.localDescription.sdp);
@@ -224,6 +227,9 @@ function connectionDetails(connection) {
     setTimeout(done, GATHER_MS);
     connection.addEventListener("icegatheringstatechange", () => {
       if (connection.iceGatheringState === "complete") done();
+    });
+    connection.addEventListener("icecandidate", (event) => {
+      if (event.candidate?.type === "relay") setTimeout(done, RELAY_GRACE_MS);
     });
   });
 }
@@ -394,6 +400,7 @@ async function handleIncoming(row) {
   // The caller's browser normally ends the ringing after 30 seconds; this is
   // in case it closed (the database also marks it missed within a minute).
   later(key, () => { if (call.stage === "ringing") finish(); }, (RING_SECONDS + 15) * 1000);
+  iceServers(); // get the relay login now, so Accept doesn't wait for it
 }
 
 // The current call's row changed (answered, declined, ended...).
