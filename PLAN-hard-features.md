@@ -57,6 +57,67 @@ The idea (a detailed plan is still needed before any code):
   `all-MiniLM-L6-v2` (its Step 6), so check what already exists and share
   it instead of adding a second copy.
 
+Detailed plan (written 2026-09-28, NOT approved yet: the user said "AI
+search box later", so show it again and get an OK before any code). Checked
+that day: pgvector 0.8.2 is available on Supabase but not turned on; the
+watermarking session hadn't added pgvector or MiniLM yet; the live site had
+only 2 services and 1 job post.
+
+What the user sees:
+
+1. Top search box, Enter: opens `/dashboard/search?q=...` with Services and
+   Jobs sections, best match first (clients see Services first, freelancers
+   Jobs first). Each result: title, category, price/budget, owner +
+   Verified check, Message button, "Strong match" / "Related" label.
+2. The results page has its own box; on phones (top box hidden) a search
+   icon in the top bar opens it.
+
+How it works:
+
+1. MiniLM (8-bit ONNX, about 23 MB) turns each post's text (title,
+   category name, skill, description) into 384 numbers, stored with
+   pgvector. A search does the same to the typed words; Supabase returns
+   the closest posts (cosine similarity) above a cut-off.
+2. Before each search the AI service embeds new or changed posts (found by
+   a fingerprint of their text), so the posting pages don't change and old
+   posts are covered on the first search.
+3. The AI service returns only ids and scores; the browser loads the posts
+   under the normal database rules, so hidden posts (suspended, unverified)
+   drop out.
+
+Database, new file `database/supabase_search_schema.sql`:
+
+1. `create extension vector` (shared with watermarking Step 5).
+2. Table `listing_embeddings`: id, `service_id` or `job_post_id` (exactly
+   one, deleted with the post), `embedding vector(384)`, `text_hash`,
+   `updated_at`. RLS on, no policies (AI service only, like
+   `watermark_codes`).
+3. `listings_to_embed(max_rows)` and `match_listings(query_embedding,
+   match_count, min_score)`: service role only.
+
+AI service:
+
+1. New `text_embedder.py` (MiniLM, shared with watermarking Step 6).
+2. New `listing_search.py` (post text with category names, catch-up,
+   match).
+3. `main.py`: only `POST /search`, login required, `{ "query": "..." }`
+   (2-200 characters) -> `{ "results": [{ "type", "id", "score" }] }`,
+   up to 30.
+4. `get_models.py` downloads the model + tokenizer (SHA-256 checked);
+   `requirements.txt` adds `tokenizers`.
+
+Website: `lib/aiService.js` (`searchListings`), new
+`views/SearchResultsView.jsx`, `DashboardTopNav.jsx` (Enter opens results,
+placeholder "Search services and jobs...", phone icon), `App.jsx` route,
+`lib/pageTitles.js`.
+
+Tests: about 40 made-up posts and 20 searches with known right answers
+(top-3 hit rate, sets the cut-off); 8-bit vs full model give the same
+order; search time on the live site, including after Vercel sleeps.
+
+Not in this step: people or inbox search, "Recommended for you", Ranking,
+Hybrid recommender.
+
 ## Step 2: SMS log in (Hard)
 
 User: make a Twilio trial account, then in Supabase turn on the Phone
@@ -121,5 +182,8 @@ networks a call may fail to connect without a TURN server.
 
 ## Current step
 
-Nothing built yet. Next: write the detailed plan for Step 1 (AI search
-box) and get the user's OK.
+Nothing built yet. Step 1's detailed plan is written (above) but the user
+postponed it on 2026-09-28 ("AI search box later"). Steps 2 and 3 are still
+waiting: Google sign up and Inbox file + voice message weren't done yet
+(PLAN-unfinished-features.md). Next: whichever of the three the user picks
+first; check those two first.
