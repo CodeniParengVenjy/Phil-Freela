@@ -8,15 +8,23 @@ These take well under a second and don't train anything. They use:
     face_check.py). Besides each face's box, it returns 5 points: both eyes,
     the nose tip and the mouth corners. When a head turns, the nose moves
     toward one side of the eyes, which shows which way (and how far) it's turned.
+  - OpenCV's pretrained text finder (PP-OCR "DB" text detection, 2.3 MB in
+    the models folder). It marks where lines of printed text are, without
+    reading them. An ID card is full of printed text (name, birthday, address);
+    a selfie has almost none, so this tells an ID from a random photo. It
+    can't tell whether an ID is real: the admin checks that.
 
 The numbers below were picked by measuring sample photos: sharp ones, the
 same ones blurred on purpose, and faces looking straight or turned.
 """
 
+import os
+import threading
+
 import cv2
 import numpy as np
 
-from face_check import find_biggest_face, to_pixels
+from face_check import MODELS, find_biggest_face, to_pixels
 
 # Front of the ID: the face must be at least this wide (in pixels)...
 MIN_ID_FACE_WIDTH = 120
@@ -31,6 +39,21 @@ MIN_TURN = 0.2
 # Front and back count as "the same photo" when their tiny versions differ by
 # less than this (on a 0 to 255 brightness scale).
 SAME_PHOTO_DIFFERENCE = 12
+# Lines of printed text needed to count as an ID. Sample ID fronts had 14 to
+# 15 lines and backs 11 to 12; 63 selfies and portraits had 0 to 6 (most 0).
+# The back needs fewer because some ID backs are mostly a barcode or QR code.
+MIN_FRONT_TEXT_LINES = 8
+MIN_BACK_TEXT_LINES = 5
+
+_text_finder = cv2.dnn_TextDetectionModel_DB(cv2.dnn.readNet(os.path.join(MODELS, "text_detection_en_ppocrv3_2023may.onnx")))
+_text_finder.setBinaryThreshold(0.3)
+_text_finder.setPolygonThreshold(0.5)
+_text_finder.setUnclipRatio(2.0)
+_text_finder.setMaxCandidates(200)
+# The size and color scaling the model was trained with (OpenCV's recommended settings).
+_text_finder.setInputParams(1.0 / 255.0, (736, 736), (122.67891434, 116.66876762, 104.00698793), True)
+# The text finder isn't safe to use from several requests at once, so they take turns.
+_text_lock = threading.Lock()
 
 
 class PhotoProblem(Exception):
@@ -65,8 +88,30 @@ def _looks_like_same_photo(a, b):
     return float(np.abs(tiny_a - tiny_b).mean()) < SAME_PHOTO_DIFFERENCE
 
 
+def _text_lines(image):
+    """How many lines of printed text the photo has.
+
+    Only boxes shaped like a line of text count: wider than tall, and not
+    tiny (at least 3% of the photo's width), so a pattern on a shirt or a
+    wall doesn't add up to an ID.
+    """
+    pixels = to_pixels(image)
+    with _text_lock:
+        boxes, _ = _text_finder.detect(pixels)
+    photo_width = pixels.shape[1]
+    lines = 0
+    for box in boxes:
+        box_width = box[:, 0].max() - box[:, 0].min()
+        box_height = box[:, 1].max() - box[:, 1].min()
+        if box_width >= 0.03 * photo_width and box_width > box_height:
+            lines += 1
+    return lines
+
+
 def check_id_front(image):
-    """Front of the ID: a face is found, big enough, and sharp."""
+    """Front of the ID: a face is found, big enough, sharp, and it looks like
+    an ID (has printed text). The text check comes last: blur and distance
+    also hide text, and those get their own clearer messages first."""
     face = _biggest_face(image)
     if face is None:
         raise PhotoProblem("We couldn't find the photo on your ID. Make sure the whole front of the ID is visible, then retake it.")
@@ -79,13 +124,19 @@ def check_id_front(image):
     if _sharpness(face_crop, 200) < MIN_FACE_SHARPNESS:
         raise PhotoProblem("The photo is blurry. Hold the ID still and make sure it's in focus, then retake it.")
 
+    if _text_lines(image) < MIN_FRONT_TEXT_LINES:
+        raise PhotoProblem("This doesn't look like the front of an ID. Take a photo of your government ID, with your photo and name on it.")
+
 
 def check_id_back(front, back):
-    """Back of the ID: sharp, and not just the front photo again."""
+    """Back of the ID: sharp, not just the front photo again, and it looks
+    like an ID (has printed text)."""
     if _sharpness(back.convert("L"), 1000) < MIN_PHOTO_SHARPNESS:
         raise PhotoProblem("The photo of the back is blurry. Hold the ID still and make sure it's in focus, then retake it.")
     if _looks_like_same_photo(front, back):
         raise PhotoProblem("This looks like the same photo as the front. Turn your ID over and take a photo of the back.")
+    if _text_lines(back) < MIN_BACK_TEXT_LINES:
+        raise PhotoProblem("This doesn't look like the back of an ID. Turn your ID over and take a photo of the back.")
 
 
 def check_face_scan(straight, turn_a, turn_b):

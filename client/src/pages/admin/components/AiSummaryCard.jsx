@@ -42,7 +42,7 @@ export default function AiSummaryCard({ verification }) {
         ok
         label="Photo quality"
         value="Passed"
-        detail="Sharp photos, and the face on the ID is big enough (checked before saving)."
+        detail="Sharp photos, the face on the ID is big enough, and the photos look like an ID (printed text found). Checked before saving."
       />
 
       <p className="fs-7 fw-bold mt-3 mb-1">
@@ -55,6 +55,20 @@ export default function AiSummaryCard({ verification }) {
         <i className="bi bi-info-circle me-1"></i>
         The AI can't tell whether an ID is fake, edited or expired. Check the ID photos yourself before approving.
       </p>
+
+      {/* PhilSys IDs carry a QR code signed by the PSA. The PSA's own PhilSys
+          Check site confirms whether it's genuine, which no photo AI can do. */}
+      {verification.id_type === "philsys" && (
+        <p className="text-info fs-8 mt-2 mb-0">
+          <i className="bi bi-qr-code-scan me-1"></i>
+          PhilSys ID: open{" "}
+          <a href="https://verify.philsys.gov.ph" target="_blank" rel="noopener noreferrer" className="text-info fw-bold">
+            PhilSys Check (verify.philsys.gov.ph)
+          </a>{" "}
+          and scan the QR code in the "Back of ID" photo, for example with your phone pointed at this screen. It's the
+          PSA's official check: it shows whether the QR code is genuine and the details it holds, to compare with the photos.
+        </p>
+      )}
     </div>
   );
 }
