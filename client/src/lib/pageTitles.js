@@ -7,6 +7,7 @@ const pageTitles = {
   "/login": "Sign In & Register",
   "/forgot-password": "Forgot Password",
   "/reset-password": "Reset Password",
+  "/complete-profile": "Complete Your Profile",
   "/appeal": "Appeal",
 
   "/dashboard-freelancer": "Dashboard",

@@ -3,6 +3,7 @@ import Homepage from "./pages/homepage/Homepage";
 import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
 import ResetPassword from "./pages/login/ResetPassword";
+import CompleteProfile from "./pages/login/CompleteProfile";
 import VerifyPhone from "./pages/verify-phone/VerifyPhone";
 import AppealPage from "./pages/appeal/AppealPage";
 import DashboardLayout from "./pages/dashboard/layouts/DashboardLayout";
@@ -51,6 +52,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      {/* First Google sign-in (or any account without a profile yet) picks a username, gender and role here. */}
+      <Route path="/complete-profile" element={<CompleteProfile />} />
       {/* Opened from the QR code on the phone; no login (the link's token is the key). */}
       <Route path="/verify-phone/:token" element={<VerifyPhone />} />
       {/* Suspended and banned users appeal here (banned users can't use anything else). */}

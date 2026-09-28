@@ -197,7 +197,17 @@ on the live site. Change from the plan: the column is `avatar_path` (the
 file's path, checked to be in the user's own folder), not a full
 `avatar_url` link.
 
-Next: plan Step 3 (Google sign up) in detail.
+Step 3 (Google sign up): code built and pushed live (2026-09-28). No SQL
+needed. Still waiting on the user's Google setup (Google Cloud OAuth
+client, then Google turned on in Supabase, then the two Redirect URLs);
+Claude guides it one screen at a time. Until then, "Continue with Google"
+shows Supabase's "provider is not enabled" error.
+
+Step 3 files: `pages/login/CompleteProfile.jsx` (new, `/complete-profile`),
+`App.jsx` (route), `lib/pageTitles.js`, `useDashboardShell.js` (a signed-in
+user with no profile is sent to Complete Profile).
+
+Next after the Google setup is tested: plan Step 4 (Applications & Resume).
 
 Step 2 files: `database/supabase_avatar_schema.sql`, `lib/avatar.js`,
 `lib/shrinkImage.js` (optional size), `components/Avatar.jsx`,

@@ -90,12 +90,19 @@ export function useDashboardShell() {
       // and what switchRole updates first) -- reading it here instead of
       // session.user.user_metadata means the dashboard can't show the wrong
       // role if the two ever fall out of sync.
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("account_type, username, full_name, avatar_path")
         .eq("id", session.user.id)
         .maybeSingle();
       if (!active) return;
+
+      // Signed in but no profile yet (e.g. a first Google sign-in): the
+      // dashboard can't work without one, so finish the account first.
+      if (!profileError && !profile) {
+        navigate("/complete-profile", { replace: true });
+        return;
+      }
 
       // Banned (even while already logged in): send them to the appeal page,
       // which is the only page a banned user can use (see resolvePostAuthRoute).
