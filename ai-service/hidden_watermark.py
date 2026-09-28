@@ -120,15 +120,54 @@ def _add_code(image, code, strength):
     return Image.fromarray(np.clip(pixels + change, 0, 255).round().astype(np.uint8))
 
 
+def _read_codes(pictures):
+    """Reads the 48-bit code from each picture (arrays of any size, 0-255),
+    all in one run of the decoder. Returns the codes as numbers."""
+    batch = np.concatenate([
+        _to_model_input(cv2.resize(p, (SIZE, SIZE), interpolation=cv2.INTER_AREA)) for p in pictures
+    ])
+    codes = []
+    for scores in _session("hidden_decoder.onnx").run(None, {"image": batch})[0]:
+        code = 0
+        for score in scores:
+            code = (code << 1) | int(score > 0)
+        codes.append(code)
+    return codes
+
+
 def read_code(image):
     """Reads the 48-bit code from a photo (any size). Returns the code as a number."""
+    return _read_codes([np.asarray(image.convert("RGB"), dtype=np.float32)])[0]
+
+
+# Check Ownership: a picture someone found has often been cropped (for example
+# to cut off the visible watermark), which shifts the hidden pattern out of
+# place. So it's also read as if the cut-off edges were still there: the
+# picture is put back in a bigger frame and the frame is read. Each guess is
+# how much was cut off the (left, top, right, bottom), as a share of what's left.
+UNCROP_GUESSES = [
+    (0.05, 0.05, 0.05, 0.05),  # a little off every side
+    (0.1, 0.1, 0.1, 0.1),
+    (0, 0, 0, 0.1), (0, 0, 0, 0.2),  # a strip off the bottom (where watermarks often are)
+    (0, 0, 0.1, 0), (0, 0, 0.2, 0),  # a strip off the right
+    (0, 0.1, 0, 0), (0.1, 0, 0, 0),  # a strip off the top / the left
+    (0, 0, 0.1, 0.1),                # the bottom-right corner
+]
+
+
+def read_uncropped_codes(image, fill=cv2.BORDER_REPLICATE):
+    """Reads the picture once per guess in UNCROP_GUESSES; the missing edges
+    are filled with the picture's own edge colors. Returns the codes."""
     pixels = np.asarray(image.convert("RGB"), dtype=np.float32)
-    small = cv2.resize(pixels, (SIZE, SIZE), interpolation=cv2.INTER_AREA)
-    scores = _session("hidden_decoder.onnx").run(None, {"image": _to_model_input(small)})[0][0]
-    code = 0
-    for score in scores:
-        code = (code << 1) | int(score > 0)
-    return code
+    height, width = pixels.shape[:2]
+    framed = [
+        cv2.copyMakeBorder(
+            pixels, round(top * height), round(bottom * height), round(left * width), round(right * width), fill,
+            value=[float(v) for v in pixels.mean(axis=(0, 1))],
+        )
+        for left, top, right, bottom in UNCROP_GUESSES
+    ]
+    return _read_codes(framed)
 
 
 def _jpeg(image, quality):

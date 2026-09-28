@@ -139,11 +139,47 @@ Step 3 files: `database/supabase_watermark_schema.sql`, `ai-service/main.py`
 `SlidePicker.jsx`, `slides.css`, `MediaCarousel.jsx`, `SettingsView.jsx`,
 `ServicesView.jsx`.
 
-## Reminders for later steps
+Step 4 (Check Ownership = the paper's "Extraction API"): built 2026-09-28
+(the user said "plan, and if I don't respond in 2 minutes, go for it").
+Database: migration "check_ownership" (part 1) is applied. Part 2, run AFTER
+the new AI service is live (it saves the owner with each code):
+`update watermark_codes w set freelancer_id = s.freelancer_id from media_slides s
+where s.id = w.slide_id and w.freelancer_id is null;` then
+`alter table watermark_codes alter column freelancer_id set not null;`.
 
-- Step 4 (Check Ownership): accept a match with up to 6 wrong bits, and only
-  if the best match is clearly better than the next one. Cropping is the
-  weak spot (14 of 25): try reading a few slightly shrunk/shifted copies.
+What Step 4 does:
+- Page /dashboard/check-ownership (sidebar "Check Ownership", freelancers and
+  clients): upload a picture found elsewhere; `POST /watermarks/extract`
+  reads the code and shows the owner (name, @username, Verified badge), the
+  service/project it came from, the date, "N of 48 bits matched", the
+  original next to the upload, and a link to their portfolio.
+- Codes keep their owner (`watermark_codes.freelancer_id`) and survive the
+  post being deleted (slide link set to null), so reposts stay traceable.
+- Matching: database function `closest_watermark_codes` (XOR + bit count;
+  only the service role may run it). A match needs <= 6 wrong bits on the
+  picture as it is, or <= 5 on one of 9 "un-crop" guesses
+  (`UNCROP_GUESSES` in hidden_watermark.py: the picture is put back in a
+  bigger frame with its edge colors, as if cropped edges were still there),
+  and must beat the next closest code by >= 4 bits.
+
+Step 4 test results:
+- Crop recovery (26 watermarked pictures, found before -> with guesses):
+  5% off every side 9 -> 13, 10% off every side 0 -> 9, bottom 10% 20 -> 23,
+  bottom 20% 11 -> 18, right 15% 21 -> 24, uneven crop 5 -> 13.
+- False alarms: 35 unwatermarked pictures x 10 readings each vs 1,000 stored
+  codes = 0 false matches (closest was 8-9 wrong bits; a match needs <= 5-6).
+- Endpoint (fake database, 300 other codes): found in a downloaded copy
+  (47/48 bits), a 50% resize (43), a copy with the bottom 12% cropped off
+  (42), still found after the post was deleted, "your own work" for the
+  owner, not found for the unwatermarked original or a plain picture.
+
+Step 4 files: `database/supabase_ownership_schema.sql`, `ai-service/main.py`
+(`/watermarks/extract`, owner saved with codes), `hidden_watermark.py`
+(`read_uncropped_codes`), `client/src/lib/aiService.js` (`checkOwnership`),
+`views/CheckOwnershipView.jsx`, `App.jsx`, `lib/pageTitles.js`, both
+dashboard layouts (sidebar link).
+
+## Reminders for later steps
 
 - Step 7: REMIND THE USER to decide the video size limit. Until Step 7
   compresses videos, they are saved as uploaded (up to 50 MB each, so only

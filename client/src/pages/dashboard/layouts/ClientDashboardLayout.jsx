@@ -11,6 +11,7 @@ const sidebarLinks = [
   { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications" },
   { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes" },
+  { to: "/dashboard/check-ownership", icon: "bi-shield-check", label: "Check Ownership" },
   { to: "/dashboard/settings", icon: "bi-gear-fill", label: "Settings" }
 ];
 

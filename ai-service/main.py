@@ -32,7 +32,7 @@ from postgrest.exceptions import APIError
 from supabase import ClientOptions, create_client
 
 from face_check import NoFaceError, check_faces, prepare_image
-from hidden_watermark import new_code, protect_photo
+from hidden_watermark import new_code, protect_photo, read_code, read_uncropped_codes
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
 from visible_watermark import draw_visible_watermark
 
@@ -623,7 +623,7 @@ def add_slide(
     # The invisible code goes in its own private table (only this service can read it).
     if code is not None:
         try:
-            supabase.table("watermark_codes").insert({"code": code, "slide_id": slide_id}).execute()
+            supabase.table("watermark_codes").insert({"code": code, "slide_id": slide_id, "freelancer_id": user_id}).execute()
         except APIError:
             # Practically impossible (the same random code twice), but then undo the slide.
             logger.exception("Saving the watermark code for slide %s failed", slide_id)
@@ -635,3 +635,87 @@ def add_slide(
         "id": slide_id, "position": position, "media_type": media_type, "file_path": file_path,
         "watermarked": code is not None, "promo": promo,
     }
+
+
+# ---------------------------------------------------------------------------
+# Check Ownership (watermarking system, step 4): the Extraction API.
+# Reads the invisible code from a picture someone found and finds the saved
+# code closest to it, to say whose work it is.
+# ---------------------------------------------------------------------------
+
+# A reading matches a saved code when at most this many of the 48 bits differ.
+# (A picture that isn't from PhilFreela gets that close to a given code about
+# once in 20 million tries.)
+MAX_WRONG_BITS_MATCH = 6
+# The "un-cropped" readings are extra tries, so they must be a bit closer
+# (more tries = more chances of a lucky, wrong match).
+MAX_WRONG_BITS_GUESS = 5
+# The best match must also be clearly closer than the next closest code.
+MIN_GAP_TO_NEXT = 4
+
+
+def closest_codes(readings):
+    """The two saved codes closest to any of the readings, best first
+    (the database function closest_watermark_codes, only this service may call it)."""
+    return supabase.rpc("closest_watermark_codes", {"candidates": readings, "how_many": 2}).execute().data
+
+
+def is_match(rows, max_wrong_bits):
+    if not rows or rows[0]["wrong_bits"] > max_wrong_bits:
+        return False
+    next_closest = rows[1]["wrong_bits"] if len(rows) > 1 else 48
+    return next_closest - rows[0]["wrong_bits"] >= MIN_GAP_TO_NEXT
+
+
+def describe_match(match, user_id):
+    """What the Check Ownership page shows: the owner, and the service or
+    portfolio project the picture came from (unless it was deleted since)."""
+    owner_id = match["freelancer_id"]
+    owner = supabase.table("profiles").select("id, full_name, username").eq("id", owner_id).limit(1).execute().data
+    owner = owner[0] if owner else {"id": owner_id, "full_name": None, "username": None}
+    owner["verified"] = bool(supabase.rpc("is_verified", {"target": owner_id}).execute().data)
+
+    source = None
+    slide = []
+    if match["slide_id"]:
+        slide = (
+            supabase.table("media_slides").select("file_path, service_id, portfolio_item_id")
+            .eq("id", match["slide_id"]).limit(1).execute().data
+        )
+    if slide:
+        slide = slide[0]
+        kind, table, item_id = (
+            ("service", "services", slide["service_id"]) if slide["service_id"]
+            else ("project", "portfolio_items", slide["portfolio_item_id"])
+        )
+        item = supabase.table(table).select("title").eq("id", item_id).limit(1).execute().data
+        source = {"kind": kind, "title": item[0]["title"] if item else None, "file_path": slide["file_path"]}
+
+    return {
+        "found": True,
+        "bits_matched": 48 - match["wrong_bits"],
+        "is_you": owner_id == user_id,
+        "owner": owner,
+        "source": source,
+        "uploaded_at": match["created_at"],
+    }
+
+
+@app.post("/watermarks/extract")
+def extract_watermark(image: UploadFile = File(...), authorization: str | None = Header(default=None)):
+    """Check Ownership: whose work is this picture? Needs a login, so strangers
+    can't use it. Returns {"found": false} when there's no PhilFreela code."""
+    user_id = get_user_id(authorization)
+    picture = read_image(image, "picture")
+
+    # 1. The picture as it is.
+    rows = closest_codes([read_code(picture)])
+    if is_match(rows, MAX_WRONG_BITS_MATCH):
+        return describe_match(rows[0], user_id)
+
+    # 2. As if its edges had been cropped off (see UNCROP_GUESSES in hidden_watermark.py).
+    rows = closest_codes(read_uncropped_codes(picture))
+    if is_match(rows, MAX_WRONG_BITS_GUESS):
+        return describe_match(rows[0], user_id)
+
+    return {"found": False}

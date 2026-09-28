@@ -112,6 +112,17 @@ export function submitFromPhone(token, photos) {
   });
 }
 
+// Check Ownership (the Extraction API): sends a picture someone found, and the
+// AI service reads the invisible code hidden in it. Returns { found: false },
+// or { found: true, bits_matched, is_you, owner: { id, full_name, username,
+// verified }, source: { kind: "service" | "project", title, file_path } (null
+// if that post was deleted), uploaded_at }.
+export async function checkOwnership(picture) {
+  const form = new FormData();
+  form.append("image", picture, picture.name);
+  return request("/watermarks/extract", { method: "POST", headers: await authHeader(), body: form });
+}
+
 // Adds one photo (a File) or one video (its path in the "slide-uploads"
 // bucket) to the end of a service's or portfolio project's slideshow (pass
 // serviceId or portfolioItemId). promo: it's an ad, so no visible watermark.
