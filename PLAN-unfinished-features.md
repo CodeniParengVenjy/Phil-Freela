@@ -198,10 +198,18 @@ file's path, checked to be in the user's own folder), not a full
 `avatar_url` link.
 
 Step 3 (Google sign up): code built and pushed live (2026-09-28). No SQL
-needed. Still waiting on the user's Google setup (Google Cloud OAuth
-client, then Google turned on in Supabase, then the two Redirect URLs);
-Claude guides it one screen at a time. Until then, "Continue with Google"
-shows Supabase's "provider is not enabled" error.
+needed. Google setup done: Google Cloud project "philfreela" (PhilFreela
+Web OAuth client), Google turned on in Supabase, Redirect URLs added.
+
+Name fix (user asked): the redirect sign-in makes Google say "to continue
+to rpopftzrrhuzjxzwobvl.supabase.co". The Login page now uses Google's own
+button (`lib/googleSignIn.js`, Google Identity Services +
+`signInWithIdToken` with a nonce), so Google names phil-freela.pages.dev
+instead. It needs `https://phil-freela.pages.dev` and
+`https://localhost:5173` in the client's "Authorized JavaScript origins";
+until Google accepts them, the page falls back to the old redirect button.
+Showing the exact name "PhilFreela" would also need Google brand
+verification (not done).
 
 Step 3 files: `pages/login/CompleteProfile.jsx` (new, `/complete-profile`),
 `App.jsx` (route), `lib/pageTitles.js`, `useDashboardShell.js` (a signed-in

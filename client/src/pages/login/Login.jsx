@@ -4,6 +4,7 @@ import { isSupabaseConfigured, setRememberMe, supabase } from "../../lib/supabas
 import { dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
 import { EMAIL_PATTERN, getPasswordStrengthMessage } from "../../lib/validators";
 import { getFriendlyErrorMessage } from "../../lib/errors";
+import { renderGoogleButton } from "../../lib/googleSignIn";
 import "../../styles/auth.css";
 
 const initialForm = {
@@ -45,6 +46,10 @@ export default function Login() {
   const [resendEmail, setResendEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  // Google's own button: "loading" while its script loads, "ready" once it's
+  // drawn, or "fallback" to show the older redirect button instead.
+  const [googleButtonState, setGoogleButtonState] = useState(isSupabaseConfigured ? "loading" : "fallback");
+  const googleButtonRef = useRef(null);
   const cardRef = useRef(null);
 
   const isSignup = mode === "signup";
@@ -71,6 +76,39 @@ export default function Login() {
     };
   }, [navigate]);
 
+  // Draws Google's own "Continue with Google" button (lib/googleSignIn.js), so
+  // Google's window names phil-freela.pages.dev instead of the Supabase address.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+    let active = true;
+
+    renderGoogleButton(googleButtonRef.current, {
+      onSignedIn: async (user) => {
+        setMessage({ text: "Signed in with Google.", type: "success" });
+        try {
+          // Same next page as any sign-in: Complete Profile the first time,
+          // otherwise their dashboard.
+          navigate(await resolvePostAuthRoute(user), { replace: true });
+        } catch (error) {
+          setMessage({ text: error.message, type: "error" });
+        }
+      },
+      onError: (error) => setMessage({ text: getFriendlyErrorMessage(error), type: "error" })
+    })
+      .then(() => {
+        if (active) setGoogleButtonState("ready");
+      })
+      .catch(() => {
+        if (active) setGoogleButtonState("fallback");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
+
+  // The older redirect sign-in (Google's window shows the Supabase address).
+  // Only used when Google's own button can't load.
   const handleGoogleSignIn = async () => {
     if (!isSupabaseConfigured) {
       setMessage({
@@ -517,14 +555,23 @@ export default function Login() {
             <hr className="flex-grow-1 border-secondary border-opacity-25 m-0" />
           </div>
 
-          <button
-            type="button"
-            className="btn btn-outline-light w-100 rounded-3 fw-semibold py-2 d-flex align-items-center justify-content-center gap-2"
-            onClick={handleGoogleSignIn}
-            disabled={googleSubmitting}
-          >
-            <i className="bi bi-google"></i> Continue with Google
-          </button>
+          {/* Google draws its own button in here (see the effect above). */}
+          <div
+            ref={googleButtonRef}
+            className={`justify-content-center ${googleButtonState === "fallback" ? "d-none" : "d-flex"}`}
+            style={{ minHeight: 44 }}
+          ></div>
+
+          {googleButtonState === "fallback" && (
+            <button
+              type="button"
+              className="btn btn-outline-light w-100 rounded-3 fw-semibold py-2 d-flex align-items-center justify-content-center gap-2"
+              onClick={handleGoogleSignIn}
+              disabled={googleSubmitting}
+            >
+              <i className="bi bi-google"></i> Continue with Google
+            </button>
+          )}
 
           {message.text && (
             <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">
