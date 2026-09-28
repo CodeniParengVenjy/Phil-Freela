@@ -85,7 +85,9 @@ export async function renderGoogleButton(container, { onSignedIn, onError }) {
 
   // Google only allows 200 to 400 px wide, so match the card as closely as possible.
   const width = Math.max(200, Math.min(400, container.offsetWidth || 400));
-  googleId.renderButton(container, { theme: "filled_black", size: "large", text: "continue_with", shape: "rectangular", logo_alignment: "center", width });
+  // locale "en": the rest of PhilFreela is in English (Google would otherwise
+  // pick a language from the visitor's location, e.g. Tagalog).
+  googleId.renderButton(container, { theme: "filled_black", size: "large", text: "continue_with", shape: "rectangular", logo_alignment: "center", width, locale: "en" });
   await waitForVisibleButton(container);
 }
 
