@@ -15,3 +15,6 @@ onnxruntime>=1.20
 tokenizers>=0.20
 python-docx>=1.1
 pypdf>=5
+# Videos: FFmpeg (reads any MP4/MOV/WEBM, writes the watermarked 720p MP4);
+# this package includes the FFmpeg program itself.
+imageio-ffmpeg>=0.5

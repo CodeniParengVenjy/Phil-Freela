@@ -34,7 +34,7 @@ Vercel's free plan (500 MB bundle, 4.5 MB per request, 5 minutes, 1 CPU).
 ## Files and limits
 
 - Image slide: JPG, PNG, WEBP, up to 10 MB (shrunk in the browser first).
-- Video slide: MP4, WEBM (MOV in Step 7), up to 30 seconds, 50 MB.
+- Video slide: MP4, MOV, WEBM, up to 30 seconds, 50 MB (saved as a 720p MP4).
 - Document: pasted text, TXT, DOCX, PDF (text only), up to 5 MB.
 - 10 slides per post; 50 items and 5 videos per freelancer in total.
 
@@ -290,7 +290,67 @@ limit), `requirements.txt` (tokenizers, python-docx, pypdf), `get_models.py`,
 `TextOwnershipCheck.jsx`, `views/CheckOwnershipView.jsx`,
 `admin/views/AdminFlaggedView.jsx`, `admin/layout/AdminLayout.jsx`.
 
+Step 7 (Video watermarking): built and pushed live 2026-09-28 (the user said
+"ok" to the plan and chose limit A: 30 seconds, 50 MB). Database: migration
+"video_watermarks" is applied, so don't run `supabase_video_schema.sql`
+again. Still needs a live test (and how long an upload takes on Vercel).
+
+What Step 7 does:
+- Every video (MP4, MOV from iPhones, WEBM) is turned into a 720p MP4 (H.264
+  CRF 23, at most 30 fps, sound kept) by FFmpeg through `imageio-ffmpeg`
+  (`watermark_video.py`). The browser still puts it in `slide-uploads` first.
+- Visible watermark: drawn once (`watermark_layer`) and blended into every
+  frame; none on promos.
+- Invisible code: HiDDeN pattern worked out on one key frame every 2 seconds
+  and added to the frames until the next one (Meta's JND, strength 3.0).
+  Self-check: 4 frames of the finished MP4 read together (<= 4 wrong bits),
+  otherwise saved without a code, like a very plain photo.
+- Copy check: ViT numbers of 5 key frames, as uploaded and as shown
+  (`uploaded_frame1..5`, `shown_frame1..5`); the closest match of any frame counts.
+- Check Ownership > Video tab (`POST /watermarks/extract-video`): 16 frames
+  read together (their decoder scores added up bit by bit).
+- `vercel.json`: maxDuration 300 seconds.
+
+Step 7 test results (30-second 1080p test video with sound, dark 3D render):
+- Speed on ONE CPU core (like Vercel): whole upload about 25 seconds
+  (length check 1.5 s, watermarking 18-20 s, self-check 2.6 s, copy check
+  0.7 s); first version took 94 s. Output 4.8-5.5 MB.
+- Strength: at 2.5, re-compressed copies lost 7-11 bits (no match). At 3.0
+  (5 runs): own file 0-3 wrong bits, re-compressed (CRF 32) 2-7, 480p 1-6,
+  360p 6-9 (usually no match), 3 seconds cut out 0-4. A new pattern every
+  second instead of every 2 wasn't better.
+- Tried and dropped: leaving out the JND's extra room in dark areas (to avoid
+  a faint green tint and rings on very dark, smooth backgrounds) made the
+  code much weaker, because moving objects then carry it and the reused
+  pattern stops fitting them; same for a JND per frame and a pattern from a
+  grey picture. So very dark, smooth videos can show faint rings when paused
+  (the same as photos).
+- Endpoints (fake database): MP4 with sound, promo (no "shown" frames), MOV,
+  WEBM without sound, tall phone video (720x1280) all saved; someone else's
+  re-compressed copy flagged by the copy check (0.99) and found by Check
+  Ownership (45 of 48 bits, the right owner and service); the original,
+  never-watermarked clip not found; someone else's upload refused; junk refused.
+
+Step 7 files: `database/supabase_video_schema.sql`, `ai-service/watermark_video.py`,
+`hidden_watermark.py` (`code_change`, `read_code_from_frames`),
+`visible_watermark.py` (`watermark_layer`), `main.py` (video uploads,
+extract-video, copy check over several frames), `requirements.txt`,
+`vercel.json`, `README.md`, `client/src/lib/slides.js` (MOV, `stageVideo`),
+`lib/aiService.js` (`checkVideoOwnership`),
+`components/VideoOwnershipCheck.jsx`, `views/CheckOwnershipView.jsx`.
+
 ## Reminders for later steps
+
+- PROPOSED 2026-09-28, waiting for the user's OK (a classmate couldn't
+  post a PDF in a service; the user chose "Post a Service too" and "Also
+  check on posting"):
+  - Step 8: PDF, DOCX and TXT as slides in Post a Service (text only, same
+    invisible code, footer and text copy check as portfolio writing; saved as
+    a small .txt in slide-media; a page card in the slideshow that opens a
+    reader; Check Ownership > Text finds them too).
+  - Step 9: when a photo or video is posted, read any hidden code already in
+    it first; another freelancer's code = flagged for an admin (documents
+    already do this). Keep the Check Ownership menu page.
 
 - LATER (user said "later", 2026-09-28), two plagiarism gaps:
   1. Flagged Content: add "Keep this one, remove the other" for when the
@@ -299,12 +359,8 @@ limit), `requirements.txt` (tokenizers, python-docx, pypdf), `get_models.py`,
   2. Report button: add a "Stolen work / plagiarism" reason, for work stolen
      from outside PhilFreela, which the copy check can't see.
 
-- Step 7: REMIND THE USER to decide the video size limit. Until Step 7
-  compresses videos, they are saved as uploaded (up to 50 MB each, so only
-  about 20 fit in Supabase's free 1 GB). Suggested: 20 MB until Step 7.
-  The user said "let's plan it later, remind me when we're in that step."
-- Step 7: test how long video watermarking takes on Vercel (1 CPU, 5-minute
-  limit) and through the Cloudflare /ai forwarding.
+- Step 7: test how long a video upload takes on Vercel and through the
+  Cloudflare /ai forwarding (about 25 s on one laptop core).
 - Paper: credit Meta for HiDDeN (CC-BY-NC, non-commercial). The README
   already does.
 - Step 5: tune the similarity cutoffs with real test files.

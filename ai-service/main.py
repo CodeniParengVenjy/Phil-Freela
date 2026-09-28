@@ -42,7 +42,8 @@ from text_watermark import add_code as add_text_code
 from text_watermark import footer as text_footer
 from text_watermark import paragraphs_for_check, strip_hidden
 from text_watermark import read_code as read_text_code
-from visible_watermark import draw_visible_watermark
+from visible_watermark import draw_visible_watermark, watermark_layer
+from watermark_video import code_reads_back, output_size, read_video_code, spread, video_info, watermark_video
 
 load_dotenv()
 
@@ -503,9 +504,10 @@ def video_seconds(data, extension):
         os.remove(path)
 
 
-def read_slide_video(user_id, video_path):
+def read_slide_video(user_id, video_path, max_seconds=MAX_VIDEO_SECONDS):
     """Takes the video the browser put in slide-uploads and checks it's a real
-    MP4 or WEBM of at most 50 MB and 30 seconds. Returns (data, extension)."""
+    MP4, MOV or WEBM of at most 50 MB and 30 seconds (any length when
+    max_seconds is None). Returns (data, extension)."""
     # Only from the caller's own folder, so nobody can take someone else's upload.
     if not video_path.startswith(f"{user_id}/") or ".." in video_path:
         raise HTTPException(403, "That video upload isn't yours.")
@@ -522,18 +524,19 @@ def read_slide_video(user_id, video_path):
         raise HTTPException(400, "That video is too big (max 50 MB).")
 
     # The first bytes show the real file type, whatever the file is called.
+    # (MP4 and iPhone MOV files are the same family: both start with "ftyp".)
     if data[4:8] == b"ftyp":
-        extension = "mp4"
+        extension = "mov" if data[8:12] == b"qt  " else "mp4"
     elif data[:4] == b"\x1a\x45\xdf\xa3":
         extension = "webm"
     else:
-        raise HTTPException(400, "Videos must be MP4 or WEBM.")
+        raise HTTPException(400, "Videos must be MP4, MOV or WEBM.")
 
     seconds = video_seconds(data, extension)
     if seconds is None:
         raise HTTPException(400, "That video couldn't be opened. Please try another one.")
-    if seconds > MAX_VIDEO_SECONDS + 0.5:
-        raise HTTPException(400, f"Videos can be at most {MAX_VIDEO_SECONDS} seconds long.")
+    if max_seconds and seconds > max_seconds + 0.5:
+        raise HTTPException(400, f"Videos can be at most {max_seconds} seconds long.")
     return data, extension
 
 
@@ -566,20 +569,64 @@ def watermark_photo(user_id, image, promo):
 
     shown = image
     if not promo:
-        settings = (
-            supabase.table("watermark_settings")
-            .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, show_badge")
-            .eq("freelancer_id", user_id).limit(1).execute().data
-        )
-        profile = supabase.table("profiles").select("username, full_name").eq("id", user_id).limit(1).execute().data
-        profile = profile[0] if profile else {}
-        shown = draw_visible_watermark(image, settings[0] if settings else None, profile.get("username", ""), profile.get("full_name", ""))
+        shown = draw_visible_watermark(image, *watermark_style(user_id))
         if shown is not image:
             embeddings["shown"] = image_embedding(shown)
 
     code = new_code()
     data, has_code = protect_photo(shown, code)
     return data, (code if has_code else None), embeddings
+
+
+def watermark_style(user_id):
+    """(settings, username, full_name) for drawing the freelancer's visible
+    watermark (settings is None if they never saved their own style)."""
+    settings = (
+        supabase.table("watermark_settings")
+        .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, show_badge")
+        .eq("freelancer_id", user_id).limit(1).execute().data
+    )
+    profile = supabase.table("profiles").select("username, full_name").eq("id", user_id).limit(1).execute().data
+    profile = profile[0] if profile else {}
+    return (settings[0] if settings else None), profile.get("username", ""), profile.get("full_name", "")
+
+
+# Step 7: 5 frames of each video go through the ViT for the copy check.
+VIDEO_CHECK_FRAMES = 5
+
+
+def watermark_video_upload(user_id, data, extension, promo):
+    """Step 7: turns the video into a watermarked 720p MP4 (see
+    watermark_video.py): the visible watermark on every frame (not on promos)
+    and the invisible code in every frame, read back afterwards as a
+    self-check. Also makes the copy check's numbers for 5 frames, as uploaded
+    and as shown. Returns (mp4_bytes, code, embeddings); code is None if the
+    finished video didn't give it back."""
+    with tempfile.TemporaryDirectory() as folder:
+        source, finished = os.path.join(folder, f"upload.{extension}"), os.path.join(folder, "watermarked.mp4")
+        with open(source, "wb") as file:
+            file.write(data)
+        layer = None
+        if not promo:
+            layer = watermark_layer(output_size(*video_info(source)[:2]), *watermark_style(user_id))
+        code = new_code()
+        try:
+            uploaded, shown = watermark_video(source, finished, code, layer)
+        except Exception:
+            logger.exception("Watermarking a video failed")
+            raise HTTPException(400, "That video couldn't be processed. Please try another MP4, MOV or WEBM video.")
+        has_code = code_reads_back(finished, code)
+
+        # The copy check's numbers for 5 of the key frames, as they came in,
+        # and as shown when they carry a visible watermark.
+        versions = [("uploaded", uploaded)] + ([("shown", shown)] if layer is not None else [])
+        embeddings = {
+            f"{version}_frame{i}": image_embedding(Image.fromarray(frame))
+            for version, frames in versions
+            for i, frame in enumerate(spread(frames, VIDEO_CHECK_FRAMES), start=1)
+        }
+        with open(finished, "rb") as file:
+            return file.read(), (code if has_code else None), embeddings
 
 
 # Step 5, the copy check: a new photo whose ViT numbers are at least this
@@ -595,14 +642,19 @@ def vector_text(numbers):
     return "[" + ",".join(f"{x:.6f}" for x in numbers) + "]"
 
 
-def copy_check(user_id, embedding):
-    """Compares a new photo with other freelancers' photos (as uploaded and as
-    shown). Returns (status, matched_slide_id, match_score)."""
-    rows = supabase.rpc(
-        "closest_slide_embeddings", {"query": vector_text(embedding), "exclude_freelancer": user_id, "how_many": 1}
-    ).execute().data
-    if rows and rows[0]["similarity"] >= COPY_CUTOFF:
-        return "flagged", rows[0]["slide_id"], round(rows[0]["similarity"], 4)
+def copy_check(user_id, embeddings):
+    """Compares a new photo (or the frames of a new video) with other
+    freelancers' photos and video frames (as uploaded and as shown). Returns
+    (status, matched_slide_id, match_score) for the closest one."""
+    best = None
+    for embedding in embeddings:
+        rows = supabase.rpc(
+            "closest_slide_embeddings", {"query": vector_text(embedding), "exclude_freelancer": user_id, "how_many": 1}
+        ).execute().data
+        if rows and (best is None or rows[0]["similarity"] > best["similarity"]):
+            best = rows[0]
+    if best and best["similarity"] >= COPY_CUTOFF:
+        return "flagged", best["slide_id"], round(best["similarity"], 4)
     return "active", None, None
 
 
@@ -642,11 +694,15 @@ def add_slide(
         data, code, embeddings = watermark_photo(user_id, read_image(image, "photo"), promo)
         extension, content_type = "jpg", "image/jpeg"
         # Nearly the same as another freelancer's photo? Then it waits for an admin.
-        status, matched_slide_id, match_score = copy_check(user_id, embeddings["uploaded"])
+        status, matched_slide_id, match_score = copy_check(user_id, [embeddings["uploaded"]])
     else:
-        # Videos get their watermarks in step 7.
-        data, extension = read_slide_video(user_id, video_path)
-        content_type = f"video/{extension}"
+        # Checked (MP4, MOV or WEBM, at most 50 MB and 30 seconds), then saved
+        # as a watermarked 720p MP4 (step 7).
+        raw, raw_extension = read_slide_video(user_id, video_path)
+        data, code, embeddings = watermark_video_upload(user_id, raw, raw_extension, promo)
+        extension, content_type = "mp4", "video/mp4"
+        frames_as_uploaded = [e for version, e in embeddings.items() if version.startswith("uploaded")]
+        status, matched_slide_id, match_score = copy_check(user_id, frames_as_uploaded)
 
     slide_id = str(uuid.uuid4())
     file_path = f"{user_id}/{slide_id}.{extension}"
@@ -684,7 +740,7 @@ def add_slide(
             logger.exception("Saving the watermark code for slide %s failed", slide_id)
             supabase.table("media_slides").delete().eq("id", slide_id).execute()
             remove_quietly(SLIDE_BUCKET, file_path)
-            raise HTTPException(409, "Something went wrong while saving that photo. Please try again.")
+            raise HTTPException(409, "Something went wrong while saving that file. Please try again.")
 
     # The copy check's numbers, for comparing future uploads with this photo
     # (private table). If saving them fails, the photo itself is still fine.
@@ -784,6 +840,32 @@ def extract_watermark(image: UploadFile = File(...), authorization: str | None =
     if is_match(rows, MAX_WRONG_BITS_GUESS):
         return describe_match(rows[0], user_id)
 
+    return {"found": False}
+
+
+# Check Ownership for videos reads this many frames together (step 7).
+EXTRACT_VIDEO_FRAMES = 16
+
+
+@app.post("/watermarks/extract-video")
+def extract_video_watermark(video_path: str = Form(...), authorization: str | None = Header(default=None)):
+    """Check Ownership for videos. The browser puts the video in slide-uploads
+    first (it's too big to send directly), then the code is read from 16
+    frames at once: every frame carries the same code, so their readings are
+    added up bit by bit. (A screenshot of any frame works with the Picture
+    check too.)"""
+    user_id = get_user_id(authorization)
+    data, extension = read_slide_video(user_id, video_path, max_seconds=None)
+    with tempfile.TemporaryDirectory() as folder:
+        path = os.path.join(folder, f"found.{extension}")
+        with open(path, "wb") as file:
+            file.write(data)
+        code = read_video_code(path, EXTRACT_VIDEO_FRAMES)
+    if code is None:
+        return {"found": False}
+    rows = closest_codes([code])
+    if is_match(rows, MAX_WRONG_BITS_MATCH):
+        return describe_match(rows[0], user_id)
     return {"found": False}
 
 

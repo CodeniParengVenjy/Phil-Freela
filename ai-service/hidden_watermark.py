@@ -106,9 +106,9 @@ def _jnd(pixels):
     return ((la + cm - 0.3 * np.minimum(la, cm)) / 255).astype(np.float32)
 
 
-def _add_code(image, code, strength):
-    """The photo (RGB) with the code's pattern added, at the given strength."""
-    pixels = np.asarray(image, dtype=np.float32)
+def code_change(pixels, code, strength):
+    """How much to change each pixel of a picture (an HxWx3 array, 0-255) to
+    hide the code at the given strength. Videos reuse it for nearby frames."""
     height, width = pixels.shape[:2]
     small = cv2.resize(pixels, (SIZE, SIZE), interpolation=cv2.INTER_AREA)
     pattern = _session("hidden_encoder.onnx").run(
@@ -116,23 +116,40 @@ def _add_code(image, code, strength):
     )[0][0].transpose(1, 2, 0)  # 256x256x3, values -1..1
     # Normalized units -> pixel units (0-255), limited by JND at each spot.
     change = pattern * _jnd(small)[..., None] * strength * STD * 255
-    change = cv2.resize(change, (width, height), interpolation=cv2.INTER_CUBIC)
-    return Image.fromarray(np.clip(pixels + change, 0, 255).round().astype(np.uint8))
+    return cv2.resize(change, (width, height), interpolation=cv2.INTER_CUBIC)
 
 
-def _read_codes(pictures):
-    """Reads the 48-bit code from each picture (arrays of any size, 0-255),
-    all in one run of the decoder. Returns the codes as numbers."""
+def _add_code(image, code, strength):
+    """The photo (RGB) with the code's pattern added, at the given strength."""
+    pixels = np.asarray(image, dtype=np.float32)
+    return Image.fromarray(np.clip(pixels + code_change(pixels, code, strength), 0, 255).round().astype(np.uint8))
+
+
+def _scores(pictures):
+    """The decoder's 48 scores (above 0 = bit 1) for each picture (arrays of
+    any size, 0-255), all in one run of the decoder."""
     batch = np.concatenate([
         _to_model_input(cv2.resize(p, (SIZE, SIZE), interpolation=cv2.INTER_AREA)) for p in pictures
     ])
-    codes = []
-    for scores in _session("hidden_decoder.onnx").run(None, {"image": batch})[0]:
-        code = 0
-        for score in scores:
-            code = (code << 1) | int(score > 0)
-        codes.append(code)
-    return codes
+    return _session("hidden_decoder.onnx").run(None, {"image": batch})[0]
+
+
+def _scores_to_code(scores):
+    code = 0
+    for score in scores:
+        code = (code << 1) | int(score > 0)
+    return code
+
+
+def _read_codes(pictures):
+    """Reads the 48-bit code from each picture. Returns the codes as numbers."""
+    return [_scores_to_code(scores) for scores in _scores(pictures)]
+
+
+def read_code_from_frames(frames):
+    """One code from several frames of a video: each bit is decided by all the
+    frames together (their scores are added up), which beats any single frame."""
+    return _scores_to_code(_scores(frames).sum(axis=0))
 
 
 def read_code(image):

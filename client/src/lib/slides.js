@@ -13,13 +13,14 @@ import { storagePathFromUrl } from "./storage";
 
 export const MAX_SLIDES = 10;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const VIDEO_TYPES = ["video/mp4", "video/webm"];
+// MOV = iPhone videos (step 7: every video is saved as a watermarked MP4).
+export const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // shrunk to about 0.5 MB before sending
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_VIDEO_SECONDS = 30;
 
-export const SLIDE_ACCEPT = [...IMAGE_TYPES, ...VIDEO_TYPES].join(",");
-export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, WebM) up to 50 MB and 30 seconds.";
+export const SLIDE_ACCEPT = [...IMAGE_TYPES, ...VIDEO_TYPES, ".mov"].join(",");
+export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, MOV, WebM) up to 50 MB and 30 seconds; each video takes up to 2 minutes to watermark.";
 
 // Add this to a services select to get each service's slides with it.
 // watermarked: the file carries the watermark itself (photos from step 3 on).
@@ -28,7 +29,9 @@ export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, Web
 // its uploader and the admins see it until an admin reviews it (step 5).
 export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file_path, watermarked, promo, status)";
 
-export const isVideoFile = (file) => VIDEO_TYPES.includes(file.type);
+// (Some browsers give .mov files no type at all, so the name counts too.)
+export const isVideoFile = (file) => VIDEO_TYPES.includes(file.type) || /\.mov$/i.test(file.name);
+const isMovFile = (file) => file.type === "video/quicktime" || /\.mov$/i.test(file.name);
 
 // How many seconds a video file lasts, read by the browser (null if it can't play it).
 function videoSeconds(file) {
@@ -56,12 +59,33 @@ export async function checkSlideFile(file) {
   if (isVideoFile(file)) {
     if (file.size > MAX_VIDEO_BYTES) return "Videos must be 50 MB or smaller.";
     const seconds = await videoSeconds(file);
-    if (seconds === null) return "This video can't be played. Please use an MP4 or WebM video.";
+    // Some browsers can't open iPhone (MOV) videos themselves; the AI service
+    // checks those, since it converts them anyway.
+    if (seconds === null && !isMovFile(file)) return "This video can't be played. Please use an MP4, MOV or WebM video.";
     // Some recorded videos don't store their length (Infinity); the AI service measures those.
     if (Number.isFinite(seconds) && seconds > MAX_VIDEO_SECONDS + 0.5) return `Videos can be at most ${MAX_VIDEO_SECONDS} seconds long.`;
     return "";
   }
-  return "Only JPG, PNG or WebP photos, or MP4 or WebM videos, are allowed.";
+  return "Only JPG, PNG or WebP photos, or MP4, MOV or WebM videos, are allowed.";
+}
+
+// Puts a video in the private "slide-uploads" bucket (in the user's own
+// folder), where the AI service takes it from: videos are too big to send to
+// it directly. Returns the path. Also used by Check Ownership for videos.
+export async function stageVideo(file, userId) {
+  // Named by time + a random part only, so odd characters in the file name can't break it.
+  const extension = isMovFile(file) ? "mov" : file.type === "video/webm" ? "webm" : "mp4";
+  const contentType = isMovFile(file) ? "video/quicktime" : file.type || "video/mp4";
+  const videoPath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+  const { error } = await supabase.storage.from("slide-uploads").upload(videoPath, file, { contentType });
+  if (error) throw new Error("Couldn't upload that video. Please try again.");
+  return videoPath;
+}
+
+// Removes a staged video (the AI service normally does this itself; this
+// covers the case where it couldn't be reached at all).
+export async function unstageVideo(videoPath) {
+  await supabase.storage.from("slide-uploads").remove([videoPath]);
 }
 
 // Gives each picked file its own key, so the picker can tell them apart.
@@ -96,18 +120,11 @@ export async function uploadSlide(target, file, userId, promo = false) {
     return addSlide({ ...target, image: await shrinkImage(file), promo });
   }
 
-  // Named by time + a random part only, so odd characters in the file name can't break it.
-  const extension = file.type === "video/webm" ? "webm" : "mp4";
-  const videoPath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-  const { error } = await supabase.storage.from("slide-uploads").upload(videoPath, file);
-  if (error) throw new Error("Couldn't upload that video. Please try again.");
-
+  const videoPath = await stageVideo(file, userId);
   try {
     return await addSlide({ ...target, videoPath, promo });
   } catch (err) {
-    // The AI service deletes the temporary copy itself; this covers the case
-    // where it couldn't be reached at all.
-    await supabase.storage.from("slide-uploads").remove([videoPath]);
+    await unstageVideo(videoPath);
     throw err;
   }
 }
@@ -117,7 +134,7 @@ export async function uploadSlide(target, file, userId, promo = false) {
 export function underReviewMessage(slides) {
   const held = slides.filter((slide) => slide.status === "flagged").length;
   if (!held) return "";
-  return `${held === 1 ? "1 photo is" : `${held} photos are`} waiting for an admin to review, because ${held === 1 ? "it looks" : "they look"} very similar to another freelancer's work. Until then only you can see ${held === 1 ? "it" : "them"}.`;
+  return `${held === 1 ? "1 file is" : `${held} files are`} waiting for an admin to review, because ${held === 1 ? "it looks" : "they look"} very similar to another freelancer's work. Until then only you can see ${held === 1 ? "it" : "them"}.`;
 }
 
 // Uploads the picked files ([{ key, file, promo }]) one at a time: each
@@ -129,7 +146,9 @@ export async function uploadSlides(target, items, userId, onProgress) {
   const slides = [];
   const failed = [];
   for (const [index, { file, promo }] of items.entries()) {
-    onProgress(`Uploading ${index + 1} of ${items.length}...`);
+    onProgress(isVideoFile(file)
+      ? `Watermarking video ${index + 1} of ${items.length} (up to 2 minutes)...`
+      : `Uploading ${index + 1} of ${items.length}...`);
     try {
       slides.push(await uploadSlide(target, file, userId, promo));
     } catch (err) {
@@ -159,6 +178,7 @@ export function itemSlides(item) {
         id: slide.id,
         mediaType: slide.media_type,
         url: slideUrl(slide.file_path),
+        // (Photos from step 3 and videos from step 7 on carry their own watermark.)
         showOwnerName: !slide.watermarked && !slide.promo,
         underReview: slide.status === "flagged"
       }));

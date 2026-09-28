@@ -123,6 +123,15 @@ export async function checkOwnership(picture) {
   return request("/watermarks/extract", { method: "POST", headers: await authHeader(), body: form });
 }
 
+// Check Ownership for a video (watermarking step 7). The video must already
+// be in the "slide-uploads" bucket (see stageVideo in lib/slides.js); pass its
+// path. Returns the same answer as checkOwnership.
+export async function checkVideoOwnership(videoPath) {
+  const form = new FormData();
+  form.append("video_path", videoPath);
+  return request("/watermarks/extract-video", { method: "POST", headers: await authHeader(), body: form });
+}
+
 // Adds writing to the caller's portfolio (watermarking step 6): pasted text,
 // or a TXT, DOCX or PDF file. The AI service hides the invisible code in it,
 // adds the footer, and runs the copy check. Returns the saved document:

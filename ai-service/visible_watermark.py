@@ -106,11 +106,21 @@ def _tiled_layer(mark, width, height, font_px):
 def draw_visible_watermark(image, settings, username, full_name):
     """Returns a copy of the photo with the freelancer's watermark drawn on it,
     or the photo unchanged if they turned the visible watermark off."""
+    layer = watermark_layer(image.size, settings, username, full_name)
+    if layer is None:
+        return image
+    return Image.alpha_composite(image.convert("RGBA"), layer).convert("RGB")
+
+
+def watermark_layer(size, settings, username, full_name):
+    """Just the watermark, on a see-through picture of the given (width,
+    height), or None if the freelancer turned it off. Videos draw it once and
+    lay it over every frame."""
     settings = {**DEFAULTS, **{k: v for k, v in (settings or {}).items() if v is not None}}
     if not settings["visible_enabled"]:
-        return image
+        return None
 
-    width, height = image.size
+    width, height = size
     text = watermark_text(settings, username, full_name)
     font_px = max(12, round(min(width, height) * SIZE_RATIOS[settings["size"]]))
     mark = _draw_mark(text, font_px, settings["color"], settings["show_badge"])
@@ -132,7 +142,7 @@ def draw_visible_watermark(image, settings, username, full_name):
             "bottom_right": (width - margin - mark.width, height - margin - mark.height),
             "center": ((width - mark.width) // 2, (height - mark.height) // 2),
         }[settings["position"]]
-        layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+        layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         layer.alpha_composite(mark, (max(0, x), max(0, y)))
 
-    return Image.alpha_composite(image.convert("RGBA"), layer).convert("RGB")
+    return layer

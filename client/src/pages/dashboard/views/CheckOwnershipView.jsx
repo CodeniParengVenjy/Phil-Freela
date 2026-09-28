@@ -6,6 +6,7 @@ import { slideUrl } from "../../../lib/slides";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import MediaDropzone from "../components/MediaDropzone";
 import TextOwnershipCheck from "../components/TextOwnershipCheck";
+import VideoOwnershipCheck from "../components/VideoOwnershipCheck";
 
 const PICTURE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 10 * 1024 * 1024; // shrunk before sending
@@ -18,7 +19,7 @@ const blockSaveMenu = (event) => event.preventDefault();
 // AI service reads the invisible code PhilFreela hides in every photo and
 // document, to show whose work it is.
 export default function CheckOwnershipView() {
-  // "picture" or "text" (the Text tab is TextOwnershipCheck).
+  // "picture", "video" (VideoOwnershipCheck) or "text" (TextOwnershipCheck).
   const [mode, setMode] = useState("picture");
   const [file, setFile] = useState(null);
   const [fileError, setFileError] = useState("");
@@ -80,7 +81,7 @@ export default function CheckOwnershipView() {
         </p>
 
         <div className="d-flex gap-2 mb-4">
-          {[["picture", "bi-image", "Picture"], ["text", "bi-file-earmark-text", "Text"]].map(([value, icon, label]) => (
+          {[["picture", "bi-image", "Picture"], ["video", "bi-camera-video", "Video"], ["text", "bi-file-earmark-text", "Text"]].map(([value, icon, label]) => (
             <button
               key={value}
               type="button"
@@ -92,7 +93,7 @@ export default function CheckOwnershipView() {
           ))}
         </div>
 
-        {mode === "text" ? <TextOwnershipCheck /> : (
+        {mode === "text" ? <TextOwnershipCheck /> : mode === "video" ? <VideoOwnershipCheck /> : (
         <>
         <div className="d-flex flex-column gap-3" style={{ maxWidth: 640 }}>
           <MediaDropzone
