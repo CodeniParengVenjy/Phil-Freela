@@ -1,0 +1,174 @@
+/* Voice and video calls (CallDialog.jsx): the ringing pop-up and the call
+   window. Above every other pop-up, because a call can arrive at any time. */
+
+.call-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.call-incoming {
+  width: 100%;
+  max-width: 360px;
+}
+
+/* The caller's picture pulses while it rings. */
+.call-pulse {
+  width: fit-content;
+  animation: call-pulse 1.6s ease-out infinite;
+}
+
+@keyframes call-pulse {
+  0% { box-shadow: 0 0 0 0 var(--accent-role-glow); }
+  100% { box-shadow: 0 0 0 22px rgba(0, 0, 0, 0); }
+}
+
+/* ---- The call window: big in the middle, or small in the corner ---- */
+
+.call-window {
+  position: fixed;
+  z-index: 1401;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(760px, calc(100vw - 2rem));
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.call-window-small {
+  top: 84px;
+  right: 1rem;
+  left: auto;
+  transform: none;
+  width: 300px;
+}
+
+.call-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  overflow: hidden;
+}
+
+.call-window-small .call-stage {
+  aspect-ratio: 4 / 3;
+}
+
+.call-stage-voice,
+.call-window-small .call-stage-voice {
+  aspect-ratio: auto;
+  height: 220px;
+}
+
+.call-window-small .call-stage-voice {
+  height: 120px;
+}
+
+/* "contain", so a phone's tall video isn't cut off. */
+.call-remote-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.call-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, var(--accent-role-subtle), #000 70%);
+}
+
+.call-local-video {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  width: 26%;
+  max-width: 200px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  transform: scaleX(-1);
+}
+
+.call-window-small .call-local-video {
+  right: 0.5rem;
+  bottom: 0.5rem;
+  width: 32%;
+}
+
+/* ---- Round buttons ---- */
+
+.call-btn {
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  transition: background-color 0.15s ease;
+}
+
+.call-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.24); }
+.call-btn:disabled { opacity: 0.4; }
+.call-btn-pressed,
+.call-btn-pressed:hover:not(:disabled) { background: #fff; color: #111; }
+.call-btn-red,
+.call-btn-red:hover:not(:disabled) { background: #dc3545; }
+.call-btn-green,
+.call-btn-green:hover:not(:disabled) { background: #198754; }
+
+.call-btn-label {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.call-window-small .call-btn {
+  width: 42px;
+  height: 42px;
+  font-size: 1.1rem;
+}
+
+.call-window-small .call-btn-label {
+  display: none;
+}
+
+/* Phones: the big window fills the screen; the small one sits in the corner. */
+@media (max-width: 576px) {
+  .call-window:not(.call-window-small) {
+    inset: 0;
+    transform: none;
+    width: 100%;
+    border-radius: 0;
+    border: none !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .call-window:not(.call-window-small) .call-stage {
+    flex: 1;
+    aspect-ratio: auto;
+    height: auto;
+  }
+
+  .call-window-small {
+    top: 72px;
+    right: 0.5rem;
+    width: 58vw;
+  }
+}

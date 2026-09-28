@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getActiveSuspension } from "../../../lib/profile";
 import { countUnreadNotifications } from "../../../lib/notifications";
+import { hangUp, listenForCalls } from "../../../lib/calls";
 
 // Everything the freelancer and client dashboard shells have in common:
 // the signed-in session (and redirect-to-login guard), the sidebar
@@ -178,6 +179,11 @@ export function useDashboardShell() {
         const isViewingThisChat = pathnameRef.current === `/dashboard/chat/${payload.new.conversation_id}`;
         if (isViewingThisChat) return;
 
+        // Call lines ("Video call, 3:12"): only a missed call gets a pop-up,
+        // since the person was there for the others.
+        const isCallLine = Boolean(payload.new.call_id);
+        if (isCallLine && !payload.new.body?.startsWith("Missed")) return;
+
         const { data: sender } = await supabase
           .from("profiles")
           .select("full_name, username")
@@ -187,7 +193,7 @@ export function useDashboardShell() {
         const contentLabel = payload.new.attachment_type === "video" ? "a video"
           : payload.new.attachment_type === "image" ? "a photo"
           : "a message";
-        showToast(`${name} sent ${contentLabel}`);
+        showToast(isCallLine ? `${payload.new.body} from ${name}` : `${name} sent ${contentLabel}`);
       })
       .subscribe();
 
@@ -232,6 +238,15 @@ export function useDashboardShell() {
     };
   }, [currentUserId, refreshUnreadNotifications, showToast]);
 
+  // Incoming voice/video calls ring on every dashboard page, and the current
+  // call hears when it's answered or ended (see lib/calls.js). Moving to
+  // another layout stops this listener for a moment; the call itself keeps
+  // going and catches up.
+  useEffect(() => {
+    if (!currentUserId) return undefined;
+    return listenForCalls(currentUserId);
+  }, [currentUserId]);
+
   const openPreview = useCallback((src, title) => {
     setPreview({ src, title, visible: true });
   }, []);
@@ -271,6 +286,7 @@ export function useDashboardShell() {
 
   const handleSignOut = useCallback(async (event) => {
     event.preventDefault();
+    await hangUp(); // a call in progress ends with the session
     await supabase.auth.signOut();
     navigate("/login", { replace: true });
   }, [navigate]);

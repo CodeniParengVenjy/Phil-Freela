@@ -145,45 +145,102 @@ Database: none (Supabase keeps the phone on the login account).
 
 ## Step 3: Voice call + video call (Hardest)
 
-How it works (for the defense): WebRTC connects the two browsers directly,
-so the voice and video don't pass through our server. Supabase only
-carries the short "calling / answer / connection details" messages. Free
-Google STUN servers help the two browsers find each other.
+Detailed plan approved by the user on 2026-09-28 ("go"). Built before Inbox
+file + voice message, because the medium session hadn't started that step
+yet (nobody else was editing `ChatView.jsx` or `useDashboardShell.js`);
+that step builds on top of the call code.
 
-- The call buttons in the chat header start a voice or video call.
-- The other person gets a ringing pop-up on any dashboard page, with Accept
-  and Decline. After 30 seconds with no answer, it becomes a missed call.
-- During the call: mute, camera on/off, hang up, and a timer.
-- The chat shows a line such as "Video call, 3:12" or "Missed voice call".
-- Someone suspended from messaging can't call.
+What the user sees:
+
+1. The phone and camera buttons in the chat header start a voice or video
+   call ("Calling...", Cancel).
+2. The other person gets a ringing pop-up on any dashboard page (Accept,
+   Decline, a ring sound made by the browser). Two open tabs both ring;
+   answering in one closes the other.
+3. No answer after 30 seconds: missed call, and a "Missed voice call from
+   ..." pop-up.
+4. During the call: the other person's video big, your own small in a
+   corner (voice calls show profile pictures), a timer, Mute, Camera
+   on/off, Hang up. The call keeps going while moving around the
+   dashboard, including its home page.
+5. The chat and the Inbox preview show "Video call, 3:12", "Missed voice
+   call" or "Declined video call".
+6. Suspended from messaging (or banned): can't start or answer calls.
+
+How it works (for the defense): WebRTC connects the two browsers directly,
+so voice and video never pass through our server; free Google STUN servers
+help each browser find its public address. The connection details travel
+in the call's own row in Supabase (only the two people can read it) and
+reach the other browser instantly through Realtime. They contain IP
+addresses, so they're deleted when the call ends. (Change from the first
+idea: no separate private channel.)
 
 Database, new file `database/supabase_calls_schema.sql`:
 
-1. Table `calls`: id, conversation_id, caller_id, callee_id, kind (voice
-   or video), status (ringing, accepted, declined, missed, ended),
-   created_at, answered_at, ended_at. Only the two people in the
-   conversation can see or change it.
-2. Realtime on `calls` for the ringing pop-up, and a rule so only those
-   two can join the call's private channel.
+1. Table `calls`: id, conversation_id, caller_id, callee_id, kind (voice,
+   video), status (ringing, accepted, declined, missed, ended), offer,
+   answer, created_at, answered_at, last_active_at, ended_at. Only the two
+   people can see it; nobody can change it directly.
+2. Functions: `start_call` (in the conversation, neither person blocked
+   from messaging, neither already in a call), `answer_call` (the person
+   called, while it rings), `end_call` (either person: ringing -> missed
+   for the caller, declined for the person called; answered -> ended),
+   `keep_call_alive` (both browsers every 20 seconds during a call).
+3. `messages.call_id` + a trigger that adds the chat line when a call
+   finishes.
+4. Realtime on `calls`.
+5. pg_cron every minute (`finish_stale_calls`): still ringing after 45
+   seconds -> missed; answered but no keep-alive for 75 seconds (both
+   browsers closed) -> ended at the last keep-alive, so the length stays
+   right.
 
-Code:
-
-1. New `lib/calls.js`: start, answer and end a call; WebRTC setup.
-2. New `components/CallDialog.jsx`: ringing screen and in-call screen.
-3. `useDashboardShell.js` and `DashboardOverlays.jsx`: listen for incoming
-   calls on every page.
-4. `ChatView.jsx`: wires the two buttons and shows the call lines.
+Code: new `lib/calls.js` (the call itself, kept outside the page so moving
+between dashboard pages doesn't drop it), new
+`components/CallDialog.jsx` + `calls.css`, `useDashboardShell.js` (incoming
+calls, missed-call pop-up, end the call on sign out),
+`DashboardOverlays.jsx` (shows the dialog), `ChatView.jsx` (buttons, call
+lines).
 
 Optional for the user: a free TURN account (Metered) helps calls connect on
 strict networks such as some school Wi-Fi.
 
-Limits: one-to-one only; both people keep the page open; on strict
-networks a call may fail to connect without a TURN server.
+Limits: one-to-one only; both people keep the page open (no phone
+notifications); on strict networks a call may fail to connect without a
+TURN server; a phone browser may drop the call when the screen locks.
 
 ## Current step
 
-Nothing built yet. Step 1's detailed plan is written (above) but the user
-postponed it on 2026-09-28 ("AI search box later"). Steps 2 and 3 are still
-waiting: Google sign up and Inbox file + voice message weren't done yet
-(PLAN-unfinished-features.md). Next: whichever of the three the user picks
-first; check those two first.
+Step 3 (Voice + video call): built and pushed live (2026-09-28).
+`database/supabase_calls_schema.sql` has been run on Supabase (migration
+"voice_video_calls"), so don't run it again. Still needs the user to test
+it on two real devices (a phone on mobile data and the laptop on Wi-Fi, the
+hardest case for connecting).
+
+Tests (2026-09-28, local site against the live database, 3 temporary
+accounts deleted afterwards): database rules 33/33 (privacy, busy,
+suspended, decline, missed, the every-minute clean-up job); two browser
+windows with Chrome's fake camera 35/35 (video both ways, mute, camera,
+small window, moving to the home page mid-call, hang up, decline, no
+answer + missed-call pop-up, two tabs ringing, busy, reload while ringing,
+caller closing the tab, suspended user has no call buttons).
+
+Changes from the approved plan: `keep_call_alive` + `last_active_at` (so a
+call whose browsers both closed still ends at the right time); `end_call`
+also declines (no separate decline function); closing or reloading the tab
+ends a call you started or joined, but not one that's only ringing (it may
+ring in another tab); an optional TURN server can be added later with
+VITE_TURN_URL, VITE_TURN_USERNAME and VITE_TURN_CREDENTIAL in Cloudflare.
+
+Step 3 files: `database/supabase_calls_schema.sql`, `client/src/lib/calls.js`,
+`pages/dashboard/components/CallDialog.jsx`, `components/calls.css`,
+`components/DashboardOverlays.jsx`, `hooks/useDashboardShell.js`,
+`views/ChatView.jsx`.
+
+For the medium session's Inbox file + voice message step: `ChatView.jsx`
+now has the call buttons and call lines (`messages.call_id`, no right-click
+menu on them), and `useDashboardShell.js` has the calls listener and a
+call-line branch in the new-message pop-up. Build on top of those.
+
+Step 1's detailed plan is written (above) but the user postponed it on
+2026-09-28 ("AI search box later"). Step 2 (SMS log in) can start: Google
+sign up's Complete Profile page was pushed on 2026-09-28 (commit 68428d0).

@@ -8,6 +8,7 @@ import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import ReportDialog from "../components/ReportDialog";
 import BlockedNotice from "../components/BlockedNotice";
 import { isMessagingBlocked } from "../../../lib/suspensions";
+import { startCall, useCall } from "../../../lib/calls";
 
 // Same upload rules as the Post a Service media dropzone.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -56,6 +57,10 @@ export default function ChatView() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [pendingMedia, setPendingMedia] = useState(null); // { file, mediaType, previewUrl }
   const fileInputRef = useRef(null);
+
+  // The voice/video call going on (if any), so the call buttons can't start a second one.
+  const activeCall = useCall();
+  const inCall = Boolean(activeCall && activeCall.stage !== "ended");
 
   // The Verified check for the person in this chat and the forward list.
   const verifiedIds = useVerifiedIds([otherProfile?.id, ...(forwardConversations || []).map((c) => c.otherId)]);
@@ -111,7 +116,7 @@ export default function ChatView() {
 
       const { data: messageRows, error: messagesError } = await supabase
         .from("messages")
-        .select("id, sender_id, body, created_at, edited_at, delivered_at, attachment_url, attachment_type")
+        .select("id, sender_id, body, created_at, edited_at, delivered_at, attachment_url, attachment_type, call_id")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
@@ -279,6 +284,21 @@ export default function ChatView() {
 
   const handleMediaButtonClick = () => fileInputRef.current?.click();
 
+  // The phone / camera buttons: calls the other person (see lib/calls.js;
+  // problems like a blocked microphone show in the call window).
+  const handleCall = (kind) => {
+    if (!otherProfile || inCall) return;
+    startCall({
+      conversationId,
+      kind,
+      other: {
+        id: otherProfile.id,
+        name: otherProfile.full_name || otherProfile.username || "User",
+        avatarPath: otherProfile.avatar_path || ""
+      }
+    });
+  };
+
   // Picking a file only stages it for review -- confirmSendMedia (triggered
   // by the preview's Send button) is what actually uploads and sends it.
   const handleFileChange = (event) => {
@@ -362,7 +382,8 @@ export default function ChatView() {
   }
 
   const recipientName = otherProfile?.full_name || otherProfile?.username || "...";
-  const lastMineId = [...(messages || [])].reverse().find((m) => m.sender_id === currentUserId)?.id;
+  // Call lines don't get the Sent / Delivered / Seen label.
+  const lastMineId = [...(messages || [])].reverse().find((m) => m.sender_id === currentUserId && !m.call_id)?.id;
 
   return (
     <section className="dashboard-view active-view">
@@ -381,8 +402,29 @@ export default function ChatView() {
             </div>
           </div>
           <div>
-            <button className="btn btn-sm btn-outline-secondary text-white border-0"><i className="bi bi-telephone-fill fs-5"></i></button>
-            <button className="btn btn-sm btn-outline-secondary text-white border-0"><i className="bi bi-camera-video-fill fs-5"></i></button>
+            {/* Suspended from messaging: no calls either (the database checks too). */}
+            {!messagingBlocked && (
+              <>
+                <button
+                  className="btn btn-sm btn-outline-secondary text-white border-0"
+                  title="Voice call"
+                  aria-label="Voice call"
+                  disabled={!otherProfile || inCall}
+                  onClick={() => handleCall("voice")}
+                >
+                  <i className="bi bi-telephone-fill fs-5"></i>
+                </button>
+                <button
+                  className="btn btn-sm btn-outline-secondary text-white border-0"
+                  title="Video call"
+                  aria-label="Video call"
+                  disabled={!otherProfile || inCall}
+                  onClick={() => handleCall("video")}
+                >
+                  <i className="bi bi-camera-video-fill fs-5"></i>
+                </button>
+              </>
+            )}
             {otherProfile && (
               <button
                 className="btn btn-sm btn-outline-secondary text-white border-0"
@@ -402,6 +444,21 @@ export default function ChatView() {
             <p className="text-secondary fs-7 text-center mb-0">No messages yet. Say hello!</p>
           )}
           {messages?.map((m) => {
+            // A finished call, written by the database: a small line in the
+            // middle ("Video call, 3:12", "Missed voice call"), with no
+            // right-click menu.
+            if (m.call_id) {
+              const isVideo = /video/i.test(m.body);
+              const notAnswered = m.body.startsWith("Missed") || m.body.startsWith("Declined");
+              return (
+                <div key={m.id} className="align-self-center d-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-dark bg-opacity-75 border border-secondary border-opacity-25 fs-8 text-white-50">
+                  <i className={`bi ${isVideo ? "bi-camera-video-fill" : "bi-telephone-fill"} ${notAnswered ? "text-danger" : "text-role"}`}></i>
+                  <span className="text-white">{m.body}</span>
+                  <span>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                </div>
+              );
+            }
+
             const isMe = m.sender_id === currentUserId;
             const isEditingThis = editingMessage?.id === m.id;
             return (

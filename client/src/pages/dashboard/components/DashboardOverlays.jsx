@@ -1,9 +1,15 @@
+import CallDialog from "./CallDialog";
+
 // Identical between the freelancer and client dashboards -- the image
-// preview modal, the role-switch confirmation, and the toast notification --
-// so both layouts share this instead of each keeping their own copy.
+// preview modal, the role-switch confirmation, the toast notification, and
+// the voice/video call window -- so both layouts share this instead of each
+// keeping their own copy.
 export default function DashboardOverlays({ preview, onClosePreview, toast, onCloseToast, roleConfirm, onResolveRoleConfirm }) {
   return (
     <>
+      {/* Ringing and call screens (the call itself lives in lib/calls.js). */}
+      <CallDialog />
+
       {roleConfirm.visible && (
         <div
           className="role-confirm-backdrop"
