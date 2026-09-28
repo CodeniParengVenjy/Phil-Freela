@@ -298,3 +298,58 @@ grant execute on function public.keep_call_alive(uuid) to authenticated;
 
 -- Live updates: the ringing pop-up and every status change.
 alter publication supabase_realtime add table public.calls;
+
+-- ---------------------------------------------------------------------------
+-- Added after the first tests (2026-09-28, migration "voice_video_calls_fixes")
+-- ---------------------------------------------------------------------------
+
+-- The Inbox badge's count (replaces the chat's own version): a finished or
+-- declined call's line doesn't count as unread (both people were there), but
+-- a missed call's line does.
+create or replace function public.get_unread_message_count()
+returns integer
+language sql
+stable
+set search_path = public
+as $$
+  select count(*)::integer
+  from public.messages m
+  join public.conversations c on c.id = m.conversation_id
+  where (c.user_a = auth.uid() or c.user_b = auth.uid())
+    and m.sender_id <> auth.uid()
+    and m.created_at > (case when c.user_a = auth.uid() then c.user_a_last_read_at else c.user_b_last_read_at end)
+    and (m.call_id is null or exists (
+      select 1 from public.calls k where k.id = m.call_id and k.status = 'missed'
+    ));
+$$;
+
+-- Suspended from messaging (or banned) during a call: the call ends right
+-- away for both people (a call still ringing counts as missed).
+create or replace function public.end_calls_when_suspended()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  active_call record;
+begin
+  if not new.blocks_messaging or (new.ends_at is not null and new.ends_at <= now()) then
+    return new;
+  end if;
+
+  for active_call in
+    select id, status from public.calls
+    where status in ('ringing', 'accepted') and new.user_id in (caller_id, callee_id)
+  loop
+    perform public.finish_call(active_call.id, case when active_call.status = 'ringing' then 'missed' else 'ended' end);
+  end loop;
+  return new;
+end;
+$$;
+
+revoke execute on function public.end_calls_when_suspended() from public, anon, authenticated;
+
+create trigger user_suspensions_end_calls
+  after insert or update on public.user_suspensions
+  for each row execute function public.end_calls_when_suspended();

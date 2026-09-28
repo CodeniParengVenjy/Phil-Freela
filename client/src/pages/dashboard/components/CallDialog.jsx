@@ -76,10 +76,15 @@ function CallWindow({ call, small, onToggleSize }) {
             ? <StreamPlayer stream={call.remoteStream} className="call-remote-video" />
             : <StreamPlayer stream={call.remoteStream} audioOnly />)}
 
-          {/* Their picture until the video starts (and all through a voice call). */}
-          {(!isVideo || !live || !call.remoteStream) && (
-            <div className="call-placeholder">
+          {/* Their picture until the video starts, while their camera is off,
+              and all through a voice call. It covers the video (which keeps
+              playing their voice). */}
+          {(!isVideo || !live || !call.remoteStream || call.remoteCameraOff) && (
+            <div className="call-placeholder flex-column gap-2">
               <Avatar path={other.avatarPath} name={other.name} size={small ? 64 : 112} />
+              {isVideo && live && call.remoteCameraOff && (
+                <span className="fs-8 text-white-50"><i className="bi bi-camera-video-off-fill me-1"></i>Camera off</span>
+              )}
             </div>
           )}
 

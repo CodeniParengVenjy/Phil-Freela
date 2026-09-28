@@ -20,6 +20,9 @@ const GATHER_MS = 3000;
 const RECONNECT_MS = 10000;
 // How long "Call ended", "No answer" and the like stay on screen.
 const MESSAGE_MS = 3000;
+// Leaving the dashboard ends the call after this long (moving between its
+// two layouts restarts the listener sooner, which keeps the call going).
+const LEAVE_MS = 3000;
 
 // Free Google STUN servers tell each browser its public address, so the two
 // can find each other. A TURN server (optional; set VITE_TURN_URL,
@@ -52,9 +55,12 @@ const FINISHED = ["declined", "missed", "ended"];
 //              "connecting" -> "active"; "ended" shows `message` briefly
 //   kind, conversationId, other { id, name, avatarPath }
 //   localStream, remoteStream, muted, cameraOff, connectedAt (for the timer)
+//   remoteCameraOff  the other person turned their camera off
 let call = null;
 let nextKey = 1;
 let peer = null; // the RTCPeerConnection
+let statusChannel = null; // the side channel for "camera off" (see openStatusChannel)
+let leaveTimer = null; // see listenForCalls
 let timers = []; // timeouts and intervals to stop when the call finishes
 let accessToken = ""; // for the "page closed" message below
 const listeners = new Set();
@@ -132,9 +138,35 @@ function stopStream(stream) {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
-function createPeer(key, localStream) {
+// A small side channel next to the voice and video, also straight between
+// the two browsers. It says when a camera is turned off, so the other person
+// sees a picture instead of a black screen. The caller opens it; the other
+// browser receives it.
+function openStatusChannel(key, channel) {
+  statusChannel = channel;
+  channel.onopen = sendStatus;
+  if (channel.readyState === "open") sendStatus(); // already open when received
+  channel.onmessage = (event) => {
+    try {
+      updateCall(key, { remoteCameraOff: Boolean(JSON.parse(event.data).cameraOff) });
+    } catch {
+      // Not a message from our own code; ignore it.
+    }
+  };
+}
+
+function sendStatus() {
+  if (call && statusChannel?.readyState === "open") {
+    statusChannel.send(JSON.stringify({ cameraOff: call.cameraOff }));
+  }
+}
+
+function createPeer(key, localStream, isCaller) {
   const connection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
   localStream.getTracks().forEach((track) => connection.addTrack(track, localStream));
+
+  if (isCaller) openStatusChannel(key, connection.createDataChannel("status"));
+  else connection.ondatachannel = (event) => openStatusChannel(key, event.channel);
 
   // The other person's voice and video.
   connection.ontrack = (event) => {
@@ -194,9 +226,11 @@ function finish(message) {
   if (peer) {
     peer.ontrack = null;
     peer.onconnectionstatechange = null;
+    peer.ondatachannel = null;
     peer.close();
     peer = null;
   }
+  statusChannel = null;
   stopStream(call.localStream);
 
   if (!message) {
@@ -225,7 +259,7 @@ export async function startCall({ conversationId, kind, other }) {
     if (!isCurrent(key)) return stopStream(localStream); // cancelled meanwhile
     updateCall(key, { localStream });
 
-    peer = createPeer(key, localStream);
+    peer = createPeer(key, localStream, true);
     await peer.setLocalDescription(await peer.createOffer());
     const offer = await connectionDetails(peer);
     if (!isCurrent(key)) return;
@@ -262,7 +296,7 @@ export async function acceptCall() {
     if (!isCurrent(key)) return stopStream(localStream);
     updateCall(key, { localStream });
 
-    peer = createPeer(key, localStream);
+    peer = createPeer(key, localStream, false);
     await peer.setRemoteDescription({ type: "offer", sdp: offer });
     await peer.setLocalDescription(await peer.createAnswer());
     const answer = await connectionDetails(peer);
@@ -304,6 +338,7 @@ export function toggleCamera() {
   const cameraOff = !call.cameraOff;
   call.localStream.getVideoTracks().forEach((track) => { track.enabled = !cameraOff; });
   updateCall(call.key, { cameraOff });
+  sendStatus(); // tell the other browser
 }
 
 // ---------------------------------------------------------------------------
@@ -388,14 +423,23 @@ async function catchUp(userId) {
 
 // Used by the dashboard (useDashboardShell) while a user is signed in.
 // Returns the function that stops listening.
+//
+// Calls live inside the dashboard: leaving it (e.g. typing the homepage
+// address) ends the call, instead of the voice going on with no window.
+// Moving between the dashboard's two layouts stops this and starts it again
+// within a moment, which cancels the ending.
 export function listenForCalls(userId) {
+  clearTimeout(leaveTimer);
   const channel = supabase
     .channel(`calls:${userId}`)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "calls", filter: `callee_id=eq.${userId}` }, ({ new: row }) => handleIncoming(row))
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "calls", filter: `callee_id=eq.${userId}` }, ({ new: row }) => handleChange(row))
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "calls", filter: `caller_id=eq.${userId}` }, ({ new: row }) => handleChange(row))
     .subscribe((status) => { if (status === "SUBSCRIBED") catchUp(userId); });
-  return () => supabase.removeChannel(channel);
+  return () => {
+    supabase.removeChannel(channel);
+    leaveTimer = setTimeout(() => hangUp(), LEAVE_MS);
+  };
 }
 
 // Closing or reloading the tab ends the call right away, so the other person

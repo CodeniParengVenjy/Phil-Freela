@@ -231,6 +231,19 @@ ends a call you started or joined, but not one that's only ringing (it may
 ring in another tab); an optional TURN server can be added later with
 VITE_TURN_URL, VITE_TURN_USERNAME and VITE_TURN_CREDENTIAL in Cloudflare.
 
+Fixes asked for by the user after the first version (2026-09-28, pushed;
+migration "voice_video_calls_fixes" applied, it's the last section of
+`supabase_calls_schema.sql`):
+1. The other person's camera off: you see their picture and "Camera off"
+   instead of a black screen (a small data channel between the browsers).
+2. Finished and declined calls no longer count as unread in the Inbox
+   badge (`get_unread_message_count`); missed calls still do.
+3. Suspended from messaging (or banned) during a call: the call ends at
+   once for both (trigger `user_suspensions_end_calls`).
+4. Leaving the dashboard during a call ends it (3 seconds after the last
+   dashboard layout closes), instead of the voice going on with no window.
+Tests after the fixes: database rules 33/33, browser 46/46.
+
 Step 3 files: `database/supabase_calls_schema.sql`, `client/src/lib/calls.js`,
 `pages/dashboard/components/CallDialog.jsx`, `components/calls.css`,
 `components/DashboardOverlays.jsx`, `hooks/useDashboardShell.js`,
