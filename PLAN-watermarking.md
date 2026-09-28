@@ -292,6 +292,13 @@ limit), `requirements.txt` (tokenizers, python-docx, pypdf), `get_models.py`,
 
 ## Reminders for later steps
 
+- LATER (user said "later", 2026-09-28), two plagiarism gaps:
+  1. Flagged Content: add "Keep this one, remove the other" for when the
+     flagged upload is the real original (the thief posted first). Today the
+     admin can only remove the flagged item.
+  2. Report button: add a "Stolen work / plagiarism" reason, for work stolen
+     from outside PhilFreela, which the copy check can't see.
+
 - Step 7: REMIND THE USER to decide the video size limit. Until Step 7
   compresses videos, they are saved as uploaded (up to 50 MB each, so only
   about 20 fit in Supabase's free 1 GB). Suggested: 20 MB until Step 7.
