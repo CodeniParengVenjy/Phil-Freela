@@ -14,8 +14,9 @@ export const RING_SECONDS = 30;
 // During a call both browsers tell the database "still here" this often, so
 // a call whose browsers both closed still gets ended (finish_stale_calls).
 const KEEP_ALIVE_SECONDS = 20;
-// The longest wait for this browser to collect its connection details.
-const GATHER_MS = 3000;
+// The longest wait for this browser to collect its connection details
+// (a relay address can take a moment longer than the others).
+const GATHER_MS = 4000;
 // A dropped connection gets this long to come back before the call ends.
 const RECONNECT_MS = 10000;
 // How long "Call ended", "No answer" and the like stay on screen.
@@ -25,17 +26,14 @@ const MESSAGE_MS = 3000;
 const LEAVE_MS = 3000;
 
 // Free Google STUN servers tell each browser its public address, so the two
-// can find each other. A TURN server (optional; set VITE_TURN_URL,
-// VITE_TURN_USERNAME and VITE_TURN_CREDENTIAL in Cloudflare) relays the call
-// when a strict network, like some school Wi-Fi, blocks direct connections.
-const ICE_SERVERS = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
-if (import.meta.env.VITE_TURN_URL) {
-  ICE_SERVERS.push({
-    urls: import.meta.env.VITE_TURN_URL.split(","),
-    username: import.meta.env.VITE_TURN_USERNAME,
-    credential: import.meta.env.VITE_TURN_CREDENTIAL
-  });
-}
+// can find each other directly. When that's impossible (a phone on mobile
+// data, strict Wi-Fi), a TURN server relays the call instead; its passwords
+// come from the website's own /turn address (client/functions/turn.js), so
+// they're never inside the website's code.
+const STUN_SERVERS = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
+const TURN_WAIT_MS = 4000;
+const TURN_REUSE_MS = 60 * 60 * 1000; // the relay passwords last longer than this
+let turnCache = { servers: [], at: 0 };
 
 const CALL_COLUMNS = "id, conversation_id, caller_id, callee_id, kind, status, offer, answer";
 const FINISHED = ["declined", "missed", "ended"];
@@ -134,6 +132,29 @@ async function getMedia(kind) {
   }
 }
 
+// The servers for this call: Google STUN plus the TURN relay. If /turn
+// can't be reached (e.g. the laptop's dev server), the call still tries a
+// direct connection.
+async function iceServers() {
+  if (turnCache.servers.length && Date.now() - turnCache.at < TURN_REUSE_MS) {
+    return [...STUN_SERVERS, ...turnCache.servers];
+  }
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch("/turn", {
+      headers: { Authorization: `Bearer ${session?.access_token || ""}` },
+      signal: AbortSignal.timeout(TURN_WAIT_MS)
+    });
+    const body = response.ok ? await response.json() : {};
+    if (Array.isArray(body.iceServers) && body.iceServers.length) {
+      turnCache = { servers: body.iceServers, at: Date.now() };
+    }
+  } catch {
+    // No relay this time.
+  }
+  return [...STUN_SERVERS, ...turnCache.servers];
+}
+
 function stopStream(stream) {
   stream?.getTracks().forEach((track) => track.stop());
 }
@@ -161,8 +182,8 @@ function sendStatus() {
   }
 }
 
-function createPeer(key, localStream, isCaller) {
-  const connection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+function createPeer(key, localStream, isCaller, servers) {
+  const connection = new RTCPeerConnection({ iceServers: servers });
   localStream.getTracks().forEach((track) => connection.addTrack(track, localStream));
 
   if (isCaller) openStatusChannel(key, connection.createDataChannel("status"));
@@ -255,11 +276,12 @@ export async function startCall({ conversationId, kind, other }) {
 
   let localStream = null;
   try {
-    localStream = await getMedia(kind);
+    const [media, servers] = await Promise.all([getMedia(kind), iceServers()]);
+    localStream = media;
     if (!isCurrent(key)) return stopStream(localStream); // cancelled meanwhile
     updateCall(key, { localStream });
 
-    peer = createPeer(key, localStream, true);
+    peer = createPeer(key, localStream, true, servers);
     await peer.setLocalDescription(await peer.createOffer());
     const offer = await connectionDetails(peer);
     if (!isCurrent(key)) return;
@@ -292,11 +314,12 @@ export async function acceptCall() {
 
   let localStream = null;
   try {
-    localStream = await getMedia(kind);
+    const [media, servers] = await Promise.all([getMedia(kind), iceServers()]);
+    localStream = media;
     if (!isCurrent(key)) return stopStream(localStream);
     updateCall(key, { localStream });
 
-    peer = createPeer(key, localStream, false);
+    peer = createPeer(key, localStream, false, servers);
     await peer.setRemoteDescription({ type: "offer", sdp: offer });
     await peer.setLocalDescription(await peer.createAnswer());
     const answer = await connectionDetails(peer);

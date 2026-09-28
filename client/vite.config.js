@@ -29,6 +29,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/ai/, ''),
         },
+        // The call relay's passwords (client/functions/turn.js) only exist on
+        // the live site, so the laptop version asks the live site for them.
+        '/turn': {
+          target: 'https://phil-freela.pages.dev',
+          changeOrigin: true,
+        },
       },
     },
   }
