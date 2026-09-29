@@ -176,3 +176,16 @@ export async function addSlide({ serviceId, portfolioItemId, image, videoPath, p
   if (videoPath) form.append("video_path", videoPath);
   return request("/slides", { method: "POST", headers: await authHeader(), body: form });
 }
+
+// The AI search box (Hybrid recommendation system, content-based filtering):
+// services and job posts closest in meaning to the typed words, best first.
+// Returns [{ type: "service" | "job", id, score, strong }]; the page loads the
+// posts itself. See ai-service/listing_search.py.
+export async function searchListings(query) {
+  const body = await request("/search", {
+    method: "POST",
+    headers: { ...(await authHeader()), "Content-Type": "application/json" },
+    body: JSON.stringify({ query })
+  });
+  return body.results || [];
+}

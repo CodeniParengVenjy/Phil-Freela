@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { dashboardRouteFor } from "../../../lib/profile";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
@@ -14,6 +14,15 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
   // The logo takes a signed-in user back to their own dashboard home, not the public homepage.
   const homeHref = dashboardRouteFor(accountType);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  // The AI search box (Hybrid recommendation system, content-based
+  // filtering): Enter opens the Search page with the typed words.
+  const handleSearch = (event) => {
+    event.preventDefault();
+    const text = String(new FormData(event.currentTarget).get("q") || "").trim();
+    if (text) navigate(`/dashboard/search?q=${encodeURIComponent(text)}`);
+  };
 
   // Already on the dashboard home: reload the page instead. The role is read
   // again from the database, so it stays the same.
@@ -41,12 +50,16 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           </NavLink>
         </div>
 
-        <div className="d-none d-md-flex mx-auto position-relative search-nav-box" style={{ width: 380 }}>
+        <form className="d-none d-md-flex mx-auto position-relative search-nav-box" style={{ width: 380 }} role="search" onSubmit={handleSearch}>
           <i className="bi bi-search search-icon text-secondary"></i>
-          <input type="search" className="form-control nav-search-input" placeholder="Search profiles, jobs, inbox..." />
-        </div>
+          <input name="q" type="search" className="form-control nav-search-input" placeholder="Search services and jobs..." aria-label="Search services and jobs" maxLength={200} />
+        </form>
 
         <div className="d-flex align-items-center gap-3">
+          {/* Phones have no room for the box: this opens the Search page. */}
+          <NavLink to="/dashboard/search" className="nav-link text-white-50 hover-orange d-md-none" aria-label="Search" title="Search">
+            <i className="bi bi-search fs-5"></i>
+          </NavLink>
           {accountType !== "freelancer" && (
             <a href="/dashboard-freelancer" className="nav-link text-white-50 hover-orange d-none d-lg-block fw-semibold fs-7" onClick={(event) => onSwitchRole(event, "freelancer")}>Join as Freelancer</a>
           )}

@@ -1,0 +1,192 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
+import { supabase } from "../../../lib/supabaseClient";
+import { searchListings } from "../../../lib/aiService";
+import { getCategory } from "../../../lib/categories";
+import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import VerifiedBadge from "../../../components/VerifiedBadge";
+
+const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
+const JOB_COLUMNS = "id, title, category, budget, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
+
+// The AI search box's results page: the content-based filtering part of the
+// Hybrid recommendation system (see ai-service/listing_search.py). The AI
+// service says which posts match the search's meaning and how closely; this
+// page loads those posts from the database, whose rules leave out hidden
+// ones (suspended users, unverified freelancers), and shows them best first.
+export default function SearchResultsView() {
+  const [params] = useSearchParams();
+  const query = (params.get("q") || "").trim();
+  const navigate = useNavigate();
+  const { accountType, currentUserId, openChat } = useOutletContext();
+  // The search these results belong to (still loading while it's not `query`).
+  const [result, setResult] = useState({ query: null, services: [], jobs: [], error: "" });
+
+  useEffect(() => {
+    if (query.length < 2) return undefined;
+    let active = true;
+
+    (async () => {
+      try {
+        const matches = await searchListings(query);
+        const matchOf = Object.fromEntries(matches.map((m) => [m.id, m]));
+        const idsOf = (type) => matches.filter((m) => m.type === type).map((m) => m.id);
+        const load = (table, columns, ids) =>
+          ids.length ? supabase.from(table).select(columns).in("id", ids) : Promise.resolve({ data: [] });
+
+        const [services, jobs] = await Promise.all([
+          load("services", SERVICE_COLUMNS, idsOf("service")),
+          load("job_posts", JOB_COLUMNS, idsOf("job"))
+        ]);
+        if (services.error || jobs.error) throw new Error("Couldn't load the results. Please try again.");
+
+        // Best match first (the database returns them in any order).
+        const ranked = (rows) => rows
+          .map((row) => ({ ...row, match: matchOf[row.id] }))
+          .sort((a, b) => b.match.score - a.match.score);
+        if (active) setResult({ query, services: ranked(services.data), jobs: ranked(jobs.data), error: "" });
+      } catch (error) {
+        if (active) setResult({ query, services: [], jobs: [], error: error.message });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [query]);
+
+  const loading = query.length >= 2 && result.query !== query;
+  const total = result.services.length + result.jobs.length;
+  const verifiedIds = useVerifiedIds([
+    ...result.services.map((s) => s.freelancer?.id),
+    ...result.jobs.map((j) => j.client?.id)
+  ]);
+
+  // Clients look for services first, freelancers for jobs.
+  const sections = [
+    { key: "services", title: "Services", icon: "bi-grid-fill", items: result.services },
+    { key: "jobs", title: "Jobs", icon: "bi-briefcase-fill", items: result.jobs }
+  ];
+  if (accountType === "freelancer") sections.reverse();
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const text = String(new FormData(event.currentTarget).get("q") || "").trim();
+    if (text) navigate(`/dashboard/search?q=${encodeURIComponent(text)}`);
+  };
+
+  return (
+    <section className="dashboard-view active-view">
+      <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
+        <h3 className="text-white fw-bold mb-1"><i className="bi bi-search text-role me-2"></i> Search</h3>
+        <p className="text-secondary fs-7 mb-3">
+          Finds services and jobs by meaning, not only the exact words: "logo" also finds "brand identity design".
+        </p>
+
+        {/* key: a new search from the top bar refills this box too. */}
+        <form key={query} className="d-flex gap-2 mb-4" onSubmit={handleSubmit} role="search">
+          <div className="position-relative search-nav-box flex-grow-1">
+            <i className="bi bi-search search-icon text-secondary"></i>
+            <input
+              name="q"
+              type="search"
+              className="form-control nav-search-input"
+              placeholder="Search services and jobs..."
+              aria-label="Search services and jobs"
+              defaultValue={query}
+              minLength={2}
+              maxLength={200}
+              autoFocus={!query}
+            />
+          </div>
+          <button type="submit" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white">Search</button>
+        </form>
+
+        {query.length < 2 && (
+          <p className="text-secondary fs-7 text-center py-4 mb-0">Type at least 2 characters, then press Enter.</p>
+        )}
+        {loading && (
+          <p className="text-secondary fs-7 text-center py-4 mb-0">
+            <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Searching...
+          </p>
+        )}
+        {!loading && result.error && <p className="text-danger fs-7 text-center py-4 mb-0">{result.error}</p>}
+        {!loading && !result.error && query.length >= 2 && total === 0 && (
+          <p className="text-secondary fs-7 text-center py-4 mb-0">
+            No matches for "{query}". Try describing the work in other words.
+          </p>
+        )}
+
+        {!loading && !result.error && sections.filter((section) => section.items.length > 0).map((section) => (
+          <div key={section.key} className="mb-4">
+            <h6 className="text-white fw-bold mb-3">
+              <i className={`bi ${section.icon} text-role me-2`}></i>
+              {section.title} <span className="text-secondary fw-normal">({section.items.length})</span>
+            </h6>
+            <div className="d-flex flex-column gap-3">
+              {section.items.map((item) => (
+                <ResultCard
+                  key={item.id}
+                  item={item}
+                  isService={section.key === "services"}
+                  verifiedIds={verifiedIds}
+                  currentUserId={currentUserId}
+                  onMessage={openChat}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// One matching service or job post.
+function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage }) {
+  const owner = isService ? item.freelancer : item.client;
+  const ownerName = owner?.full_name || owner?.username || (isService ? "Freelancer" : "Client");
+  const category = getCategory(item.category);
+  const amount = isService ? item.price : item.budget;
+  const isMine = owner?.id === currentUserId;
+
+  return (
+    <div className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-3 hover-lift">
+      <div className="rounded-3 bg-role-subtle text-role d-flex align-items-center justify-content-center flex-shrink-0 fs-4" style={{ width: 52, height: 52 }}>
+        <i className={`bi ${category.icon}`}></i>
+      </div>
+
+      <div className="flex-grow-1 overflow-hidden">
+        <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+          <h6 className="text-white fw-bold mb-0 text-break">{item.title}</h6>
+          {/* How close its meaning is to the search (see listing_search.py). */}
+          <span className={`badge rounded-pill fw-semibold ${item.match.strong ? "bg-success" : "bg-secondary bg-opacity-50"}`}>
+            {item.match.strong ? "Strong match" : "Related"}
+          </span>
+        </div>
+        <div className="d-flex align-items-center gap-2 fs-8 flex-wrap">
+          <span className="text-white-50">
+            {isService && owner?.id ? (
+              <Link to={`/dashboard/freelancers/${owner.id}`} className="text-white-50">{ownerName}</Link>
+            ) : ownerName}
+            <VerifiedBadge verified={verifiedIds.has(owner?.id)} showUnverified={!isService} />
+          </span>
+          {amount && <span className="text-warning">₱{Number(amount).toLocaleString()}</span>}
+          <span className="badge bg-black text-light-50 text-wrap text-start">{category.label}</span>
+        </div>
+      </div>
+
+      {isMine ? (
+        <span className="badge bg-secondary bg-opacity-25 text-secondary flex-shrink-0">Your post</span>
+      ) : owner?.id && (
+        <button
+          type="button"
+          className="btn btn-gradient-role rounded-pill px-3 py-2 fw-bold text-white text-nowrap fs-7 flex-shrink-0"
+          onClick={() => onMessage(owner.id)}
+        >
+          <i className="bi bi-chat-dots me-1"></i> Message
+        </button>
+      )}
+    </div>
+  );
+}

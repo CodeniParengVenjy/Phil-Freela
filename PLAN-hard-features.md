@@ -57,11 +57,44 @@ The idea (a detailed plan is still needed before any code):
   `all-MiniLM-L6-v2` (its Step 6), so check what already exists and share
   it instead of adding a second copy.
 
-Detailed plan (written 2026-09-28, NOT approved yet: the user said "AI
-search box later", so show it again and get an OK before any code). Checked
-that day: pgvector 0.8.2 is available on Supabase but not turned on; the
-watermarking session hadn't added pgvector or MiniLM yet; the live site had
-only 2 services and 1 job post.
+BUILT 2026-09-29 (refreshed plan approved by the user). The user confirmed
+it is the content-based filtering part of the Hybrid recommendation system
+(feature 1 in PhilFreela-System-Functions.md); the code comments say so.
+Changes from the plan below: it reuses the watermarking session's
+`text_embedder.py` (MiniLM, 8-bit ONNX) and pgvector (already on, in the
+`extensions` schema) without changing them, so no model download or new
+package. Migration "ai_search_box" (`database/supabase_search_schema.sql`)
+is applied: table `listing_embeddings` (HNSW index, RLS on, no policies),
+`listings_to_embed(max_rows)`, `closest_listings(query, how_many)`, both
+service role only.
+
+Cut-offs from tests (`ai-service/listing_search.py`): 0.32 minimum (below
+is hidden), 0.50 "Strong match". Quality test (40 made-up posts, 22
+searches): the right post was in the top 3 for 22/22; unrelated searches
+("pizza delivery", "basketball") stayed at or under 0.30. Endpoint test on
+the laptop against the live database (21 posts): 8/8 searches right,
+too-short / too-long / logged-out refused, an edited post found by its new
+text, warm searches about 0.5-1 s (first one about 10 s while it gave 21
+posts their numbers). Browser test: 16 checks, all passed across two runs
+(one miss per run from the laptop's network: the AI service couldn't reach
+Supabase to check the login, which it reports as "login expired" (401), an
+existing behavior of `get_user_id`). Checked: Enter opens
+/dashboard/search, clients see Services first and freelancers Jobs, match
+labels, Verified check, Message opens a chat, "Your post" on your own post,
+an unverified freelancer's service is hidden from others, "No matches" for
+unrelated searches, and the phone search icon.
+
+Files: `database/supabase_search_schema.sql`, `ai-service/listing_search.py`,
+`ai-service/main.py` (`POST /search` at the end + 2 imports),
+`client/src/lib/aiService.js` (`searchListings`),
+`views/SearchResultsView.jsx`, `components/DashboardTopNav.jsx`, `App.jsx`
+(route), `lib/pageTitles.js`.
+
+Later (not built): "Recommended for you", the ranking formula and
+collaborative filtering (the rest of feature 1) can reuse
+`listing_embeddings`.
+
+The plan as written before building (2026-09-28):
 
 What the user sees:
 
@@ -314,6 +347,12 @@ now has the call buttons and call lines (`messages.call_id`, no right-click
 menu on them), and `useDashboardShell.js` has the calls listener and a
 call-line branch in the new-message pop-up. Build on top of those.
 
-Step 1's detailed plan is written (above) but the user postponed it on
-2026-09-28 ("AI search box later"). Step 2 (SMS log in) can start: Google
-sign up's Complete Profile page was pushed on 2026-09-28 (commit 68428d0).
+Step 1 (AI search box): built and pushed live (2026-09-29), see Step 1.
+Migration "ai_search_box" has been run, so don't run
+`supabase_search_schema.sql` again. Still needs the user to try it on the
+live site (only 2 real services and 2 job posts exist, so results are thin).
+
+Step 2 (SMS log in) can start: Google sign up's Complete Profile page was
+pushed on 2026-09-28 (commit 68428d0). It's not on the graded function list
+(PhilFreela-System-Functions.md), so the user may prefer the rest of the
+Hybrid recommendation system first.

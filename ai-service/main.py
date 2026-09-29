@@ -30,11 +30,13 @@ from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from postgrest.exceptions import APIError
+from pydantic import BaseModel
 from pypdf import PdfReader
 from supabase import ClientOptions, create_client
 
 from face_check import NoFaceError, check_faces, prepare_image
 from hidden_watermark import new_code, protect_photo, read_code, read_uncropped_codes
+from listing_search import search_listings
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
 from similarity import image_embedding
 from text_embedder import embed_texts
@@ -1059,3 +1061,28 @@ def extract_text_watermark(
         return describe_document_match(rows[0]["freelancer_id"], rows[0]["portfolio_item_id"], user_id, "similarity", round(rows[0]["similarity"], 4))
 
     return {"found": False}
+
+
+# ---------------------------------------------------------------------------
+# AI search box: the content-based filtering part of the Hybrid
+# recommendation system (see listing_search.py)
+# ---------------------------------------------------------------------------
+
+class SearchRequest(BaseModel):
+    query: str
+
+
+@app.post("/search")
+def search_posts(body: SearchRequest, authorization: str | None = Header(default=None)):
+    """The top search box: services and job posts closest in meaning to the
+    typed words. Returns ids and scores only; the website loads the posts
+    itself, under the normal database rules."""
+    get_user_id(authorization)
+    query = " ".join(body.query.split())
+    if not 2 <= len(query) <= 200:
+        raise HTTPException(400, "Type 2 to 200 characters to search.")
+    try:
+        return {"results": search_listings(supabase, query)}
+    except APIError:
+        logging.exception("Search failed")
+        raise HTTPException(503, "Search isn't available right now. Please try again.")
