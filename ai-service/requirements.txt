@@ -15,6 +15,10 @@ onnxruntime>=1.20
 tokenizers>=0.20
 python-docx>=1.1
 pypdf>=5
-# Videos: FFmpeg (reads any MP4/MOV/WEBM, writes the watermarked 720p MP4);
-# this package includes the FFmpeg program itself.
-imageio-ffmpeg>=0.5
+# Videos: FFmpeg (reads any MP4/MOV/WEBM, writes the watermarked 720p MP4),
+# through imageio-ffmpeg. Its usual package includes the whole FFmpeg program
+# (80 MB), which pushed the service past Vercel's 500 MB limit. So on Linux
+# (Vercel) the version without the program is installed, and get_models.py
+# adds FFmpeg compressed to 21 MB instead (unpacked by watermark_video.py).
+imageio-ffmpeg>=0.5; sys_platform != "linux"
+imageio-ffmpeg @ https://files.pythonhosted.org/packages/44/bd/c3343c721f2a1b0c9fc71c1aebf1966a3b7f08c2eea8ed5437a2865611d6/imageio_ffmpeg-0.6.0.tar.gz#sha256=e2556bed8e005564a9f925bb7afa4002d82770d6b08825078b7697ab88ba1755 ; sys_platform == "linux"

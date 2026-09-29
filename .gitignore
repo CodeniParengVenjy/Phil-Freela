@@ -10,3 +10,4 @@ ai-service/models/face_recognition_sface_2021dec.onnx
 ai-service/models/dino_vits16_model_quantized.onnx
 ai-service/models/minilm_l6_v2_quantized.onnx
 ai-service/models/minilm_tokenizer.json
+ai-service/models/ffmpeg-linux-x86_64.xz

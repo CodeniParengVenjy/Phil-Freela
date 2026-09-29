@@ -27,7 +27,8 @@ portfolio projects (`POST /slides`):
   Meta). `export_hidden.py` turned it into the two small ONNX files in
   `models/` once; it needs PyTorch, which isn't part of `requirements.txt`.
 - **Videos** (`watermark_video.py`): turned into a compressed 720p MP4 with
-  FFmpeg (the `imageio-ffmpeg` package includes it); the visible watermark is
+  FFmpeg (through `imageio-ffmpeg`; on Vercel, `get_models.py` adds FFmpeg
+  compressed, to stay under the 500 MB limit); the visible watermark is
   laid over every frame and the invisible code is hidden in every frame (the
   HiDDeN pattern is worked out every 2 seconds and reused in between, to fit
   Vercel's single CPU). The finished video is read back as a self-check.

@@ -1,6 +1,7 @@
 """Downloads the models too big to keep in GitHub into the models folder:
 the SFace face model (37 MB), the copy check's ViT (23 MB), and the
-documents' text model (23 MB).
+documents' text model (23 MB). On Linux (Vercel) it also adds FFmpeg for
+videos, compressed (see get_ffmpeg).
 
 They're fetched from OpenCV's model collection and Hugging Face instead:
 Vercel runs this while building (see vercel.json), and on a laptop you run it
@@ -12,8 +13,12 @@ is refused instead of used.
 """
 
 import hashlib
+import io
+import lzma
 import os
+import sys
 import urllib.request
+import zipfile
 
 MODELS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 
@@ -40,6 +45,17 @@ FILES = {
     ),
 }
 
+# FFmpeg for videos, on Linux only: the program inside imageio-ffmpeg's Linux
+# package (80 MB), kept xz-compressed (21 MB) so the service stays under
+# Vercel's 500 MB limit. watermark_video.py unpacks it when a video comes in.
+FFMPEG_PACKAGE = (
+    "https://files.pythonhosted.org/packages/a0/2d/43c8522a2038e9d0e7dbdf3a61195ecc31ca576fb1527a528c877e87d973/imageio_ffmpeg-0.6.0-py3-none-manylinux2014_x86_64.whl",
+    "c7e46fcec401dd990405049d2e2f475e2b397779df2519b544b8aab515195282",
+)
+FFMPEG_INSIDE = "imageio_ffmpeg/binaries/ffmpeg-linux-x86_64-v7.0.2"
+FFMPEG_SHA256 = "e7e7fb30477f717e6f55f9180a70386c62677ef8a4d4d1a5d948f4098aa3eb99"
+FFMPEG_PACKED = "ffmpeg-linux-x86_64.xz"
+
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -64,6 +80,28 @@ def main():
             raise SystemExit(f"{name}: the download doesn't match the expected file, so it wasn't used.")
         os.replace(partial, path)
         print(f"{name}: downloaded")
+
+    if sys.platform == "linux":
+        get_ffmpeg()
+
+
+def get_ffmpeg():
+    path = os.path.join(MODELS, FFMPEG_PACKED)
+    if os.path.exists(path) and hashlib.sha256(lzma.open(path).read()).hexdigest() == FFMPEG_SHA256:
+        print(f"{FFMPEG_PACKED}: already here")
+        return
+
+    url, expected = FFMPEG_PACKAGE
+    package = urllib.request.urlopen(url).read()
+    if hashlib.sha256(package).hexdigest() != expected:
+        raise SystemExit("FFmpeg: the download doesn't match the expected file, so it wasn't used.")
+    program = zipfile.ZipFile(io.BytesIO(package)).read(FFMPEG_INSIDE)
+    if hashlib.sha256(program).hexdigest() != FFMPEG_SHA256:
+        raise SystemExit("FFmpeg: the program isn't the expected one, so it wasn't used.")
+    with open(path + ".part", "wb") as file:
+        file.write(lzma.compress(program))
+    os.replace(path + ".part", path)
+    print(f"{FFMPEG_PACKED}: downloaded and compressed")
 
 
 if __name__ == "__main__":

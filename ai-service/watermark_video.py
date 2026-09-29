@@ -12,6 +12,11 @@ to the next key frame; nearby frames look almost the same, so the pattern
 still fits them. Afterwards the finished video is read back from a few frames.
 """
 
+import lzma
+import os
+import shutil
+import tempfile
+
 import cv2
 import imageio_ffmpeg
 import numpy as np
@@ -29,10 +34,32 @@ STRENGTH = 3.0
 CHECK_FRAMES = 4  # frames read back in the self-check
 MAX_WRONG_BITS = 4  # in the read-back of the finished video
 
+# On Vercel, FFmpeg comes compressed in the models folder (see get_models.py).
+PACKED_FFMPEG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "ffmpeg-linux-x86_64.xz")
+
+
+def _unpack_ffmpeg():
+    """Unpacks the compressed FFmpeg to the temporary folder the first time a
+    video comes in (about 3 seconds) and tells imageio-ffmpeg to use it. On a
+    laptop there's nothing to do: its imageio-ffmpeg includes FFmpeg."""
+    if os.environ.get("IMAGEIO_FFMPEG_EXE") or not os.path.exists(PACKED_FFMPEG):
+        return
+    program = os.path.join(tempfile.gettempdir(), "ffmpeg")
+    if not os.path.exists(program):
+        # Written under a temporary name first, so two uploads at once can't
+        # use a half-written copy.
+        handle, partial = tempfile.mkstemp(dir=tempfile.gettempdir())
+        with lzma.open(PACKED_FFMPEG) as packed, os.fdopen(handle, "wb") as out:
+            shutil.copyfileobj(packed, out)
+        os.chmod(partial, 0o755)
+        os.replace(partial, program)
+    os.environ["IMAGEIO_FFMPEG_EXE"] = program
+
 
 def video_info(path):
     """(width, height, fps, seconds, has_sound) of a video file, with phone
     videos' rotation already applied to the width and height."""
+    _unpack_ffmpeg()
     frames = imageio_ffmpeg.read_frames(path)
     meta = next(frames)
     frames.close()
