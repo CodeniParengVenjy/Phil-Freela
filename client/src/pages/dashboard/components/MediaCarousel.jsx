@@ -80,24 +80,52 @@ function DocumentSlide({ url }) {
   );
 }
 
+// True when the user asked their device for less motion (no auto-play then).
+const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 // A service's or portfolio project's photos, videos and documents as a
 // slideshow (slides come from itemSlides in lib/slides.js). Arrows, a "2 / 5" counter, and
 // swiping on phones. fit is "cover" (fill the box, trimming the edges) or
-// "contain" (show the whole photo). To make copying others' work harder there
+// "contain" (show the whole photo). The box is `height` tall, or, with
+// aspectRatio (e.g. "16 / 10"), grows with its width. autoPlayMs: move to the
+// next slide by itself every that many milliseconds (0 = only by hand).
+// To make copying others' work harder there
 // is no Download button, right-click menu, dragging, or picture-in-picture,
 // and ownerName (the uploader's @username) is shown faintly across the slide,
 // so a screenshot still shows whose work it is. Only the current slide is on
 // the page, so a playing video stops when you move on.
-export default function MediaCarousel({ slides, height = 140, fit = "cover", alt = "", ownerName }) {
+export default function MediaCarousel({ slides, height = 140, aspectRatio, fit = "cover", alt = "", ownerName, autoPlayMs = 0 }) {
   const [index, setIndex] = useState(0);
+  // "next" or "prev": the side the new slide slides in from (null before the
+  // first move, so the first slide doesn't slide in).
+  const [direction, setDirection] = useState(null);
+  // Auto-play waits while the mouse is over the slideshow or a video plays.
+  const [hovered, setHovered] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
   const swipeStartX = useRef(null);
 
   const count = slides.length;
+  const shown = Math.min(index, Math.max(count - 1, 0));
+
+  // Auto-play: a new timer starts on every slide change, so tapping an arrow
+  // also restarts the wait.
+  useEffect(() => {
+    if (!autoPlayMs || count < 2 || hovered || videoPlaying || prefersReducedMotion()) return undefined;
+    const timer = setTimeout(() => {
+      setDirection("next");
+      setIndex((shown + 1) % count);
+    }, autoPlayMs);
+    return () => clearTimeout(timer);
+  }, [autoPlayMs, count, hovered, videoPlaying, shown]);
+
   if (count === 0) return null;
-  const shown = Math.min(index, count - 1);
   const current = slides[shown];
   // step is 1 (next) or -1 (previous); it wraps around at both ends.
-  const go = (step) => setIndex((shown + step + count) % count);
+  const go = (step) => {
+    setDirection(step > 0 ? "next" : "prev");
+    setVideoPlaying(false);
+    setIndex((shown + step + count) % count);
+  };
 
   const handleTouchStart = (event) => {
     swipeStartX.current = event.touches[0].clientX;
@@ -113,27 +141,34 @@ export default function MediaCarousel({ slides, height = 140, fit = "cover", alt
   return (
     <div
       className="media-carousel"
-      style={{ height }}
+      style={aspectRatio ? { aspectRatio } : { height }}
       onTouchStart={count > 1 ? handleTouchStart : undefined}
       onTouchEnd={count > 1 ? handleTouchEnd : undefined}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      {current.mediaType === "document" ? (
-        <DocumentSlide key={current.id} url={current.url} />
-      ) : current.mediaType === "video" ? (
-        <video
-          key={current.id}
-          src={current.url}
-          controls
-          controlsList="nodownload"
-          disablePictureInPicture
-          preload="metadata"
-          onContextMenu={blockSaveMenu}
-          className="media-carousel-item"
-          style={{ objectFit: fit }}
-        />
-      ) : (
-        <img key={current.id} src={current.url} alt={alt} draggable={false} onContextMenu={blockSaveMenu} className="media-carousel-item" style={{ objectFit: fit }} />
-      )}
+      {/* key: a new slide is a new element, so its slide-in animation
+          (slides.css) plays every time the slide changes. */}
+      <div key={current.id} className={`media-carousel-slide${direction ? ` is-from-${direction}` : ""}`}>
+        {current.mediaType === "document" ? (
+          <DocumentSlide url={current.url} />
+        ) : current.mediaType === "video" ? (
+          <video
+            src={current.url}
+            controls
+            controlsList="nodownload"
+            disablePictureInPicture
+            preload="metadata"
+            onContextMenu={blockSaveMenu}
+            onPlay={() => setVideoPlaying(true)}
+            onPause={() => setVideoPlaying(false)}
+            className="media-carousel-item"
+            style={{ objectFit: fit }}
+          />
+        ) : (
+          <img src={current.url} alt={alt} draggable={false} onContextMenu={blockSaveMenu} className="media-carousel-item" style={{ objectFit: fit }} />
+        )}
+      </div>
 
       {/* Drawn on top of the page, not saved into the file, and clicks go
           through it, so the video controls still work. */}

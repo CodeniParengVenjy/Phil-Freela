@@ -106,17 +106,24 @@ export default function BrowseServicesView() {
             const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "Freelancer";
             const slides = itemSlides(s);
             return (
-              <div className="col-md-6 col-lg-4" key={s.id}>
+              // Two cards per row on laptops, three only on very wide screens.
+              <div className="col-md-6 col-xxl-4" key={s.id}>
                 <div className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
+                  {/* The picture grows with the card (16:10) and shows the
+                      whole photo ("contain"): trimming the edges used to cut
+                      off the watermark in the photo's corner. It moves to the
+                      next slide by itself every 4 seconds. */}
                   {slides.length > 0 ? (
                     <MediaCarousel
                       slides={slides}
-                      height={140}
+                      aspectRatio="16 / 10"
+                      fit="contain"
+                      autoPlayMs={4000}
                       alt={s.title}
                       ownerName={s.freelancer?.username}
                     />
                   ) : (
-                    <div className="d-flex align-items-center justify-content-center bg-role-subtle" style={{ height: 140 }}>
+                    <div className="d-flex align-items-center justify-content-center bg-role-subtle" style={{ aspectRatio: "16 / 10" }}>
                       <i className={`bi ${meta.icon} text-role`} style={{ fontSize: "2.75rem" }}></i>
                     </div>
                   )}

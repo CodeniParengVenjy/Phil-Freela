@@ -18,6 +18,37 @@
   height: 100%;
 }
 
+/* The slide being shown. When the slide changes, the new one slides in from
+   the right (next) or the left (previous). */
+.media-carousel-slide {
+  width: 100%;
+  height: 100%;
+}
+
+.media-carousel-slide.is-from-next {
+  animation: media-slide-from-right 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.media-carousel-slide.is-from-prev {
+  animation: media-slide-from-left 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes media-slide-from-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes media-slide-from-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-carousel-slide {
+    animation: none !important;
+  }
+}
+
 .media-carousel-arrow {
   position: absolute;
   top: 50%;
