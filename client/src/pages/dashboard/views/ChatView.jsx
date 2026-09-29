@@ -391,15 +391,17 @@ export default function ChatView() {
 
   return (
     <section className="dashboard-view active-view">
-      <div className="glass-card rounded-4 border border-secondary border-opacity-25 overflow-hidden d-flex flex-column" style={{ height: 680 }}>
-        <div className="chat-header p-3 bg-dark border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
-          <div className="d-flex align-items-center gap-3">
-            <button className="btn btn-sm btn-dark text-secondary" onClick={() => navigate("/dashboard/inbox")}>
+      <div className="chat-card glass-card rounded-4 border border-secondary border-opacity-25 overflow-hidden d-flex flex-column">
+        {/* One line on a phone too: a long name ends in "..." so the call
+            buttons stay beside it (min-w-0 lets the name shrink). */}
+        <div className="chat-header p-2 p-sm-3 bg-dark border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between gap-2">
+          <div className="d-flex align-items-center gap-2 gap-sm-3 min-w-0">
+            <button className="btn btn-sm btn-dark text-secondary flex-shrink-0" onClick={() => navigate("/dashboard/inbox")} aria-label="Back to Inbox">
               <i className="bi bi-arrow-left fs-5"></i>
             </button>
             <Avatar path={otherProfile?.avatar_path} name={otherProfile ? recipientName : ""} size={40} />
-            <div>
-              <h6 className="text-white fw-bold mb-0">
+            <div className="min-w-0">
+              <h6 className="text-white fw-bold mb-0 text-truncate">
                 {recipientName}
                 <VerifiedBadge verified={verifiedIds.has(otherProfile?.id)} />
               </h6>
@@ -411,7 +413,7 @@ export default function ChatView() {
               )}
             </div>
           </div>
-          <div>
+          <div className="d-flex flex-shrink-0">
             {/* Suspended from messaging: no calls either (the database checks too). */}
             {!messagingBlocked && (
               <>
@@ -448,7 +450,7 @@ export default function ChatView() {
           </div>
         </div>
 
-        <div ref={streamRef} className="chat-body flex-grow-1 p-4 overflow-y-auto d-flex flex-column gap-3 bg-black bg-opacity-40">
+        <div ref={streamRef} className="chat-body flex-grow-1 p-3 p-md-4 overflow-y-auto d-flex flex-column gap-3 bg-black bg-opacity-40">
           {messages === null && <p className="text-secondary fs-7 text-center mb-0">Loading messages...</p>}
           {messages !== null && messages.length === 0 && (
             <p className="text-secondary fs-7 text-center mb-0">No messages yet. Say hello!</p>
@@ -541,10 +543,10 @@ export default function ChatView() {
           })}
         </div>
 
-        <div className="chat-footer p-3 bg-dark border-top border-secondary border-opacity-25">
+        <div className="chat-footer p-2 p-sm-3 bg-dark border-top border-secondary border-opacity-25">
           {messagingBlocked && <BlockedNotice suspension={suspension} what="send messages" compact />}
           {!messagingBlocked && (
-            <form className="d-flex align-items-center gap-2" onSubmit={handleSubmit}>
+            <form className="d-flex align-items-center gap-1 gap-sm-2" onSubmit={handleSubmit}>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -552,22 +554,24 @@ export default function ChatView() {
                 style={{ display: "none" }}
                 onChange={handleFileChange}
               />
-              <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-paperclip fs-5"></i></button>
-              <button type="button" className="btn btn-dark text-secondary p-2" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video">
+              {/* The paperclip and mic don't do anything yet, so phones hide
+                  them to leave room for typing. */}
+              <button type="button" className="btn btn-dark text-secondary p-2 d-none d-sm-inline-block"><i className="bi bi-paperclip fs-5"></i></button>
+              <button type="button" className="btn btn-dark text-secondary p-2 flex-shrink-0" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video">
                 <i className="bi bi-image fs-5"></i>
               </button>
-              <button type="button" className="btn btn-dark text-secondary p-2"><i className="bi bi-mic fs-5"></i></button>
+              <button type="button" className="btn btn-dark text-secondary p-2 d-none d-sm-inline-block"><i className="bi bi-mic fs-5"></i></button>
 
               <input
                 type="text"
-                className="form-control bg-secondary bg-opacity-25 border-0 text-white rounded-pill px-4 py-2"
+                className="form-control bg-secondary bg-opacity-25 border-0 text-white rounded-pill px-3 px-sm-4 py-2 min-w-0"
                 placeholder="Type a message..."
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 required
               />
 
-              <button type="submit" className="btn btn-gradient-role rounded-circle p-2 text-white d-flex align-items-center justify-content-center" style={{ width: 42, height: 42 }}>
+              <button type="submit" className="btn btn-gradient-role rounded-circle p-2 text-white d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 42, height: 42 }}>
                 <i className="bi bi-send-fill fs-5"></i>
               </button>
             </form>

@@ -115,12 +115,13 @@ export default function ProjectsView() {
 
             <div className="d-flex flex-column gap-3">
               {projects.map((p) => (
-                <div key={p.name} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between gap-3 hover-lift">
-                  <div className="d-flex align-items-center gap-3">
+                // On a phone the button goes under the name instead of squeezing it.
+                <div key={p.name} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 hover-lift">
+                  <div className="d-flex align-items-center gap-3 min-w-0">
                     <div className={`avatar-circle ${p.avatar} text-white fw-bold flex-shrink-0 d-flex align-items-center justify-content-center`} style={{ width: 48, height: 48 }}>
                       <i className={`bi ${p.icon} fs-4`}></i>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h6 className="text-white fw-bold mb-1">{p.name}</h6>
                       <div className="d-flex align-items-center gap-2 fs-7">
                         <span className="text-white-50">State: <strong className={p.state === "Ongoing" ? "text-warning" : "text-success"}>{p.state}</strong></span>
@@ -128,7 +129,7 @@ export default function ProjectsView() {
                       </div>
                     </div>
                   </div>
-                  <button className="btn btn-dark border border-secondary rounded-pill px-4 py-2 fw-bold text-white fs-7" onClick={() => toggleState(p.name)}>Toggle State</button>
+                  <button className="btn btn-dark border border-secondary rounded-pill px-3 px-sm-4 py-2 fw-bold text-white fs-7 flex-shrink-0 text-nowrap" onClick={() => toggleState(p.name)}>Toggle State</button>
                 </div>
               ))}
             </div>

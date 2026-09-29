@@ -93,11 +93,12 @@ export default function FreelancerDashboardLayout({
                   Manage your freelance portfolio, job proposals, messages, and settings seamlessly.
                 </p>
               </div>
-              <div className="d-flex align-items-center gap-2">
-                <NavLink to="/dashboard/services" className="btn btn-outline-role rounded-pill px-3 py-2 fs-7 fw-bold">
+              {/* On a phone the two buttons share the row, or stack if they don't fit. */}
+              <div className="d-flex flex-wrap gap-2">
+                <NavLink to="/dashboard/services" className="btn btn-outline-role rounded-pill px-3 py-2 fs-7 fw-bold flex-fill text-nowrap">
                   <i className="bi bi-plus-lg me-1"></i> Post Service
                 </NavLink>
-                <NavLink to="/dashboard/find-jobs" className="btn btn-gradient-role rounded-pill px-3 py-2 fs-7 fw-bold text-white">
+                <NavLink to="/dashboard/find-jobs" className="btn btn-gradient-role rounded-pill px-3 py-2 fs-7 fw-bold flex-fill text-nowrap text-white">
                   <i className="bi bi-search me-1"></i> Find Jobs
                 </NavLink>
               </div>

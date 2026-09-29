@@ -84,7 +84,8 @@ export default function NotificationsView() {
                 className="notification-item p-3 p-md-4 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-start gap-3 text-start w-100"
                 onClick={() => setOpenItem(item)}
               >
-                <div className={`avatar-circle ${icon.className} fw-bold flex-shrink-0 d-flex align-items-center justify-content-center`} style={{ width: 52, height: 52 }}>
+                {/* notification-icon: 52px, 40px on a phone (dashboard.css). */}
+                <div className={`notification-icon avatar-circle ${icon.className} fw-bold flex-shrink-0 d-flex align-items-center justify-content-center`} style={{ width: 52, height: 52 }}>
                   <i className={`bi ${icon.icon} fs-4`}></i>
                 </div>
                 <div className="flex-grow-1" style={{ minWidth: 0 }}>
@@ -93,7 +94,10 @@ export default function NotificationsView() {
                     {isNew && <span className="badge bg-warning text-dark rounded-pill">New</span>}
                   </div>
                   <p className="notification-preview text-secondary fs-7 mb-1">{item.message}</p>
-                  <small className="text-secondary fs-8">{item.from} • {new Date(item.created_at).toLocaleString()}</small>
+                  {/* "Sep 29, 2026, 3:00 PM" (no seconds), kept on one line. */}
+                  <small className="text-secondary fs-8">
+                    {item.from} • <span className="text-nowrap">{new Date(item.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
+                  </small>
                 </div>
                 <i className="bi bi-chevron-right text-secondary align-self-center"></i>
               </button>

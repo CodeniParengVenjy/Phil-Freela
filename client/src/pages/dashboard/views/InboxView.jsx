@@ -83,7 +83,7 @@ export default function InboxView() {
             <p className="text-secondary fs-7 mb-0">Your direct conversations with clients and freelancers.</p>
           </div>
 
-          <div className="position-relative search-nav-box" style={{ minWidth: 280 }}>
+          <div className="position-relative search-nav-box" style={{ minWidth: "min(280px, 100%)" }}>
             <i className="bi bi-search search-icon text-secondary"></i>
             <input
               type="search"
@@ -109,25 +109,27 @@ export default function InboxView() {
           {filtered.map((c) => (
             <div
               key={c.id}
-              className="inbox-item-row p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between cursor-pointer hover-lift"
+              className="inbox-item-row p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-3 cursor-pointer hover-lift"
               onClick={() => navigate(`/dashboard/chat/${c.id}`)}
             >
-              <div className="d-flex align-items-center gap-3">
-                <span className="position-relative d-inline-flex flex-shrink-0">
-                  <Avatar path={c.avatarPath} name={c.name} size={48} />
-                  {presenceStatus(lastSeen.get(c.otherId))?.online && (
-                    <span className="presence-dot presence-dot-on-avatar" title="Online"></span>
-                  )}
-                </span>
-                <div>
-                  <h6 className="text-white fw-bold mb-1">
+              <span className="position-relative d-inline-flex flex-shrink-0">
+                <Avatar path={c.avatarPath} name={c.name} size={48} />
+                {presenceStatus(lastSeen.get(c.otherId))?.online && (
+                  <span className="presence-dot presence-dot-on-avatar" title="Online"></span>
+                )}
+              </span>
+              {/* Name and date on top, a one-line preview below; long text
+                  ends in "..." so rows stay the same height on a phone. */}
+              <div className="flex-grow-1 min-w-0">
+                <div className="d-flex align-items-baseline justify-content-between gap-2 mb-1">
+                  <h6 className="text-white fw-bold mb-0 text-truncate">
                     {c.name}
                     <VerifiedBadge verified={verifiedIds.has(c.otherId)} />
                   </h6>
-                  <p className="fs-7 mb-0 text-light-50">{c.preview}</p>
+                  <small className="text-secondary fs-8 flex-shrink-0">{new Date(c.lastMessageAt).toLocaleDateString()}</small>
                 </div>
+                <p className="fs-7 mb-0 text-light-50 text-truncate">{c.preview}</p>
               </div>
-              <small className="text-secondary fs-8">{new Date(c.lastMessageAt).toLocaleDateString()}</small>
             </div>
           ))}
         </div>

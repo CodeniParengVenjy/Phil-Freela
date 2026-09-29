@@ -74,8 +74,7 @@ export default function BrowseServicesView() {
 
         <div className="d-flex flex-column flex-md-row gap-3 mb-4">
           <select
-            className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
-            style={{ maxWidth: 280 }}
+            className="category-filter form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >

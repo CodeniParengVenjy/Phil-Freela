@@ -323,6 +323,20 @@ body.sidebar-collapsed .sidebar-wrapper {
   border-bottom-right-radius: 4px;
 }
 
+/* The chat window fills the screen height on phones instead of a fixed
+   680px that ran past the bottom. */
+.chat-card {
+  height: 680px;
+  height: min(680px, calc(100vh - var(--navbar-h) - 2rem));
+  height: min(680px, calc(100dvh - var(--navbar-h) - 2rem));
+}
+
+/* Lets text inside a flex row shrink and end in "..." instead of pushing
+   the buttons beside it onto a new line. */
+.min-w-0 {
+  min-width: 0;
+}
+
 /* Messenger-style time line between messages: "—— Tuesday 4:12 AM ——". */
 .chat-time-divider {
   display: flex;
@@ -537,8 +551,11 @@ body.sidebar-collapsed .sidebar-wrapper {
 }
 
 .welcome-title {
-  font-family: 'Roboto Slab', serif;
-  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  /* Same font as the rest of the dashboard ('Roboto Slab' was never loaded,
+     so it fell back to a Times-style font). */
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 3vw, 2.8rem);
   margin-bottom: 10px;
   animation: fade-up 0.6s var(--ease-out) both;
   background: linear-gradient(90deg, var(--ink), #4a3222 60%, var(--ink));
@@ -1003,4 +1020,33 @@ body.sidebar-collapsed .sidebar-wrapper {
   overflow: hidden;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+/* Browse Services category dropdown: full width on a phone (stacked above
+   the search box), 280px wide beside it on bigger screens. */
+@media (min-width: 768px) {
+  .category-filter {
+    max-width: 280px;
+  }
+}
+
+/* Phones (narrower than 576px): less padding around pages and cards, so
+   content gets about 40px more width instead of wrapping every line. */
+@media (max-width: 575.98px) {
+  main.content-wrapper {
+    padding: 0.75rem !important;
+  }
+
+  main.content-wrapper .glass-card.p-4 {
+    padding: 1.1rem !important;
+  }
+
+  .notification-item h5 {
+    font-size: 1rem;
+  }
+
+  .notification-icon {
+    width: 40px !important;
+    height: 40px !important;
+  }
 }
