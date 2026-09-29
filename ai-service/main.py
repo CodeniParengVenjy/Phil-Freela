@@ -35,7 +35,7 @@ from pypdf import PdfReader
 from supabase import ClientOptions, create_client
 
 from face_check import NoFaceError, check_faces, prepare_image
-from hidden_watermark import new_code, protect_photo, read_code, read_uncropped_codes
+from hidden_watermark import new_code, protect_photo, read_code, read_code_from_frames, read_uncropped_codes
 from listing_search import search_listings
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
 from similarity import image_embedding
@@ -610,8 +610,9 @@ def watermark_video_upload(user_id, data, extension, promo):
     watermark_video.py): the visible watermark on every frame (not on promos)
     and the invisible code in every frame, read back afterwards as a
     self-check. Also makes the copy check's numbers for 5 frames, as uploaded
-    and as shown. Returns (mp4_bytes, code, embeddings); code is None if the
-    finished video didn't give it back."""
+    and as shown, and reads any hidden code the upload already carries (step
+    9). Returns (mp4_bytes, code, embeddings, earlier_code); code is None if
+    the finished video didn't give it back."""
     with tempfile.TemporaryDirectory() as folder:
         source, finished = os.path.join(folder, f"upload.{extension}"), os.path.join(folder, "watermarked.mp4")
         with open(source, "wb") as file:
@@ -626,6 +627,10 @@ def watermark_video_upload(user_id, data, extension, promo):
             logger.exception("Watermarking a video failed")
             raise HTTPException(400, "That video couldn't be processed. Please try another MP4, MOV or WEBM video.")
         has_code = code_reads_back(finished, code)
+        # Step 9: the code the upload already carries, if any (someone posting
+        # a download of a PhilFreela video), read from 5 frames as they came
+        # in, before our own code went on.
+        earlier_code = read_code_from_frames(spread(uploaded, VIDEO_CHECK_FRAMES))
 
         # The copy check's numbers for 5 of the key frames, as they came in,
         # and as shown when they carry a visible watermark.
@@ -636,7 +641,7 @@ def watermark_video_upload(user_id, data, extension, promo):
             for i, frame in enumerate(spread(frames, VIDEO_CHECK_FRAMES), start=1)
         }
         with open(finished, "rb") as file:
-            return file.read(), (code if has_code else None), embeddings
+            return file.read(), (code if has_code else None), embeddings, earlier_code
 
 
 # Step 5, the copy check: a new photo whose ViT numbers are at least this
@@ -666,6 +671,18 @@ def copy_check(user_id, embeddings):
     if best and best["similarity"] >= COPY_CUTOFF:
         return "flagged", best["slide_id"], round(best["similarity"], 4)
     return "active", None, None
+
+
+def someone_elses_code(user_id, readings):
+    """Step 9, the ownership check when posting: does the upload already carry
+    another freelancer's hidden code (someone posting a download of their
+    photo or video)? readings: codes read from the upload. Returns that saved
+    code's row (with the slide it came from), or None. Re-posting your own
+    work is fine."""
+    rows = closest_codes(readings)
+    if is_match(rows, MAX_WRONG_BITS_MATCH) and rows[0]["freelancer_id"] != user_id:
+        return rows[0]
+    return None
 
 
 @app.post("/slides")
@@ -702,18 +719,30 @@ def add_slide(
         # Same checks as ID photos (a real JPG/PNG/WEBP under 5 MB), then the
         # watermarks, saved as a fresh JPEG (nothing hidden, like the GPS
         # location phones store in photos, is copied over).
-        data, code, embeddings = watermark_photo(user_id, read_image(image, "photo"), promo)
+        picture = read_image(image, "photo")
+        data, code, embeddings = watermark_photo(user_id, picture, promo)
         extension, content_type = "jpg", "image/jpeg"
-        # Nearly the same as another freelancer's photo? Then it waits for an admin.
-        status, matched_slide_id, match_score = copy_check(user_id, [embeddings["uploaded"]])
+        # Does it already carry another freelancer's hidden code (step 9), or
+        # is it nearly the same as another freelancer's photo (step 5)? Then
+        # it waits for an admin.
+        earlier = someone_elses_code(user_id, [read_code(picture)])
+        if earlier:
+            status, matched_slide_id, match_score = "flagged", earlier["slide_id"], 1.0
+        else:
+            status, matched_slide_id, match_score = copy_check(user_id, [embeddings["uploaded"]])
     elif video_path is not None:
         # Checked (MP4, MOV or WEBM, at most 50 MB and 30 seconds), then saved
         # as a watermarked 720p MP4 (step 7).
         raw, raw_extension = read_slide_video(user_id, video_path)
-        data, code, embeddings = watermark_video_upload(user_id, raw, raw_extension, promo)
+        data, code, embeddings, earlier_code = watermark_video_upload(user_id, raw, raw_extension, promo)
         extension, content_type = "mp4", "video/mp4"
-        frames_as_uploaded = [e for version, e in embeddings.items() if version.startswith("uploaded")]
-        status, matched_slide_id, match_score = copy_check(user_id, frames_as_uploaded)
+        # The same two checks as photos, on the video's frames.
+        earlier = someone_elses_code(user_id, [earlier_code])
+        if earlier:
+            status, matched_slide_id, match_score = "flagged", earlier["slide_id"], 1.0
+        else:
+            frames_as_uploaded = [e for version, e in embeddings.items() if version.startswith("uploaded")]
+            status, matched_slide_id, match_score = copy_check(user_id, frames_as_uploaded)
     else:
         # Writing (step 8): a PDF, DOCX or TXT, handled like portfolio writing.
         # Only the text is kept; it gets the footer and the invisible code, is

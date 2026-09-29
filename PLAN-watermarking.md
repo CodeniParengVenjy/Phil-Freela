@@ -391,12 +391,34 @@ Step 8 files: `database/supabase_service_documents_schema.sql`,
 `ServiceCard.jsx`, `TextOwnershipCheck.jsx`, `views/ServicesView.jsx`,
 `admin/views/AdminFlaggedView.jsx`.
 
+Step 9 (Ownership check when posting): built and pushed 2026-09-29 (the
+user chose "Also check on posting" and said "continue"). No database change.
+Still needs a live test.
+
+What Step 9 does (the paper's flow: the Extraction API also runs on upload):
+- Before a photo gets our watermark, `POST /slides` reads the hidden code it
+  may already carry (`read_code`); for a video, from 5 frames as uploaded
+  (`read_code_from_frames`). If it matches another freelancer's saved code
+  (the same rule as Check Ownership: <= 6 wrong bits and a clear gap to the
+  next code), the slide is flagged with score 1.0 ("Carries the other
+  freelancer's hidden code" on Admin > Flagged Content) and linked to the
+  original slide. Otherwise the ViT copy check runs as before.
+- Re-posting your own work is fine (your own code). Documents already did
+  this since Step 6 (and in services since Step 8).
+- The Check Ownership menu page stays, for files found outside PhilFreela.
+- Cost: one extra decoder run per photo, five per video.
+
+Step 9 test results (fake database): someone else posting the owner's
+downloaded photo (re-saved as JPEG 80) and the same shrunk to 75% as a promo:
+both flagged by the code (1.0) and linked to the owner's photo; the owner's
+downloaded video posted by someone else: flagged by the code (1.0); the owner
+re-posting their own photo and video: active; a different photo: active.
+
+Step 9 files: `ai-service/main.py` (`someone_elses_code`, `add_slide`,
+`watermark_video_upload`).
+
 ## Reminders for later steps
 
-- NEXT: Step 9 (approved 2026-09-29 with Step 8; the user chose "Also check
-  on posting"): when a photo or video is posted, read any hidden code already
-  in it first; another freelancer's code = flagged for an admin (documents
-  already do this). Keep the Check Ownership menu page.
 
 - LATER (user said "later", 2026-09-28), two plagiarism gaps:
   1. Flagged Content: add "Keep this one, remove the other" for when the
