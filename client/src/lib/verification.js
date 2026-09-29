@@ -34,10 +34,31 @@ export function aiSuggestion(verification) {
   if (!verification.face_match) {
     return { level: "reject", icon: "🔴", text: "The face doesn't match the ID. Likely reject." };
   }
+  // Warning flags: never a reason for the AI to reject by itself (a QR can be
+  // hard to read), but a human should look closely.
+  if (verification.duplicate_of) {
+    return { level: "careful", icon: "🟡", text: "This face is already on another account's verification. Check for a second account." };
+  }
+  if (verification.id_qr_status === "mismatch") {
+    return { level: "careful", icon: "🟡", text: "The name in the ID's QR code doesn't match the profile. Check the ID closely." };
+  }
   if (verification.face_distance > STRONG_MATCH_DISTANCE) {
     return { level: "careful", icon: "🟡", text: "Only a weak face match. Compare the photos carefully." };
   }
   return { level: "good", icon: "🟢", text: "Looks good. Likely safe to approve." };
+}
+
+// If no admin reviews a request within this many hours, the AI rejects the
+// ones it marked "Likely reject", so the user can try again (the database job
+// auto_reject_unreviewed_verifications, every 15 minutes). Approvals always
+// stay with an admin.
+export const AUTO_REJECT_HOURS = 3;
+
+// When the AI will reject a pending request if no admin reviews it first, or
+// null when it won't (only "Likely reject" requests are rejected by the AI).
+export function autoRejectTime(verification) {
+  if (verification.status !== "pending" || aiSuggestion(verification).level !== "reject") return null;
+  return new Date(new Date(verification.created_at).getTime() + AUTO_REJECT_HOURS * 60 * 60 * 1000);
 }
 
 // Short labels and colors for the suggestion badge in the admin list.

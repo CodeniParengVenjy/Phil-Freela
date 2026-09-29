@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { ID_TYPES, aiSuggestion, suggestionBadgeClass, suggestionLabels } from "../../../lib/verification";
+import { AUTO_REJECT_HOURS, ID_TYPES, aiSuggestion, autoRejectTime, suggestionBadgeClass, suggestionLabels } from "../../../lib/verification";
 import AiSummaryCard from "../components/AiSummaryCard";
 
 const statusTabs = [
@@ -23,6 +23,14 @@ const rejectReasons = [
 const PHOTO_LINK_SECONDS = 300;
 
 const idTypeLabel = (value) => ID_TYPES.find((t) => t.value === value)?.label || value;
+
+// "in 2h 10m" / "in 45m" / "any minute now" (the job runs every 15 minutes).
+function timeUntil(date) {
+  const minutes = Math.ceil((date.getTime() - Date.now()) / 60000);
+  if (minutes <= 0) return "any minute now";
+  const hours = Math.floor(minutes / 60);
+  return `in ${hours ? `${hours}h ` : ""}${minutes % 60}m`;
+}
 
 // The photos of one verification, in the order they're shown.
 function photoList(v) {
@@ -55,7 +63,7 @@ export default function AdminVerificationsView() {
     let active = true;
     supabase
       .from("identity_verifications")
-      .select("id, user_id, id_type, id_photo_path, id_back_path, selfie_path, selfie_left_path, selfie_right_path, face_match, face_distance, liveness_passed, status, admin_note, reviewed_at, created_at, user:profiles!identity_verifications_user_id_fkey(full_name, username), reviewer:admins!identity_verifications_reviewed_by_fkey(full_name)")
+      .select("id, user_id, id_type, id_photo_path, id_back_path, selfie_path, selfie_left_path, selfie_right_path, face_match, face_distance, liveness_passed, status, admin_note, reviewed_at, created_at, decided_by_ai, id_qr_status, id_qr_name, duplicate_of, user:profiles!identity_verifications_user_id_fkey(full_name, username), duplicate:profiles!identity_verifications_duplicate_of_fkey(full_name, username), reviewer:admins!identity_verifications_reviewed_by_fkey(full_name)")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
         if (!active) return;
@@ -195,10 +203,20 @@ export default function AdminVerificationsView() {
                 {v.user ? <>{v.user.full_name} <span className="text-white-50 fw-normal">(@{v.user.username})</span></> : <span className="text-white-50 fst-italic">(deleted user)</span>}
               </h2>
 
+              {autoRejectTime(v) && (
+                <p className="fs-8 text-warning mb-0">
+                  <i className="bi bi-robot me-1"></i>
+                  If nobody reviews this, the AI will reject it {timeUntil(autoRejectTime(v))}, so the user can try again.
+                </p>
+              )}
+
               {v.status !== "pending" && (
                 <p className="fs-8 text-white-50 mb-0">
                   <i className={`bi ${v.status === "approved" ? "bi-check-circle-fill text-success" : "bi-x-circle-fill text-danger"} me-1`}></i>
-                  {v.status === "approved" ? "Approved" : "Rejected"} by {v.reviewer?.full_name || "an admin"}
+                  {v.status === "approved" ? "Approved" : "Rejected"} by{" "}
+                  {v.decided_by_ai
+                    ? <span className="badge bg-info text-dark fw-normal"><i className="bi bi-robot me-1"></i>the AI (no admin review within {AUTO_REJECT_HOURS} hours)</span>
+                    : v.reviewer?.full_name || "an admin"}
                   {v.reviewed_at && ` on ${new Date(v.reviewed_at).toLocaleDateString()}`}
                   {v.admin_note && ` — ${v.admin_note}`}
                 </p>

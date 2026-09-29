@@ -224,7 +224,8 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
             <input id="wizardConsent" type="checkbox" className="form-check-input" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
             <label className="form-check-label text-light-50 fs-8" htmlFor="wizardConsent">
               I agree to let PhilFreela use my ID photos and face scan only to verify my identity, as allowed under the
-              Data Privacy Act of 2012 (RA 10173). Only PhilFreela admins can see these photos.
+              Data Privacy Act of 2012 (RA 10173). This includes checking that my face isn't already verified on another
+              account (using numbers made from my face scan, not the photo). Only PhilFreela admins can see these photos.
             </label>
           </div>
 

@@ -34,7 +34,8 @@ from pydantic import BaseModel
 from pypdf import PdfReader
 from supabase import ClientOptions, create_client
 
-from face_check import NoFaceError, check_faces, prepare_image
+from face_check import NoFaceError, check_faces, find_duplicate, prepare_image
+from id_qr import check_philsys_qr
 from hidden_watermark import new_code, protect_photo, read_code, read_code_from_frames, read_uncropped_codes
 from listing_search import search_listings
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
@@ -221,6 +222,30 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
         # Nothing is saved; the user just retakes the photo.
         raise HTTPException(422, str(error))
 
+    # Two warning flags for the admin (never shown to the user):
+    # 1. PhilSys IDs: the name in the ID's QR code vs. the profile name.
+    qr_status, qr_name = None, None
+    if id_type == "philsys":
+        try:
+            profile = supabase.table("profiles").select("full_name").eq("id", user_id).limit(1).execute().data
+            qr_status, qr_name = check_philsys_qr([id_image, id_back_image], (profile[0].get("full_name") if profile else "") or "")
+        except Exception:
+            logger.exception("Reading the PhilSys QR failed")
+    # 2. The same face on another account's pending or approved verification.
+    duplicate_of = None
+    try:
+        others = (
+            supabase.table("identity_verifications")
+            .select("user_id, face_embedding")
+            .neq("user_id", user_id)
+            .in_("status", ["pending", "approved"])
+            .execute()
+            .data
+        )
+        duplicate_of = find_duplicate(result["embedding"], [(row["user_id"], row["face_embedding"]) for row in others])
+    except Exception:
+        logger.exception("The duplicate face check failed")
+
     verification_id = str(uuid.uuid4())
     folder = f"{user_id}/{verification_id}"
     id_path = f"{folder}/id.jpg"
@@ -281,6 +306,12 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
             # The head turns were already checked above; this adds that all
             # three scan frames show the same person.
             "liveness_passed": result["same_person"],
+            "id_qr_status": qr_status,
+            "id_qr_name": qr_name,
+            # The face's 128 numbers (not a photo), kept only for the
+            # duplicate check; deleted with the verification.
+            "face_embedding": result["embedding"],
+            "duplicate_of": duplicate_of,
         }).execute()
     except APIError as error:
         # Don't leave photos behind for a verification that wasn't saved.

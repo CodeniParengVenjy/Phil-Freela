@@ -38,6 +38,10 @@ BACKUP_SIDE = 640
 # recommended SFace cut-off (similarity 0.363). On our sample photos it made
 # no mistakes: the same person scored 0.49 or lower, different people 0.64 or higher.
 MATCH_THRESHOLD = 0.637
+# Another account's verification counts as the same face at this distance or
+# lower: the "strong match" level (stricter than a normal match), since this
+# flags someone as having more than one account.
+DUPLICATE_THRESHOLD = 0.5
 
 # Big phone photos (4000+ pixels wide) are slow to scan and don't make the
 # check more accurate, so photos are shrunk to at most this many pixels.
@@ -142,7 +146,8 @@ def check_faces(id_image, straight, turn_a, turn_b, half_a=None, half_b=None):
     the halfway frames when they're sent; the fully turned frames prove the
     head really turned (see photo_checks.check_face_scan).
 
-    Returns {"match": True/False, "distance": number, "same_person": True/False}.
+    Returns {"match": True/False, "distance": number, "same_person": True/False,
+    "embedding": the straight face's 128 numbers (for the duplicate check)}.
     Raises NoFaceError if a photo has no face.
     """
     id_embedding = _embedding(id_image, "ID photo")
@@ -152,4 +157,27 @@ def check_faces(id_image, straight, turn_a, turn_b, half_a=None, half_b=None):
 
     distance = _cosine_distance(id_embedding, straight_embedding)
     same_person = all(_cosine_distance(straight_embedding, turned) <= MATCH_THRESHOLD for turned in turned_embeddings)
-    return {"match": distance <= MATCH_THRESHOLD, "distance": round(distance, 4), "same_person": bool(same_person)}
+    return {
+        "match": distance <= MATCH_THRESHOLD,
+        "distance": round(distance, 4),
+        "same_person": bool(same_person),
+        "embedding": [float(number) for number in straight_embedding],
+    }
+
+
+def find_duplicate(embedding, others):
+    """Looks for the same face among other accounts' verifications.
+
+    others: (user_id, embedding) pairs. Returns the user_id of the closest
+    one within DUPLICATE_THRESHOLD, or None. (With many users this search
+    would move into the database; a few hundred are quick here.)
+    """
+    face = np.asarray(embedding, dtype=np.float32)
+    best_user, best_distance = None, DUPLICATE_THRESHOLD
+    for user_id, other in others:
+        if not other or len(other) != len(face):
+            continue
+        distance = _cosine_distance(face, np.asarray(other, dtype=np.float32))
+        if distance <= best_distance:
+            best_user, best_distance = user_id, distance
+    return best_user

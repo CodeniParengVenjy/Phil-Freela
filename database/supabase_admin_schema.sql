@@ -1416,3 +1416,74 @@ select cron.schedule('delete-expired-bans', '0 16 * * *', 'select public.delete_
 
 -- Only the sign-up trigger uses this function.
 revoke execute on function public.clear_deleted_ban_email() from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Identity verification, part 3: the AI rejects bad attempts no admin
+-- reviewed within 3 hours, so users can try again without waiting.
+-- ---------------------------------------------------------------------------
+
+-- True when the AI decided this verification (no admin reviewed it in time).
+alter table public.identity_verifications
+  add column decided_by_ai boolean not null default false;
+
+-- Rejects requests the AI marked "Likely reject" (the face doesn't match the
+-- ID, or the face scan failed) that no admin reviewed within 3 hours, so the
+-- user can try again without waiting. Approvals always stay with an admin:
+-- the AI can't tell a real ID from a fake one. The existing notification
+-- trigger tells the user, with this reason.
+create or replace function public.auto_reject_unreviewed_verifications()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  rejected integer;
+begin
+  update public.identity_verifications
+  set status = 'rejected',
+      decided_by_ai = true,
+      reviewed_at = now(),
+      admin_note = case
+        when not liveness_passed then
+          'Rejected automatically by the AI: the face scan didn''t show the same person turning their head. Please scan again in good light and turn your head all the way to each side'
+        else
+          'Rejected automatically by the AI: the face on your ID didn''t match your face scan. Please try again with a clear, close photo of your ID'
+      end
+  where status = 'pending'
+    and created_at <= now() - interval '3 hours'
+    and (not face_match or not liveness_passed);
+  get diagnostics rejected = row_count;
+  return rejected;
+end;
+$$;
+
+-- Only the scheduled job runs it; no user or admin can call it directly.
+revoke execute on function public.auto_reject_unreviewed_verifications() from public, anon, authenticated;
+
+-- Every 15 minutes.
+select cron.schedule(
+  'auto-reject-unreviewed-verifications',
+  '*/15 * * * *',
+  'select public.auto_reject_unreviewed_verifications()'
+);
+
+-- ---------------------------------------------------------------------------
+-- Identity verification, part 4: two warning flags for the admin.
+-- ---------------------------------------------------------------------------
+
+-- PhilSys IDs: what the ID's QR code says (see ai-service/id_qr.py).
+--   match / mismatch: the QR's name matches the profile name, or doesn't
+--   unreadable: a QR was found without a name we can read
+--   not_found: no QR code could be read in the photos
+-- Only a flag for the admin: reading the QR can't prove the ID is real.
+alter table public.identity_verifications
+  add column id_qr_status text check (id_qr_status in ('match', 'mismatch', 'unreadable', 'not_found')),
+  add column id_qr_name text check (id_qr_name is null or char_length(id_qr_name) <= 200);
+
+-- The face scan's 128 numbers from SFace (not a photo), kept only to spot
+-- the same face on another account's verification, and deleted with the
+-- verification (and the account). duplicate_of: the other account, if found.
+alter table public.identity_verifications
+  add column face_embedding real[] check (face_embedding is null or array_length(face_embedding, 1) = 128),
+  add column duplicate_of uuid references public.profiles(id) on delete set null;
