@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
+import { presenceStatus, usePresence } from "../../../lib/presence";
 
 export default function InboxView() {
   const { currentUserId } = useOutletContext();
@@ -70,6 +71,8 @@ export default function InboxView() {
   }, [rows, query]);
 
   const verifiedIds = useVerifiedIds(rows.map((c) => c.otherId));
+  // Green dot on the picture of anyone online right now.
+  const lastSeen = usePresence(rows.map((c) => c.otherId));
 
   return (
     <section className="dashboard-view active-view">
@@ -110,7 +113,12 @@ export default function InboxView() {
               onClick={() => navigate(`/dashboard/chat/${c.id}`)}
             >
               <div className="d-flex align-items-center gap-3">
-                <Avatar path={c.avatarPath} name={c.name} size={48} />
+                <span className="position-relative d-inline-flex flex-shrink-0">
+                  <Avatar path={c.avatarPath} name={c.name} size={48} />
+                  {presenceStatus(lastSeen.get(c.otherId))?.online && (
+                    <span className="presence-dot presence-dot-on-avatar" title="Online"></span>
+                  )}
+                </span>
                 <div>
                   <h6 className="text-white fw-bold mb-1">
                     {c.name}

@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getActiveSuspension } from "../../../lib/profile";
 import { countUnreadNotifications } from "../../../lib/notifications";
 import { hangUp, listenForCalls } from "../../../lib/calls";
+import { startPresenceHeartbeat } from "../../../lib/presence";
 
 // Everything the freelancer and client dashboard shells have in common:
 // the signed-in session (and redirect-to-login guard), the sidebar
@@ -157,6 +158,13 @@ export function useDashboardShell() {
     setToast((prev) => ({ ...prev, visible: false }));
   }, []);
 
+  // Online / offline status: tells the database "I'm here" once a minute
+  // while any dashboard page is open (lib/presence.js).
+  useEffect(() => {
+    if (!currentUserId) return undefined;
+    return startPresenceHeartbeat();
+  }, [currentUserId]);
+
   // System-wide "new message" handling: refreshes the badge, marks the
   // message delivered (this client is what just received it, regardless of
   // which page is open), and pops a toast -- unless the person is already
@@ -167,8 +175,9 @@ export function useDashboardShell() {
 
     // Catches up on anything sent while this device was offline -- the
     // realtime INSERT handler below only fires for messages that arrive
-    // while it's actively subscribed.
-    supabase.rpc("mark_messages_delivered");
+    // while it's actively subscribed. (.then() is what actually sends it;
+    // without it Supabase never runs the call.)
+    supabase.rpc("mark_messages_delivered").then(() => {});
 
     const channel = supabase
       .channel(`unread-messages:${currentUserId}`)

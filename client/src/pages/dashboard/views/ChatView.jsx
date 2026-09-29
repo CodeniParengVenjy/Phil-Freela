@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
@@ -9,6 +9,8 @@ import ReportDialog from "../components/ReportDialog";
 import BlockedNotice from "../components/BlockedNotice";
 import { isMessagingBlocked } from "../../../lib/suspensions";
 import { startCall, useCall } from "../../../lib/calls";
+import { presenceStatus, usePresence } from "../../../lib/presence";
+import { needsTimeDivider, timeDividerLabel } from "../../../lib/chatTime";
 
 // Same upload rules as the Post a Service media dropzone.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -64,6 +66,8 @@ export default function ChatView() {
 
   // The Verified check for the person in this chat and the forward list.
   const verifiedIds = useVerifiedIds([otherProfile?.id, ...(forwardConversations || []).map((c) => c.otherId)]);
+  // "Online" / "Offline 5m ago" under the other person's name.
+  const otherStatus = presenceStatus(usePresence([otherProfile?.id]).get(otherProfile?.id));
 
   useEffect(() => {
     if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight;
@@ -399,6 +403,12 @@ export default function ChatView() {
                 {recipientName}
                 <VerifiedBadge verified={verifiedIds.has(otherProfile?.id)} />
               </h6>
+              {otherStatus && (
+                <small className={`fs-8 d-flex align-items-center gap-1 ${otherStatus.online ? "text-success" : "text-secondary"}`}>
+                  {otherStatus.online && <span className="presence-dot"></span>}
+                  {otherStatus.label}
+                </small>
+              )}
             </div>
           </div>
           <div>
@@ -443,7 +453,15 @@ export default function ChatView() {
           {messages !== null && messages.length === 0 && (
             <p className="text-secondary fs-7 text-center mb-0">No messages yet. Say hello!</p>
           )}
-          {messages?.map((m) => {
+          {messages?.map((m, index) => {
+            // Messenger-style "—— Tuesday 4:12 AM ——" line above the first
+            // message and after an hour or more of silence (lib/chatTime.js).
+            const divider = needsTimeDivider(messages[index - 1], m) && (
+              <div className="chat-time-divider fs-8 text-white-50">
+                <span>{timeDividerLabel(m.created_at)}</span>
+              </div>
+            );
+
             // A finished call, written by the database: a small line in the
             // middle ("Video call, 3:12", "Missed voice call"), with no
             // right-click menu.
@@ -451,69 +469,74 @@ export default function ChatView() {
               const isVideo = /video/i.test(m.body);
               const notAnswered = m.body.startsWith("Missed") || m.body.startsWith("Declined");
               return (
-                <div key={m.id} className="align-self-center d-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-dark bg-opacity-75 border border-secondary border-opacity-25 fs-8 text-white-50">
-                  <i className={`bi ${isVideo ? "bi-camera-video-fill" : "bi-telephone-fill"} ${notAnswered ? "text-danger" : "text-role"}`}></i>
-                  <span className="text-white">{m.body}</span>
-                  <span>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                </div>
+                <Fragment key={m.id}>
+                  {divider}
+                  <div className="align-self-center d-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-dark bg-opacity-75 border border-secondary border-opacity-25 fs-8 text-white-50">
+                    <i className={`bi ${isVideo ? "bi-camera-video-fill" : "bi-telephone-fill"} ${notAnswered ? "text-danger" : "text-role"}`}></i>
+                    <span className="text-white">{m.body}</span>
+                    <span>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                </Fragment>
               );
             }
 
             const isMe = m.sender_id === currentUserId;
             const isEditingThis = editingMessage?.id === m.id;
             return (
-              <div
-                key={m.id}
-                className={`chat-bubble ${isMe ? "outgoing align-self-end bg-role" : "incoming align-self-start bg-secondary bg-opacity-25"} p-3 rounded-4 max-w-500 text-white`}
-                onContextMenu={(event) => openContextMenu(event, m)}
-              >
-                <div className={`d-flex align-items-center gap-2 mb-1 ${isMe ? "justify-content-end" : ""}`}>
-                  {!isMe && <strong className="fs-8 text-role">{recipientName}</strong>}
-                  <small className="fs-8 text-white-50">{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small>
-                </div>
+              <Fragment key={m.id}>
+                {divider}
+                <div
+                  className={`chat-bubble ${isMe ? "outgoing align-self-end bg-role" : "incoming align-self-start bg-secondary bg-opacity-25"} p-3 rounded-4 max-w-500 text-white`}
+                  onContextMenu={(event) => openContextMenu(event, m)}
+                >
+                  <div className={`d-flex align-items-center gap-2 mb-1 ${isMe ? "justify-content-end" : ""}`}>
+                    {!isMe && <strong className="fs-8 text-role">{recipientName}</strong>}
+                    <small className="fs-8 text-white-50">{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small>
+                  </div>
 
-                {isEditingThis ? (
-                  <form className="d-flex flex-column gap-2" onSubmit={saveEdit}>
-                    <textarea
-                      className="form-control bg-dark bg-opacity-50 border-secondary text-white fs-7"
-                      rows={2}
-                      value={editingMessage.body}
-                      onChange={(event) => setEditingMessage((prev) => ({ ...prev, body: event.target.value }))}
-                      autoFocus
-                    />
-                    <div className="d-flex gap-2 justify-content-end">
-                      <button type="button" className="btn btn-sm btn-outline-secondary text-white-50" onClick={() => setEditingMessage(null)}>Cancel</button>
-                      <button type="submit" className="btn btn-sm btn-gradient-role text-white">Save</button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    {m.attachment_url && m.attachment_type === "image" && (
-                      <img
-                        src={m.attachment_url}
-                        alt="Sent"
-                        className="rounded-3 mb-1 d-block"
-                        style={{ maxWidth: 240, maxHeight: 240, objectFit: "cover", cursor: "pointer" }}
-                        onClick={() => openPreview?.(m.attachment_url, "Photo")}
+                  {isEditingThis ? (
+                    <form className="d-flex flex-column gap-2" onSubmit={saveEdit}>
+                      <textarea
+                        className="form-control bg-dark bg-opacity-50 border-secondary text-white fs-7"
+                        rows={2}
+                        value={editingMessage.body}
+                        onChange={(event) => setEditingMessage((prev) => ({ ...prev, body: event.target.value }))}
+                        autoFocus
                       />
-                    )}
-                    {m.attachment_url && m.attachment_type === "video" && (
-                      <video src={m.attachment_url} controls className="rounded-3 mb-1 d-block" style={{ maxWidth: 240 }} />
-                    )}
-                    {m.body && <p className="mb-0 fs-7">{m.body}</p>}
-                    {m.edited_at && <small className="fs-9 text-white-50 fst-italic">(edited)</small>}
-                    {isMe && m.id === lastMineId && (
-                      <small className="fs-9 text-white-50 d-block text-end mt-1">
-                        {otherLastReadAt && new Date(otherLastReadAt) >= new Date(m.created_at)
-                          ? `Seen ${formatRelativeTime(otherLastReadAt)}`
-                          : m.delivered_at
-                          ? `Delivered ${formatRelativeTime(m.delivered_at)}`
-                          : `Sent ${formatRelativeTime(m.created_at)}`}
-                      </small>
-                    )}
-                  </>
-                )}
-              </div>
+                      <div className="d-flex gap-2 justify-content-end">
+                        <button type="button" className="btn btn-sm btn-outline-secondary text-white-50" onClick={() => setEditingMessage(null)}>Cancel</button>
+                        <button type="submit" className="btn btn-sm btn-gradient-role text-white">Save</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      {m.attachment_url && m.attachment_type === "image" && (
+                        <img
+                          src={m.attachment_url}
+                          alt="Sent"
+                          className="rounded-3 mb-1 d-block"
+                          style={{ maxWidth: 240, maxHeight: 240, objectFit: "cover", cursor: "pointer" }}
+                          onClick={() => openPreview?.(m.attachment_url, "Photo")}
+                        />
+                      )}
+                      {m.attachment_url && m.attachment_type === "video" && (
+                        <video src={m.attachment_url} controls className="rounded-3 mb-1 d-block" style={{ maxWidth: 240 }} />
+                      )}
+                      {m.body && <p className="mb-0 fs-7">{m.body}</p>}
+                      {m.edited_at && <small className="fs-9 text-white-50 fst-italic">(edited)</small>}
+                      {isMe && m.id === lastMineId && (
+                        <small className="fs-9 text-white-50 d-block text-end mt-1">
+                          {otherLastReadAt && new Date(otherLastReadAt) >= new Date(m.created_at)
+                            ? `Seen ${formatRelativeTime(otherLastReadAt)}`
+                            : m.delivered_at
+                            ? `Delivered ${formatRelativeTime(m.delivered_at)}`
+                            : `Sent ${formatRelativeTime(m.created_at)}`}
+                        </small>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Fragment>
             );
           })}
         </div>

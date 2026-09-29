@@ -323,6 +323,43 @@ body.sidebar-collapsed .sidebar-wrapper {
   border-bottom-right-radius: 4px;
 }
 
+/* Messenger-style time line between messages: "—— Tuesday 4:12 AM ——". */
+.chat-time-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.chat-time-divider::before,
+.chat-time-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Online status: green dot beside "Online" in the chat header, and on the
+   corner of a profile picture in the Inbox. */
+.presence-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.presence-dot-on-avatar {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid #0f131c;
+}
+
 .max-w-500 { max-width: 500px; }
 .max-h-500 { max-height: 500px; }
 .cursor-pointer { cursor: pointer; }
