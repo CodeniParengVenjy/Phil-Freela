@@ -669,7 +669,8 @@ def copy_check(user_id, embeddings):
         if rows and (best is None or rows[0]["similarity"] > best["similarity"]):
             best = rows[0]
     if best and best["similarity"] >= COPY_CUTOFF:
-        return "flagged", best["slide_id"], round(best["similarity"], 4)
+        # (Below 1.0 even for an exact copy: 1.0 means "found by the hidden code".)
+        return "flagged", best["slide_id"], min(round(best["similarity"], 4), 0.9999)
     return "active", None, None
 
 
@@ -810,9 +811,15 @@ def add_slide(
     except APIError:
         logger.exception("Saving the copy check numbers for slide %s failed", slide_id)
 
+    # held_because (step 10): why it waits for an admin, so the page can say
+    # so: "watermark" (it carries another freelancer's hidden code) or
+    # "similar" (it's nearly the same as another freelancer's work).
+    held_because = None
+    if status == "flagged":
+        held_because = "watermark" if match_score == 1.0 else "similar"
     return {
         "id": slide_id, "position": position, "media_type": media_type, "file_path": file_path,
-        "watermarked": code is not None, "promo": promo, "status": status,
+        "watermarked": code is not None, "promo": promo, "status": status, "held_because": held_because,
     }
 
 
@@ -1004,7 +1011,8 @@ def check_copied_writing(user_id, raw, embeddings):
     # 2. Nearly the same meaning as a piece of another freelancer's writing.
     rows = closest_documents(embeddings, user_id)
     if rows and rows[0]["similarity"] >= TEXT_COPY_CUTOFF:
-        return "flagged", rows[0]["portfolio_item_id"], rows[0]["slide_id"], round(rows[0]["similarity"], 4)
+        # (Below 1.0 even for an exact copy: 1.0 means "found by the hidden code".)
+        return "flagged", rows[0]["portfolio_item_id"], rows[0]["slide_id"], min(round(rows[0]["similarity"], 4), 0.9999)
     return "active", None, None, None
 
 

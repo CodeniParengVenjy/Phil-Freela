@@ -52,6 +52,7 @@ Vercel's free plan (500 MB bundle, 4.5 MB per request, 5 minutes, 1 CPU).
 7. Video watermarking: MOV support, convert to 720p MP4, HiDDeN per frame.
 8. Documents (PDF, DOCX, TXT) in Post a Service slideshows.
 9. Ownership check when posting photos and videos (reads the hidden code first).
+10. Portfolio: one upload for every kind of file, "Original" badge, category and tags.
 
 ## Current step
 
@@ -416,6 +417,44 @@ re-posting their own photo and video: active; a different photo: active.
 
 Step 9 files: `ai-service/main.py` (`someone_elses_code`, `add_slide`,
 `watermark_video_upload`).
+
+Step 10 (A better portfolio): built and pushed 2026-09-29 (the user picked
+ideas 1-3 and the clearer upload message, then said "build"). Database:
+migration "portfolio_tags" is applied, so don't run
+`supabase_portfolio_tags_schema.sql` again. Still needs a live test.
+
+What Step 10 does:
+- "Add to Portfolio" is one form: title, description, category (the service
+  categories), up to 5 tags, and up to 10 files: photos, videos and
+  documents, like Post a Service. Pasted writing becomes a document file at
+  the end. The old Photos & videos / Writing tabs are gone; older writing
+  items still show and open as before (`POST /portfolio/documents` stays).
+- "Original" badge (`components/OriginalBadge.jsx`, rule `isOriginalWork` in
+  `lib/slides.js`): every file is active (not waiting for an admin) and
+  carries PhilFreela's hidden code. Shown on portfolio cards, in the viewer
+  (with the explanation) and on Browse Services cards. It only claims
+  "not a copy of other freelancers' work here".
+- Category chips filter the portfolio (once it has 2+ categories); cards show
+  the category, the viewer the tags. Old projects have none (no Edit yet).
+- The `/slides` reply has `held_because`: "watermark" (it carries another
+  freelancer's hidden code, step 9) or "similar"; the upload message says
+  which. Similarity scores are capped at 0.9999, so 1.0 always means "found
+  by the hidden code" (before, an exact copy could round to 1.0).
+
+Step 10 test results: fake database: the owner's photo and pasted writing in
+a portfolio project saved; someone else's downloaded photo and copied writing
+held with held_because "watermark"; the same picture without the code
+(0.9986) and the writing retyped without the code (0.9849) held as "similar",
+both below 1.0. Screenshots (the real components with made-up data): the
+grid with category chips and badges, a document-only project as a text
+cover, the viewer with badge, tags and explanation, and the form (tags split
+on commas, also when pasted; found and fixed: a pasted "Logo," kept its comma).
+
+Step 10 files: `database/supabase_portfolio_tags_schema.sql`,
+`ai-service/main.py`, `client/src/components/OriginalBadge.jsx`,
+`lib/slides.js`, `lib/portfolio.js`, `components/PortfolioUploadDialog.jsx`,
+`PortfolioSection.jsx`, `PortfolioViewer.jsx`, `portfolio.css`,
+`views/BrowseServicesView.jsx`, `views/ServicesView.jsx`.
 
 ## Reminders for later steps
 

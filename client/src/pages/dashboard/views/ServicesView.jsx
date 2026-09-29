@@ -3,7 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
 import { fetchIsVerified } from "../../../lib/verification";
-import { SERVICE_SLIDE_ACCEPT, SERVICE_SLIDE_HINT, SLIDES_SELECT, addPickedFiles, underReviewMessage, uploadSlides } from "../../../lib/slides";
+import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, addPickedFiles, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
 import BlockedNotice from "../components/BlockedNotice";
@@ -126,7 +126,7 @@ export default function ServicesView() {
     setPrice("");
     setSlideItems([]);
 
-    // Photos the copy check held back for an admin (step 5).
+    // Files held back for an admin (steps 5-9).
     const heldBack = underReviewMessage(slides);
     if (failed.length) {
       setSlidesError(`Your service is live, but ${failed.length === 1 ? "1 file" : `${failed.length} files`} couldn't be added. ${failed.join(" ")} ${heldBack}`.trim());
@@ -224,10 +224,10 @@ export default function ServicesView() {
                     onAdd={handleAddSlides}
                     onRemove={handleRemoveSlide}
                     onTogglePromo={handleTogglePromo}
-                    hint={SERVICE_SLIDE_HINT}
+                    hint={SLIDE_HINT_WITH_DOCUMENTS}
                     error={slidesError}
                     disabled={submitting}
-                    accept={SERVICE_SLIDE_ACCEPT}
+                    accept={SLIDE_ACCEPT_WITH_DOCUMENTS}
                     addLabel="Add photos, videos or documents"
                   />
                   {slideItems.length > 0 && (

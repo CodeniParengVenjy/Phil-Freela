@@ -1,31 +1,33 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { addDocument } from "../../../lib/aiService";
+import { categories } from "../../../lib/categories";
 import {
-  DOCUMENT_ACCEPT, MAX_DESCRIPTION_LENGTH, MAX_DOCUMENT_BYTES, MAX_DOCUMENT_CHARACTERS, MAX_TITLE_LENGTH,
+  MAX_DESCRIPTION_LENGTH, MAX_DOCUMENT_CHARACTERS, MAX_TAG_LENGTH, MAX_TAGS, MAX_TITLE_LENGTH,
   createPortfolioItem
 } from "../../../lib/portfolio";
-import { SLIDE_HINT, addPickedFiles, uploadSlides } from "../../../lib/slides";
+import { MAX_SLIDES, SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, addPickedFiles, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "./SlidePicker";
 
-// The "+ Add to Portfolio" popup: a title, a short description, and either
-// up to 10 photos and videos (a project) or writing (a document: pasted text,
-// or a TXT, DOCX or PDF file). Projects are saved first, then their files are
-// uploaded one at a time (like Post a Service); documents go to the AI service
-// in one step, which watermarks them. Calls onSaved(item, failed), where failed
+// The "+ Add to Portfolio" popup (step 10: one form for everything): a title,
+// a short description, a category, up to 5 tags, and up to 10 files: photos,
+// videos and documents (PDF, DOCX, TXT), like Post a Service. Writing can also
+// be pasted; it's added as a document at the end. The project is saved first,
+// then its files are uploaded one at a time through the AI service, which
+// watermarks and checks each one. Calls onSaved(item, failed), where failed
 // lists files that couldn't be added. It can't be closed while saving.
 export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
-  // "project" (photos and videos) or "document" (writing).
-  const [kind, setKind] = useState("project");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  // Project: the picked photos and videos: [{ key, file, promo }].
+  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState([]);
+  // What's being typed in the tags box, before it becomes a tag.
+  const [tagDraft, setTagDraft] = useState("");
+  // The picked files: [{ key, file, promo }].
   const [slideItems, setSlideItems] = useState([]);
   const [slidesError, setSlidesError] = useState("");
-  // Document: pasted text, or a file (a file wins if both are given).
+  // Pasted writing (the box opens with "Paste writing").
+  const [pasting, setPasting] = useState(false);
   const [text, setText] = useState("");
-  const [documentFile, setDocumentFile] = useState(null);
-  const fileInputRef = useRef(null);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   // "Uploading 2 of 5..." while the files are being sent.
@@ -41,7 +43,7 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
   }, [saving, onClose]);
 
   const handleAddSlides = async (files) => {
-    const result = await addPickedFiles(slideItems, files);
+    const result = await addPickedFiles(slideItems, files, true);
     setSlideItems(result.items);
     setSlidesError(result.error);
   };
@@ -51,65 +53,72 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
     setSlidesError("");
   };
 
-  const handlePickDocument = (event) => {
-    const picked = event.target.files?.[0];
-    event.target.value = ""; // so picking the same file again still counts
-    if (!picked) return;
-    if (picked.size > MAX_DOCUMENT_BYTES) {
-      setFormError("That file is too big (max 4 MB).");
-      return;
+  // Adds the typed or pasted words as tags (skipping empty ones, repeats, and
+  // any past the 5th). Returns the new list.
+  const addTags = (words) => {
+    const next = [...tags];
+    for (const word of words) {
+      const tag = word.trim().replace(/\s+/g, " ").slice(0, MAX_TAG_LENGTH);
+      if (tag && next.length < MAX_TAGS && !next.some((t) => t.toLowerCase() === tag.toLowerCase())) next.push(tag);
     }
-    setFormError("");
-    setDocumentFile(picked);
+    setTags(next);
+    return next;
   };
 
-  const hasContent = kind === "project" ? slideItems.length > 0 : Boolean(documentFile || text.trim());
+  // A comma (typed or pasted) finishes a tag; what's after the last comma is still being typed.
+  const handleTagChange = (event) => {
+    const parts = event.target.value.split(",");
+    if (parts.length > 1) addTags(parts.slice(0, -1));
+    setTagDraft(parts[parts.length - 1]);
+  };
+
+  // Enter finishes a tag; Backspace in an empty box removes the last one.
+  const handleTagKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addTags([tagDraft]);
+      setTagDraft("");
+    } else if (event.key === "Backspace" && !tagDraft && tags.length) {
+      setTags(tags.slice(0, -1));
+    }
+  };
+
+  // Pasted writing takes one of the 10 places.
+  const hasWriting = pasting && text.trim().length > 0;
+  const fileCount = slideItems.length + (hasWriting ? 1 : 0);
+  const hasContent = fileCount > 0;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!title.trim() || !hasContent) return;
-    setSaving(true);
-    setFormError("");
-
-    if (kind === "document") {
-      try {
-        const saved = await addDocument({ title: title.trim(), description: description.trim(), text: documentFile ? "" : text, file: documentFile });
-        onSaved({ ...saved, slides: [] }, []);
-      } catch (err) {
-        setSaving(false);
-        setFormError(err.message);
-      }
+    if (!title.trim() || !category || !hasContent) return;
+    if (fileCount > MAX_SLIDES) {
+      setFormError(`A project can have at most ${MAX_SLIDES} files, and the pasted writing counts as one.`);
       return;
     }
+    setSaving(true);
+    setFormError("");
+    // A tag still being typed counts too.
+    const finalTags = tagDraft.trim() ? addTags([tagDraft]) : tags;
+    setTagDraft("");
 
-    // 1. Save the project itself. Its photos and videos are added next.
+    // 1. Save the project itself. Its files are added next.
     let project;
     try {
-      project = await createPortfolioItem(userId, { title, description });
+      project = await createPortfolioItem(userId, { title, description, category, tags: finalTags });
     } catch (err) {
       setSaving(false);
       setFormError(err.message);
       return;
     }
 
-    // 2. Send the files one at a time through the AI service.
-    const { slides, failed } = await uploadSlides({ portfolioItemId: project.id }, slideItems, userId, setProgress);
+    // 2. Send the files one at a time through the AI service; pasted writing
+    // goes last, as a text file.
+    const items = hasWriting
+      ? [...slideItems, { key: "writing", file: new File([text], "Writing.txt", { type: "text/plain" }), promo: false }]
+      : slideItems;
+    const { slides, failed } = await uploadSlides({ portfolioItemId: project.id }, items, userId, setProgress);
     onSaved({ ...project, slides }, failed);
   };
-
-  const tab = (value, icon, label) => (
-    <button
-      type="button"
-      className={`btn btn-sm rounded-pill px-3 fw-semibold ${kind === value ? "btn-gradient-orange text-white" : "btn-outline-secondary text-white-50"}`}
-      onClick={() => {
-        setKind(value);
-        setFormError("");
-      }}
-      disabled={saving}
-    >
-      <i className={`bi ${icon} me-1`}></i>{label}
-    </button>
-  );
 
   return createPortal(
     <div
@@ -139,18 +148,13 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
           </button>
         </div>
 
-        <div className="d-flex flex-wrap gap-2">
-          {tab("project", "bi-images", "Photos & videos")}
-          {tab("document", "bi-file-earmark-text", "Writing")}
-        </div>
-
         <div>
-          <label htmlFor="portfolioTitle" className="form-label text-white fw-semibold fs-7">{kind === "project" ? "Project title:" : "Document title:"}</label>
+          <label htmlFor="portfolioTitle" className="form-label text-white fw-semibold fs-7">Project title:</label>
           <input
             id="portfolioTitle"
             type="text"
             className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
-            placeholder={kind === "project" ? "e.g. Brand identity for a Cebu coffee shop" : "e.g. Blog post: 5 ways to grow a small online shop"}
+            placeholder="e.g. Brand identity for a Cebu coffee shop"
             maxLength={MAX_TITLE_LENGTH}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -165,7 +169,7 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
             id="portfolioDescription"
             className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
             rows="2"
-            placeholder={kind === "project" ? "What you made, the tools you used, and your role..." : "Who it was for, and what kind of writing it is..."}
+            placeholder="What you made, the tools you used, and your role..."
             maxLength={MAX_DESCRIPTION_LENGTH}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -173,54 +177,102 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
           ></textarea>
         </div>
 
-        {kind === "project" ? (
-          <div>
-            <label className="form-label text-white fw-semibold fs-7">Photos and videos (at least one):</label>
-            <SlidePicker
-              items={slideItems}
-              onAdd={handleAddSlides}
-              onRemove={handleRemoveSlide}
-              hint={SLIDE_HINT}
-              error={slidesError}
+        <div className="row g-3">
+          <div className="col-sm-6">
+            <label htmlFor="portfolioCategory" className="form-label text-white fw-semibold fs-7">Category:</label>
+            <select
+              id="portfolioCategory"
+              className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
               disabled={saving}
-            />
+              required
+            >
+              <option value="" disabled>Select a category...</option>
+              {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
           </div>
-        ) : (
-          <div>
-            <label htmlFor="portfolioText" className="form-label text-white fw-semibold fs-7">Your writing:</label>
-            {documentFile ? (
-              <div className="d-flex align-items-center gap-2 p-3 rounded-3 border border-secondary border-opacity-25 bg-secondary bg-opacity-10">
-                <i className="bi bi-file-earmark-text fs-4 text-info"></i>
-                <span className="flex-grow-1 text-truncate fs-7">{documentFile.name}</span>
-                <button type="button" className="btn btn-sm btn-outline-secondary text-white-50 rounded-pill px-3" onClick={() => setDocumentFile(null)} disabled={saving}>Remove</button>
-              </div>
-            ) : (
-              <>
-                <textarea
-                  id="portfolioText"
-                  className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
-                  rows="8"
-                  placeholder="Paste your article, blog post, copy or story here..."
-                  maxLength={MAX_DOCUMENT_CHARACTERS}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
+          <div className="col-sm-6">
+            <label htmlFor="portfolioTags" className="form-label text-white fw-semibold fs-7">Tags (up to {MAX_TAGS}, optional):</label>
+            <div className="portfolio-tag-box form-control bg-secondary bg-opacity-25 border-secondary d-flex flex-wrap align-items-center gap-1 py-1">
+              {tags.map((tag) => (
+                <span key={tag} className="portfolio-tag">
+                  {tag}
+                  {!saving && (
+                    <button type="button" aria-label={`Remove the tag ${tag}`} onClick={() => setTags(tags.filter((t) => t !== tag))}>
+                      <i className="bi bi-x"></i>
+                    </button>
+                  )}
+                </span>
+              ))}
+              {tags.length < MAX_TAGS && (
+                <input
+                  id="portfolioTags"
+                  type="text"
+                  className="flex-grow-1 bg-transparent border-0 text-white py-1"
+                  placeholder={tags.length ? "" : "e.g. Photoshop, Logo"}
+                  maxLength={MAX_TAG_LENGTH}
+                  value={tagDraft}
+                  onChange={handleTagChange}
+                  onKeyDown={handleTagKeyDown}
+                  onBlur={() => {
+                    if (tagDraft.trim()) addTags([tagDraft]);
+                    setTagDraft("");
+                  }}
                   disabled={saving}
-                ></textarea>
-                <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
-                  <span className="text-secondary fs-8">or</span>
-                  <input ref={fileInputRef} type="file" className="d-none" accept={DOCUMENT_ACCEPT} onChange={handlePickDocument} />
-                  <button type="button" className="btn btn-sm btn-outline-info rounded-pill px-3" onClick={() => fileInputRef.current?.click()} disabled={saving}>
-                    <i className="bi bi-upload me-1"></i> Upload a TXT, DOCX or PDF
-                  </button>
-                </div>
-              </>
-            )}
-            <p className="text-secondary fs-9 mb-0 mt-2">
-              Only the text is kept (not the layout or pictures in a file), up to {MAX_DOCUMENT_CHARACTERS.toLocaleString()} characters.
-              It gets an invisible code in every sentence, so any copy can be traced back to you.
-            </p>
+                />
+              )}
+            </div>
+            <p className="text-secondary fs-9 mb-0 mt-1">Press Enter or a comma after each one. They help clients find your work.</p>
           </div>
-        )}
+        </div>
+
+        <div>
+          <label className="form-label text-white fw-semibold fs-7">Files (at least one, or pasted writing):</label>
+          <SlidePicker
+            items={slideItems}
+            onAdd={handleAddSlides}
+            onRemove={handleRemoveSlide}
+            hint={SLIDE_HINT_WITH_DOCUMENTS}
+            error={slidesError}
+            disabled={saving}
+            accept={SLIDE_ACCEPT_WITH_DOCUMENTS}
+            addLabel="Add photos, videos or documents"
+          />
+
+          {pasting ? (
+            <div className="mt-3">
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <label htmlFor="portfolioText" className="form-label text-white fw-semibold fs-7 mb-0">Pasted writing:</label>
+                <button type="button" className="btn btn-link btn-sm text-white-50 p-0" onClick={() => { setPasting(false); setText(""); }} disabled={saving}>
+                  Remove
+                </button>
+              </div>
+              <textarea
+                id="portfolioText"
+                className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
+                rows="6"
+                placeholder="Paste your article, blog post, copy or story here..."
+                maxLength={MAX_DOCUMENT_CHARACTERS}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                disabled={saving}
+              ></textarea>
+              <p className="text-secondary fs-9 mb-0 mt-1">
+                Added as a document, with an invisible code in every sentence, so any copy can be traced back to you.
+              </p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-info rounded-pill px-3 mt-2"
+              onClick={() => setPasting(true)}
+              disabled={saving || slideItems.length >= MAX_SLIDES}
+            >
+              <i className="bi bi-clipboard me-1"></i> Paste writing
+            </button>
+          )}
+        </div>
 
         {formError && <p className="text-warning fs-8 mb-0">{formError}</p>}
 
@@ -228,7 +280,7 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
           <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 fw-bold" onClick={onClose} disabled={saving}>
             Cancel
           </button>
-          <button type="submit" className="btn btn-gradient-orange rounded-pill px-4 fw-bold text-white" disabled={saving || !title.trim() || !hasContent}>
+          <button type="submit" className="btn btn-gradient-orange rounded-pill px-4 fw-bold text-white" disabled={saving || !title.trim() || !category || !hasContent}>
             {saving ? progress || "Saving..." : "Add to Portfolio"}
           </button>
         </div>

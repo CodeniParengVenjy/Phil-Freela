@@ -25,8 +25,9 @@ const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
 
 export const SLIDE_ACCEPT = [...IMAGE_TYPES, ...VIDEO_TYPES, ".mov"].join(",");
 export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, MOV, WebM) up to 50 MB and 30 seconds; each video takes up to 2 minutes to watermark.";
-export const SERVICE_SLIDE_ACCEPT = `${SLIDE_ACCEPT},.pdf,.docx,.txt`;
-export const SERVICE_SLIDE_HINT = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: only the text is kept, with your invisible code and footer.`;
+// Services (step 8) and portfolio projects (step 10) also take documents.
+export const SLIDE_ACCEPT_WITH_DOCUMENTS = `${SLIDE_ACCEPT},.pdf,.docx,.txt`;
+export const SLIDE_HINT_WITH_DOCUMENTS = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: only the text is kept, with your invisible code and footer.`;
 
 // Add this to a services select to get each service's slides with it.
 // watermarked: the file carries the watermark itself (photos from step 3 on).
@@ -146,12 +147,33 @@ export async function uploadSlide(target, file, userId, promo = false) {
   }
 }
 
-// The message to show after uploading when the copy check held some photos
-// back ("" when none were).
+// The message to show after uploading when some files were held back for an
+// admin ("" when none were). held_because (in the AI service's reply, step
+// 10): "watermark" = the file carries another freelancer's hidden watermark
+// (step 9); otherwise the copy check found it very similar (steps 5-6).
 export function underReviewMessage(slides) {
-  const held = slides.filter((slide) => slide.status === "flagged").length;
-  if (!held) return "";
-  return `${held === 1 ? "1 file is" : `${held} files are`} waiting for an admin to review, because ${held === 1 ? "it looks" : "they look"} very similar to another freelancer's work. Until then only you can see ${held === 1 ? "it" : "them"}.`;
+  const flagged = slides.filter((slide) => slide.status === "flagged");
+  const byWatermark = flagged.filter((slide) => slide.held_because === "watermark").length;
+  const bySimilarity = flagged.length - byWatermark;
+  const messages = [];
+  if (byWatermark) {
+    messages.push(`${byWatermark === 1 ? "1 file carries" : `${byWatermark} files carry`} another freelancer's hidden watermark, so an admin will review ${byWatermark === 1 ? "it before it's" : "them before they're"} shown.`);
+  }
+  if (bySimilarity) {
+    messages.push(`${bySimilarity === 1 ? "1 file is" : `${bySimilarity} files are`} waiting for an admin to review, because ${bySimilarity === 1 ? "it looks" : "they look"} very similar to another freelancer's work. Until then only you can see ${bySimilarity === 1 ? "it" : "them"}.`);
+  }
+  return messages.join(" ");
+}
+
+// Whether a service or portfolio project gets the "Original" badge (step 10,
+// see components/OriginalBadge.jsx): it has files, none is waiting for an
+// admin, and every one carries PhilFreela's hidden watermark, so it passed
+// the copy check and can be traced back to its owner. Writing added before
+// step 10 always has the code.
+export function isOriginalWork(item) {
+  if (item.kind === "document") return item.status === "active";
+  const slides = item.slides || [];
+  return slides.length > 0 && slides.every((slide) => slide.status === "active" && slide.watermarked);
 }
 
 // Uploads the picked files ([{ key, file, promo }]) one at a time: each

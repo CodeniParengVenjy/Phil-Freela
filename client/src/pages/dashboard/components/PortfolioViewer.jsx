@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { itemSlides } from "../../../lib/slides";
+import { getCategory } from "../../../lib/categories";
+import { isOriginalWork, itemSlides } from "../../../lib/slides";
+import OriginalBadge, { ORIGINAL_EXPLANATION } from "../../../components/OriginalBadge";
 import MediaCarousel from "./MediaCarousel";
 import "./portfolio.css";
 
-// A portfolio project opened big: its slideshow (or, for a document, its
-// text), title and description.
+// A portfolio project opened big: its slideshow (or, for older writing, its
+// text), title, category, tags, the "Original" badge (step 10) and description.
 // Owners also get a Delete button (pass onDelete). ownerName: see
 // MediaCarousel. Rendered straight into <body> so it covers the whole screen,
 // in the same look and animation as the other popups (role-confirm-* classes).
@@ -63,7 +65,17 @@ export default function PortfolioViewer({ item, ownerName, onDelete, onClose }) 
               <i className="bi bi-x-lg"></i>
             </button>
           </div>
-          <p className="text-secondary fs-8 mb-3">Added {new Date(item.created_at).toLocaleDateString()}</p>
+          <p className="text-secondary fs-8 mb-2">
+            Added {new Date(item.created_at).toLocaleDateString()}
+            {item.category && <> • {getCategory(item.category).label}</>}
+          </p>
+          {(isOriginalWork(item) || item.tags?.length > 0) && (
+            <div className="d-flex flex-wrap align-items-center gap-1 mb-3">
+              {isOriginalWork(item) && <OriginalBadge />}
+              {item.tags?.map((tag) => <span key={tag} className="portfolio-tag">{tag}</span>)}
+            </div>
+          )}
+          {isOriginalWork(item) && <p className="text-secondary fs-9 mb-3">{ORIGINAL_EXPLANATION}</p>}
           {item.description && <p className="text-light fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{item.description}</p>}
 
           {onDelete && (

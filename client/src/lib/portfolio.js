@@ -1,25 +1,30 @@
 import { supabase } from "./supabaseClient";
 import { SLIDES_SELECT, removeItemFiles } from "./slides";
 
-// Portfolio items (watermarking system, steps 2 and 6): projects (a title, a
-// short description, and up to 10 photos and videos, see lib/slides.js) and
-// documents (writing, added through the AI service so it gets watermarked,
-// see addDocument in lib/aiService.js). The database rules decide who can
-// see, add, and delete them.
+// Portfolio items (watermarking system, steps 2, 6 and 10): projects (a
+// title, a short description, a category and up to 5 tags, and up to 10
+// photos, videos and documents, see lib/slides.js). Writing added before step
+// 10 is its own kind of item, a "document" (added through the AI service so it
+// got watermarked, see addDocument in lib/aiService.js). The database rules
+// decide who can see, add, and delete them.
 
 export const MAX_TITLE_LENGTH = 100;
 export const MAX_DESCRIPTION_LENGTH = 1000;
 export const MAX_DOCUMENT_CHARACTERS = 20000;
 export const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
 export const DOCUMENT_ACCEPT = ".txt,.docx,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+// Tags: keywords like "Photoshop" or "Logo" (the database allows 5 of up to 30 characters).
+export const MAX_TAGS = 5;
+export const MAX_TAG_LENGTH = 30;
 
 // Invisible characters (the hidden code), removed where text is only
 // previewed; the full text keeps them so copies carry the code.
 export const withoutHiddenCharacters = (text) => (text || "").replace(/[​-‏⁠-⁤﻿]/g, "");
 
-// kind: "project" (photos/videos) or "document" (writing in body, step 6).
-// status: "flagged" = held back by the copy check until an admin reviews it.
-const PORTFOLIO_COLUMNS = `id, freelancer_id, kind, title, description, body, status, created_at, ${SLIDES_SELECT}`;
+// kind: "project" (files) or "document" (writing in body, from step 6 until
+// step 10). status: "flagged" = held back by the copy check until an admin
+// reviews it. category / tags: step 10 (none on older items).
+const PORTFOLIO_COLUMNS = `id, freelancer_id, kind, title, description, body, status, category, tags, created_at, ${SLIDES_SELECT}`;
 
 // A freelancer's projects, newest first.
 export async function fetchPortfolio(freelancerId) {
@@ -33,10 +38,10 @@ export async function fetchPortfolio(freelancerId) {
 }
 
 // Saves a new project (without slides; those are uploaded next).
-export async function createPortfolioItem(freelancerId, { title, description }) {
+export async function createPortfolioItem(freelancerId, { title, description, category, tags }) {
   const { data, error } = await supabase
     .from("portfolio_items")
-    .insert({ freelancer_id: freelancerId, title: title.trim(), description: description.trim() || null })
+    .insert({ freelancer_id: freelancerId, title: title.trim(), description: description.trim() || null, category, tags })
     .select(PORTFOLIO_COLUMNS)
     .single();
   if (error) throw new Error("Couldn't save that project. Please try again.");

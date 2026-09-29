@@ -4,7 +4,8 @@ import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
-import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
+import { SLIDES_SELECT, isOriginalWork, itemSlides } from "../../../lib/slides";
+import OriginalBadge from "../../../components/OriginalBadge";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import ReportDialog from "../components/ReportDialog";
 import MediaCarousel from "../components/MediaCarousel";
@@ -106,8 +107,9 @@ export default function BrowseServicesView() {
             const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "Freelancer";
             const slides = itemSlides(s);
             return (
-              // Two cards per row on laptops, three only on very wide screens.
-              <div className="col-md-6 col-xxl-4" key={s.id}>
+              // Two cards per row on laptops and big screens (one on phones),
+              // so each picture is big enough to see the whole photo.
+              <div className="col-md-6" key={s.id}>
                 <div className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
                   {/* The picture grows with the card (16:10) and shows the
                       whole photo ("contain"): trimming the edges used to cut
@@ -128,7 +130,11 @@ export default function BrowseServicesView() {
                     </div>
                   )}
                   <div className="p-3 d-flex flex-column flex-grow-1">
-                    <span className="badge bg-black text-light-50 align-self-start mb-2 fs-8">{meta.label}</span>
+                    <div className="d-flex flex-wrap align-items-center gap-1 mb-2">
+                      <span className="badge bg-black text-light-50 fs-8">{meta.label}</span>
+                      {/* Every file passed the AI copy check and carries the hidden watermark (step 10). */}
+                      {isOriginalWork(s) && <OriginalBadge className="fs-8" />}
+                    </div>
                     <h6 className="text-white fw-bold mb-1">{s.title}</h6>
                     <p className="fs-8 text-secondary mb-3 flex-grow-1">
                       by{" "}
