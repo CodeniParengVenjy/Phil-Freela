@@ -4,10 +4,10 @@ import { shrinkImage } from "./shrinkImage";
 import { storagePathFromUrl } from "./storage";
 
 // Slideshows for services and portfolio projects (watermarking system, steps
-// 1-2). Every photo and video goes through the AI service, which checks it
-// (and, from step 3, watermarks it) before saving it in the "slide-media"
-// bucket. The AI service checks all of these rules again; the browser checks
-// first only to answer faster.
+// 1-2). Every photo, video and (in services, step 8) document goes through the
+// AI service, which checks it (and, from step 3, watermarks it) before saving
+// it in the "slide-media" bucket. The AI service checks all of these rules
+// again; the browser checks first only to answer faster.
 //
 // "target" says what the slides are for: { serviceId } or { portfolioItemId }.
 
@@ -18,9 +18,15 @@ export const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // shrunk to about 0.5 MB before sending
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_VIDEO_SECONDS = 30;
+// Documents (step 8, services only): only the text is kept, like portfolio
+// writing. 4 MB fits in one request to the AI service.
+const DOCUMENT_EXTENSIONS = /\.(pdf|docx|txt)$/i;
+const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
 
 export const SLIDE_ACCEPT = [...IMAGE_TYPES, ...VIDEO_TYPES, ".mov"].join(",");
 export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, MOV, WebM) up to 50 MB and 30 seconds; each video takes up to 2 minutes to watermark.";
+export const SERVICE_SLIDE_ACCEPT = `${SLIDE_ACCEPT},.pdf,.docx,.txt`;
+export const SERVICE_SLIDE_HINT = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: only the text is kept, with your invisible code and footer.`;
 
 // Add this to a services select to get each service's slides with it.
 // watermarked: the file carries the watermark itself (photos from step 3 on).
@@ -32,6 +38,7 @@ export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file
 // (Some browsers give .mov files no type at all, so the name counts too.)
 export const isVideoFile = (file) => VIDEO_TYPES.includes(file.type) || /\.mov$/i.test(file.name);
 const isMovFile = (file) => file.type === "video/quicktime" || /\.mov$/i.test(file.name);
+export const isDocumentFile = (file) => DOCUMENT_EXTENSIONS.test(file.name);
 
 // How many seconds a video file lasts, read by the browser (null if it can't play it).
 function videoSeconds(file) {
@@ -52,7 +59,11 @@ function videoSeconds(file) {
 }
 
 // Returns a message when the file can't be a slide, or "" when it's fine.
-export async function checkSlideFile(file) {
+// allowDocuments: PDF, DOCX and TXT are allowed too (services).
+export async function checkSlideFile(file, allowDocuments = false) {
+  if (allowDocuments && isDocumentFile(file)) {
+    return file.size > MAX_DOCUMENT_BYTES ? "Documents must be 4 MB or smaller." : "";
+  }
   if (IMAGE_TYPES.includes(file.type)) {
     return file.size > MAX_IMAGE_BYTES ? "Photos must be 10 MB or smaller." : "";
   }
@@ -66,7 +77,9 @@ export async function checkSlideFile(file) {
     if (Number.isFinite(seconds) && seconds > MAX_VIDEO_SECONDS + 0.5) return `Videos can be at most ${MAX_VIDEO_SECONDS} seconds long.`;
     return "";
   }
-  return "Only JPG, PNG or WebP photos, or MP4, MOV or WebM videos, are allowed.";
+  return allowDocuments
+    ? "Only JPG, PNG or WebP photos, MP4, MOV or WebM videos, or PDF, DOCX or TXT documents are allowed."
+    : "Only JPG, PNG or WebP photos, or MP4, MOV or WebM videos, are allowed.";
 }
 
 // Puts a video in the private "slide-uploads" bucket (in the user's own
@@ -94,28 +107,32 @@ let nextSlideKey = 0;
 // Checks newly picked files and adds the good ones after the files already
 // picked ([{ key, file }], at most 10). Returns { items, error }: the new
 // list, and a message about any file that was left out ("" if none were).
-export async function addPickedFiles(items, files) {
+// allowDocuments: see checkSlideFile.
+export async function addPickedFiles(items, files, allowDocuments = false) {
   const problems = [];
   const accepted = [];
   for (const file of files) {
-    const problem = await checkSlideFile(file);
+    const problem = await checkSlideFile(file, allowDocuments);
     if (problem) problems.push(`${file.name}: ${problem}`);
     else accepted.push({ key: nextSlideKey++, file, promo: false });
   }
 
   const room = MAX_SLIDES - items.length;
   if (accepted.length > room) {
-    problems.push(`Only ${MAX_SLIDES} photos and videos fit, so ${accepted.length - room} were left out.`);
+    problems.push(`Only ${MAX_SLIDES} files fit, so ${accepted.length - room} were left out.`);
   }
   return { items: [...items, ...accepted].slice(0, MAX_SLIDES), error: problems.join(" ") };
 }
 
 // Adds one file to the end of a service's or project's slideshow and returns
 // the saved slide. promo: it's an ad, so no visible watermark. Photos are
-// shrunk first. Videos are too big to send to the AI service directly, so
-// they go to the private "slide-uploads" bucket first and the AI service
-// takes them from there.
+// shrunk first. Documents go as they are (the AI service keeps their text).
+// Videos are too big to send to the AI service directly, so they go to the
+// private "slide-uploads" bucket first and the AI service takes them from there.
 export async function uploadSlide(target, file, userId, promo = false) {
+  if (isDocumentFile(file)) {
+    return addSlide({ ...target, document: file });
+  }
   if (!isVideoFile(file)) {
     return addSlide({ ...target, image: await shrinkImage(file), promo });
   }
@@ -148,7 +165,9 @@ export async function uploadSlides(target, items, userId, onProgress) {
   for (const [index, { file, promo }] of items.entries()) {
     onProgress(isVideoFile(file)
       ? `Watermarking video ${index + 1} of ${items.length} (up to 2 minutes)...`
-      : `Uploading ${index + 1} of ${items.length}...`);
+      : isDocumentFile(file)
+        ? `Watermarking document ${index + 1} of ${items.length}...`
+        : `Uploading ${index + 1} of ${items.length}...`);
     try {
       slides.push(await uploadSlide(target, file, userId, promo));
     } catch (err) {
@@ -163,10 +182,26 @@ export function slideUrl(filePath) {
   return supabase.storage.from("slide-media").getPublicUrl(filePath).data.publicUrl;
 }
 
+// The text of a document slide (step 8), fetched once per page load.
+const documentTexts = new Map();
+export function fetchSlideText(url) {
+  if (!documentTexts.has(url)) {
+    const request = fetch(url).then((response) => {
+      if (!response.ok) throw new Error("Couldn't load this document.");
+      return response.text();
+    });
+    // A failed load isn't kept, so it's tried again next time.
+    request.catch(() => documentTexts.delete(url));
+    documentTexts.set(url, request);
+  }
+  return documentTexts.get(url);
+}
+
 // A service's or project's slides in slideshow order, as
-// [{ id, mediaType, url, showOwnerName, underReview }]. showOwnerName: the
-// page draws the uploader's name faintly over it, because the file itself has
-// no watermark (older photos, videos until step 7) and it isn't a promo.
+// [{ id, mediaType, url, showOwnerName, underReview }]. mediaType: "image",
+// "video" or "document" (a .txt file, step 8). showOwnerName: the page draws
+// the uploader's name faintly over it, because the file itself has no
+// watermark (older photos, videos until step 7) and it isn't a promo.
 // underReview: flagged by the copy check, waiting for an admin.
 // Services posted before slideshows existed have one photo or video
 // (image_url), shown as a one-slide slideshow.

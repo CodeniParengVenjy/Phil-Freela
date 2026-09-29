@@ -3,7 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
 import { fetchIsVerified } from "../../../lib/verification";
-import { SLIDE_HINT, SLIDES_SELECT, addPickedFiles, underReviewMessage, uploadSlides } from "../../../lib/slides";
+import { SERVICE_SLIDE_ACCEPT, SERVICE_SLIDE_HINT, SLIDES_SELECT, addPickedFiles, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
 import BlockedNotice from "../components/BlockedNotice";
@@ -70,7 +70,8 @@ export default function ServicesView() {
 
   // Called by the picker with newly picked or dropped files.
   const handleAddSlides = async (files) => {
-    const result = await addPickedFiles(slideItems, files);
+    // Services also take documents (PDF, DOCX, TXT; step 8).
+    const result = await addPickedFiles(slideItems, files, true);
     setSlideItems(result.items);
     setSlidesError(result.error);
   };
@@ -111,7 +112,7 @@ export default function ServicesView() {
       return;
     }
 
-    // 2. Send the photos and videos one at a time through the AI service.
+    // 2. Send the photos, videos and documents one at a time through the AI service.
     // If one fails, the service keeps the ones that worked.
     const { slides, failed } = await uploadSlides({ serviceId: service.id }, slideItems, currentUserId, setProgress);
 
@@ -217,15 +218,17 @@ export default function ServicesView() {
                 </div>
 
                 <div>
-                  <label className="form-label text-white fw-semibold fs-7">Upload photos or videos for a slideshow (optional):</label>
+                  <label className="form-label text-white fw-semibold fs-7">Upload photos, videos or documents for a slideshow (optional):</label>
                   <SlidePicker
                     items={slideItems}
                     onAdd={handleAddSlides}
                     onRemove={handleRemoveSlide}
                     onTogglePromo={handleTogglePromo}
-                    hint={SLIDE_HINT}
+                    hint={SERVICE_SLIDE_HINT}
                     error={slidesError}
                     disabled={submitting}
+                    accept={SERVICE_SLIDE_ACCEPT}
+                    addLabel="Add photos, videos or documents"
                   />
                   {slideItems.length > 0 && (
                     <p className="text-secondary fs-8 mb-0 mt-1">

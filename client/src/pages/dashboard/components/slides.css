@@ -239,3 +239,68 @@
 .slide-picker-add.has-error {
   border-color: #f59e0b;
 }
+
+/* A picked document in the picker (step 8): an icon and its type. */
+.slide-picker-document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  background: #0d1017;
+  color: #cbd5e1;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.slide-picker-document i {
+  font-size: 1.6rem;
+  color: var(--accent-role, #ff6b00);
+}
+
+/* A document slide: the start of its text, fading out, and a Read button. */
+.media-carousel-document {
+  position: relative;
+  height: 100%;
+  padding: 0.75rem 2.5rem 0 2.5rem;
+  background: #0d1017;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.media-carousel-document::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 60%;
+  background: linear-gradient(transparent, #0d1017 70%);
+  pointer-events: none;
+}
+
+.media-carousel-read {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  z-index: 2;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* The whole document, opened from a slide. */
+.document-reader-text {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  background: #0d1017;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

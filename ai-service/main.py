@@ -453,7 +453,7 @@ def ensure_own_item(user_id, owner, item_id):
     if not rows:
         raise HTTPException(404, f"That {name} no longer exists.")
     if rows[0]["freelancer_id"] != user_id:
-        raise HTTPException(403, f"You can only add photos and videos to your own {name}s.")
+        raise HTTPException(403, f"You can only add files to your own {name}s.")
 
     # Same check the posting rules use: a ban, or a suspension that blocks
     # posting (e.g. for spam) and hasn't ended.
@@ -479,7 +479,7 @@ def next_slide_position(user_id, owner, item_id, media_type):
     _, column, name = SLIDE_OWNERS[owner]
     used = {row["position"] for row in supabase.table("media_slides").select("position").eq(column, item_id).execute().data}
     if len(used) >= MAX_SLIDES_PER_ITEM:
-        raise HTTPException(409, f"A {name} can have at most {MAX_SLIDES_PER_ITEM} photos and videos.")
+        raise HTTPException(409, f"A {name} can have at most {MAX_SLIDES_PER_ITEM} photos, videos and documents.")
 
     # Limits across all of the freelancer's services and projects together,
     # to save storage space.
@@ -674,29 +674,30 @@ def add_slide(
     portfolio_item_id: str | None = Form(default=None),
     image: UploadFile | None = File(default=None),
     video_path: str | None = Form(default=None),
+    document: UploadFile | None = File(default=None),
     promo: bool = Form(default=False),
     authorization: str | None = Header(default=None),
 ):
-    """Adds one photo or video to the end of the caller's own service or
-    portfolio project (send service_id or portfolio_item_id). promo: the
-    freelancer marked it as an ad, so it gets no visible watermark.
-    Photos come with the request. Videos are too big for that (Vercel allows
-    4.5 MB per request), so the browser uploads them to slide-uploads first
-    and sends where it put them."""
+    """Adds one photo, video or document to the end of the caller's own
+    service or portfolio project (send service_id or portfolio_item_id).
+    promo: the freelancer marked it as an ad, so it gets no visible watermark.
+    Photos and documents come with the request. Videos are too big for that
+    (Vercel allows 4.5 MB per request), so the browser uploads them to
+    slide-uploads first and sends where it put them."""
     user_id = get_user_id(authorization)
     if (service_id is None) == (portfolio_item_id is None):
         raise HTTPException(400, "Send one service or one project.")
-    if (image is None) == (video_path is None):
-        raise HTTPException(400, "Send one photo or one video.")
+    if [image, video_path, document].count(None) != 2:
+        raise HTTPException(400, "Send one photo, video or document.")
 
     owner, item_id = ("service", service_id) if service_id is not None else ("portfolio", portfolio_item_id)
     _, column, name = SLIDE_OWNERS[owner]
     ensure_own_item(user_id, owner, item_id)
-    media_type = "image" if image is not None else "video"
+    media_type = "image" if image is not None else "video" if video_path is not None else "document"
     position = next_slide_position(user_id, owner, item_id, media_type)
 
-    code, embeddings = None, {}
-    status, matched_slide_id, match_score = "active", None, None
+    code, embeddings, text_embeddings = None, {}, []
+    status, matched_slide_id, matched_item_id, match_score = "active", None, None, None
     if image is not None:
         # Same checks as ID photos (a real JPG/PNG/WEBP under 5 MB), then the
         # watermarks, saved as a fresh JPEG (nothing hidden, like the GPS
@@ -705,7 +706,7 @@ def add_slide(
         extension, content_type = "jpg", "image/jpeg"
         # Nearly the same as another freelancer's photo? Then it waits for an admin.
         status, matched_slide_id, match_score = copy_check(user_id, [embeddings["uploaded"]])
-    else:
+    elif video_path is not None:
         # Checked (MP4, MOV or WEBM, at most 50 MB and 30 seconds), then saved
         # as a watermarked 720p MP4 (step 7).
         raw, raw_extension = read_slide_video(user_id, video_path)
@@ -713,6 +714,16 @@ def add_slide(
         extension, content_type = "mp4", "video/mp4"
         frames_as_uploaded = [e for version, e in embeddings.items() if version.startswith("uploaded")]
         status, matched_slide_id, match_score = copy_check(user_id, frames_as_uploaded)
+    else:
+        # Writing (step 8): a PDF, DOCX or TXT, handled like portfolio writing.
+        # Only the text is kept; it gets the footer and the invisible code, is
+        # compared with other freelancers' writing, and is saved as a .txt file.
+        raw = read_document(None, document)
+        clean = strip_hidden(raw).strip()
+        text_embeddings = embed_texts(paragraphs_for_check(clean))
+        status, matched_item_id, matched_slide_id, match_score = check_copied_writing(user_id, raw, text_embeddings)
+        body, code = watermark_writing(user_id, clean)
+        data, extension, content_type = body.encode("utf-8"), "txt", "text/plain"
 
     slide_id = str(uuid.uuid4())
     file_path = f"{user_id}/{slide_id}.{extension}"
@@ -730,6 +741,7 @@ def add_slide(
             "promo": promo,
             "status": status,
             "matched_slide_id": matched_slide_id,
+            "matched_item_id": matched_item_id,
             "match_score": match_score,
         }).execute()
     except APIError as error:
@@ -752,16 +764,22 @@ def add_slide(
             remove_quietly(SLIDE_BUCKET, file_path)
             raise HTTPException(409, "Something went wrong while saving that file. Please try again.")
 
-    # The copy check's numbers, for comparing future uploads with this photo
-    # (private table). If saving them fails, the photo itself is still fine.
-    if embeddings:
-        try:
+    # The copy check's numbers, for comparing future uploads with this photo,
+    # video or document (private tables). If saving them fails, the slide
+    # itself is still fine.
+    try:
+        if embeddings:
             supabase.table("slide_embeddings").insert([
                 {"slide_id": slide_id, "version": version, "freelancer_id": user_id, "embedding": vector_text(numbers)}
                 for version, numbers in embeddings.items()
             ]).execute()
-        except APIError:
-            logger.exception("Saving the copy check numbers for slide %s failed", slide_id)
+        if len(text_embeddings):
+            supabase.table("document_embeddings").insert([
+                {"slide_id": slide_id, "piece": i, "freelancer_id": user_id, "embedding": vector_text(e)}
+                for i, e in enumerate(text_embeddings)
+            ]).execute()
+    except APIError:
+        logger.exception("Saving the copy check numbers for slide %s failed", slide_id)
 
     return {
         "id": slide_id, "position": position, "media_type": media_type, "file_path": file_path,
@@ -940,6 +958,45 @@ def closest_documents(piece_embeddings, exclude_freelancer, how_many=1):
     }).execute().data
 
 
+def check_copied_writing(user_id, raw, embeddings):
+    """The copy check for writing (portfolio documents and, from step 8,
+    document slides in services). Returns (status, matched_item_id,
+    matched_slide_id, match_score): the portfolio document or document slide
+    it matched, if any."""
+    # 1. Pasted from another freelancer's writing, hidden code and all.
+    found_code = read_text_code(raw)
+    if found_code is not None:
+        owner = (
+            supabase.table("watermark_codes").select("freelancer_id, portfolio_item_id, slide_id")
+            .eq("code", found_code).limit(1).execute().data
+        )
+        if owner and owner[0]["freelancer_id"] != user_id:
+            return "flagged", owner[0]["portfolio_item_id"], owner[0]["slide_id"], 1.0
+    # 2. Nearly the same meaning as a piece of another freelancer's writing.
+    rows = closest_documents(embeddings, user_id)
+    if rows and rows[0]["similarity"] >= TEXT_COPY_CUTOFF:
+        return "flagged", rows[0]["portfolio_item_id"], rows[0]["slide_id"], round(rows[0]["similarity"], 4)
+    return "active", None, None, None
+
+
+def watermark_writing(user_id, clean):
+    """The writing's watermark: the visible footer (unless turned off), then
+    the invisible code after the first word of every sentence. Returns
+    (body, code)."""
+    settings = (
+        supabase.table("watermark_settings").select("text_mode, custom_text, document_footer")
+        .eq("freelancer_id", user_id).limit(1).execute().data
+    )
+    settings = settings[0] if settings else {}
+    profile = supabase.table("profiles").select("username, full_name").eq("id", user_id).limit(1).execute().data
+    profile = profile[0] if profile else {}
+    body = clean
+    if settings.get("document_footer", True):
+        body += "\n\n" + text_footer(settings, profile.get("username", ""), profile.get("full_name", ""))
+    code = new_code()
+    return add_text_code(body, code), code
+
+
 @app.post("/portfolio/documents")
 def add_document(
     title: str = Form(...),
@@ -968,38 +1025,14 @@ def add_document(
 
     raw = read_document(text, document)
     clean = strip_hidden(raw).strip()
-    pieces = paragraphs_for_check(clean)
-    embeddings = embed_texts(pieces)
-
-    # Copy check 1: pasted from another freelancer's document, hidden code and all.
-    status, matched_item_id, match_score = "active", None, None
-    found_code = read_text_code(raw)
-    if found_code is not None:
-        owner = supabase.table("watermark_codes").select("freelancer_id, portfolio_item_id").eq("code", found_code).limit(1).execute().data
-        if owner and owner[0]["freelancer_id"] != user_id:
-            status, matched_item_id, match_score = "flagged", owner[0]["portfolio_item_id"], 1.0
-    # Copy check 2: nearly the same meaning as a piece of another freelancer's document.
-    if status == "active":
-        rows = closest_documents(embeddings, user_id)
-        if rows and rows[0]["similarity"] >= TEXT_COPY_CUTOFF:
-            status, matched_item_id, match_score = "flagged", rows[0]["portfolio_item_id"], round(rows[0]["similarity"], 4)
-
-    # The watermark: the visible footer (unless turned off), then the invisible
-    # code after the first word of every paragraph.
-    settings = (
-        supabase.table("watermark_settings").select("text_mode, custom_text, document_footer")
-        .eq("freelancer_id", user_id).limit(1).execute().data
-    )
-    settings = settings[0] if settings else {}
-    body = clean
-    if settings.get("document_footer", True):
-        body += "\n\n" + text_footer(settings, profile[0]["username"], profile[0]["full_name"])
-    code = new_code()
-    body = add_text_code(body, code)
+    embeddings = embed_texts(paragraphs_for_check(clean))
+    status, matched_item_id, matched_slide_id, match_score = check_copied_writing(user_id, raw, embeddings)
+    body, code = watermark_writing(user_id, clean)
 
     item = supabase.table("portfolio_items").insert({
         "freelancer_id": user_id, "kind": "document", "title": title, "description": description, "body": body,
-        "status": status, "matched_item_id": matched_item_id, "match_score": match_score,
+        "status": status, "matched_item_id": matched_item_id, "matched_slide_id": matched_slide_id,
+        "match_score": match_score,
     }).execute().data[0]
     try:
         supabase.table("watermark_codes").insert({"code": code, "portfolio_item_id": item["id"], "freelancer_id": user_id}).execute()
@@ -1016,22 +1049,31 @@ def add_document(
     return {key: item[key] for key in ("id", "freelancer_id", "kind", "title", "description", "body", "status", "created_at")}
 
 
-def describe_document_match(owner_id, item_id, user_id, how, similarity=None, found_at=None):
-    """What Check Ownership shows for writing: the owner and the document."""
+def describe_document_match(owner_id, item_id, slide_id, user_id, how, similarity=None, found_at=None):
+    """What Check Ownership shows for writing: the owner, and the portfolio
+    document or the service (for a document slide, step 8) it came from.
+    document is None if that was deleted since."""
     owner = supabase.table("profiles").select("id, full_name, username").eq("id", owner_id).limit(1).execute().data
     owner = owner[0] if owner else {"id": owner_id, "full_name": None, "username": None}
     owner["verified"] = bool(supabase.rpc("is_verified", {"target": owner_id}).execute().data)
-    item = []
+    found = None
     if item_id:
         item = supabase.table("portfolio_items").select("id, title, created_at").eq("id", item_id).limit(1).execute().data
+        if item:
+            found = {**item[0], "kind": "document"}
+    elif slide_id:
+        slide = supabase.table("media_slides").select("id, service_id, created_at").eq("id", slide_id).limit(1).execute().data
+        if slide and slide[0]["service_id"]:
+            service = supabase.table("services").select("title").eq("id", slide[0]["service_id"]).limit(1).execute().data
+            found = {"id": slide[0]["id"], "title": service[0]["title"] if service else None, "created_at": slide[0]["created_at"], "kind": "service"}
     return {
         "found": True,
         "how": how,  # "code" (the hidden code) or "similarity" (the text model)
         "similarity": similarity,
         "is_you": owner_id == user_id,
         "owner": owner,
-        "document": item[0] if item else None,
-        "uploaded_at": item[0]["created_at"] if item else found_at,
+        "document": found,
+        "uploaded_at": found["created_at"] if found else found_at,
     }
 
 
@@ -1050,15 +1092,17 @@ def extract_text_watermark(
     code = read_text_code(raw)
     if code is not None:
         row = (
-            supabase.table("watermark_codes").select("freelancer_id, portfolio_item_id, created_at")
+            supabase.table("watermark_codes").select("freelancer_id, portfolio_item_id, slide_id, created_at")
             .eq("code", code).limit(1).execute().data
         )
         if row:
-            return describe_document_match(row[0]["freelancer_id"], row[0]["portfolio_item_id"], user_id, "code", found_at=row[0]["created_at"])
+            row = row[0]
+            return describe_document_match(row["freelancer_id"], row["portfolio_item_id"], row["slide_id"], user_id, "code", found_at=row["created_at"])
 
     rows = closest_documents(embed_texts(paragraphs_for_check(strip_hidden(raw))), None)
     if rows and rows[0]["similarity"] >= TEXT_COPY_CUTOFF:
-        return describe_document_match(rows[0]["freelancer_id"], rows[0]["portfolio_item_id"], user_id, "similarity", round(rows[0]["similarity"], 4))
+        best = rows[0]
+        return describe_document_match(best["freelancer_id"], best["portfolio_item_id"], best["slide_id"], user_id, "similarity", round(best["similarity"], 4))
 
     return {"found": False}
 

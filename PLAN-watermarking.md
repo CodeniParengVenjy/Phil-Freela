@@ -50,6 +50,8 @@ Vercel's free plan (500 MB bundle, 4.5 MB per request, 5 minutes, 1 CPU).
 5. ViT copy check + admin Flagged Content page (pgvector).
 6. Documents: invisible characters, footer, MiniLM copy check, extraction.
 7. Video watermarking: MOV support, convert to 720p MP4, HiDDeN per frame.
+8. Documents (PDF, DOCX, TXT) in Post a Service slideshows.
+9. Ownership check when posting photos and videos (reads the hidden code first).
 
 ## Current step
 
@@ -310,6 +312,12 @@ What Step 7 does:
 - Check Ownership > Video tab (`POST /watermarks/extract-video`): 16 frames
   read together (their decoder scores added up bit by bit).
 - `vercel.json`: maxDuration 300 seconds.
+- Deploy fix (commit 0527158): imageio-ffmpeg's Linux package includes the
+  whole FFmpeg program (80 MB), which made the service about 537 MB, over
+  Vercel's 500 MB limit, so the first deploy failed. On Linux the package is
+  now installed without it, `get_models.py` adds FFmpeg xz-compressed (21 MB,
+  fingerprint checked), and `watermark_video.py` unpacks it to the temporary
+  folder the first time a video comes in (about 3 seconds). Live since then.
 
 Step 7 test results (30-second 1080p test video with sound, dark 3D render):
 - Speed on ONE CPU core (like Vercel): whole upload about 25 seconds
@@ -339,18 +347,56 @@ extract-video, copy check over several frames), `requirements.txt`,
 `lib/aiService.js` (`checkVideoOwnership`),
 `components/VideoOwnershipCheck.jsx`, `views/CheckOwnershipView.jsx`.
 
+Step 8 (Documents in Post a Service): built and pushed 2026-09-29 (a
+classmate couldn't post a PDF in a service; the user chose "Post a Service
+too" and said "continue"). Database: migration "service_documents" is
+applied, so don't run `supabase_service_documents_schema.sql` again. Still
+needs a live test.
+
+What Step 8 does:
+- Post a Service's picker also takes PDF, DOCX and TXT (up to 4 MB), next to
+  photos and videos (same 10 per service / 50 per freelancer limits).
+  Portfolio projects still take photos and videos only (they have "Writing").
+- `POST /slides` with `document`: the same as portfolio writing (only the
+  text, the footer, the invisible code, the text copy check), saved as a
+  UTF-8 `.txt` in slide-media (media_type "document"). The helpers
+  `check_copied_writing` and `watermark_writing` are shared with
+  `POST /portfolio/documents`.
+- Slideshow: a document slide shows the start of its text and a "Read
+  document" button that opens the whole text (`MediaCarousel.jsx`).
+- Copy check works across both kinds: `document_embeddings` rows belong to a
+  portfolio document or a document slide; `closest_document_pieces` also
+  returns `slide_id`. Matches across the two tables are stored in
+  `media_slides.matched_item_id` / `portfolio_items.matched_slide_id`, which
+  have NO foreign key on purpose (a second link between the two tables would
+  make the website's slides-of-a-project lookups ambiguous).
+- Check Ownership > Text also finds service documents ("From their service ...").
+- Admin > Flagged Content now shows every kind of slide: photos, videos (a
+  Step 7 bug: flagged videos showed as a broken picture) and document text,
+  plus matches between service and portfolio documents.
+
+Step 8 test results (fake database): DOCX, PDF and TXT saved with the footer
+and the code (code and text pieces linked to the slide); someone else's copy
+flagged by its code (1.0) and retyped with words changed by meaning (0.995);
+a portfolio essay posted in someone else's service and a service document
+copied into someone else's portfolio both flagged with the right original;
+different writing stays up; Check Ownership finds a copied sentence by code
+and retyped text by meaning, pointing to the service; too short, scanned PDF,
+binary junk, two files at once, and someone else's service refused. The Step
+6 document tests and Step 7 video tests still pass.
+
+Step 8 files: `database/supabase_service_documents_schema.sql`,
+`ai-service/main.py`, `client/src/lib/slides.js`, `lib/aiService.js`,
+`components/SlidePicker.jsx`, `MediaCarousel.jsx`, `slides.css`,
+`ServiceCard.jsx`, `TextOwnershipCheck.jsx`, `views/ServicesView.jsx`,
+`admin/views/AdminFlaggedView.jsx`.
+
 ## Reminders for later steps
 
-- PROPOSED 2026-09-28, waiting for the user's OK (a classmate couldn't
-  post a PDF in a service; the user chose "Post a Service too" and "Also
-  check on posting"):
-  - Step 8: PDF, DOCX and TXT as slides in Post a Service (text only, same
-    invisible code, footer and text copy check as portfolio writing; saved as
-    a small .txt in slide-media; a page card in the slideshow that opens a
-    reader; Check Ownership > Text finds them too).
-  - Step 9: when a photo or video is posted, read any hidden code already in
-    it first; another freelancer's code = flagged for an admin (documents
-    already do this). Keep the Check Ownership menu page.
+- NEXT: Step 9 (approved 2026-09-29 with Step 8; the user chose "Also check
+  on posting"): when a photo or video is posted, read any hidden code already
+  in it first; another freelancer's code = flagged for an admin (documents
+  already do this). Keep the Check Ownership menu page.
 
 - LATER (user said "later", 2026-09-28), two plagiarism gaps:
   1. Flagged Content: add "Keep this one, remove the other" for when the

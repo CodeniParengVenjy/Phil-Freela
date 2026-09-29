@@ -121,7 +121,7 @@ export default function TextOwnershipCheck() {
             <li className="mb-1">
               <i className="bi bi-file-earmark-text me-2"></i>
               {result.document
-                ? <>From their document <strong className="text-white">"{result.document.title}"</strong></>
+                ? <>From their {result.document.kind === "service" ? "service" : "document"} <strong className="text-white">"{result.document.title || "Untitled"}"</strong></>
                 : "The document it came from has been deleted, but the hidden code still points to this freelancer."}
             </li>
             {result.uploaded_at && <li className="mb-1"><i className="bi bi-calendar3 me-2"></i>Posted on PhilFreela on {new Date(result.uploaded_at).toLocaleDateString()}</li>}

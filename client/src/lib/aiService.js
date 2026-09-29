@@ -162,18 +162,19 @@ export async function checkTextOwnership({ text, file }) {
   return request("/watermarks/extract-text", { method: "POST", headers: await authHeader(), body: form });
 }
 
-// Adds one photo (a File) or one video (its path in the "slide-uploads"
-// bucket) to the end of a service's or portfolio project's slideshow (pass
-// serviceId or portfolioItemId). promo: it's an ad, so no visible watermark.
-// Returns the saved slide: { id, position, media_type, file_path, watermarked,
-// promo }. See lib/slides.js.
-export async function addSlide({ serviceId, portfolioItemId, image, videoPath, promo = false }) {
+// Adds one photo (a File), one video (its path in the "slide-uploads" bucket)
+// or one document (a PDF, DOCX or TXT File) to the end of a service's or
+// portfolio project's slideshow (pass serviceId or portfolioItemId). promo:
+// it's an ad, so no visible watermark. Returns the saved slide: { id,
+// position, media_type, file_path, watermarked, promo, status }. See lib/slides.js.
+export async function addSlide({ serviceId, portfolioItemId, image, videoPath, document, promo = false }) {
   const form = new FormData();
   if (serviceId) form.append("service_id", serviceId);
   if (portfolioItemId) form.append("portfolio_item_id", portfolioItemId);
   form.append("promo", promo ? "true" : "false");
   if (image) form.append("image", image, image.name);
   if (videoPath) form.append("video_path", videoPath);
+  if (document) form.append("document", document, document.name);
   return request("/slides", { method: "POST", headers: await authHeader(), body: form });
 }
 

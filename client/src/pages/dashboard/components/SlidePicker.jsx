@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { MAX_SLIDES, SLIDE_ACCEPT, isVideoFile } from "../../../lib/slides";
+import { MAX_SLIDES, SLIDE_ACCEPT, isDocumentFile, isVideoFile } from "../../../lib/slides";
 import "./slides.css";
+
+// A picked document's tile: an icon and its type (it has no picture).
+function DocumentThumb({ file }) {
+  const extension = file.name.split(".").pop().toUpperCase();
+  return (
+    <div className="slide-picker-preview slide-picker-document">
+      <i className="bi bi-file-earmark-text"></i>
+      <span>{extension}</span>
+    </div>
+  );
+}
 
 // A picked file's small preview, through a temporary browser link that is
 // freed again when the file is removed.
@@ -25,8 +36,10 @@ function SlideThumb({ file }) {
 // of Files) and removals through onRemove (a key). Slides keep the order they
 // were picked in. With onTogglePromo, each file also gets a Protected / Promo
 // switch: a promo (an ad, like "Are you looking for a video editor?") gets no
-// visible watermark.
-export default function SlidePicker({ items, onAdd, onRemove, onTogglePromo, hint, error, disabled }) {
+// visible watermark (documents have no switch: their watermark is the footer
+// and the invisible code). accept / addLabel: which files it offers (default:
+// photos and videos).
+export default function SlidePicker({ items, onAdd, onRemove, onTogglePromo, hint, error, disabled, accept = SLIDE_ACCEPT, addLabel = "Add photos or videos" }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const canAdd = !disabled && items.length < MAX_SLIDES;
@@ -55,12 +68,12 @@ export default function SlidePicker({ items, onAdd, onRemove, onTogglePromo, hin
 
   return (
     <div>
-      <input ref={inputRef} type="file" multiple className="d-none" accept={SLIDE_ACCEPT} onChange={handleInputChange} />
+      <input ref={inputRef} type="file" multiple className="d-none" accept={accept} onChange={handleInputChange} />
 
       <div className={`slide-picker${dragging ? " is-dragging" : ""}`} {...dragProps}>
         {items.map(({ key, file, promo }, index) => (
           <div key={key} className="slide-picker-tile" title={file.name}>
-            <SlideThumb file={file} />
+            {isDocumentFile(file) ? <DocumentThumb file={file} /> : <SlideThumb file={file} />}
             <span className="slide-picker-number">{index + 1}</span>
             {isVideoFile(file) && <i className="bi bi-play-circle-fill slide-picker-video-icon"></i>}
             {!disabled && (
@@ -68,7 +81,7 @@ export default function SlidePicker({ items, onAdd, onRemove, onTogglePromo, hin
                 <i className="bi bi-x-lg"></i>
               </button>
             )}
-            {onTogglePromo && (
+            {onTogglePromo && !isDocumentFile(file) && (
               <button
                 type="button"
                 className={`slide-picker-promo${promo ? " is-promo" : ""}`}
@@ -87,7 +100,7 @@ export default function SlidePicker({ items, onAdd, onRemove, onTogglePromo, hin
         {canAdd && (
           <button type="button" className={`slide-picker-add${error ? " has-error" : ""}`} onClick={() => inputRef.current?.click()}>
             <i className="bi bi-plus-lg"></i>
-            <span>{dragging ? "Drop them here" : items.length ? "Add more" : "Add photos or videos"}</span>
+            <span>{dragging ? "Drop them here" : items.length ? "Add more" : addLabel}</span>
           </button>
         )}
       </div>
