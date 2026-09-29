@@ -119,6 +119,11 @@
   transform: scaleX(-1);
 }
 
+/* The back camera isn't mirrored (text would read backwards). */
+.call-local-video-back {
+  transform: none;
+}
+
 .call-window-small .call-local-video {
   right: 0.5rem;
   bottom: 0.5rem;

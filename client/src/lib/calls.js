@@ -60,6 +60,9 @@ const FINISHED = ["declined", "missed", "ended"];
 //              "connecting" -> "active"; "ended" shows `message` briefly
 //   kind, conversationId, other { id, name, avatarPath }
 //   localStream, remoteStream, muted, cameraOff, connectedAt (for the timer)
+//   facing           which camera is on: "user" (front) or "environment" (back)
+//   canSwitchCamera  the device has a front and a back camera (phones)
+//   switchingCamera  busy switching between them
 //   connectingAt     when "Connecting..." started (for "Still connecting...")
 //   remoteCameraOff  the other person turned their camera off
 //   reconnecting     the connection dropped; waiting for it to come back
@@ -134,7 +137,8 @@ async function getMedia(kind) {
   try {
     return await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: kind === "video" ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
+      // Phones start with the front camera.
+      video: kind === "video" ? { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } : false
     });
   } catch (error) {
     if (error.name === "NotAllowedError") {
@@ -176,6 +180,24 @@ const hasRelay = (servers) => servers.some((server) => [].concat(server.urls).so
 
 function stopStream(stream) {
   stream?.getTracks().forEach((track) => track.stop());
+}
+
+// Which way the camera faces and whether there's another one to switch to.
+// Laptop webcams don't say which way they face, so only phones and tablets
+// (front + back camera) get the Flip button.
+async function cameraInfo(stream) {
+  const facing = stream.getVideoTracks()[0]?.getSettings().facingMode;
+  if (!facing) return { facing: "user", canSwitchCamera: false };
+  const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+  return { facing, canSwitchCamera: devices.filter((device) => device.kind === "videoinput").length > 1 };
+}
+
+// Opens the front ("user") or back ("environment") camera, video only.
+async function openCamera(facing) {
+  const media = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { exact: facing }, width: { ideal: 1280 }, height: { ideal: 720 } }
+  });
+  return media.getVideoTracks()[0];
 }
 
 // A small side channel next to the voice and video, also straight between
@@ -374,6 +396,7 @@ export async function startCall({ conversationId, kind, other }) {
     localStream = media;
     if (!isCurrent(key)) return stopStream(localStream); // cancelled meanwhile
     updateCall(key, { localStream });
+    if (kind === "video") cameraInfo(localStream).then((info) => updateCall(key, info));
 
     peer = createPeer(key, localStream, true, servers);
     await peer.setLocalDescription(await peer.createOffer());
@@ -412,6 +435,7 @@ export async function acceptCall() {
     localStream = media;
     if (!isCurrent(key)) return stopStream(localStream);
     updateCall(key, { localStream });
+    if (kind === "video") cameraInfo(localStream).then((info) => updateCall(key, info));
 
     peer = createPeer(key, localStream, false, servers);
     await peer.setRemoteDescription({ type: "offer", sdp: offer });
@@ -457,6 +481,52 @@ export function toggleCamera() {
   call.localStream.getVideoTracks().forEach((track) => { track.enabled = !cameraOff; });
   updateCall(call.key, { cameraOff });
   sendStatus(); // tell the other browser
+}
+
+// Front <-> back camera (phones). replaceTrack() swaps the camera inside the
+// running call, so the other person's view just changes and the call doesn't
+// restart.
+export async function switchCamera() {
+  if (!call?.canSwitchCamera || call.cameraOff || call.switchingCamera || !call.localStream) return;
+  const { key, localStream, facing } = call;
+  const oldTrack = localStream.getVideoTracks()[0];
+  updateCall(key, { switchingCamera: true });
+
+  // Many phones can't open both cameras at once, so the old one goes off first.
+  oldTrack?.stop();
+  let newTrack = null;
+  let newFacing = facing === "user" ? "environment" : "user";
+  try {
+    newTrack = await openCamera(newFacing);
+  } catch {
+    // Couldn't open it: turn the old camera back on instead.
+    newFacing = facing;
+    newTrack = await openCamera(facing).catch(() => null);
+  }
+  if (!isCurrent(key)) {
+    newTrack?.stop(); // the call ended meanwhile
+    return;
+  }
+  if (!newTrack) {
+    // No camera at all anymore: show the other person the picture instead.
+    updateCall(key, { switchingCamera: false, cameraOff: true });
+    sendStatus();
+    return;
+  }
+
+  // Send the new camera to the other person, and show it in the corner. A new
+  // stream object makes the corner video pick it up.
+  const sender = peer?.getSenders().find((s) => s.track === oldTrack);
+  await sender?.replaceTrack(newTrack).catch(() => {});
+  if (!isCurrent(key)) {
+    newTrack.stop();
+    return;
+  }
+  updateCall(key, {
+    localStream: new MediaStream([...localStream.getAudioTracks(), newTrack]),
+    facing: newFacing,
+    switchingCamera: false
+  });
 }
 
 // ---------------------------------------------------------------------------

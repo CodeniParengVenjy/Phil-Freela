@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Avatar from "../../../components/Avatar";
-import { acceptCall, hangUp, toggleCamera, toggleMute, useCall } from "../../../lib/calls";
+import { acceptCall, hangUp, switchCamera, toggleCamera, toggleMute, useCall } from "../../../lib/calls";
 import "./calls.css";
 
 const STAGE_TEXT = { starting: "Starting...", calling: "Calling...", connecting: "Connecting..." };
@@ -110,9 +110,10 @@ function CallWindow({ call, small, onToggleSize }) {
             <CallLoading text="Weak connection..." note={small ? "" : "Waiting for a better connection."} />
           )}
 
-          {/* Your own camera, small in the corner (mirrored, like a mirror). */}
+          {/* Your own camera, small in the corner. The front camera is
+              mirrored (like a mirror); the back camera isn't. */}
           {isVideo && call.localStream && !call.cameraOff && (
-            <StreamPlayer stream={call.localStream} muted className="call-local-video" />
+            <StreamPlayer stream={call.localStream} muted className={`call-local-video${call.facing === "environment" ? " call-local-video-back" : ""}`} />
           )}
         </div>
 
@@ -135,6 +136,16 @@ function CallWindow({ call, small, onToggleSize }) {
                   pressed={call.cameraOff}
                   disabled={!call.localStream}
                   onClick={toggleCamera}
+                />
+              )}
+              {/* Front <-> back camera, only on devices that have both (phones).
+                  Not in the small window: four buttons don't fit there. */}
+              {isVideo && call.canSwitchCamera && !small && (
+                <CallButton
+                  icon="bi-arrow-repeat"
+                  label="Flip"
+                  disabled={call.cameraOff || call.switchingCamera}
+                  onClick={switchCamera}
                 />
               )}
               <CallButton icon="bi-telephone-x-fill" label={live ? "Hang up" : "Cancel"} color="red" onClick={() => hangUp()} />
