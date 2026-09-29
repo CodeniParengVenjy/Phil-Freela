@@ -52,9 +52,11 @@ async function callerOptions(form, token) {
   return await authHeader();
 }
 
-// All photos: the ID (front, and back unless it's a passport) and the three
-// face scan frames (looking straight, then turned each way).
-function photoForm({ idType, idPhoto, idBack, selfie, selfieLeft, selfieRight }) {
+// All photos: the ID (front, and back unless it's a passport) and the face
+// scan frames (looking straight, then turned fully each way). The two
+// "halfway" frames, taken during each turn, are only used by the AI to check
+// it's the same person throughout; they aren't saved.
+function photoForm({ idType, idPhoto, idBack, selfie, selfieLeft, selfieRight, selfieLeftHalf, selfieRightHalf }) {
   const form = new FormData();
   form.append("id_type", idType);
   form.append("id_photo", idPhoto, "id-front.jpg");
@@ -62,6 +64,10 @@ function photoForm({ idType, idPhoto, idBack, selfie, selfieLeft, selfieRight })
   form.append("selfie", selfie, "scan-straight.jpg");
   form.append("selfie_left", selfieLeft, "scan-left.jpg");
   form.append("selfie_right", selfieRight, "scan-right.jpg");
+  if (selfieLeftHalf && selfieRightHalf) {
+    form.append("selfie_left_half", selfieLeftHalf, "scan-left-half.jpg");
+    form.append("selfie_right_half", selfieRightHalf, "scan-right-half.jpg");
+  }
   return form;
 }
 

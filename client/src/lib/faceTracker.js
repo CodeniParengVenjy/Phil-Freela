@@ -30,7 +30,10 @@ export function loadFaceTracker() {
           baseOptions: { modelAssetPath: modelUrl, delegate },
           runningMode: "VIDEO",
           // Up to 2 faces, so the scan can say "only one person should be in view".
-          numFaces: 2
+          numFaces: 2,
+          // Also report each face's 3D position and rotation, which gives the
+          // head's turn in degrees (see headYaw below).
+          outputFacialTransformationMatrixes: true
         });
       // The graphics chip (GPU) is faster; fall back to the processor if it's not available.
       try {
@@ -46,10 +49,22 @@ export function loadFaceTracker() {
   return trackerPromise;
 }
 
+// How far the head is turned left or right, in degrees (0 = facing the
+// camera; + one way, - the other). It comes from the face's rotation, which
+// MediaPipe works out from the 3D shape of the face mesh. "matrix" is the
+// face's 4x4 transformation matrix (16 numbers, column by column).
+export function headYaw(matrix) {
+  const m = matrix.data;
+  // The rotation around the up-down axis: atan2 of the rotation matrix's
+  // top-right and bottom-right entries.
+  return (Math.atan2(m[8], m[10]) * 180) / Math.PI;
+}
+
 // Measures one face from its points (all as fractions of the camera picture).
 //   turn:  0 = looking straight; it grows toward +1 or -1 as the head turns.
 //          Looking straight, the nose tip sits halfway between the two edges
-//          of the face; turning moves it toward one edge.
+//          of the face; turning moves it toward one edge. (A rough measure
+//          that tops out around a 40 degree turn; the face scan uses headYaw.)
 //   width: how much of the picture's width the face takes up.
 //   centerX / centerY: where the face is (0.5 = middle of the picture).
 export function measureFace(points) {

@@ -185,11 +185,12 @@ def get_caller_user_id(authorization, token):
     return get_user_id(authorization)
 
 
-def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, selfie_right):
+def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, selfie_right, selfie_left_half=None, selfie_right_half=None):
     """Shared by the computer and phone (QR) uploads. Re-runs every check
     (the website runs them step by step too, but it can't be trusted to),
     compares the faces, saves the photos, and adds a "pending" verification
-    for an admin."""
+    for an admin. The two "halfway" face scan frames are only used for the
+    same-person check and aren't saved."""
     if id_type not in ID_TYPES:
         raise HTTPException(400, "Please choose a valid ID type.")
     # Both sides of the card are required; passports have no card back.
@@ -202,14 +203,17 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
     selfie_image = read_image(selfie, "face scan")
     left_image = read_image(selfie_left, "face scan")
     right_image = read_image(selfie_right, "face scan")
+    has_halves = selfie_left_half is not None and selfie_right_half is not None
+    left_half = read_image(selfie_left_half, "face scan") if has_halves else None
+    right_half = read_image(selfie_right_half, "face scan") if has_halves else None
 
     run_photo_check(check_id_front, id_image)
     if id_back_image is not None:
         run_photo_check(check_id_back, id_image, id_back_image)
-    run_photo_check(check_face_scan, selfie_image, left_image, right_image)
+    run_photo_check(check_face_scan, selfie_image, left_image, right_image, left_half, right_half)
 
     try:
-        result = check_faces(id_image, selfie_image, left_image, right_image)
+        result = check_faces(id_image, selfie_image, left_image, right_image, left_half, right_half)
     except NoFaceError as error:
         # Nothing is saved; the user just retakes the photo.
         raise HTTPException(422, str(error))
@@ -350,11 +354,13 @@ def submit_verification(
     selfie_left: UploadFile = File(...),
     selfie_right: UploadFile = File(...),
     id_back: UploadFile | None = File(default=None),
+    selfie_left_half: UploadFile | None = File(default=None),
+    selfie_right_half: UploadFile | None = File(default=None),
     authorization: str | None = Header(default=None),
 ):
     """A logged-in user sends their ID photos and face scan."""
     user_id = get_user_id(authorization)
-    return handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, selfie_right)
+    return handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, selfie_right, selfie_left_half, selfie_right_half)
 
 
 @app.post("/phone-links")
@@ -384,13 +390,15 @@ def submit_from_phone(
     selfie_left: UploadFile = File(...),
     selfie_right: UploadFile = File(...),
     id_back: UploadFile | None = File(default=None),
+    selfie_left_half: UploadFile | None = File(default=None),
+    selfie_right_half: UploadFile | None = File(default=None),
 ):
     """The phone sends the photos. The QR token takes the place of a login."""
     link = find_valid_link(token)
     if not link:
         raise HTTPException(410, "This link has expired or was already used. Make a new QR code on your computer.")
 
-    result = handle_submission(link["user_id"], id_type, id_photo, id_back, selfie, selfie_left, selfie_right)
+    result = handle_submission(link["user_id"], id_type, id_photo, id_back, selfie, selfie_left, selfie_right, selfie_left_half, selfie_right_half)
 
     # Mark it used only after success, so a rejected photo can be retaken.
     supabase.table("verification_links").update({"used_at": datetime.now(timezone.utc).isoformat()}).eq("token", token).execute()

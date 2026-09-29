@@ -1,12 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { loadFaceTracker, measureFace } from "../../../lib/faceTracker";
+import { headYaw, loadFaceTracker, measureFace } from "../../../lib/faceTracker";
 
-// How the scan decides (see measureFace in lib/faceTracker.js). Picked by
-// measuring sample photos: straight faces measured about -0.07 to +0.05, and
-// clearly turned heads 0.5 or more. The turn asked for is bigger than the AI
-// service's own minimum, so a scan that passes here also passes there.
-const STRAIGHT_MAX_TURN = 0.15;
-const MIN_TURN = 0.45;
+// How the scan decides, using how far the head is turned in degrees (headYaw
+// in lib/faceTracker.js; 0 = facing the camera). Sample photos of people
+// facing the camera measured within about 8 degrees, slightly turned heads
+// 8 to 15.
+// Looking straight: within this many degrees.
+const STRAIGHT_MAX_YAW = 10;
+// A full turn: at least this many degrees (like looking toward your
+// shoulder), held for a few frames so the photo is steady. The AI service
+// checks the turn again on the saved photos.
+const FULL_TURN_YAW = 45;
+const HOLD_TURN_FRAMES = 4;
+// On the way to each full turn, one "halfway" photo is kept (15 degrees or
+// more). The AI compares faces reliably when they look mostly toward the
+// camera, but not full side views, so it uses these to check it's the same
+// person throughout the scan. They're only used for that check, not saved.
+const HALF_TURN_YAW = 15;
 // The face must take up at least this much of the picture's width.
 const MIN_FACE_WIDTH = 0.12;
 // Frames in a row the face must stay straight and still (about half a second).
@@ -19,8 +29,8 @@ const STUCK_MS = 8000;
 
 const STEPS = [
   { prompt: "Look straight at the camera", icon: "bi-person-bounding-box" },
-  { prompt: "Slowly turn your head to the left", icon: "bi-arrow-left-circle" },
-  { prompt: "Now slowly turn your head to the right", icon: "bi-arrow-right-circle" }
+  { prompt: "Turn your head all the way to the left", icon: "bi-arrow-left-circle" },
+  { prompt: "Now turn all the way to the right", icon: "bi-arrow-right-circle" }
 ];
 
 // Saves a copy of a checked snapshot as a JPEG. The saved photo isn't mirrored.
@@ -43,11 +53,12 @@ function cameraErrorMessage(err) {
   return "Couldn't start the face scan. Close other apps using the camera, then try again.";
 }
 
-// Live face scan: the camera shows an oval guide, and the scan captures three
-// frames by itself: looking straight, then turned one way, then the other.
-// A printed photo or a picture on a screen can't turn its head, so this is a
-// basic "liveness" check. Calls onComplete({ straight, left, right }) with the
-// three frames as JPEG Blobs.
+// Live face scan: the camera shows an oval guide, and the scan takes the
+// photos by itself: looking straight, then turned fully one way, then the
+// other. A printed photo or a picture on a screen can't turn its head, so
+// this is a basic "liveness" check. Calls onComplete({ straight, left, right,
+// leftHalf, rightHalf }) with the photos as JPEG Blobs ("left" is the first
+// turn and "right" the second; the "Half" ones are the halfway photos).
 export default function FaceScan({ onComplete, onCancel }) {
   const videoRef = useRef(null);
   // "loading" -> "scanning" -> "done", or "error".
@@ -55,6 +66,8 @@ export default function FaceScan({ onComplete, onCancel }) {
   const [error, setError] = useState("");
   const [step, setStep] = useState(0);
   const [hint, setHint] = useState("");
+  // How far toward a full turn the head is, 0 to 100 (for the progress bar).
+  const [turnProgress, setTurnProgress] = useState(0);
   // Bumped by "Try again" to restart everything.
   const [attempt, setAttempt] = useState(0);
   // The latest onComplete, without restarting the camera when it changes.
@@ -68,12 +81,24 @@ export default function FaceScan({ onComplete, onCancel }) {
     let stream = null;
     let frameId = 0;
     // Everything the scan tracks between camera frames.
-    const scan = { step: 0, frames: [], firstSide: 0, still: 0, lastSeen: 0, stepStartedAt: 0, lastVideoTime: -1, hint: "" };
+    const scan = {
+      step: 0, frames: [], halves: [], sideHalves: {}, firstSide: 0, still: 0, turnHold: 0,
+      lastSeen: 0, stepStartedAt: 0, lastVideoTime: -1, hint: "", progress: 0
+    };
 
     const say = (text) => {
       if (scan.hint !== text) {
         scan.hint = text;
         setHint(text);
+      }
+    };
+
+    // Updates the progress bar in 5% steps, so it doesn't redraw every frame.
+    const showProgress = (fraction) => {
+      const percent = Math.round(Math.min(1, fraction) * 20) * 5;
+      if (scan.progress !== percent) {
+        scan.progress = percent;
+        setTurnProgress(percent);
       }
     };
 
@@ -85,35 +110,51 @@ export default function FaceScan({ onComplete, onCancel }) {
     const goToStep = (next) => {
       scan.step = next;
       scan.still = 0;
+      scan.turnHold = 0;
+      // Each turn keeps its own halfway photo, taken during that turn.
+      scan.sideHalves = {};
       scan.stepStartedAt = performance.now();
+      showProgress(0);
       setStep(next);
     };
 
     const restart = (reason) => {
       scan.frames = [];
+      scan.halves = [];
       scan.firstSide = 0;
       goToStep(0);
       say(reason);
     };
 
-    const capture = (snapshot) => {
-      scan.frames.push(saveSnapshot(snapshot));
+    // Keeps one photo (a Promise of a JPEG) and moves on to the next step.
+    const addPhoto = (photo) => {
+      scan.frames.push(photo);
       if (scan.step < 2) {
         goToStep(scan.step + 1);
         say("");
         return;
       }
-      // All three frames taken.
+      // All photos taken.
       scan.step = 3;
       stopCamera();
       setStatus("done");
-      Promise.all(scan.frames).then(([straight, left, right]) => {
-        if (!cancelled) onCompleteRef.current({ straight, left, right });
+      Promise.all([Promise.all(scan.frames), Promise.all(scan.halves)]).then(([[straight, left, right], [leftHalf, rightHalf]]) => {
+        if (!cancelled) onCompleteRef.current({ straight, left, right, leftHalf, rightHalf });
       });
     };
 
+    // A full turn was held long enough: keep it, with the halfway photo from
+    // the same turn. (If the head turned so fast that no halfway frame was
+    // seen, the full turn itself stands in for it.)
+    const captureTurn = (snapshot, side) => {
+      const full = saveSnapshot(snapshot);
+      scan.halves.push(scan.sideHalves[side] || full);
+      if (scan.step === 1) scan.firstSide = side;
+      addPhoto(full);
+    };
+
     // Runs for every new camera frame (a snapshot of it).
-    const handleFrame = (snapshot, faces, now) => {
+    const handleFrame = (snapshot, faces, matrices, now) => {
       if (faces.length === 0) {
         if (scan.step > 0 && now - scan.lastSeen > LOST_FACE_MS) {
           restart("We lost your face, so the scan started over. Keep your face inside the oval.");
@@ -121,16 +162,19 @@ export default function FaceScan({ onComplete, onCancel }) {
           say("Show your face inside the oval.");
         }
         scan.still = 0;
+        scan.turnHold = 0;
         return;
       }
       if (faces.length > 1) {
         say("Only one person should be in view.");
         scan.still = 0;
+        scan.turnHold = 0;
         return;
       }
 
       scan.lastSeen = now;
       const face = measureFace(faces[0]);
+      const yaw = matrices?.[0] ? headYaw(matrices[0]) : 0;
 
       if (scan.step === 0) {
         let problem = "";
@@ -138,7 +182,7 @@ export default function FaceScan({ onComplete, onCancel }) {
           problem = "Move a little closer to the camera.";
         } else if (Math.abs(face.centerX - 0.5) > 0.25 || Math.abs(face.centerY - 0.5) > 0.3) {
           problem = "Center your face inside the oval.";
-        } else if (Math.abs(face.turn) > STRAIGHT_MAX_TURN) {
+        } else if (Math.abs(yaw) > STRAIGHT_MAX_YAW) {
           problem = "Look straight at the camera.";
         }
 
@@ -149,22 +193,36 @@ export default function FaceScan({ onComplete, onCancel }) {
         }
         scan.still += 1;
         say("Hold still...");
-        if (scan.still >= HOLD_STILL_FRAMES) capture(snapshot);
+        if (scan.still >= HOLD_STILL_FRAMES) addPhoto(saveSnapshot(snapshot));
         return;
       }
 
-      const turnedEnough = Math.abs(face.turn) >= MIN_TURN;
-      const side = Math.sign(face.turn);
-      if (scan.step === 1 && turnedEnough) {
-        scan.firstSide = side;
-        capture(snapshot);
-      } else if (scan.step === 2 && turnedEnough && side !== scan.firstSide) {
-        capture(snapshot);
-      } else if (scan.step === 2 && turnedEnough) {
-        say("That's the same side. Turn your head the other way.");
-      } else if (now - scan.stepStartedAt > STUCK_MS) {
-        say("Turn your head a little further.");
+      // Turn steps. The first turn can go either way (some phones mirror the
+      // camera, so "left" can look like "right"); the second must go the other way.
+      const side = Math.sign(yaw);
+      const amount = Math.abs(yaw);
+      if (scan.step === 2 && side === scan.firstSide) {
+        scan.turnHold = 0;
+        showProgress(0);
+        if (amount >= HALF_TURN_YAW) say("That's the same side. Turn your head the other way.");
+        return;
       }
+
+      showProgress(amount / FULL_TURN_YAW);
+      if (amount >= HALF_TURN_YAW && amount < FULL_TURN_YAW && !scan.sideHalves[side]) {
+        scan.sideHalves[side] = saveSnapshot(snapshot);
+      }
+
+      if (amount >= FULL_TURN_YAW) {
+        scan.turnHold += 1;
+        say("Hold it there...");
+        if (scan.turnHold >= HOLD_TURN_FRAMES) captureTurn(snapshot, side);
+        return;
+      }
+      scan.turnHold = 0;
+      if (amount >= HALF_TURN_YAW) say("Keep turning...");
+      else if (now - scan.stepStartedAt > STUCK_MS) say("Turn further, like you're looking toward your shoulder.");
+      else say("");
     };
 
     (async () => {
@@ -204,7 +262,8 @@ export default function FaceScan({ onComplete, onCancel }) {
             }
             snapshotContext.drawImage(video, 0, 0);
             const now = performance.now();
-            handleFrame(snapshot, tracker.detectForVideo(snapshot, now).faceLandmarks, now);
+            const result = tracker.detectForVideo(snapshot, now);
+            handleFrame(snapshot, result.faceLandmarks, result.facialTransformationMatrixes, now);
           }
           if (scan.step <= 2) frameId = requestAnimationFrame(tick);
         };
@@ -232,6 +291,7 @@ export default function FaceScan({ onComplete, onCancel }) {
     setError("");
     setStep(0);
     setHint("");
+    setTurnProgress(0);
     setStatus("loading");
     setAttempt((n) => n + 1);
   };
@@ -284,6 +344,18 @@ export default function FaceScan({ onComplete, onCancel }) {
               <><i className={`bi ${current.icon} me-2`}></i>{current.prompt}</>
             )}
           </p>
+
+          {/* How far the head has turned, so people know what "all the way" means. */}
+          {status === "scanning" && step > 0 && (
+            <div className="mx-auto mt-2" style={{ maxWidth: 360 }}>
+              <div className="progress bg-secondary bg-opacity-25" style={{ height: 8 }} role="progressbar"
+                aria-label="How far your head is turned" aria-valuenow={turnProgress} aria-valuemin={0} aria-valuemax={100}>
+                <div className="progress-bar" style={{ width: `${turnProgress}%`, background: turnProgress >= 100 ? "#22c55e" : "var(--accent-role)", transition: "width 0.15s" }}></div>
+              </div>
+              <p className="text-secondary fs-8 mt-1 mb-0">Turned: {turnProgress}%</p>
+            </div>
+          )}
+
           <p className="text-secondary fs-7 mb-3" style={{ minHeight: "1.5em" }} aria-live="polite">{status === "scanning" ? hint : ""}</p>
 
           {onCancel && status !== "done" && (

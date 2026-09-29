@@ -23,7 +23,8 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
   const [idType, setIdType] = useState("");
   const [front, setFront] = useState(EMPTY_SIDE);
   const [back, setBack] = useState(EMPTY_SIDE);
-  // { straight, left, right } once the face scan is done.
+  // { straight, left, right, leftHalf, rightHalf } once the face scan is done
+  // (the "Half" photos are only for the AI's same-person check).
   const [scan, setScan] = useState(null);
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -105,7 +106,9 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
         idBack: needsBack ? back.file : null,
         selfie: scan.straight,
         selfieLeft: scan.left,
-        selfieRight: scan.right
+        selfieRight: scan.right,
+        selfieLeftHalf: scan.leftHalf,
+        selfieRightHalf: scan.rightHalf
       });
     } catch (err) {
       setSubmitError(err.message);
@@ -191,7 +194,7 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
           </div>
         ) : (
           <>
-            <p className="text-secondary fs-7 mb-0">Take off sunglasses, masks or hats, and find good light. Then follow the instructions: the scan takes the photos by itself.</p>
+            <p className="text-secondary fs-7 mb-0">Take off sunglasses, masks or hats, and find good light. Then follow the instructions: look straight, then turn your head all the way to each side (like looking toward your shoulder). The scan takes the photos by itself.</p>
             <FaceScan onComplete={handleScanDone} />
           </>
         )

@@ -60,9 +60,9 @@ class PhotoProblem(Exception):
     """A photo isn't good enough; the message tells the user what to do."""
 
 
-def _biggest_face(image):
+def _biggest_face(image, side_view=False):
     """The biggest face in a photo as {"box": (x, y, w, h), "turn": number}, or None."""
-    face = find_biggest_face(to_pixels(image))
+    face = find_biggest_face(to_pixels(image), side_view)
     if face is None:
         return None
 
@@ -139,16 +139,20 @@ def check_id_back(front, back):
         raise PhotoProblem("This doesn't look like the back of an ID. Turn your ID over and take a photo of the back.")
 
 
-def check_face_scan(straight, turn_a, turn_b):
-    """The 3 face scan frames: looking straight, then turned both ways.
+def check_face_scan(straight, turn_a, turn_b, half_a=None, half_b=None):
+    """The face scan frames: looking straight, then turned fully both ways
+    (plus, from newer scans, a "halfway" frame taken during each turn).
 
     A printed photo or a picture on a screen can't turn its head, so this is
     a basic "liveness" check. Some phones mirror selfies, so "left" can look
     like "right"; what matters is that the two turns go opposite ways.
+    Turned frames can be side views, so they get the side-view face finding.
     """
-    faces = [_biggest_face(frame) for frame in (straight, turn_a, turn_b)]
+    halves = [frame for frame in (half_a, half_b) if frame is not None]
+    faces = [_biggest_face(straight)] + [_biggest_face(frame, side_view=True) for frame in (turn_a, turn_b, *halves)]
     if any(face is None for face in faces):
         raise PhotoProblem("Your face wasn't clear in the face scan. Please scan again in good light.")
+    faces = faces[:3]
 
     straight_turn, first_turn, second_turn = (face["turn"] for face in faces)
     if abs(straight_turn) > MAX_STRAIGHT_TURN:
