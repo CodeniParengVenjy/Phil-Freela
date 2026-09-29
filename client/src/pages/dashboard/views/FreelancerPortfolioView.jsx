@@ -7,7 +7,7 @@ import Avatar from "../../../components/Avatar";
 import PortfolioSection from "../components/PortfolioSection";
 
 // A freelancer's public page (/dashboard/freelancers/:freelancerId): their
-// name, Verified badge, a Message button, and their portfolio. Reached from
+// name, Verified badge, a Message button, their description, and their portfolio. Reached from
 // "by <name>" on Browse Services. The freelancer's @username is shown faintly
 // over their slides, so a screenshot still shows whose work it is.
 export default function FreelancerPortfolioView() {
@@ -21,7 +21,7 @@ export default function FreelancerPortfolioView() {
   useEffect(() => {
     let active = true;
     Promise.all([
-      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path").eq("id", freelancerId).maybeSingle(),
+      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, description").eq("id", freelancerId).maybeSingle(),
       fetchIsVerified(freelancerId)
     ]).then(([{ data }, isVerified]) => {
       if (!active) return;
@@ -67,6 +67,14 @@ export default function FreelancerPortfolioView() {
           </button>
         )}
       </div>
+
+      {/* The freelancer's own words about themselves (hidden until they write some). */}
+      {freelancer.description && (
+        <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
+          <h5 className="text-white fw-bold mb-2"><i className="bi bi-text-paragraph text-orange me-2"></i> Description</h5>
+          <p className="text-light-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{freelancer.description}</p>
+        </div>
+      )}
 
       <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
         {/* key: start fresh when moving from one freelancer's page to another's. */}

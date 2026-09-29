@@ -34,6 +34,30 @@ export async function saveDisplayName(userId, name) {
   return "";
 }
 
+// Longest profile description allowed -- the same limit as the database rule
+// (supabase_profile_description_schema.sql).
+export const MAX_DESCRIPTION_LENGTH = 1000;
+
+// Reads a user's description ("" when they haven't written one, null when it
+// couldn't be loaded). Any signed-in user can read it, so this also works for
+// someone else's profile.
+export async function fetchDescription(userId) {
+  const { data, error } = await supabase.from("profiles").select("description").eq("id", userId).maybeSingle();
+  if (error) return null;
+  return data?.description ?? "";
+}
+
+// Saves the description (Settings > Description). An empty one is allowed and
+// just clears it. Returns "" when saved, or a message to show the user.
+export async function saveDescription(userId, text) {
+  const description = text.trim();
+  if (description.length > MAX_DESCRIPTION_LENGTH) return `Your description can't be longer than ${MAX_DESCRIPTION_LENGTH} characters.`;
+
+  const { data, error } = await supabase.from("profiles").update({ description }).eq("id", userId).select("id");
+  if (error || !data?.length) return "Couldn't save your description. Please try again.";
+  return "";
+}
+
 // Ensures a `profiles` row exists for an authenticated user, returning the
 // route to send them to next.
 //

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { fetchIsVerified } from "../../../lib/verification";
+import { fetchDescription } from "../../../lib/profile";
 import PortfolioSection from "../components/PortfolioSection";
 import Avatar from "../../../components/Avatar";
 
@@ -11,12 +12,17 @@ export default function ProfileView() {
   const [skills, setSkills] = useState(initialSkills);
   // null while checking, then true/false (approved identity verification).
   const [verified, setVerified] = useState(null);
+  // undefined while loading, null if it couldn't load, "" if not written yet.
+  const [description, setDescription] = useState(undefined);
 
   useEffect(() => {
     if (!currentUserId) return;
     let active = true;
     fetchIsVerified(currentUserId).then((result) => {
       if (active) setVerified(result);
+    });
+    fetchDescription(currentUserId).then((text) => {
+      if (active) setDescription(text);
     });
     return () => { active = false; };
   }, [currentUserId]);
@@ -45,12 +51,16 @@ export default function ProfileView() {
 
               <div className="text-start bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary border-opacity-25 mb-4">
                 <h5 className="text-white fw-bold mb-2"><i className="bi bi-text-paragraph text-orange me-2"></i> Description</h5>
-                <p className="text-light-50 fs-7 mb-2">
-                  Passionate Filipino digital creative with over 5+ years of experience in video editing, high-converting social media ads, brand design, and modern web application development.
-                </p>
-                <p className="text-light-50 fs-7 mb-0">
-                  Dedicated to delivering top-tier quality, fast turnarounds, and creative excellence for clients across the Philippines and worldwide.
-                </p>
+                {description === undefined && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+                {description === null && <p className="text-secondary fs-7 mb-0">Couldn't load your description.</p>}
+                {description === "" && (
+                  <p className="text-secondary fs-7 mb-0">
+                    No description yet.{" "}
+                    <Link to="/dashboard/settings" className="text-role fw-bold text-decoration-none">Add one in Settings</Link>
+                  </p>
+                )}
+                {/* pre-line keeps the line breaks the user typed. */}
+                {description && <p className="text-light-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{description}</p>}
               </div>
 
               <div className="text-start mb-4">

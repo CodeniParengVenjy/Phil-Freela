@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { MAX_NAME_LENGTH, saveDisplayName } from "../../../lib/profile";
+import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, fetchDescription, saveDescription, saveDisplayName } from "../../../lib/profile";
 import { checkAvatarFile, uploadAvatar } from "../../../lib/avatar";
 import Avatar from "../../../components/Avatar";
 import VerificationStatusCard from "../components/VerificationStatusCard";
@@ -16,11 +16,27 @@ export default function SettingsView() {
   // dashboard is still loading.)
   const [nameInput, setNameInput] = useState(null);
   const shownName = nameInput ?? displayName;
+  // The description saved in the database (null while loading), and the
+  // box's text once it's edited (null = not edited, same idea as the name).
+  const [savedDescription, setSavedDescription] = useState(null);
+  const [descriptionInput, setDescriptionInput] = useState(null);
+  const shownDescription = descriptionInput ?? savedDescription ?? "";
+  // Save waits until the description has loaded, so an empty box can't be
+  // saved over the real one.
   const [saving, setSaving] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   // The picked picture, shown while it uploads.
   const [previewUrl, setPreviewUrl] = useState(null);
   const pictureInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    let active = true;
+    fetchDescription(currentUserId).then((text) => {
+      if (active) setSavedDescription(text);
+    });
+    return () => { active = false; };
+  }, [currentUserId]);
 
   // Frees the old preview's memory whenever it's replaced or the page closes.
   useEffect(() => () => {
@@ -52,8 +68,8 @@ export default function SettingsView() {
     showToast("Profile picture updated!");
   };
 
-  // Saves the name to the database (not just the screen), so it stays after
-  // a refresh and other users see it too.
+  // Saves the name and description to the database (not just the screen), so
+  // they stay after a refresh and other users see them too.
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId || saving) return;
@@ -67,6 +83,15 @@ export default function SettingsView() {
     }
     setDisplayName(shownName.trim());
     setNameInput(null);
+
+    const descriptionProblem = await saveDescription(currentUserId, shownDescription);
+    if (descriptionProblem) {
+      setSaving(false);
+      showToast(descriptionProblem);
+      return;
+    }
+    setSavedDescription(shownDescription.trim());
+    setDescriptionInput(null);
     setSaving(false);
     showToast("Settings saved successfully!");
   };
@@ -125,7 +150,25 @@ export default function SettingsView() {
                   </div>
 
                   <div>
-                    <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role" disabled={saving || !currentUserId}>
+                    <label className="form-label text-white-50 fw-semibold fs-7">Description:</label>
+                    <textarea
+                      className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                      rows={5}
+                      placeholder="Tell others about yourself: your skills, experience, and the kind of work you do or need."
+                      value={shownDescription}
+                      onChange={(e) => setDescriptionInput(e.target.value)}
+                      maxLength={MAX_DESCRIPTION_LENGTH}
+                      disabled={savedDescription === null}
+                    />
+                    <small className="text-secondary fs-8">
+                      {savedDescription === null
+                        ? "Loading your description..."
+                        : `${shownDescription.length}/${MAX_DESCRIPTION_LENGTH} characters. Everyone who views your profile can see this.`}
+                    </small>
+                  </div>
+
+                  <div>
+                    <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role" disabled={saving || !currentUserId || savedDescription === null}>
                       {saving ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
