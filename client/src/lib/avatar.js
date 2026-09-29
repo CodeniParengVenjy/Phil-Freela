@@ -37,11 +37,16 @@ export async function uploadAvatar(userId, file, oldPath) {
   // A new file name every time, so browsers don't keep showing the old picture.
   const path = `${userId}/${Date.now()}.jpg`;
   const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, picture, { contentType: "image/jpeg" });
-  if (uploadError) return { error: "Couldn't upload your picture. Please try again." };
+  if (uploadError) {
+    // The exact reason (e.g. a missing storage rule) shows in the browser console (F12).
+    console.error("Profile picture upload failed:", uploadError);
+    return { error: "Couldn't upload your picture. Please try again." };
+  }
 
   // .select("id") returns the updated row, so an empty result means nothing was saved.
   const { data, error } = await supabase.from("profiles").update({ avatar_path: path }).eq("id", userId).select("id");
   if (error || !data?.length) {
+    console.error("Saving the profile picture failed:", error || "no profile row was updated");
     await supabase.storage.from(BUCKET).remove([path]); // don't leave an unused file behind
     return { error: "Couldn't save your picture. Please try again." };
   }

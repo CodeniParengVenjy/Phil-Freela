@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import DashboardTopNav from "../components/DashboardTopNav";
 import DashboardOverlays from "../components/DashboardOverlays";
 import SuspensionBanner from "../components/SuspensionBanner";
+import Avatar from "../../../components/Avatar";
 import "../dashboard.css";
 
 const sidebarLinks = [
@@ -26,7 +27,7 @@ export default function FreelancerDashboardLayout({
   toast, closeToast, showToast,
   preview, openPreview, closePreview,
   roleConfirm, resolveRoleConfirm,
-  openChat, handleSignOut, switchRole, toggleSidebar
+  openChat, handleSignOut, switchRole, toggleSidebar, closeSidebar
 }) {
   // The welcome banner belongs on the dashboard home only, not every
   // sub-page (chat, inbox, profile, ...) that reuses this same layout.
@@ -41,9 +42,7 @@ export default function FreelancerDashboardLayout({
           <div className="sidebar-inner d-flex flex-column justify-content-between h-100 py-3 px-2">
             <div className="nav flex-column gap-2">
               <div className="sidebar-identity">
-                <span className="avatar-circle-sm bg-role text-white fw-bold d-flex align-items-center justify-content-center" style={{ width: 40, height: 40, fontSize: "1rem" }}>
-                  {displayName.charAt(0).toUpperCase()}
-                </span>
+                <Avatar path={avatarPath} name={displayName} size={40} />
                 <div className="d-flex flex-column overflow-hidden">
                   <span className="text-white fw-bold fs-7 text-truncate">{displayName}</span>
                   <span className="role-badge">Freelancer</span>
@@ -79,6 +78,8 @@ export default function FreelancerDashboardLayout({
             </div>
           </div>
         </aside>
+        {/* Only shows on phones while the menu is open; tapping it closes the menu. */}
+        <div className="sidebar-backdrop" onClick={closeSidebar} aria-hidden="true"></div>
 
         <main className="content-wrapper flex-grow-1 p-3 p-md-4">
           <SuspensionBanner suspension={suspension} />

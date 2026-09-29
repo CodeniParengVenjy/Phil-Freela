@@ -102,8 +102,8 @@ export default function ProjectDetailsView() {
         </div>
 
         <div className="pt-4 border-top border-secondary border-opacity-25">
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <div className="d-flex align-items-center gap-2">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <div className="d-flex flex-wrap align-items-center gap-2">
               <span className="badge bg-success text-white px-3 py-1 rounded-pill">Completed Deliverable</span>
               <span className="text-white-50 fs-7">Submitted by: <strong className="text-white">Peter Cruz</strong></span>
             </div>

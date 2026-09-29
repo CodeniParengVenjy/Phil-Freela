@@ -44,6 +44,8 @@ export function useDashboardShell() {
   const pathnameRef = useRef(location.pathname);
   useEffect(() => {
     pathnameRef.current = location.pathname;
+    // On a phone the menu covers the page, so close it once a link is tapped.
+    document.body.classList.remove("sidebar-open");
   }, [location.pathname]);
 
   useEffect(() => {
@@ -334,6 +336,11 @@ export function useDashboardShell() {
     document.body.classList.toggle(cls);
   }, []);
 
+  // Tapping the dark area beside the open phone menu closes it.
+  const closeSidebar = useCallback(() => {
+    document.body.classList.remove("sidebar-open");
+  }, []);
+
   return {
     displayName, setDisplayName, accountType, currentUserId, username,
     avatarPath, setAvatarPath,
@@ -343,6 +350,6 @@ export function useDashboardShell() {
     toast, closeToast, showToast,
     preview, openPreview, closePreview,
     roleConfirm, resolveRoleConfirm,
-    openChat, handleSignOut, switchRole, toggleSidebar
+    openChat, handleSignOut, switchRole, toggleSidebar, closeSidebar
   };
 }

@@ -17,8 +17,8 @@ export default function SettingsView() {
   const [nameInput, setNameInput] = useState(null);
   const shownName = nameInput ?? displayName;
   const [saving, setSaving] = useState(false);
-  // A picture that was picked but not saved yet; it's previewed until Save Changes.
-  const [pickedPicture, setPickedPicture] = useState(null);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  // The picked picture, shown while it uploads.
   const [previewUrl, setPreviewUrl] = useState(null);
   const pictureInputRef = useRef(null);
 
@@ -27,21 +27,33 @@ export default function SettingsView() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
-  const handlePicturePick = (event) => {
+  // The picture is saved as soon as it's picked. (It used to wait for Save
+  // Changes, so leaving the page first quietly dropped the new picture.)
+  const handlePicturePick = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = ""; // lets the same file be picked again later
-    if (!file) return;
+    if (!file || !currentUserId) return;
     const problem = checkAvatarFile(file);
     if (problem) {
       showToast(problem);
       return;
     }
-    setPickedPicture(file);
+
     setPreviewUrl(URL.createObjectURL(file));
+    setUploadingPicture(true);
+    const { path, error } = await uploadAvatar(currentUserId, file, avatarPath);
+    setUploadingPicture(false);
+    setPreviewUrl(null);
+    if (error) {
+      showToast(error);
+      return;
+    }
+    setAvatarPath(path);
+    showToast("Profile picture updated!");
   };
 
-  // Saves the name and the picked picture to the database (not just the
-  // screen), so they stay after a refresh and other users see them too.
+  // Saves the name to the database (not just the screen), so it stays after
+  // a refresh and other users see it too.
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId || saving) return;
@@ -55,19 +67,6 @@ export default function SettingsView() {
     }
     setDisplayName(shownName.trim());
     setNameInput(null);
-
-    if (pickedPicture) {
-      const { path, error } = await uploadAvatar(currentUserId, pickedPicture, avatarPath);
-      if (error) {
-        setSaving(false);
-        showToast(error);
-        return;
-      }
-      setAvatarPath(path);
-      setPickedPicture(null);
-      setPreviewUrl(null);
-    }
-
     setSaving(false);
     showToast("Settings saved successfully!");
   };
@@ -93,7 +92,7 @@ export default function SettingsView() {
             </div>
           </div>
 
-          <div className="col-md-8 border-start border-secondary border-opacity-25 ps-md-4">
+          <div className="col-md-8 settings-panel border-start border-secondary border-opacity-25 ps-md-4">
             <h4 className="text-white fw-bold mb-3">{activeSubNav}</h4>
 
             {activeSubNav === "Profile Settings" ? (
@@ -106,10 +105,10 @@ export default function SettingsView() {
                       <Avatar path={avatarPath} previewUrl={previewUrl} name={displayName} size={90} className="border border-2 border-secondary" />
                       <div className="d-flex flex-column gap-2">
                         <input type="file" className="d-none" ref={pictureInputRef} accept="image/jpeg,image/png,image/webp,image/gif" onChange={handlePicturePick} />
-                        <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => pictureInputRef.current?.click()} disabled={saving}>Upload Picture</button>
-                        <small className="text-secondary fs-8">
-                          {pickedPicture ? "Press Save Changes to keep this picture." : "JPG, PNG, WebP or GIF. Max 5 MB."}
-                        </small>
+                        <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => pictureInputRef.current?.click()} disabled={uploadingPicture || !currentUserId}>
+                          {uploadingPicture ? "Uploading..." : "Upload Picture"}
+                        </button>
+                        <small className="text-secondary fs-8">JPG, PNG, WebP or GIF. Max 5 MB.</small>
                       </div>
                     </div>
                   </div>

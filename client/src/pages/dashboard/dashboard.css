@@ -42,6 +42,10 @@ body.fixed-layout {
   background-color: var(--bg-dark);
   color: var(--text-main);
   height: 100vh;
+  /* dvh = the part of the screen a phone actually shows. Plain vh also counts
+     the space behind the browser's address bar, which hid the bottom of every
+     page (e.g. the Save Changes button). Older browsers skip this line. */
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -94,6 +98,7 @@ body.fixed-layout {
 .app-container {
   margin-top: var(--navbar-h);
   height: calc(100vh - var(--navbar-h));
+  height: calc(100dvh - var(--navbar-h));
   overflow: hidden;
 }
 
@@ -129,6 +134,7 @@ body.sidebar-collapsed .sidebar-wrapper {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
+  text-decoration: none; /* the menu items are links; no underline */
 }
 
 .sidebar-pill-btn i {
@@ -338,6 +344,30 @@ body.sidebar-collapsed .sidebar-wrapper {
   body.sidebar-open .sidebar-wrapper {
     margin-left: 0;
     box-shadow: 10px 0 30px rgba(0, 0, 0, 0.8);
+  }
+
+  /* Dark layer behind the open phone menu; tapping it closes the menu. */
+  body.sidebar-open .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: var(--navbar-h);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 999;
+  }
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+/* Settings: the line between the menu and the form only makes sense side by
+   side; on a phone they're stacked, so the line is removed. */
+@media (max-width: 767.98px) {
+  .settings-panel {
+    border-left: 0 !important;
   }
 }
 
