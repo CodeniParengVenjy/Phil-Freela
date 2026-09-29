@@ -38,6 +38,7 @@ from face_check import NoFaceError, check_faces, prepare_image
 from hidden_watermark import new_code, protect_photo, read_code, read_code_from_frames, read_uncropped_codes
 from listing_search import search_listings
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
+from recommendations import recommend
 from similarity import image_embedding
 from text_embedder import embed_texts
 from text_watermark import add_code as add_text_code
@@ -1167,3 +1168,22 @@ def search_posts(body: SearchRequest, authorization: str | None = Header(default
     except APIError:
         logging.exception("Search failed")
         raise HTTPException(503, "Search isn't available right now. Please try again.")
+
+
+# ---------------------------------------------------------------------------
+# "Recommended for you": the Hybrid recommendation system (content-based
+# filtering + collaborative filtering + ranking, see recommendations.py)
+# ---------------------------------------------------------------------------
+
+@app.get("/recommendations")
+def get_recommendations(authorization: str | None = Header(default=None)):
+    """The dashboard home's "Recommended for you": job posts for freelancers,
+    services for clients, best first, with the reasons they were picked.
+    Returns ids only; the website loads the posts itself, under the normal
+    database rules."""
+    user_id = get_user_id(authorization)
+    try:
+        return recommend(supabase, user_id)
+    except APIError:
+        logging.exception("Recommendations failed")
+        raise HTTPException(503, "Recommendations aren't available right now.")

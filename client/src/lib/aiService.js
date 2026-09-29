@@ -190,3 +190,12 @@ export async function searchListings(query) {
   });
   return body.results || [];
 }
+
+// "Recommended for you" (Hybrid recommendation system: content-based +
+// collaborative filtering + ranking): job posts for freelancers, services for
+// clients, best first. Returns { personalized, results: [{ type, id, score,
+// reasons }] }; the panel loads the posts itself. See
+// ai-service/recommendations.py.
+export async function getRecommendations() {
+  return request("/recommendations", { headers: await authHeader() });
+}
