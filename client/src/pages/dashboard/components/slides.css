@@ -335,3 +335,58 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ---- Full-screen view (a card's slides, big) ---- */
+
+.media-carousel-item.is-expandable {
+  cursor: zoom-in;
+}
+
+.media-carousel-expand {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-carousel-expand:hover,
+.media-carousel-expand:focus-visible {
+  background: rgba(0, 0, 0, 0.85);
+  outline: none;
+}
+
+.media-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 1rem 1rem;
+}
+
+.media-fullscreen-box {
+  position: relative;
+  width: min(1200px, 100%);
+}
+
+.media-fullscreen-close {
+  position: absolute;
+  top: -46px;
+  right: 0;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

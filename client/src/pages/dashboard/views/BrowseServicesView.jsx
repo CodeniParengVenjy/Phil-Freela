@@ -114,13 +114,15 @@ export default function BrowseServicesView() {
                   {/* The picture grows with the card (16:10) and shows the
                       whole photo ("contain"): trimming the edges used to cut
                       off the watermark in the photo's corner. It moves to the
-                      next slide by itself every 4 seconds. */}
+                      next slide by itself every 4 seconds. A tap on a photo
+                      (or the expand button) shows it big, full screen. */}
                   {slides.length > 0 ? (
                     <MediaCarousel
                       slides={slides}
                       aspectRatio="16 / 10"
                       fit="contain"
                       autoPlayMs={4000}
+                      expandable
                       alt={s.title}
                       ownerName={s.freelancer?.username}
                     />

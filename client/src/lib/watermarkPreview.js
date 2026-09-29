@@ -5,8 +5,9 @@ import { watermarkText } from "./watermarkSettings";
 // service, which draws the real one into uploaded photos
 // (ai-service/visible_watermark.py): if you change one, change the other.
 
-// Text height as a share of the photo's shorter side.
-const SIZE_RATIOS = { small: 0.035, medium: 0.05, large: 0.07 };
+// Text height as a share of the photo's shorter side (same numbers as
+// ai-service/visible_watermark.py).
+const SIZE_RATIOS = { small: 0.05, medium: 0.08, large: 0.11 };
 const COLORS = { white: "#ffffff", black: "#111111", orange: "#ff6b00" };
 const TILE_ANGLE = 30; // degrees, for the tiled pattern
 const FONT = (px) => `700 ${px}px "Plus Jakarta Sans", sans-serif`;

@@ -12,7 +12,7 @@ export const DEFAULT_WATERMARK = {
   text_mode: "username",
   custom_text: "",
   position: "bottom_right",
-  opacity: 40,
+  opacity: 60,
   size: "medium",
   color: "white",
   show_badge: true,

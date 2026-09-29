@@ -83,19 +83,46 @@ function DocumentSlide({ url }) {
 // True when the user asked their device for less motion (no auto-play then).
 const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+// The same slideshow, big, over the whole screen (opened from a card, see
+// `expandable`). Escape, the X or a click beside it closes it.
+function FullScreenSlides({ slides, startIndex, alt, ownerName, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="media-fullscreen role-confirm-backdrop" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={alt || "Photos"} className="media-fullscreen-box" onClick={(event) => event.stopPropagation()}>
+        <MediaCarousel slides={slides} startIndex={startIndex} height="min(85vh, 900px)" fit="contain" alt={alt} ownerName={ownerName} />
+        <button type="button" className="media-fullscreen-close btn btn-light rounded-circle" aria-label="Close" onClick={onClose}>
+          <i className="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // A service's or portfolio project's photos, videos and documents as a
 // slideshow (slides come from itemSlides in lib/slides.js). Arrows, a "2 / 5" counter, and
 // swiping on phones. fit is "cover" (fill the box, trimming the edges) or
 // "contain" (show the whole photo). The box is `height` tall, or, with
 // aspectRatio (e.g. "16 / 10"), grows with its width. autoPlayMs: move to the
 // next slide by itself every that many milliseconds (0 = only by hand).
+// expandable: a tap on a photo (or the expand button) shows the slides big,
+// over the whole screen. startIndex: the slide to show first.
 // To make copying others' work harder there
 // is no Download button, right-click menu, dragging, or picture-in-picture,
 // and ownerName (the uploader's @username) is shown faintly across the slide,
 // so a screenshot still shows whose work it is. Only the current slide is on
 // the page, so a playing video stops when you move on.
-export default function MediaCarousel({ slides, height = 140, aspectRatio, fit = "cover", alt = "", ownerName, autoPlayMs = 0 }) {
-  const [index, setIndex] = useState(0);
+export default function MediaCarousel({ slides, height = 140, aspectRatio, fit = "cover", alt = "", ownerName, autoPlayMs = 0, expandable = false, startIndex = 0 }) {
+  const [index, setIndex] = useState(startIndex);
+  const [fullScreen, setFullScreen] = useState(false);
   // "next" or "prev": the side the new slide slides in from (null before the
   // first move, so the first slide doesn't slide in).
   const [direction, setDirection] = useState(null);
@@ -110,13 +137,13 @@ export default function MediaCarousel({ slides, height = 140, aspectRatio, fit =
   // Auto-play: a new timer starts on every slide change, so tapping an arrow
   // also restarts the wait.
   useEffect(() => {
-    if (!autoPlayMs || count < 2 || hovered || videoPlaying || prefersReducedMotion()) return undefined;
+    if (!autoPlayMs || count < 2 || hovered || videoPlaying || fullScreen || prefersReducedMotion()) return undefined;
     const timer = setTimeout(() => {
       setDirection("next");
       setIndex((shown + 1) % count);
     }, autoPlayMs);
     return () => clearTimeout(timer);
-  }, [autoPlayMs, count, hovered, videoPlaying, shown]);
+  }, [autoPlayMs, count, hovered, videoPlaying, fullScreen, shown]);
 
   if (count === 0) return null;
   const current = slides[shown];
@@ -139,65 +166,86 @@ export default function MediaCarousel({ slides, height = 140, aspectRatio, fit =
   };
 
   return (
-    <div
-      className="media-carousel"
-      style={aspectRatio ? { aspectRatio } : { height }}
-      onTouchStart={count > 1 ? handleTouchStart : undefined}
-      onTouchEnd={count > 1 ? handleTouchEnd : undefined}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {/* key: a new slide is a new element, so its slide-in animation
-          (slides.css) plays every time the slide changes. */}
-      <div key={current.id} className={`media-carousel-slide${direction ? ` is-from-${direction}` : ""}`}>
-        {current.mediaType === "document" ? (
-          <DocumentSlide url={current.url} />
-        ) : current.mediaType === "video" ? (
-          <video
-            src={current.url}
-            controls
-            controlsList="nodownload"
-            disablePictureInPicture
-            preload="metadata"
-            onContextMenu={blockSaveMenu}
-            onPlay={() => setVideoPlaying(true)}
-            onPause={() => setVideoPlaying(false)}
-            className="media-carousel-item"
-            style={{ objectFit: fit }}
-          />
-        ) : (
-          <img src={current.url} alt={alt} draggable={false} onContextMenu={blockSaveMenu} className="media-carousel-item" style={{ objectFit: fit }} />
+    <>
+      <div
+        className="media-carousel"
+        style={aspectRatio ? { aspectRatio } : { height }}
+        onTouchStart={count > 1 ? handleTouchStart : undefined}
+        onTouchEnd={count > 1 ? handleTouchEnd : undefined}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* key: a new slide is a new element, so its slide-in animation
+            (slides.css) plays every time the slide changes. */}
+        <div key={current.id} className={`media-carousel-slide${direction ? ` is-from-${direction}` : ""}`}>
+          {current.mediaType === "document" ? (
+            <DocumentSlide url={current.url} />
+          ) : current.mediaType === "video" ? (
+            <video
+              src={current.url}
+              controls
+              controlsList="nodownload"
+              disablePictureInPicture
+              preload="metadata"
+              onContextMenu={blockSaveMenu}
+              onPlay={() => setVideoPlaying(true)}
+              onPause={() => setVideoPlaying(false)}
+              className="media-carousel-item"
+              style={{ objectFit: fit }}
+            />
+          ) : (
+            <img
+              src={current.url}
+              alt={alt}
+              draggable={false}
+              onContextMenu={blockSaveMenu}
+              onClick={expandable ? () => setFullScreen(true) : undefined}
+              className={`media-carousel-item${expandable ? " is-expandable" : ""}`}
+              style={{ objectFit: fit }}
+            />
+          )}
+        </div>
+
+        {/* Drawn on top of the page, not saved into the file, and clicks go
+            through it, so the video controls still work. */}
+        {/* Held back by the copy check: only its uploader and the admins see it. */}
+        {current.underReview && (
+          <span className="media-carousel-review" title="Waiting for an admin: it looks very similar to another freelancer's work">
+            <i className="bi bi-hourglass-split me-1"></i>Under review
+          </span>
+        )}
+
+        {/* Only over slides whose file has no watermark of its own (older
+            photos, videos for now) and that aren't promos. */}
+        {ownerName && current.showOwnerName !== false && (
+          <div className="media-carousel-owner" aria-hidden="true">
+            {Array.from({ length: 60 }, (_, i) => <span key={i}>@{ownerName}</span>)}
+          </div>
+        )}
+
+        {count > 1 && (
+          <>
+            <button type="button" className="media-carousel-arrow is-prev" aria-label="Previous slide" onClick={() => go(-1)}>
+              <i className="bi bi-chevron-left"></i>
+            </button>
+            <button type="button" className="media-carousel-arrow is-next" aria-label="Next slide" onClick={() => go(1)}>
+              <i className="bi bi-chevron-right"></i>
+            </button>
+            <span className="media-carousel-counter">{shown + 1} / {count}</span>
+          </>
+        )}
+
+        {expandable && (
+          <button type="button" className="media-carousel-expand" aria-label="View full screen" title="View full screen" onClick={() => setFullScreen(true)}>
+            <i className="bi bi-arrows-fullscreen"></i>
+          </button>
         )}
       </div>
-
-      {/* Drawn on top of the page, not saved into the file, and clicks go
-          through it, so the video controls still work. */}
-      {/* Held back by the copy check: only its uploader and the admins see it. */}
-      {current.underReview && (
-        <span className="media-carousel-review" title="Waiting for an admin: it looks very similar to another freelancer's work">
-          <i className="bi bi-hourglass-split me-1"></i>Under review
-        </span>
+      {/* Outside the box above, so swipes in the big view don't also move
+          this small slideshow (React passes events up to the parent). */}
+      {fullScreen && (
+        <FullScreenSlides slides={slides} startIndex={shown} alt={alt} ownerName={ownerName} onClose={() => setFullScreen(false)} />
       )}
-
-      {/* Only over slides whose file has no watermark of its own (older
-          photos, videos for now) and that aren't promos. */}
-      {ownerName && current.showOwnerName !== false && (
-        <div className="media-carousel-owner" aria-hidden="true">
-          {Array.from({ length: 60 }, (_, i) => <span key={i}>@{ownerName}</span>)}
-        </div>
-      )}
-
-      {count > 1 && (
-        <>
-          <button type="button" className="media-carousel-arrow is-prev" aria-label="Previous slide" onClick={() => go(-1)}>
-            <i className="bi bi-chevron-left"></i>
-          </button>
-          <button type="button" className="media-carousel-arrow is-next" aria-label="Next slide" onClick={() => go(1)}>
-            <i className="bi bi-chevron-right"></i>
-          </button>
-          <span className="media-carousel-counter">{shown + 1} / {count}</span>
-        </>
-      )}
-    </div>
+    </>
   );
 }

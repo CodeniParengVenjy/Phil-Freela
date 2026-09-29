@@ -22,7 +22,9 @@ create table public.watermark_settings (
   position text not null default 'bottom_right'
     check (position in ('top_left', 'top_right', 'bottom_left', 'bottom_right', 'center', 'tiled')),
   -- How see-through it is: 10 (faint) to 80 (strong), in percent.
-  opacity smallint not null default 40 check (opacity between 10 and 80),
+  -- (Was 40 at first: too faint to notice, so the live table was changed
+  -- with "alter table public.watermark_settings alter column opacity set default 60".)
+  opacity smallint not null default 60 check (opacity between 10 and 80),
   size text not null default 'medium' check (size in ('small', 'medium', 'large')),
   color text not null default 'white' check (color in ('white', 'black', 'orange')),
   -- The small PhilFreela logo in front of the text.

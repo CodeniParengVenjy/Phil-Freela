@@ -23,14 +23,16 @@ DEFAULTS = {
     "text_mode": "username",
     "custom_text": None,
     "position": "bottom_right",
-    "opacity": 40,
+    "opacity": 60,
     "size": "medium",
     "color": "white",
     "show_badge": True,
 }
 
-# Text height as a share of the photo's shorter side.
-SIZE_RATIOS = {"small": 0.035, "medium": 0.05, "large": 0.07}
+# Text height as a share of the photo's shorter side. (Made bigger: at 5%
+# the mark was easy to miss on a service card.) Same numbers as
+# client/src/lib/watermarkPreview.js.
+SIZE_RATIOS = {"small": 0.05, "medium": 0.08, "large": 0.11}
 COLORS = {"white": (255, 255, 255), "black": (17, 17, 17), "orange": (255, 107, 0)}
 TILE_ANGLE = 30  # degrees, for the tiled pattern
 
