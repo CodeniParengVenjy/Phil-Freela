@@ -11,6 +11,10 @@ export const MAX_NOTE_LENGTH = 1000;
 // The job details shown with an application.
 const JOB_FIELDS = "id, title, client_id, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
 
+// The project made when the client hired this applicant (null = not hired).
+// One application has at most one project, so it comes back as one object.
+const PROJECT_FIELD = "project:projects(id, status)";
+
 // Checks a picked resume. Returns "" when it's fine, or a message to show.
 // Besides the name and type the browser reports, it reads the file's first
 // bytes: every real PDF starts with "%PDF-", so a renamed file is refused.
@@ -57,7 +61,7 @@ export async function applyToJob(freelancerId, jobPostId, file, note) {
 export async function getMyApplicationForJob(freelancerId, jobPostId) {
   const { data } = await supabase
     .from("job_applications")
-    .select("id, resume_path, cover_note, created_at")
+    .select(`id, resume_path, cover_note, created_at, ${PROJECT_FIELD}`)
     .eq("freelancer_id", freelancerId)
     .eq("job_post_id", jobPostId)
     .maybeSingle();
@@ -68,7 +72,7 @@ export async function getMyApplicationForJob(freelancerId, jobPostId) {
 export function getMyApplications(freelancerId) {
   return supabase
     .from("job_applications")
-    .select(`id, resume_path, cover_note, created_at, job:job_posts(${JOB_FIELDS})`)
+    .select(`id, resume_path, cover_note, created_at, ${PROJECT_FIELD}, job:job_posts(${JOB_FIELDS})`)
     .eq("freelancer_id", freelancerId)
     .order("created_at", { ascending: false });
 }
@@ -77,7 +81,7 @@ export function getMyApplications(freelancerId) {
 export function getApplicantsForMyJobs(clientId) {
   return supabase
     .from("job_applications")
-    .select("id, resume_path, cover_note, created_at, job:job_posts!inner(id, title, client_id), freelancer:profiles(id, full_name, username, avatar_path)")
+    .select(`id, resume_path, cover_note, created_at, ${PROJECT_FIELD}, job:job_posts!inner(id, title, client_id), freelancer:profiles(id, full_name, username, avatar_path)`)
     .eq("job.client_id", clientId)
     .order("created_at", { ascending: false });
 }

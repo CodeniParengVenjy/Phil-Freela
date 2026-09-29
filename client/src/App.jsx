@@ -83,7 +83,7 @@ function App() {
         <Route path="search" element={<SearchResultsView />} />
         <Route path="feedback" element={<FeedbackView />} />
         <Route path="job-details/:jobId" element={<JobDetailsView />} />
-        <Route path="project-details" element={<ProjectDetailsView />} />
+        <Route path="project-details/:projectId" element={<ProjectDetailsView />} />
         <Route path="submit-project" element={<SubmitProjectView />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>

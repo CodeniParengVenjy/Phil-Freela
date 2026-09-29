@@ -4,16 +4,29 @@ import { getApplicantsForMyJobs, getMyApplications, openResume } from "../../../
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import HireDialog from "./HireDialog";
 
 // Longest part of a cover note shown in the list.
 const NOTE_PREVIEW_LENGTH = 160;
 
+// A "Hired" badge and a link to the project the hire started.
+function HiredLink({ project }) {
+  return (
+    <Link to={`/dashboard/project-details/${project.id}`} className="btn btn-dark border border-success text-success rounded-pill px-3 fs-7 fw-bold">
+      <i className="bi bi-check-circle-fill me-1"></i> Hired • Open project
+    </Link>
+  );
+}
+
 // The "Applications & Resumes" box on the Projects page. Clients see who
-// applied to their job posts; freelancers see the jobs they applied to.
-export default function ApplicationsPanel({ isFreelancer, currentUserId, openChat, showToast }) {
+// applied to their job posts and can hire them (which starts a project);
+// freelancers see the jobs they applied to.
+export default function ApplicationsPanel({ isFreelancer, currentUserId, openChat, showToast, onHired }) {
   // null while loading, then the list.
   const [rows, setRows] = useState(null);
   const [failed, setFailed] = useState(false);
+  // The applicant in the Hire popup (null = closed).
+  const [hireTarget, setHireTarget] = useState(null);
 
   useEffect(() => {
     if (!currentUserId) return undefined;
@@ -36,6 +49,15 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
   const handleViewResume = async (resumePath) => {
     const problem = await openResume(resumePath);
     if (problem) showToast(problem);
+  };
+
+  // The project started: mark that applicant as hired and let the Projects
+  // page show the new project card.
+  const handleHired = (projectId) => {
+    setRows((prev) => prev.map((row) => (row.id === hireTarget.applicationId ? { ...row, project: { id: projectId, status: "started" } } : row)));
+    showToast(`You hired ${hireTarget.freelancerName}! The project has started.`);
+    setHireTarget(null);
+    onHired?.();
   };
 
   return (
@@ -70,9 +92,12 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
                   <h6 className="fw-bold mb-1 text-break">{jobLink}</h6>
                   <p className="text-white-50 fs-7 mb-0">{clientName} • sent {sentOn}</p>
                 </div>
-                <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-7 fw-bold flex-shrink-0" onClick={() => handleViewResume(row.resume_path)}>
-                  <i className="bi bi-file-earmark-pdf me-1"></i> My resume
-                </button>
+                <div className="d-flex flex-wrap gap-2 flex-shrink-0">
+                  {row.project && <HiredLink project={row.project} />}
+                  <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => handleViewResume(row.resume_path)}>
+                    <i className="bi bi-file-earmark-pdf me-1"></i> My resume
+                  </button>
+                </div>
               </div>
             );
           }
@@ -98,7 +123,18 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
                 </p>
               )}
               <div className="d-flex flex-wrap gap-2">
-                <button type="button" className="btn btn-gradient-role text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => handleViewResume(row.resume_path)}>
+                {row.project ? (
+                  <HiredLink project={row.project} />
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-gradient-role text-white rounded-pill px-3 fs-7 fw-bold"
+                    onClick={() => setHireTarget({ applicationId: row.id, freelancerName: name, jobTitle: row.job?.title })}
+                  >
+                    <i className="bi bi-briefcase-fill me-1"></i> Hire
+                  </button>
+                )}
+                <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => handleViewResume(row.resume_path)}>
                   <i className="bi bi-file-earmark-pdf me-1"></i> View resume
                 </button>
                 <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => openChat(freelancer?.id)}>
@@ -109,6 +145,8 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
           );
         })}
       </div>
+
+      <HireDialog key={hireTarget?.applicationId} applicant={hireTarget} onClose={() => setHireTarget(null)} onHired={handleHired} />
     </div>
   );
 }

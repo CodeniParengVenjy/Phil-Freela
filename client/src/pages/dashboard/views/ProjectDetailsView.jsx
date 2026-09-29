@@ -1,135 +1,145 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useOutletContext, useParams } from "react-router-dom";
+import { formatDay, getProject, personName, projectStatuses, todayInManila } from "../../../lib/projects";
+import Avatar from "../../../components/Avatar";
 
+// One project (/dashboard/project-details/:projectId), opened from a card in
+// My Projects or from the "You were hired" notification. Both people on the
+// project use this page; what they see depends on their side:
+//  - freelancer: the client's note, the dates and "Attach your files"
+//  - client: the same details, and the freelancer's work once it's sent
 export default function ProjectDetailsView() {
-  const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState(searchParams.get("status") || "Done");
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(35);
-  const intervalRef = useRef(null);
+  const { projectId } = useParams();
+  const { currentUserId, openChat } = useOutletContext();
+  // undefined while loading, null when it doesn't exist or isn't the user's.
+  const [project, setProject] = useState(undefined);
 
-  useEffect(() => () => clearInterval(intervalRef.current), []);
-
-  const togglePlay = () => {
-    setIsPlaying((prev) => {
-      const next = !prev;
-      if (next) {
-        intervalRef.current = setInterval(() => setProgress((p) => (p + 2) % 100), 300);
-      } else {
-        clearInterval(intervalRef.current);
-      }
-      return next;
+  useEffect(() => {
+    let active = true;
+    getProject(projectId).then((data) => {
+      if (active) setProject(data);
     });
-  };
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
 
-  const isDone = status === "Done";
+  if (project === undefined) {
+    return <section className="dashboard-view active-view"><p className="text-secondary fs-7">Loading project...</p></section>;
+  }
+
+  if (project === null) {
+    return (
+      <section className="dashboard-view active-view">
+        <div className="glass-card rounded-4 p-5 border border-secondary border-opacity-25 text-center">
+          <i className="bi bi-kanban text-secondary" style={{ fontSize: "2.5rem" }}></i>
+          <p className="text-secondary fs-7 mt-3 mb-3">This project wasn't found.</p>
+          <Link to="/dashboard/projects" className="btn btn-outline-role rounded-pill px-4 fw-bold">Back to Projects</Link>
+        </div>
+      </section>
+    );
+  }
+
+  const iAmClient = project.client_id === currentUserId;
+  // The other person on the project.
+  const other = iAmClient ? project.freelancer : project.client;
+  const otherName = personName(other, iAmClient ? "Freelancer" : "Client");
+  const status = projectStatuses[project.status];
+  const overdue = project.status !== "done" && project.due_date < todayInManila();
+
+  // The "Project" box: where the freelancer's work is sent and shown.
+  const renderWorkBox = () => {
+    if (project.status === "started" && !iAmClient) {
+      return (
+        <>
+          {/* Uploading the work is Step 3 of PLAN-projects-and-ratings.md. */}
+          <button type="button" className="btn btn-outline-warning rounded-pill fw-bold px-3 py-2" disabled>
+            <i className="bi bi-plus-lg me-1"></i> Attach your files
+          </button>
+          <p className="text-secondary fs-8 mt-2 mb-0">Sending your work here is coming soon. For now, you can send it in chat.</p>
+        </>
+      );
+    }
+    if (project.status === "started") {
+      return <p className="text-white-50 fs-7 mb-0">Waiting for {otherName} to send the work.</p>;
+    }
+    return <p className="text-white-50 fs-7 mb-0">The submitted work will show here.</p>;
+  };
 
   return (
     <section className="dashboard-view active-view">
-      <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25 max-w-950 mx-auto position-relative">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pb-3 border-bottom border-secondary border-opacity-25">
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-1">
-              <h2 className="display-6 fw-bold text-white mb-0">Advertising Video Project</h2>
-              <Link to="/dashboard/chat" className="text-orange fs-4 ms-2" title="Open Chat"><i className="bi bi-chat-dots-fill"></i></Link>
-            </div>
-            <div className="d-flex align-items-center gap-2 text-white-50 fs-7">
-              <div className="avatar-circle-sm bg-secondary text-white fw-bold d-inline-flex align-items-center justify-content-center" style={{ width: 24, height: 24, fontSize: "0.75rem" }}>
-                <i className="bi bi-building"></i>
-              </div>
-              <span>Client: <strong className="text-white">Coffee Company.</strong></span>
-            </div>
-          </div>
+      <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25 max-w-950 mx-auto">
+        <Link to="/dashboard/projects" className="text-white-50 text-decoration-none fs-7 hover-role d-inline-block mb-3">
+          <i className="bi bi-arrow-left me-1"></i> Back to Projects
+        </Link>
 
-          <div className="d-flex align-items-center gap-2 bg-dark bg-opacity-75 p-1 rounded-pill border border-secondary border-opacity-25">
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill fw-bold px-3 py-1 status-tab-btn ${!isDone ? "active-tab text-white" : "text-white-50"}`}
-              onClick={() => setStatus("Started")}
-            >
-              🟡 Status: Started
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill fw-bold px-3 py-1 status-tab-btn ${isDone ? "active-tab text-white" : "text-white-50"}`}
-              onClick={() => setStatus("Done")}
-            >
-              🟢 Status: Done
-            </button>
-          </div>
+        <div className="d-flex align-items-start gap-3 mb-2">
+          <h2 className="h3 fw-bold text-white mb-0 text-break flex-grow-1">{project.title}</h2>
+          <button
+            type="button"
+            className="btn btn-dark border border-secondary text-orange rounded-3 px-3 py-2 flex-shrink-0"
+            title={`Message ${otherName}`}
+            aria-label={`Message ${otherName}`}
+            onClick={() => openChat(other?.id)}
+          >
+            <i className="bi bi-chat-dots-fill fs-5"></i>
+          </button>
         </div>
 
-        <div className="row g-4 mb-4">
+        <div className="d-flex align-items-center gap-2 mb-4 pb-4 border-bottom border-secondary border-opacity-25">
+          <Avatar path={other?.avatar_path} name={otherName} size={36} />
+          <span className="text-white-50 fs-7">
+            {iAmClient ? "Freelancer" : "Client"}:{" "}
+            {/* Freelancers have a public portfolio page; clients don't yet. */}
+            {iAmClient && other?.id ? (
+              <Link to={`/dashboard/freelancers/${other.id}`} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
+            ) : (
+              <strong className="text-white">{otherName}</strong>
+            )}
+          </span>
+          {project.job_post_id && (
+            <Link to={`/dashboard/job-details/${project.job_post_id}`} className="text-role fs-7 fw-semibold text-decoration-none ms-auto text-nowrap">
+              View job post
+            </Link>
+          )}
+        </div>
+
+        <div className="row g-3">
           <div className="col-md-6">
-            <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
-              <span className="text-secondary fs-8 d-block mb-1">Project Status</span>
-              <span className={`badge px-3 py-2 rounded-pill fw-bold fs-7 ${isDone ? "bg-success text-white" : "bg-warning text-dark"}`}>{status}</span>
+            <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 h-100">
+              <span className="text-secondary fs-8 d-block mb-2">Status</span>
+              <span className={`badge px-3 py-2 rounded-pill fw-bold fs-7 ${status.className}`}>{status.label}</span>
             </div>
           </div>
 
           <div className="col-md-6">
-            <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
-              <div>
-                <span className="text-secondary fs-8 d-block mb-1">Project Files Submission</span>
-                <span className="text-white fw-semibold fs-7">Attach deliverables</span>
-              </div>
-              <Link to="/dashboard/submit-project" className="btn btn-outline-warning btn-sm rounded-pill fw-bold px-3 py-2">
-                <i className="bi bi-plus-lg me-1"></i> Attach your files
-              </Link>
+            <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 h-100">
+              <span className="text-secondary fs-8 d-block mb-2">Project</span>
+              {renderWorkBox()}
             </div>
           </div>
 
           <div className="col-md-6">
-            <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
+            <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 h-100">
               <span className="text-secondary fs-8 d-block mb-1">Date Started</span>
-              <span className="text-white fw-bold fs-6"><i className="bi bi-calendar-event me-2 text-info"></i>05/11/2026</span>
+              <span className="text-white fw-bold fs-6"><i className="bi bi-calendar-event me-2 text-info"></i>{new Date(project.started_at).toLocaleDateString()}</span>
             </div>
           </div>
 
           <div className="col-md-6">
-            <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
+            <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 h-100">
               <span className="text-secondary fs-8 d-block mb-1">Due Date</span>
-              <span className="text-warning fw-bold fs-6"><i className="bi bi-clock-history me-2 text-warning"></i>06/03/2026</span>
+              <span className={`fw-bold fs-6 ${overdue ? "text-danger" : "text-warning"}`}>
+                <i className="bi bi-clock-history me-2"></i>{formatDay(project.due_date)}{overdue && " (overdue)"}
+              </span>
             </div>
           </div>
 
           <div className="col-12">
             <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
-              <span className="text-secondary fs-8 d-block mb-1">Note / Requirements:</span>
-              <p className="text-white-50 fs-7 mb-0 fw-medium">"The video must be 1 minute duration and have a realistic transition."</p>
+              <span className="text-secondary fs-8 d-block mb-1">Note from the client</span>
+              <p className="text-white-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-wrap" }}>{project.note || "No note."}</p>
             </div>
-          </div>
-        </div>
-
-        <div className="pt-4 border-top border-secondary border-opacity-25">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <div className="d-flex flex-wrap align-items-center gap-2">
-              <span className="badge bg-success text-white px-3 py-1 rounded-pill">Completed Deliverable</span>
-              <span className="text-white-50 fs-7">Submitted by: <strong className="text-white">Peter Cruz</strong></span>
-            </div>
-            <span className="badge bg-black text-light fs-8">Duration: 01:00</span>
-          </div>
-
-          <div className="video-player-card glass-card rounded-4 p-3 bg-black border border-secondary border-opacity-50 text-center position-relative mb-4">
-            <div className="video-screen rounded-3 bg-dark bg-opacity-75 d-flex flex-column align-items-center justify-content-center p-5 border border-secondary border-opacity-25 position-relative overflow-hidden" style={{ minHeight: 280 }}>
-              <div className="video-overlay text-center">
-                <button className="btn btn-gradient-orange btn-lg rounded-circle p-4 text-white shadow-glow mb-3" style={{ width: 80, height: 80 }} onClick={togglePlay}>
-                  <i className={`bi ${isPlaying ? "bi-pause-fill" : "bi-play-fill"} fs-1`}></i>
-                </button>
-                <h6 className="text-white fw-bold mb-1">Advertising_Video_Final.mp4</h6>
-                <small className="text-secondary fs-8">0:00 / 1:00 • 1080p 60fps Render</small>
-              </div>
-            </div>
-
-            <div className="progress mt-3 bg-secondary bg-opacity-25" style={{ height: 6 }}>
-              <div className="progress-bar bg-orange" role="progressbar" style={{ width: `${progress}%` }}></div>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <Link to="/dashboard/feedback" className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow">
-              <i className="bi bi-star-fill me-2"></i> Add your ratings and feedback
-            </Link>
           </div>
         </div>
       </div>

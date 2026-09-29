@@ -40,7 +40,7 @@ export default function JobDetailsView() {
     Promise.all([
       supabase
         .from("job_posts")
-        .select("id, title, category, description, budget, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
+        .select("id, title, category, description, budget, skills, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
         .eq("id", jobId)
         .maybeSingle(),
       getMyApplicationForJob(currentUserId, jobId),
@@ -118,6 +118,20 @@ export default function JobDetailsView() {
   const renderApplySection = () => {
     if (isOwnJob) {
       return <p className="text-secondary fs-7 mb-0">This is your job post. Freelancers who apply show up in <Link to="/dashboard/projects" className="text-role fw-bold text-decoration-none">Projects & Resumes</Link>.</p>;
+    }
+    // Hired: the application became a project, so it can't be withdrawn anymore.
+    if (application?.project) {
+      return (
+        <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+          <div>
+            <p className="text-success fw-bold mb-1"><i className="bi bi-briefcase-fill me-2"></i>You were hired for this job</p>
+            <p className="text-secondary fs-7 mb-0">The project has started. Open it to read the client's note and the due date.</p>
+          </div>
+          <Link to={`/dashboard/project-details/${application.project.id}`} className="btn btn-gradient-role text-white rounded-pill px-4 fs-7 fw-bold flex-shrink-0">
+            Open project
+          </Link>
+        </div>
+      );
     }
     if (application) {
       return (
@@ -230,6 +244,18 @@ export default function JobDetailsView() {
         <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-25 text-light-50 fs-7 lh-lg mb-4" style={{ whiteSpace: "pre-wrap" }}>
           {job.description}
         </div>
+
+        {/* The skills the client listed when posting (hidden when there are none). */}
+        {job.skills?.length > 0 && (
+          <>
+            <h4 className="text-white fw-bold mb-3"><i className="bi bi-tools text-role me-2"></i> Required Skills</h4>
+            <div className="d-flex flex-wrap gap-2 mb-4">
+              {job.skills.map((skill) => (
+                <span key={skill} className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill fw-semibold">{skill}</span>
+              ))}
+            </div>
+          </>
+        )}
 
         <h4 className="text-white fw-bold mb-3"><i className="bi bi-file-earmark-person-fill text-role me-2"></i> Apply for this job</h4>
         <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-25">

@@ -64,7 +64,12 @@ export const notificationIcons = {
   appeal_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" },
   // An admin reviewed a report the user sent (database/supabase_reports_schema.sql).
   report_resolved: { icon: "bi-flag-fill", className: "bg-success text-white" },
-  report_dismissed: { icon: "bi-flag", className: "bg-secondary text-white" }
+  report_dismissed: { icon: "bi-flag", className: "bg-secondary text-white" },
+  // A step in a project (database/supabase_projects_schema.sql).
+  project_hired: { icon: "bi-briefcase-fill", className: "bg-success text-white" },
+  project_submitted: { icon: "bi-box-arrow-up", className: "bg-info text-dark" },
+  project_done: { icon: "bi-check2-circle", className: "bg-success text-white" },
+  project_changes: { icon: "bi-arrow-repeat", className: "bg-warning text-dark" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -72,5 +77,9 @@ export const notificationLinkLabels = {
   verification_approved: "Go to Verify Identity",
   verification_rejected: "Go to Verify Identity",
   suspension: "Appeal this suspension",
-  appeal_rejected: "View appeal"
+  appeal_rejected: "View appeal",
+  project_hired: "Open project",
+  project_submitted: "Open project",
+  project_done: "Open project",
+  project_changes: "Open project"
 };

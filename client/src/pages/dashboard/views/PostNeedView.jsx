@@ -5,6 +5,10 @@ import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import BlockedNotice from "../components/BlockedNotice";
 
+// The database allows up to 10 skills, each up to 40 characters.
+const MAX_SKILLS = 10;
+const MAX_SKILL_LENGTH = 40;
+
 export default function PostNeedView() {
   const { currentUserId, showToast, suspension } = useOutletContext();
   // Suspended for a posting violation (e.g. spam): the form is replaced by a notice.
@@ -12,6 +16,9 @@ export default function PostNeedView() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  // Required skills, shown as chips on the job page (e.g. "Video Editing").
+  const [skills, setSkills] = useState([]);
+  const [skillInput, setSkillInput] = useState("");
   const [budget, setBudget] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [posts, setPosts] = useState(null);
@@ -35,10 +42,26 @@ export default function PostNeedView() {
     };
   }, [currentUserId]);
 
+  // Adds the typed skill (or several, split by commas) as chips, skipping
+  // blanks and repeats. Returns the new list, so Post Listing can use it
+  // right away (a skill typed without pressing Enter isn't lost).
+  const addSkills = (text) => {
+    const next = [...skills];
+    for (const part of text.split(",")) {
+      const skill = part.trim().slice(0, MAX_SKILL_LENGTH).trim();
+      const isRepeat = next.some((s) => s.toLowerCase() === skill.toLowerCase());
+      if (skill && !isRepeat && next.length < MAX_SKILLS) next.push(skill);
+    }
+    setSkills(next);
+    setSkillInput("");
+    return next;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId) return;
     setSubmitting(true);
+    const finalSkills = skillInput.trim() ? addSkills(skillInput) : skills;
 
     const { data, error } = await supabase
       .from("job_posts")
@@ -47,6 +70,7 @@ export default function PostNeedView() {
         title: title.trim(),
         category,
         description: description.trim(),
+        skills: finalSkills,
         budget: budget ? Number(budget) : null
       })
       .select("id, title, category, budget, created_at")
@@ -62,6 +86,7 @@ export default function PostNeedView() {
     setTitle("");
     setCategory("");
     setDescription("");
+    setSkills([]);
     setBudget("");
     showToast(`Your listing "${data.title}" is live for freelancers to see!`);
   };
@@ -107,6 +132,43 @@ export default function PostNeedView() {
                     onChange={(e) => setDescription(e.target.value)}
                     required
                   ></textarea>
+                </div>
+
+                <div>
+                  <label htmlFor="skillInput" className="form-label text-white fw-semibold fs-7">Required skills (optional, up to {MAX_SKILLS}):</label>
+                  {skills.length > 0 && (
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                      {skills.map((skill) => (
+                        <span key={skill} className="badge bg-role text-white rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 fw-semibold">
+                          {skill}
+                          <button
+                            type="button"
+                            className="btn-close btn-close-white"
+                            style={{ fontSize: "0.55rem" }}
+                            aria-label={`Remove ${skill}`}
+                            onClick={() => setSkills((prev) => prev.filter((s) => s !== skill))}
+                          ></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    id="skillInput"
+                    type="text"
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    placeholder={skills.length >= MAX_SKILLS ? "You've added the most skills allowed." : "Type a skill and press Enter, e.g. Video Editing"}
+                    value={skillInput}
+                    disabled={skills.length >= MAX_SKILLS}
+                    // A comma (typed or pasted) turns what's written into chips.
+                    onChange={(e) => (e.target.value.includes(",") ? addSkills(e.target.value) : setSkillInput(e.target.value))}
+                    onKeyDown={(e) => {
+                      // Enter adds the skill instead of sending the form.
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addSkills(skillInput);
+                      }
+                    }}
+                  />
                 </div>
 
                 <div>

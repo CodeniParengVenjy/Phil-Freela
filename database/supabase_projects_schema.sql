@@ -1,0 +1,162 @@
+-- Projects and Ratings (see PLAN-projects-and-ratings.md). Run this in the
+-- Supabase SQL Editor after supabase_applications_schema.sql and
+-- supabase_admin_schema.sql (it uses is_posting_blocked() from there).
+--
+-- Feature 5, Profile transparency and transaction history: a project is made
+-- when a client hires someone who applied to their job. A project that both
+-- sides confirm as Done is the "completed transaction" record. No money is
+-- involved anywhere.
+
+-- ---------------------------------------------------------------------------
+-- Step 1: Required Skills on job posts (shown on the Job Details page).
+-- ---------------------------------------------------------------------------
+
+-- True when a skills list is up to 10 skills, each 1 to 40 characters with
+-- no spaces around it. It's a function because a table rule can't loop over
+-- the items of a list by itself.
+create or replace function public.is_valid_skill_list(list text[])
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select cardinality(list) <= 10
+     and coalesce(
+       (select bool_and(s is not null and s = btrim(s) and char_length(s) between 1 and 40) from unnest(list) as s),
+       true
+     );
+$$;
+
+alter table public.job_posts
+  add column skills text[] not null default '{}'
+  constraint job_posts_skills_check check (public.is_valid_skill_list(skills));
+
+-- ---------------------------------------------------------------------------
+-- Step 2: Hire an applicant, which starts a project.
+-- ---------------------------------------------------------------------------
+
+create table public.projects (
+  id uuid primary key default gen_random_uuid(),
+  -- The application the client hired from (one project per application).
+  -- Deleting the job post deletes its applications, so this becomes empty
+  -- but the project stays as history.
+  application_id uuid unique references public.job_applications(id) on delete set null,
+  job_post_id uuid references public.job_posts(id) on delete set null,
+  client_id uuid not null references public.profiles(id) on delete cascade,
+  freelancer_id uuid not null references public.profiles(id) on delete cascade,
+  -- Copied from the job post, so the history keeps its name if the post is deleted.
+  title varchar(150) not null,
+  -- The client's instructions, e.g. "The video must be 1 minute long".
+  note text check (note is null or char_length(note) <= 1000),
+  -- started -> submitted (the freelancer sent the work) -> done (the client
+  -- confirmed it). The client can send it back to started to ask for changes.
+  status text not null default 'started' check (status in ('started', 'submitted', 'done')),
+  started_at timestamptz not null default now(),
+  due_date date not null,
+  -- The freelancer's work (used from Step 3): a file in the private
+  -- "deliverables" bucket, a link, or both, plus an optional message.
+  submission_path text,
+  submission_link text check (submission_link is null or submission_link ~ '^https://'),
+  submission_message text check (submission_message is null or char_length(submission_message) <= 1000),
+  submitted_at timestamptz,
+  completed_at timestamptz,
+  constraint projects_two_people check (client_id <> freelancer_id)
+);
+
+-- For each person's "My Projects" list (application_id is already indexed by unique).
+create index projects_client_id_idx on public.projects (client_id);
+create index projects_freelancer_id_idx on public.projects (freelancer_id);
+create index projects_job_post_id_idx on public.projects (job_post_id);
+
+alter table public.projects enable row level security;
+
+-- Only the two people on a project can see it.
+create policy "projects: the client and freelancer can view"
+  on public.projects for select
+  to authenticated
+  using (client_id = (select auth.uid()) or freelancer_id = (select auth.uid()));
+
+-- There are no insert, update or delete rules: the browser can only READ
+-- projects. Every change goes through a function below, which checks who is
+-- asking and what status the project is in.
+revoke all on public.projects from anon;
+revoke insert, update, delete on public.projects from authenticated;
+
+-- Once hired, the freelancer can't withdraw that application (its resume
+-- stays with the project).
+drop policy "job_applications: freelancers can withdraw their own" on public.job_applications;
+create policy "job_applications: freelancers can withdraw their own"
+  on public.job_applications for delete
+  to authenticated
+  using (
+    freelancer_id = auth.uid()
+    and not exists (select 1 from public.projects p where p.application_id = job_applications.id)
+  );
+
+-- New kinds of notifications for projects (keeps the report ones already live).
+alter table public.user_notifications drop constraint user_notifications_type_check;
+alter table public.user_notifications add constraint user_notifications_type_check
+  check (type in ('verification_approved', 'verification_rejected', 'suspension',
+                  'suspension_lifted', 'appeal_accepted', 'appeal_rejected',
+                  'report_resolved', 'report_dismissed',
+                  'project_hired', 'project_submitted', 'project_done', 'project_changes'));
+
+-- The Hire button. Only the client who posted the job can hire, only once
+-- per application, and the due date can't be in the past (Philippine date).
+-- Makes the project and tells the freelancer. Returns the new project's id.
+-- Problems are raised with a plain message the page shows as is.
+create or replace function public.hire_applicant(target_application uuid, project_note text, project_due_date date)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  app record;
+  client_name text;
+  new_project uuid;
+begin
+  select a.id, a.freelancer_id, j.id as job_id, j.title, j.client_id
+    into app
+    from public.job_applications a
+    join public.job_posts j on j.id = a.job_post_id
+   where a.id = target_application;
+
+  if not found or app.client_id <> auth.uid() then
+    raise exception 'Only the client who posted this job can hire for it.';
+  end if;
+  if public.is_posting_blocked(auth.uid()) then
+    raise exception 'Your account can''t hire right now because of a suspension.';
+  end if;
+  if exists (select 1 from public.projects where application_id = target_application) then
+    raise exception 'You already hired this freelancer for this job.';
+  end if;
+  if project_due_date is null or project_due_date < (now() at time zone 'Asia/Manila')::date then
+    raise exception 'The due date can''t be in the past.';
+  end if;
+  if char_length(coalesce(project_note, '')) > 1000 then
+    raise exception 'The note can be up to 1000 characters.';
+  end if;
+
+  insert into public.projects (application_id, job_post_id, client_id, freelancer_id, title, note, due_date)
+  values (app.id, app.job_id, app.client_id, app.freelancer_id, app.title, nullif(btrim(project_note), ''), project_due_date)
+  returning id into new_project;
+
+  select coalesce(nullif(full_name, ''), username, 'A client') into client_name
+    from public.profiles where id = auth.uid();
+
+  insert into public.user_notifications (user_id, type, title, message, link)
+  values (
+    app.freelancer_id, 'project_hired', 'You were hired!',
+    client_name || ' hired you for "' || app.title || '". The project has started, and it''s due on '
+      || to_char(project_due_date, 'FMMonth FMDD, YYYY') || '.'
+      || E'\n\n' || 'Open the project to read the client''s note. You can message the client from there too.',
+    '/dashboard/project-details/' || new_project
+  );
+
+  return new_project;
+end;
+$$;
+
+revoke execute on function public.hire_applicant(uuid, text, date) from public, anon;
+grant execute on function public.hire_applicant(uuid, text, date) to authenticated;

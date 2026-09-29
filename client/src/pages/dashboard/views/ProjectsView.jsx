@@ -5,16 +5,13 @@ import { SLIDES_SELECT, removeItemFiles } from "../../../lib/slides";
 import ServiceCard from "../components/ServiceCard";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import ApplicationsPanel from "../components/ApplicationsPanel";
-
-const initialProjects = [
-  { name: "Dennis Sandehas", icon: "bi-person-fill", avatar: "bg-success", state: "Ongoing" },
-  { name: "Coffee Company", icon: "bi-building", avatar: "bg-secondary", state: "Done" }
-];
+import ProjectsPanel from "../components/ProjectsPanel";
 
 export default function ProjectsView() {
   const { openChat, showToast, accountType, currentUserId } = useOutletContext();
   const isFreelancer = accountType === "freelancer";
-  const [projects, setProjects] = useState(initialProjects);
+  // Goes up by one after each hire, so My Projects reloads and shows it.
+  const [hireCount, setHireCount] = useState(0);
   const [services, setServices] = useState(null);
   const [servicesError, setServicesError] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
@@ -63,15 +60,6 @@ export default function ProjectsView() {
     showToast(`"${service.title}" was deleted.`);
   };
 
-  const toggleState = (name) => {
-    setProjects((prev) => prev.map((p) => {
-      if (p.name !== name) return p;
-      const nextState = p.state === "Ongoing" ? "Done" : "Ongoing";
-      showToast(nextState === "Done" ? "Project status updated to Done 🟢" : "Project status updated to Ongoing 🟡");
-      return { ...p, state: nextState };
-    }));
-  };
-
   return (
     <section className="dashboard-view active-view">
       <div className="row g-4">
@@ -105,35 +93,18 @@ export default function ProjectsView() {
 
         <div className="col-lg-6">
           {/* Real applications (lib/applications.js): applicants for clients, My Applications for freelancers. */}
-          <ApplicationsPanel isFreelancer={isFreelancer} currentUserId={currentUserId} openChat={openChat} showToast={showToast} />
+          <ApplicationsPanel
+            isFreelancer={isFreelancer}
+            currentUserId={currentUserId}
+            openChat={openChat}
+            showToast={showToast}
+            onHired={() => setHireCount((n) => n + 1)}
+          />
         </div>
 
         <div className="col-lg-6">
-          <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100">
-            <h4 className="text-white fw-bold mb-3"><i className="bi bi-kanban-fill text-warning me-2"></i> Active Projects Tracker</h4>
-            <p className="text-secondary fs-7 mb-4">Track ongoing client contracts and project statuses.</p>
-
-            <div className="d-flex flex-column gap-3">
-              {projects.map((p) => (
-                // On a phone the button goes under the name instead of squeezing it.
-                <div key={p.name} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 hover-lift">
-                  <div className="d-flex align-items-center gap-3 min-w-0">
-                    <div className={`avatar-circle ${p.avatar} text-white fw-bold flex-shrink-0 d-flex align-items-center justify-content-center`} style={{ width: 48, height: 48 }}>
-                      <i className={`bi ${p.icon} fs-4`}></i>
-                    </div>
-                    <div className="min-w-0">
-                      <h6 className="text-white fw-bold mb-1">{p.name}</h6>
-                      <div className="d-flex align-items-center gap-2 fs-7">
-                        <span className="text-white-50">State: <strong className={p.state === "Ongoing" ? "text-warning" : "text-success"}>{p.state}</strong></span>
-                        <i className={`bi bi-circle-fill fs-8 ${p.state === "Ongoing" ? "text-warning" : "text-success"}`}></i>
-                      </div>
-                    </div>
-                  </div>
-                  <button className="btn btn-dark border border-secondary rounded-pill px-3 px-sm-4 py-2 fw-bold text-white fs-7 flex-shrink-0 text-nowrap" onClick={() => toggleState(p.name)}>Toggle State</button>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Real projects (lib/projects.js): each card opens its Project Details page. */}
+          <ProjectsPanel isFreelancer={isFreelancer} currentUserId={currentUserId} reloadKey={hireCount} />
         </div>
       </div>
 
