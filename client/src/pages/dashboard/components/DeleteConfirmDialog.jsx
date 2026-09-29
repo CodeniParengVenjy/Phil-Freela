@@ -4,7 +4,8 @@ import { createPortal } from "react-dom";
 // Styled "are you sure you want to delete?" popup, in the same look and
 // animation as the role-switch popup (it reuses the role-confirm-* CSS classes).
 // It is rendered straight into <body> so it always covers the whole screen.
-export default function DeleteConfirmDialog({ open, title, message, busy, onConfirm, onCancel }) {
+// confirmLabel / busyLabel change the red button's text (e.g. "Withdraw").
+export default function DeleteConfirmDialog({ open, title, message, busy, onConfirm, onCancel, confirmLabel = "Delete", busyLabel = "Deleting..." }) {
   // Escape closes the popup, unless a delete is already in progress.
   useEffect(() => {
     if (!open) return undefined;
@@ -45,7 +46,7 @@ export default function DeleteConfirmDialog({ open, title, message, busy, onConf
             Cancel
           </button>
           <button type="button" className="btn btn-danger rounded-pill px-4 py-2 fw-bold" onClick={onConfirm} disabled={busy}>
-            {busy ? "Deleting..." : "Delete"}
+            {busy ? busyLabel : confirmLabel}
           </button>
         </div>
       </div>

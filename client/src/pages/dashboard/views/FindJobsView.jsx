@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
@@ -95,7 +95,10 @@ export default function FindJobsView() {
                     <i className="bi bi-building fs-3"></i>
                   </div>
                   <div>
-                    <h5 className="text-white fw-bold mb-1">{job.title}</h5>
+                    {/* Opens the job's page, where freelancers apply (not in the admin panel). */}
+                    <h5 className="text-white fw-bold mb-1">
+                      {isAdmin ? job.title : <Link to={`/dashboard/job-details/${job.id}`} className="text-white text-decoration-none hover-role">{job.title}</Link>}
+                    </h5>
                     <div className="d-flex align-items-center gap-2 fs-7 mb-2">
                       <span className="text-white-50">
                         {clientName}
@@ -112,6 +115,9 @@ export default function FindJobsView() {
                   </button>
                 ) : (
                   <div className="d-flex gap-2 flex-shrink-0">
+                    <Link to={`/dashboard/job-details/${job.id}`} className="btn btn-gradient-role text-white rounded-3 px-3 py-2 fw-bold fs-7 d-flex align-items-center">
+                      View
+                    </Link>
                     {job.client?.id !== currentUserId && (
                       <button
                         className="btn btn-dark border border-secondary text-secondary rounded-3 px-3 py-2"

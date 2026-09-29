@@ -44,12 +44,13 @@ const pageTitles = {
   "/admin/browse-jobs": "Monitor Browse Jobs"
 };
 
-// Finds the title for a path. Chat and freelancer links end with an id
+// Finds the title for a path. Chat, freelancer and job links end with an id
 // (/dashboard/chat/123), so they are matched by how they start.
 function getPageTitle(pathname) {
   const path = pathname.replace(/\/+$/, "") || "/";
   if (path.startsWith("/dashboard/chat/")) return pageTitles["/dashboard/chat"];
   if (path.startsWith("/dashboard/freelancers/")) return pageTitles["/dashboard/freelancers"];
+  if (path.startsWith("/dashboard/job-details/")) return pageTitles["/dashboard/job-details"];
   return pageTitles[path];
 }
 

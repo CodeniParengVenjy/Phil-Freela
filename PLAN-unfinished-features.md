@@ -215,7 +215,24 @@ Step 3 files: `pages/login/CompleteProfile.jsx` (new, `/complete-profile`),
 `App.jsx` (route), `lib/pageTitles.js`, `useDashboardShell.js` (a signed-in
 user with no profile is sent to Complete Profile).
 
-Next after the Google setup is tested: plan Step 4 (Applications & Resume).
+Step 4 (Applications & Resume, option A: apply + view resume + message;
+hire/accept comes later with Feature 5, Transaction History): built and
+pushed live (2026-09-29). `database/supabase_applications_schema.sql` has
+been run on Supabase (migration "job_applications"), so don't run it again.
+Still needs the user to test it. Change from the plan: each upload gets its
+own file name (`<freelancer id>/<job id>-<time>.pdf`) so a retry can't
+overwrite a resume that was already sent; the PDF's first bytes are checked
+("%PDF-").
+
+Step 4 files: `database/supabase_applications_schema.sql`,
+`lib/applications.js`, `views/JobDetailsView.jsx` (real job, route
+`job-details/:jobId`), `views/FindJobsView.jsx` (title link + View button),
+`views/ProjectsView.jsx` + new `components/ApplicationsPanel.jsx`,
+`components/DeleteConfirmDialog.jsx` (optional button text), `App.jsx`,
+`lib/pageTitles.js`.
+
+Next: plan Step 5 (Inbox file + voice message). The calls session already
+changed `ChatView.jsx` and `useDashboardShell.js`, so build on its version.
 
 Step 2 files: `database/supabase_avatar_schema.sql`, `lib/avatar.js`,
 `lib/shrinkImage.js` (optional size), `components/Avatar.jsx`,

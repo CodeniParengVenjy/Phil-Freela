@@ -82,7 +82,7 @@ function App() {
         <Route path="check-ownership" element={<CheckOwnershipView />} />
         <Route path="search" element={<SearchResultsView />} />
         <Route path="feedback" element={<FeedbackView />} />
-        <Route path="job-details" element={<JobDetailsView />} />
+        <Route path="job-details/:jobId" element={<JobDetailsView />} />
         <Route path="project-details" element={<ProjectDetailsView />} />
         <Route path="submit-project" element={<SubmitProjectView />} />
         <Route path="*" element={<PageNotFound />} />

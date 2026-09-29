@@ -4,11 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { SLIDES_SELECT, removeItemFiles } from "../../../lib/slides";
 import ServiceCard from "../components/ServiceCard";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
-
-const initialResumes = [
-  { name: "Peter Cruz", icon: "bi-person-fill", avatar: "bg-success" },
-  { name: "Dennis Sandehas", icon: "bi-person", avatar: "bg-secondary" }
-];
+import ApplicationsPanel from "../components/ApplicationsPanel";
 
 const initialProjects = [
   { name: "Dennis Sandehas", icon: "bi-person-fill", avatar: "bg-success", state: "Ongoing" },
@@ -16,9 +12,8 @@ const initialProjects = [
 ];
 
 export default function ProjectsView() {
-  const { openPreview, showToast, accountType, currentUserId } = useOutletContext();
+  const { openChat, showToast, accountType, currentUserId } = useOutletContext();
   const isFreelancer = accountType === "freelancer";
-  const [resumes] = useState(initialResumes);
   const [projects, setProjects] = useState(initialProjects);
   const [services, setServices] = useState(null);
   const [servicesError, setServicesError] = useState(false);
@@ -109,27 +104,8 @@ export default function ProjectsView() {
         )}
 
         <div className="col-lg-6">
-          <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100">
-            <h4 className="text-white fw-bold mb-3"><i className="bi bi-file-earmark-person-fill text-info me-2"></i> Applications & Resumes</h4>
-            <p className="text-secondary fs-7 mb-4">Candidates who submitted resumes for your listings.</p>
-
-            <div className="d-flex flex-column gap-3">
-              {resumes.map((r) => (
-                <div key={r.name} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between gap-3 hover-lift">
-                  <div className="d-flex align-items-center gap-3">
-                    <div className={`avatar-circle ${r.avatar} text-white fw-bold flex-shrink-0 d-flex align-items-center justify-content-center`} style={{ width: 48, height: 48 }}>
-                      <i className={`bi ${r.icon} fs-4`}></i>
-                    </div>
-                    <div>
-                      <h6 className="text-white fw-bold mb-0">{r.name}</h6>
-                      <p className="text-warning fs-7 mb-0">Has sent a resume</p>
-                    </div>
-                  </div>
-                  <button className="btn btn-secondary rounded-pill px-4 py-2 fw-bold text-white fs-7" onClick={() => openPreview("/images/Client.png", `${r.name} - Resume Preview`)}>View</button>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Real applications (lib/applications.js): applicants for clients, My Applications for freelancers. */}
+          <ApplicationsPanel isFreelancer={isFreelancer} currentUserId={currentUserId} openChat={openChat} showToast={showToast} />
         </div>
 
         <div className="col-lg-6">
