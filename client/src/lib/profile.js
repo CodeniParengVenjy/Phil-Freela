@@ -58,6 +58,24 @@ export async function saveDescription(userId, text) {
   return "";
 }
 
+// Settings > Privacy & Notifications > "Email me when I'm offline". When on,
+// the database emails the user about new messages, missed calls, job
+// applications and account news that arrive while they're away
+// (supabase_email_notifications_schema.sql). Returns true/false, or null when
+// it couldn't be loaded.
+export async function fetchEmailWhenOffline(userId) {
+  const { data, error } = await supabase.from("profiles").select("email_when_offline").eq("id", userId).maybeSingle();
+  if (error || !data) return null;
+  return data.email_when_offline;
+}
+
+// Returns "" when saved, or a message to show the user.
+export async function saveEmailWhenOffline(userId, on) {
+  const { data, error } = await supabase.from("profiles").update({ email_when_offline: on }).eq("id", userId).select("id");
+  if (error || !data?.length) return "Couldn't save that setting. Please try again.";
+  return "";
+}
+
 // Ensures a `profiles` row exists for an authenticated user, returning the
 // route to send them to next.
 //

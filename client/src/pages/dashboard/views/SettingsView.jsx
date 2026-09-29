@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, fetchDescription, saveDescription, saveDisplayName } from "../../../lib/profile";
+import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, fetchDescription, fetchEmailWhenOffline, saveDescription, saveDisplayName, saveEmailWhenOffline } from "../../../lib/profile";
 import { checkAvatarFile, uploadAvatar } from "../../../lib/avatar";
 import Avatar from "../../../components/Avatar";
 import VerificationStatusCard from "../components/VerificationStatusCard";
@@ -23,6 +23,9 @@ export default function SettingsView() {
   const shownDescription = descriptionInput ?? savedDescription ?? "";
   // Save waits until the description has loaded, so an empty box can't be
   // saved over the real one.
+  // "Email me when I'm offline": null while loading, then true/false.
+  const [emailWhenOffline, setEmailWhenOffline] = useState(null);
+  const [savingEmailSetting, setSavingEmailSetting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   // The picked picture, shown while it uploads.
@@ -35,8 +38,25 @@ export default function SettingsView() {
     fetchDescription(currentUserId).then((text) => {
       if (active) setSavedDescription(text);
     });
+    fetchEmailWhenOffline(currentUserId).then((on) => {
+      if (active) setEmailWhenOffline(on);
+    });
     return () => { active = false; };
   }, [currentUserId]);
+
+  // Saved as soon as it's clicked, like the profile picture.
+  const handleEmailSettingChange = async (event) => {
+    const on = event.target.checked;
+    setSavingEmailSetting(true);
+    const problem = await saveEmailWhenOffline(currentUserId, on);
+    setSavingEmailSetting(false);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+    setEmailWhenOffline(on);
+    showToast(on ? "You'll get emails while you're offline." : "Offline emails turned off.");
+  };
 
   // Frees the old preview's memory whenever it's replaced or the page closes.
   useEffect(() => () => {
@@ -181,6 +201,24 @@ export default function SettingsView() {
               ) : (
                 <p className="text-secondary fs-7">Only freelancers upload work, so there's nothing to set here.</p>
               )
+            ) : activeSubNav === "Privacy & Notifications" ? (
+              <div className="form-check form-switch">
+                <input
+                  id="emailWhenOffline"
+                  type="checkbox"
+                  role="switch"
+                  className="form-check-input"
+                  checked={emailWhenOffline === true}
+                  onChange={handleEmailSettingChange}
+                  disabled={emailWhenOffline === null || savingEmailSetting}
+                />
+                <label htmlFor="emailWhenOffline" className="form-check-label text-white fw-semibold fs-7">Email me when I'm offline</label>
+                <p className="text-secondary fs-8 mb-0 mt-1">
+                  {emailWhenOffline === null
+                    ? "Loading..."
+                    : "When you're not on PhilFreela, we'll email you about new messages (at most one per chat every 30 minutes), missed calls, job applications, and news about your account. Messages themselves are never put in the email."}
+                </p>
+              </div>
             ) : (
               <p className="text-secondary fs-7">This section isn't wired up yet.</p>
             )}
