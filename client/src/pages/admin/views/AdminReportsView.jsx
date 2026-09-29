@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { SLIDES_SELECT } from "../../../lib/slides";
-import { reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
+import { getScreenshotLinks, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields, getViolation } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
@@ -27,6 +27,20 @@ const actionText = {
 // Key for looking up what a report points at, e.g. "service:<id>".
 const targetKey = (type, id) => `${type}:${id}`;
 
+// "During a video call · Sep 29, 2026, 3:10 PM · 4 min" for a report sent
+// from a call. The length counts from when it was answered.
+function callSummary(call) {
+  const when = new Date(call.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+  let length = "not answered";
+  if (call.answered_at && call.ended_at) {
+    const seconds = Math.round((new Date(call.ended_at) - new Date(call.answered_at)) / 1000);
+    length = seconds < 60 ? `${seconds} sec` : `${Math.round(seconds / 60)} min`;
+  } else if (call.answered_at) {
+    length = "still going";
+  }
+  return `During a ${call.kind} call · ${when} · ${length}`;
+}
+
 export default function AdminReportsView() {
   const { adminId, refreshPendingReports } = useOutletContext();
   const [reports, setReports] = useState(null);
@@ -35,6 +49,10 @@ export default function AdminReportsView() {
   const [targets, setTargets] = useState({});
   // user id -> "banned" or "suspended", only for bans/suspensions still in effect.
   const [blockedStatus, setBlockedStatus] = useState({});
+  // call id -> { kind, created_at, answered_at, ended_at } for reports sent
+  // from a call, and screenshot path -> a link that opens it.
+  const [calls, setCalls] = useState({});
+  const [screenshotLinks, setScreenshotLinks] = useState({});
   const [loadError, setLoadError] = useState("");
   const [activeStatus, setActiveStatus] = useState("pending");
   const [message, setMessage] = useState({ text: "", type: "" });
@@ -52,7 +70,7 @@ export default function AdminReportsView() {
       const [reportsResult, suspensionsResult] = await Promise.all([
         supabase
           .from("reports")
-          .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
+          .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
           .order("created_at", { ascending: false }),
         supabase.from("user_suspensions").select("user_id, ends_at")
       ]);
@@ -66,14 +84,20 @@ export default function AdminReportsView() {
       // Look up everything that was reported, grouped by kind, so each
       // report card can show the name/title and the owner.
       const idsOf = (type) => [...new Set(reportsResult.data.filter((r) => r.target_type === type).map((r) => r.target_id))];
-      const [usersResult, servicesResult, jobsResult] = await Promise.all([
+      const callIds = [...new Set(reportsResult.data.map((r) => r.call_id).filter(Boolean))];
+      const [usersResult, servicesResult, jobsResult, callsResult, links] = await Promise.all([
         supabase.from("profiles").select("id, full_name, username").in("id", idsOf("user")),
         // The slides are only needed so Remove can delete the service's files too.
         supabase.from("services").select(`id, title, image_url, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`).in("id", idsOf("service")),
-        supabase.from("job_posts").select("id, title, client_id, owner:profiles!job_posts_client_id_fkey(full_name, username)").in("id", idsOf("job_post"))
+        supabase.from("job_posts").select("id, title, client_id, owner:profiles!job_posts_client_id_fkey(full_name, username)").in("id", idsOf("job_post")),
+        // Admins can't read the calls table, only this summary (no IP addresses).
+        callIds.length ? supabase.rpc("admin_report_calls", { call_ids: callIds }) : { data: [] },
+        getScreenshotLinks(reportsResult.data.flatMap((r) => r.evidence_paths || []))
       ]);
 
       if (!active) return;
+      setCalls(Object.fromEntries((callsResult.data || []).map((c) => [c.id, c])));
+      setScreenshotLinks(links);
 
       const found = {};
       (usersResult.data || []).forEach((u) => {
@@ -235,7 +259,27 @@ export default function AdminReportsView() {
                 {report.reporter?.username && ` (@${report.reporter.username})`}
               </p>
 
+              {report.call_id && calls[report.call_id] && (
+                <p className="fs-8 text-warning mb-2">
+                  <i className={`bi ${calls[report.call_id].kind === "video" ? "bi-camera-video-fill" : "bi-telephone-fill"} me-1`}></i>
+                  {callSummary(calls[report.call_id])}
+                </p>
+              )}
+
               {report.details && <p className="fs-7 text-white mb-2 admin-description">"{report.details}"</p>}
+
+              {/* The reporter's screenshots; click one to open it full size. */}
+              {report.evidence_paths?.length > 0 && (
+                <div className="d-flex flex-wrap gap-2 mb-2">
+                  {report.evidence_paths.map((path, index) => (screenshotLinks[path] ? (
+                    <a key={path} href={screenshotLinks[path]} target="_blank" rel="noreferrer" title={`Open screenshot ${index + 1}`}>
+                      <img src={screenshotLinks[path]} alt={`Screenshot ${index + 1}`} className="rounded-3 border border-secondary border-opacity-50" style={{ width: 88, height: 88, objectFit: "cover" }} />
+                    </a>
+                  ) : (
+                    <span key={path} className="fs-8 text-white-50 fst-italic">(screenshot {index + 1} missing)</span>
+                  )))}
+                </div>
+              )}
 
               {report.status !== "pending" && (
                 <p className="fs-8 text-white-50 mb-0">

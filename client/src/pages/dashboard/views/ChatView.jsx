@@ -708,7 +708,7 @@ export default function ChatView() {
         onCancel={() => setDeleteTarget(null)}
       />
 
-      <ReportDialog target={reportTarget} currentUserId={currentUserId} onClose={() => setReportTarget(null)} onDone={showToast} />
+      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
     </section>
   );
 }

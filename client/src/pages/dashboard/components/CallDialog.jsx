@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import Avatar from "../../../components/Avatar";
 import { acceptCall, hangUp, switchCamera, toggleCamera, toggleMute, useCall } from "../../../lib/calls";
+import ReportDialog from "./ReportDialog";
 import "./calls.css";
 
 const STAGE_TEXT = { starting: "Starting...", calling: "Calling...", connecting: "Connecting..." };
 // After this long on "Connecting...", explain that a weak internet is slower.
 const SLOW_CONNECT_MS = 8000;
+// How long "Report sent" stays on screen.
+const NOTICE_MS = 4000;
 
 // The voice / video call window, shown on every dashboard page (see
 // DashboardOverlays). The call itself lives in lib/calls.js; this only draws
@@ -15,14 +18,40 @@ export default function CallDialog() {
   const call = useCall();
   // The call key the window was made smaller for, so every new call opens big.
   const [smallKey, setSmallKey] = useState(null);
+  // Reporting the other person during the call (null = Report popup closed).
+  // It lives here, not in the call window, so the popup stays open even if
+  // the call ends while the user is still writing.
+  const [reportTarget, setReportTarget] = useState(null);
+  const [notice, setNotice] = useState("");
 
   useTone(call?.stage === "ringing" ? "incoming" : call?.stage === "calling" ? "outgoing" : null);
 
-  if (!call) return null;
-  if (call.stage === "ringing") return <IncomingCall call={call} />;
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(""), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
-  const small = smallKey === call.key;
-  return <CallWindow call={call} small={small} onToggleSize={() => setSmallKey(small ? null : call.key)} />;
+  const report = () => setReportTarget({
+    type: "user", id: call.other.id, name: call.other.name, callId: call.id, callKind: call.kind
+  });
+
+  let screen = null;
+  if (call?.stage === "ringing") {
+    screen = <IncomingCall call={call} />;
+  } else if (call) {
+    const small = smallKey === call.key;
+    screen = <CallWindow call={call} small={small} onToggleSize={() => setSmallKey(small ? null : call.key)} onReport={report} />;
+  }
+
+  return (
+    <>
+      {screen}
+      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={setNotice} />
+      {/* The dashboard's toast would be hidden behind the call window. */}
+      {notice && <div className="call-notice fs-7 fw-semibold" role="status">{notice}</div>}
+    </>
+  );
 }
 
 function IncomingCall({ call }) {
@@ -44,7 +73,7 @@ function IncomingCall({ call }) {
   );
 }
 
-function CallWindow({ call, small, onToggleSize }) {
+function CallWindow({ call, small, onToggleSize, onReport }) {
   const { other, stage } = call;
   const isVideo = call.kind === "video";
   const live = stage === "active";
@@ -68,6 +97,13 @@ function CallWindow({ call, small, onToggleSize }) {
                 : STAGE_TEXT[stage]}
             </div>
           </div>
+          {/* Report the other person (needs the call's row, so not while
+              the call is still being set up). */}
+          {stage !== "ended" && call.id && (
+            <button type="button" className="btn btn-sm text-white-50 border-0" title="Report this user" aria-label="Report this user" onClick={onReport}>
+              <i className="bi bi-flag-fill"></i>
+            </button>
+          )}
           {stage !== "ended" && (
             <button type="button" className="btn btn-sm text-white-50 border-0" title={small ? "Make bigger" : "Make smaller"} aria-label={small ? "Make bigger" : "Make smaller"} onClick={onToggleSize}>
               <i className={`bi ${small ? "bi-arrows-angle-expand" : "bi-arrows-angle-contract"}`}></i>

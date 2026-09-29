@@ -130,6 +130,21 @@
   width: 32%;
 }
 
+/* "Report sent" after reporting from a call: above the call window. */
+.call-notice {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1500;
+  max-width: calc(100% - 2rem);
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  background: #198754;
+  color: #fff;
+  text-align: center;
+}
+
 /* ---- Round buttons ---- */
 
 .call-btn {

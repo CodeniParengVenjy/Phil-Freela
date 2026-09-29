@@ -10,10 +10,12 @@ import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import BlockedNotice from "../components/BlockedNotice";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
+import ReportDialog from "../components/ReportDialog";
 
 // One client job post (opened from Find Jobs). Freelancers apply here with a
 // PDF resume and an optional note; the client then sees them in Projects &
-// Resumes.
+// Resumes. Clients have no public page of their own, so this is also where
+// a freelancer can report the client.
 export default function JobDetailsView() {
   const { jobId } = useParams();
   const { currentUserId, accountType, suspension, showToast, openChat } = useOutletContext();
@@ -28,6 +30,8 @@ export default function JobDetailsView() {
   const [sending, setSending] = useState(false);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  // The client being reported (null = Report popup closed).
+  const [reportTarget, setReportTarget] = useState(null);
 
   useEffect(() => {
     if (!currentUserId) return undefined;
@@ -204,10 +208,21 @@ export default function JobDetailsView() {
               {job.budget && <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill">Budget: ₱{Number(job.budget).toLocaleString()}</span>}
             </div>
           </div>
-          {!isOwnJob && (
-            <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-4 fw-bold flex-shrink-0" onClick={() => openChat(job.client?.id)}>
-              <i className="bi bi-chat-dots-fill me-1"></i> Message
-            </button>
+          {!isOwnJob && job.client && (
+            <div className="d-flex gap-2 flex-shrink-0">
+              <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-4 fw-bold" onClick={() => openChat(job.client.id)}>
+                <i className="bi bi-chat-dots-fill me-1"></i> Message
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline-secondary text-white-50 rounded-pill px-3"
+                title="Report this client"
+                aria-label="Report this client"
+                onClick={() => setReportTarget({ type: "user", id: job.client.id, name: clientName })}
+              >
+                <i className="bi bi-flag-fill"></i>
+              </button>
+            </div>
           )}
         </div>
 
@@ -232,6 +247,8 @@ export default function JobDetailsView() {
         onConfirm={handleWithdraw}
         onCancel={() => setConfirmWithdraw(false)}
       />
+
+      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
     </section>
   );
 }

@@ -5,17 +5,20 @@ import { fetchIsVerified } from "../../../lib/verification";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import PortfolioSection from "../components/PortfolioSection";
+import ReportDialog from "../components/ReportDialog";
 
 // A freelancer's public page (/dashboard/freelancers/:freelancerId): their
-// name, Verified badge, a Message button, their description, and their portfolio. Reached from
+// name, Verified badge, Message and Report buttons, their description, and their portfolio. Reached from
 // "by <name>" on Browse Services. The freelancer's @username is shown faintly
 // over their slides, so a screenshot still shows whose work it is.
 export default function FreelancerPortfolioView() {
   const { freelancerId } = useParams();
-  const { currentUserId, openChat } = useOutletContext();
+  const { currentUserId, openChat, showToast } = useOutletContext();
   // undefined while loading, null when there's no such freelancer.
   const [freelancer, setFreelancer] = useState(undefined);
   const [verified, setVerified] = useState(false);
+  // The freelancer being reported (null = Report popup closed).
+  const [reportTarget, setReportTarget] = useState(null);
   const isOwnPage = freelancerId === currentUserId;
 
   useEffect(() => {
@@ -62,9 +65,20 @@ export default function FreelancerPortfolioView() {
         {isOwnPage ? (
           <span className="text-secondary fs-8">This is how others see your portfolio.</span>
         ) : (
-          <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white flex-shrink-0" onClick={() => openChat(freelancer.id)}>
-            <i className="bi bi-chat-dots-fill me-1"></i> Message
-          </button>
+          <div className="d-flex gap-2 flex-shrink-0">
+            <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={() => openChat(freelancer.id)}>
+              <i className="bi bi-chat-dots-fill me-1"></i> Message
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary text-white-50 rounded-pill px-3"
+              title="Report this freelancer"
+              aria-label="Report this freelancer"
+              onClick={() => setReportTarget({ type: "user", id: freelancer.id, name: freelancer.full_name || freelancer.username })}
+            >
+              <i className="bi bi-flag-fill"></i>
+            </button>
+          </div>
         )}
       </div>
 
@@ -80,6 +94,8 @@ export default function FreelancerPortfolioView() {
         {/* key: start fresh when moving from one freelancer's page to another's. */}
         <PortfolioSection key={freelancerId} freelancerId={freelancerId} ownerName={freelancer.username} />
       </div>
+
+      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
     </section>
   );
 }

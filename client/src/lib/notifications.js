@@ -3,7 +3,8 @@ import { supabase } from "./supabaseClient";
 // The Notifications page shows two kinds of items:
 //  - announcements: posted by an admin to everyone (lib/announcements.js)
 //  - user_notifications: for one user only, made by the database itself when
-//    a verification is reviewed or the user is suspended
+//    a verification is reviewed, the user is suspended, or their report is
+//    reviewed
 // Both count as unread when they're newer than the last time the user opened
 // the page (profiles.notifications_seen_at).
 
@@ -60,7 +61,10 @@ export const notificationIcons = {
   suspension: { icon: "bi-exclamation-triangle-fill", className: "bg-warning text-dark" },
   suspension_lifted: { icon: "bi-unlock-fill", className: "bg-success text-white" },
   appeal_accepted: { icon: "bi-check-circle-fill", className: "bg-success text-white" },
-  appeal_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" }
+  appeal_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" },
+  // An admin reviewed a report the user sent (database/supabase_reports_schema.sql).
+  report_resolved: { icon: "bi-flag-fill", className: "bg-success text-white" },
+  report_dismissed: { icon: "bi-flag", className: "bg-secondary text-white" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
