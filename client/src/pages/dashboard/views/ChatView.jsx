@@ -11,6 +11,9 @@ import { isMessagingBlocked } from "../../../lib/suspensions";
 import { startCall, useCall } from "../../../lib/calls";
 import { presenceStatus, usePresence } from "../../../lib/presence";
 import { needsTimeDivider, timeDividerLabel } from "../../../lib/chatTime";
+import { FILE_ACCEPT, checkChatFile, deleteChatFile, fileIcon, formatSize, sendChatFile, sendVoiceMessage } from "../../../lib/chatFiles";
+import ChatAttachment from "../components/ChatAttachment";
+import VoiceRecorder from "../components/VoiceRecorder";
 
 // Same upload rules as the Post a Service media dropzone.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -59,6 +62,9 @@ export default function ChatView() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [pendingMedia, setPendingMedia] = useState(null); // { file, mediaType, previewUrl }
   const fileInputRef = useRef(null);
+  // The paperclip's own picker (documents), and the mic's recording popup.
+  const docInputRef = useRef(null);
+  const [showRecorder, setShowRecorder] = useState(false);
 
   // The voice/video call going on (if any), so the call buttons can't start a second one.
   const activeCall = useCall();
@@ -120,7 +126,7 @@ export default function ChatView() {
 
       const { data: messageRows, error: messagesError } = await supabase
         .from("messages")
-        .select("id, sender_id, body, created_at, edited_at, delivered_at, attachment_url, attachment_type, call_id")
+        .select("id, sender_id, body, created_at, edited_at, delivered_at, attachment_url, attachment_type, attachment_name, attachment_size, call_id")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
@@ -236,6 +242,10 @@ export default function ChatView() {
   const confirmUnsend = async () => {
     setDeleting(true);
     const { error } = await supabase.from("messages").delete().eq("id", deleteTarget.id);
+    // An unsent file or voice message is deleted from storage too.
+    if (!error && (deleteTarget.attachment_type === "file" || deleteTarget.attachment_type === "audio")) {
+      await deleteChatFile(deleteTarget.attachment_url);
+    }
     setDeleting(false);
     setDeleteTarget(null);
     if (error) {
@@ -331,14 +341,44 @@ export default function ChatView() {
     setPendingMedia({ file, mediaType, previewUrl: URL.createObjectURL(file) });
   };
 
+  // The paperclip: a document (PDF, Word, Excel, PowerPoint, TXT). Like a
+  // photo, it's shown in the "Send?" popup first (lib/chatFiles.js checks it).
+  const handleDocChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // lets the same file be picked again later
+    if (!file) return;
+    const problem = await checkChatFile(file);
+    if (problem) {
+      showToast?.(problem);
+      return;
+    }
+    setPendingMedia({ file, mediaType: "file", previewUrl: null });
+  };
+
+  // The mic popup's Send: returns true when sent, so the popup can close.
+  const handleSendVoice = async (recording) => {
+    const problem = await sendVoiceMessage(conversationId, currentUserId, recording);
+    if (problem) showToast?.(problem);
+    return !problem;
+  };
+
   const cancelSendMedia = () => {
-    if (pendingMedia) URL.revokeObjectURL(pendingMedia.previewUrl);
+    if (pendingMedia?.previewUrl) URL.revokeObjectURL(pendingMedia.previewUrl);
     setPendingMedia(null);
   };
 
   const confirmSendMedia = async () => {
     const { file, mediaType, previewUrl } = pendingMedia;
     setUploadingMedia(true);
+
+    // Documents go to the private chat-files storage (lib/chatFiles.js).
+    if (mediaType === "file") {
+      const problem = await sendChatFile(conversationId, currentUserId, file);
+      setUploadingMedia(false);
+      setPendingMedia(null);
+      if (problem) showToast?.(problem);
+      return;
+    }
 
     const extension = file.type.split("/")[1];
     const path = `${conversationId}/${currentUserId}-${Date.now()}.${extension}`;
@@ -524,6 +564,9 @@ export default function ChatView() {
                       {m.attachment_url && m.attachment_type === "video" && (
                         <video src={m.attachment_url} controls className="rounded-3 mb-1 d-block" style={{ maxWidth: 240 }} />
                       )}
+                      {m.attachment_url && (m.attachment_type === "file" || m.attachment_type === "audio") && (
+                        <ChatAttachment message={m} showToast={showToast} />
+                      )}
                       {m.body && <p className="mb-0 fs-7">{m.body}</p>}
                       {m.edited_at && <small className="fs-9 text-white-50 fst-italic">(edited)</small>}
                       {isMe && m.id === lastMineId && (
@@ -554,13 +597,24 @@ export default function ChatView() {
                 style={{ display: "none" }}
                 onChange={handleFileChange}
               />
-              {/* The paperclip and mic don't do anything yet, so phones hide
-                  them to leave room for typing. */}
-              <button type="button" className="btn btn-dark text-secondary p-2 d-none d-sm-inline-block"><i className="bi bi-paperclip fs-5"></i></button>
-              <button type="button" className="btn btn-dark text-secondary p-2 flex-shrink-0" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video">
+              <input
+                type="file"
+                ref={docInputRef}
+                accept={FILE_ACCEPT}
+                style={{ display: "none" }}
+                onChange={handleDocChange}
+              />
+              {/* Paperclip = documents, picture = photo/video, mic = voice
+                  message. Tighter padding on phones leaves room for typing. */}
+              <button type="button" className="btn btn-dark text-secondary px-1 px-sm-2 py-2 flex-shrink-0" onClick={() => docInputRef.current?.click()} disabled={uploadingMedia} title="Send a file" aria-label="Send a file">
+                <i className="bi bi-paperclip fs-5"></i>
+              </button>
+              <button type="button" className="btn btn-dark text-secondary px-1 px-sm-2 py-2 flex-shrink-0" onClick={handleMediaButtonClick} disabled={uploadingMedia} title="Send a photo or video" aria-label="Send a photo or video">
                 <i className="bi bi-image fs-5"></i>
               </button>
-              <button type="button" className="btn btn-dark text-secondary p-2 d-none d-sm-inline-block"><i className="bi bi-mic fs-5"></i></button>
+              <button type="button" className="btn btn-dark text-secondary px-1 px-sm-2 py-2 flex-shrink-0" onClick={() => setShowRecorder(true)} disabled={uploadingMedia} title="Record a voice message" aria-label="Record a voice message">
+                <i className="bi bi-mic fs-5"></i>
+              </button>
 
               <input
                 type="text"
@@ -585,17 +639,21 @@ export default function ChatView() {
           style={{ position: "fixed", top: contextMenu.y, left: contextMenu.x, zIndex: 1200, minWidth: 180 }}
           onClick={(event) => event.stopPropagation()}
         >
-          <button type="button" className="dropdown-item rounded-2 text-white d-flex align-items-center" onClick={() => handleCopy(contextMenu.message)}>
-            <i className="bi bi-clipboard me-2 text-info"></i> Copy Text
-          </button>
-          {!messagingBlocked && (
+          {/* Copy / Forward / Edit only make sense for a message with text
+              (not a photo, video, file or voice message on its own). */}
+          {contextMenu.message.body && (
+            <button type="button" className="dropdown-item rounded-2 text-white d-flex align-items-center" onClick={() => handleCopy(contextMenu.message)}>
+              <i className="bi bi-clipboard me-2 text-info"></i> Copy Text
+            </button>
+          )}
+          {!messagingBlocked && contextMenu.message.body && (
             <button type="button" className="dropdown-item rounded-2 text-white d-flex align-items-center" onClick={() => openForwardPicker(contextMenu.message)}>
               <i className="bi bi-arrow-90deg-right me-2 text-warning"></i> Forward Text
             </button>
           )}
           {contextMenu.message.sender_id === currentUserId && (
             <>
-              {!messagingBlocked && (
+              {!messagingBlocked && contextMenu.message.body && (
                 <button type="button" className="dropdown-item rounded-2 text-white d-flex align-items-center" onClick={() => startEdit(contextMenu.message)}>
                   <i className="bi bi-pencil me-2 text-orange"></i> Edit Text
                 </button>
@@ -679,12 +737,22 @@ export default function ChatView() {
             style={{ maxWidth: 420, width: "100%" }}
             onClick={(event) => event.stopPropagation()}
           >
-            <h6 className="fw-bold mb-3">Send {pendingMedia.mediaType === "video" ? "video" : "photo"}?</h6>
+            <h6 className="fw-bold mb-3">Send {pendingMedia.mediaType === "video" ? "video" : pendingMedia.mediaType === "file" ? "this file" : "photo"}?</h6>
             <div className="text-center mb-3">
-              {pendingMedia.mediaType === "image" ? (
+              {pendingMedia.mediaType === "image" && (
                 <img src={pendingMedia.previewUrl} alt="Preview" className="img-fluid rounded-3" style={{ maxHeight: 320 }} />
-              ) : (
+              )}
+              {pendingMedia.mediaType === "video" && (
                 <video src={pendingMedia.previewUrl} controls className="rounded-3" style={{ maxHeight: 320, maxWidth: "100%" }} />
+              )}
+              {pendingMedia.mediaType === "file" && (
+                <div className="d-flex align-items-center gap-3 text-start p-3 rounded-3 bg-secondary bg-opacity-25">
+                  <i className={`bi ${fileIcon(pendingMedia.file.name)} fs-1 text-role flex-shrink-0`}></i>
+                  <div className="overflow-hidden">
+                    <div className="fw-semibold fs-7 text-truncate">{pendingMedia.file.name}</div>
+                    <small className="text-white-50 fs-8">{formatSize(pendingMedia.file.size)}</small>
+                  </div>
+                </div>
               )}
             </div>
             <div className="d-flex gap-2 justify-content-end">
@@ -698,6 +766,8 @@ export default function ChatView() {
           </div>
         </div>
       )}
+
+      {showRecorder && <VoiceRecorder onSend={handleSendVoice} onClose={() => setShowRecorder(false)} />}
 
       <DeleteConfirmDialog
         open={!!deleteTarget}

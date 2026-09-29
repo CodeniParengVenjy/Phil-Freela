@@ -231,8 +231,23 @@ Step 4 files: `database/supabase_applications_schema.sql`,
 `components/DeleteConfirmDialog.jsx` (optional button text), `App.jsx`,
 `lib/pageTitles.js`.
 
-Next: plan Step 5 (Inbox file + voice message). The calls session already
-changed `ChatView.jsx` and `useDashboardShell.js`, so build on its version.
+Step 5 (Inbox file + voice message): built and pushed live (2026-09-30).
+`database/supabase_chat_files_schema.sql` has been run on Supabase
+(migration "chat_files_and_voice_messages"), so don't run it again. Still
+needs the user to test it. Files and voice messages use a new PRIVATE
+bucket `chat-files` (only the two people in the chat can open them, through
+expiring links); `messages.attachment_url` holds the file's path for them.
+The same SQL also stopped outsiders from listing the older public
+`chat-attachments` bucket (old photo/video links still open) and limited
+that bucket to photos and videos up to 50 MB.
+
+Step 5 files: `database/supabase_chat_files_schema.sql`, `lib/chatFiles.js`,
+`components/VoiceRecorder.jsx`, `components/ChatAttachment.jsx`,
+`views/ChatView.jsx`, `hooks/useDashboardShell.js` (pop-up text),
+`dashboard.css` (recording dot).
+
+All 5 steps in this plan are built. The hard ones are in
+PLAN-hard-features.md.
 
 Step 2 files: `database/supabase_avatar_schema.sql`, `lib/avatar.js`,
 `lib/shrinkImage.js` (optional size), `components/Avatar.jsx`,

@@ -203,6 +203,8 @@ export function useDashboardShell() {
         const name = sender?.full_name || sender?.username || "Someone";
         const contentLabel = payload.new.attachment_type === "video" ? "a video"
           : payload.new.attachment_type === "image" ? "a photo"
+          : payload.new.attachment_type === "file" ? "a file"
+          : payload.new.attachment_type === "audio" ? "a voice message"
           : "a message";
         showToast(isCallLine ? `${payload.new.body} from ${name}` : `${name} sent ${contentLabel}`);
       })

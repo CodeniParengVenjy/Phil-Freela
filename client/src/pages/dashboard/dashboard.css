@@ -374,6 +374,25 @@ body.sidebar-collapsed .sidebar-wrapper {
   border: 2px solid #0f131c;
 }
 
+/* Voice recorder (VoiceRecorder.jsx): a red dot that pulses while recording. */
+.recording-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: recording-pulse 1s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-dot { animation: none; }
+}
+
 .max-w-500 { max-width: 500px; }
 .max-h-500 { max-height: 500px; }
 .cursor-pointer { cursor: pointer; }
