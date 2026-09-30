@@ -1,6 +1,6 @@
 """Downloads the models too big to keep in GitHub into the models folder:
 the SFace face model (37 MB), the copy check's ViT (23 MB), the documents'
-text model (23 MB), and moodboard matching's CLIP vision model (89 MB). On
+text model (23 MB), and moodboard matching's CLIP vision model (58 MB). On
 Linux (Vercel) it also adds FFmpeg for videos, compressed (see get_ffmpeg).
 
 They're fetched from OpenCV's model collection and Hugging Face instead:
@@ -44,10 +44,12 @@ FILES = {
         "da0e79933b9ed51798a3ae27893d3c5fa4a201126cef75586296df9b4d2c62a0",
     ),
     # Moodboard matching's image model (OpenAI's CLIP, MIT license), just the
-    # vision half, 8-bit ONNX (89 MB). See moodboard.py.
+    # vision half, 4-bit ONNX (58 MB -- the 8-bit version (89 MB) tested no
+    # better at telling freelancers' work apart and didn't fit Vercel's
+    # 500 MB limit alongside the other AI features). See moodboard.py.
     "clip_vision_quantized.onnx": (
-        "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/vision_model_quantized.onnx",
-        "583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299",
+        "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/vision_model_bnb4.onnx",
+        "d37c9d4463a3ade0bd069e2d35af22f6cbe71ca6e64ad922dbd4f5b2cba9243e",
     ),
 }
 

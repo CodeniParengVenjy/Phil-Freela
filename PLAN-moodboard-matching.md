@@ -119,5 +119,25 @@ Files: `database/supabase_moodboard_schema.sql`, `ai-service/moodboard.py`,
 `views/MoodboardMatchView.jsx`, `ClientDashboardLayout.jsx` (sidebar link),
 `App.jsx` (route), `lib/pageTitles.js`.
 
+Deploy problem, found and fixed the same day: the first push's Vercel build
+failed ("Total bundle size (557.93 MB) exceeds the maximum function size
+(500 MB)"). The ai-service was already at ~469 MB before this feature (the
+project has hit this before, per get_models.py's FFmpeg-compression note),
+so CLIP's 89 MB 8-bit model didn't fit. Fixed two ways:
+1. Switched to CLIP's 4-bit ONNX export (58 MB): re-tested on the real
+   4-freelancer ranking task and it matched every reference image to the
+   right freelancer just as well as the 8-bit version (17/17, same clear
+   score gaps) -- a wallpaper-clustering side test had made the 4-bit
+   version look worse, but that test used near-duplicate images (an exact
+   duplicate file, and paired light/dark icon themes) that don't represent
+   real, distinct freelancer portfolios.
+2. That alone wasn't enough (still ~527 MB). The user turned on Vercel's
+   "Large functions" beta (up to 5 GB): project environment variable
+   `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` (all 3 environments) plus confirming
+   Fluid Compute is on, both in the Vercel dashboard, no code change. Free
+   on the Hobby plan for this project's usage (waiting on the database or a
+   model download doesn't count against the free Active CPU time; only
+   running the model itself does).
+
 Still needs: the user to try it on the live site once a few more
 freelancers have real portfolio pictures (today there's only one).
