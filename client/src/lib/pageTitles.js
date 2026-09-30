@@ -24,6 +24,7 @@ const pageTitles = {
   "/dashboard/settings": "Settings",
   "/dashboard/check-ownership": "Check Ownership",
   "/dashboard/search": "Search",
+  "/dashboard/moodboard-match": "Moodboard Match",
   "/dashboard/verify-identity": "Verify Identity",
   "/dashboard/feedback": "Ratings and Feedback",
   "/dashboard/job-details": "Job Details",

@@ -38,6 +38,7 @@ from face_check import NoFaceError, check_faces, find_duplicate, prepare_image
 from id_qr import check_philsys_qr
 from hidden_watermark import new_code, protect_photo, read_code, read_code_from_frames, read_uncropped_codes
 from listing_search import search_listings
+from moodboard import match_moodboard
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
 from recommendations import recommend
 from similarity import image_embedding
@@ -1218,3 +1219,23 @@ def get_recommendations(authorization: str | None = Header(default=None)):
     except APIError:
         logging.exception("Recommendations failed")
         raise HTTPException(503, "Recommendations aren't available right now.")
+
+
+# ---------------------------------------------------------------------------
+# AI Moodboard Matching: feature 2 in PhilFreela-System-Functions.md
+# (CLIP embeddings + cosine similarity, see moodboard.py)
+# ---------------------------------------------------------------------------
+
+@app.post("/moodboard/match")
+def moodboard_match(image: UploadFile = File(...), authorization: str | None = Header(default=None)):
+    """A client uploads a reference image (a moodboard, a sample, a style
+    they like); returns the freelancers whose portfolio work looks closest
+    to it, best first. Returns ids only; the website loads the freelancer
+    and the matching slide itself, under the normal database rules."""
+    get_user_id(authorization)
+    reference = read_image(image, "reference image")
+    try:
+        return {"results": match_moodboard(supabase, reference)}
+    except APIError:
+        logging.exception("Moodboard matching failed")
+        raise HTTPException(503, "Moodboard matching isn't available right now. Please try again.")

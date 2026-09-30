@@ -1,7 +1,7 @@
 """Downloads the models too big to keep in GitHub into the models folder:
-the SFace face model (37 MB), the copy check's ViT (23 MB), and the
-documents' text model (23 MB). On Linux (Vercel) it also adds FFmpeg for
-videos, compressed (see get_ffmpeg).
+the SFace face model (37 MB), the copy check's ViT (23 MB), the documents'
+text model (23 MB), and moodboard matching's CLIP vision model (89 MB). On
+Linux (Vercel) it also adds FFmpeg for videos, compressed (see get_ffmpeg).
 
 They're fetched from OpenCV's model collection and Hugging Face instead:
 Vercel runs this while building (see vercel.json), and on a laptop you run it
@@ -42,6 +42,12 @@ FILES = {
     "minilm_tokenizer.json": (
         "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer.json",
         "da0e79933b9ed51798a3ae27893d3c5fa4a201126cef75586296df9b4d2c62a0",
+    ),
+    # Moodboard matching's image model (OpenAI's CLIP, MIT license), just the
+    # vision half, 8-bit ONNX (89 MB). See moodboard.py.
+    "clip_vision_quantized.onnx": (
+        "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/vision_model_quantized.onnx",
+        "583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299",
     ),
 }
 

@@ -199,3 +199,15 @@ export async function searchListings(query) {
 export async function getRecommendations() {
   return request("/recommendations", { headers: await authHeader() });
 }
+
+// AI Moodboard Matching (feature 2): a reference image (a File) -> the
+// freelancers whose portfolio work looks closest to it, best first. Returns
+// [{ freelancer_id, slide_id, score, strong }]; the page loads the
+// freelancer and the matching slide itself, under the normal database
+// rules. See ai-service/moodboard.py.
+export async function matchMoodboard(image) {
+  const form = new FormData();
+  form.append("image", image, image.name || "reference.jpg");
+  const body = await request("/moodboard/match", { method: "POST", headers: await authHeader(), body: form });
+  return body.results || [];
+}

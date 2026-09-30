@@ -11,3 +11,4 @@ ai-service/models/dino_vits16_model_quantized.onnx
 ai-service/models/minilm_l6_v2_quantized.onnx
 ai-service/models/minilm_tokenizer.json
 ai-service/models/ffmpeg-linux-x86_64.xz
+ai-service/models/clip_vision_quantized.onnx
