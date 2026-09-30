@@ -84,7 +84,7 @@ function App() {
         <Route path="feedback" element={<FeedbackView />} />
         <Route path="job-details/:jobId" element={<JobDetailsView />} />
         <Route path="project-details/:projectId" element={<ProjectDetailsView />} />
-        <Route path="submit-project" element={<SubmitProjectView />} />
+        <Route path="submit-project/:projectId" element={<SubmitProjectView />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
       <Route path="/admin/login" element={<AdminLogin />} />

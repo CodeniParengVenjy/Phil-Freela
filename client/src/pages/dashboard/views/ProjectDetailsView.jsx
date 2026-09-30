@@ -1,18 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
-import { formatDay, getProject, personName, projectStatuses, todayInManila } from "../../../lib/projects";
+import {
+  deliverableIcon, formatDay, getProject, markProjectDone, openDeliverable,
+  personName, projectStatuses, requestProjectChanges, todayInManila
+} from "../../../lib/projects";
 import Avatar from "../../../components/Avatar";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
-// My Projects or from the "You were hired" notification. Both people on the
-// project use this page; what they see depends on their side:
+// My Projects or from a project notification. Both people on the project use
+// this page; what they see depends on their side:
 //  - freelancer: the client's note, the dates and "Attach your files"
-//  - client: the same details, and the freelancer's work once it's sent
+//  - client: the same details, plus Mark as Done / Request changes once the
+//    freelancer submits
 export default function ProjectDetailsView() {
   const { projectId } = useParams();
-  const { currentUserId, openChat } = useOutletContext();
+  const { currentUserId, openChat, showToast } = useOutletContext();
   // undefined while loading, null when it doesn't exist or isn't the user's.
   const [project, setProject] = useState(undefined);
+  const [working, setWorking] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -23,6 +28,35 @@ export default function ProjectDetailsView() {
       active = false;
     };
   }, [projectId]);
+
+  const handleViewDeliverable = async () => {
+    const problem = await openDeliverable(project.submission_path);
+    if (problem) showToast(problem);
+  };
+
+  const handleMarkDone = async () => {
+    setWorking(true);
+    const problem = await markProjectDone(project.id);
+    setWorking(false);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+    setProject((prev) => ({ ...prev, status: "done", completed_at: new Date().toISOString() }));
+    showToast("Marked as done! It now shows on both your histories.");
+  };
+
+  const handleRequestChanges = async () => {
+    setWorking(true);
+    const problem = await requestProjectChanges(project.id);
+    setWorking(false);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+    setProject((prev) => ({ ...prev, status: "started" }));
+    showToast("Changes requested. Explain what's needed in chat.");
+  };
 
   if (project === undefined) {
     return <section className="dashboard-view active-view"><p className="text-secondary fs-7">Loading project...</p></section>;
@@ -46,24 +80,21 @@ export default function ProjectDetailsView() {
   const otherName = personName(other, iAmClient ? "Freelancer" : "Client");
   const status = projectStatuses[project.status];
   const overdue = project.status !== "done" && project.due_date < todayInManila();
+  const hasSubmission = Boolean(project.submission_path || project.submission_link);
 
-  // The "Project" box: where the freelancer's work is sent and shown.
+  // The "Project" box: short status of the work, or where to attach it.
   const renderWorkBox = () => {
     if (project.status === "started" && !iAmClient) {
       return (
-        <>
-          {/* Uploading the work is Step 3 of PLAN-projects-and-ratings.md. */}
-          <button type="button" className="btn btn-outline-warning rounded-pill fw-bold px-3 py-2" disabled>
-            <i className="bi bi-plus-lg me-1"></i> Attach your files
-          </button>
-          <p className="text-secondary fs-8 mt-2 mb-0">Sending your work here is coming soon. For now, you can send it in chat.</p>
-        </>
+        <Link to={`/dashboard/submit-project/${project.id}`} className="btn btn-outline-warning rounded-pill fw-bold px-3 py-2">
+          <i className="bi bi-plus-lg me-1"></i> Attach your files
+        </Link>
       );
     }
     if (project.status === "started") {
       return <p className="text-white-50 fs-7 mb-0">Waiting for {otherName} to send the work.</p>;
     }
-    return <p className="text-white-50 fs-7 mb-0">The submitted work will show here.</p>;
+    return <p className="text-white-50 fs-7 mb-0">See the submitted work below.</p>;
   };
 
   return (
@@ -142,6 +173,54 @@ export default function ProjectDetailsView() {
             </div>
           </div>
         </div>
+
+        {/* The freelancer's submitted work (screen 3): shown once there's
+            something to show, even after "Request changes" sends the status
+            back to Started, so both people can still see what was sent. */}
+        {hasSubmission && (
+          <div className="pt-4 mt-4 border-top border-secondary border-opacity-25">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+              <span className={`badge px-3 py-1 rounded-pill ${project.status === "done" ? "bg-success text-white" : "bg-info text-dark"}`}>
+                {project.status === "done" ? "Completed Deliverable" : "Submitted Deliverable"}
+              </span>
+              <span className="text-white-50 fs-7">Sent by <strong className="text-white">{personName(project.freelancer, "the freelancer")}</strong> on {new Date(project.submitted_at).toLocaleDateString()}</span>
+            </div>
+
+            {project.submission_path && (
+              <div className="p-3 rounded-3 bg-black bg-opacity-50 border border-secondary border-opacity-50 d-flex align-items-center justify-content-between gap-3 mb-3">
+                <div className="d-flex align-items-center gap-3 overflow-hidden">
+                  <i className={`bi ${deliverableIcon(project.submission_path)} text-orange fs-2`}></i>
+                  <span className="text-white fw-semibold text-break">{project.submission_path.split("/").pop()}</span>
+                </div>
+                <button type="button" className="btn btn-gradient-orange text-white rounded-pill px-3 fs-7 fw-bold flex-shrink-0" onClick={handleViewDeliverable}>
+                  <i className="bi bi-box-arrow-up-right me-1"></i> View
+                </button>
+              </div>
+            )}
+
+            {project.submission_link && (
+              <p className="mb-3">
+                <i className="bi bi-link-45deg text-orange me-1"></i>
+                <a href={project.submission_link} target="_blank" rel="noopener noreferrer" className="text-role text-break">{project.submission_link}</a>
+              </p>
+            )}
+
+            {project.submission_message && (
+              <p className="text-white-50 fs-7 fst-italic text-break mb-3">"{project.submission_message}"</p>
+            )}
+
+            {iAmClient && project.status === "submitted" && (
+              <div className="d-flex flex-wrap gap-2">
+                <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 fw-bold" onClick={handleMarkDone} disabled={working}>
+                  <i className="bi bi-check2-circle me-1"></i> Mark as Done
+                </button>
+                <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-4 fw-bold" onClick={handleRequestChanges} disabled={working}>
+                  <i className="bi bi-arrow-repeat me-1"></i> Request Changes
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

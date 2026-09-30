@@ -160,3 +160,175 @@ $$;
 
 revoke execute on function public.hire_applicant(uuid, text, date) from public, anon;
 grant execute on function public.hire_applicant(uuid, text, date) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Step 3: the freelancer submits the work, the client marks it Done.
+-- ---------------------------------------------------------------------------
+
+-- Storage: the freelancer's deliverable (video, photo, PDF or ZIP, up to
+-- 50 MB, the same per-file limit as the marketplace media bucket). Private:
+-- only the project's client and freelancer can open one.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('deliverables', 'deliverables', false, 52428800, array[
+  'video/mp4', 'video/webm', 'video/quicktime',
+  'image/jpeg', 'image/png', 'image/webp',
+  'application/pdf', 'application/zip'
+])
+on conflict (id) do nothing;
+
+-- Freelancers can only upload into their own folder: deliverables/<user id>/...
+create policy "deliverables: freelancers can upload to their folder"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'deliverables' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Opening a deliverable: the client or freelancer of the project it belongs to.
+create policy "deliverables: the project's client and freelancer can open"
+  on storage.objects for select
+  to authenticated
+  using (
+    bucket_id = 'deliverables'
+    and exists (
+      select 1 from public.projects p
+      where p.submission_path = objects.name
+        and (p.client_id = auth.uid() or p.freelancer_id = auth.uid())
+    )
+  );
+
+-- Re-submitting replaces the old file: the freelancer can delete their own.
+create policy "deliverables: freelancers can delete their own"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'deliverables' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- The freelancer's "Attach your files". Needs a file, a link, or both. The
+-- file must be this freelancer's own, for this project. Sets Submitted and
+-- tells the client. Only while the project is Started (first time, or after
+-- the client asked for changes).
+create or replace function public.submit_project(target_project uuid, file_path text, deliverable_link text, deliverable_message text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  proj record;
+  freelancer_name text;
+begin
+  select * into proj from public.projects where id = target_project;
+
+  if not found or proj.freelancer_id <> auth.uid() then
+    raise exception 'Only the freelancer on this project can submit work for it.';
+  end if;
+  if proj.status <> 'started' then
+    raise exception 'This project already has submitted work waiting for the client.';
+  end if;
+  if file_path is null and (deliverable_link is null or btrim(deliverable_link) = '') then
+    raise exception 'Attach a file or paste a link.';
+  end if;
+  if file_path is not null and file_path !~ ('^' || auth.uid()::text || '/' || target_project::text || '-[0-9]+\.[a-z0-9]+$') then
+    raise exception 'That file was not uploaded for this project.';
+  end if;
+  if deliverable_link is not null and btrim(deliverable_link) <> '' and deliverable_link !~ '^https://' then
+    raise exception 'The link must start with https://.';
+  end if;
+  if char_length(coalesce(deliverable_message, '')) > 1000 then
+    raise exception 'The message can be up to 1000 characters.';
+  end if;
+
+  update public.projects set
+    submission_path = file_path,
+    submission_link = nullif(btrim(deliverable_link), ''),
+    submission_message = nullif(btrim(deliverable_message), ''),
+    submitted_at = now(),
+    status = 'submitted'
+  where id = target_project;
+
+  select coalesce(nullif(full_name, ''), username, 'A freelancer') into freelancer_name
+    from public.profiles where id = auth.uid();
+
+  insert into public.user_notifications (user_id, type, title, message, link)
+  values (
+    proj.client_id, 'project_submitted', 'Work submitted',
+    freelancer_name || ' sent the work for "' || proj.title || '". Open the project to review it.',
+    '/dashboard/project-details/' || target_project
+  );
+end;
+$$;
+
+revoke execute on function public.submit_project(uuid, text, text, text) from public, anon;
+grant execute on function public.submit_project(uuid, text, text, text) to authenticated;
+
+-- The client confirms the work. Only while Submitted.
+create or replace function public.mark_project_done(target_project uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  proj record;
+  client_name text;
+begin
+  select * into proj from public.projects where id = target_project;
+
+  if not found or proj.client_id <> auth.uid() then
+    raise exception 'Only the client on this project can mark it done.';
+  end if;
+  if proj.status <> 'submitted' then
+    raise exception 'There''s no submitted work waiting for your review.';
+  end if;
+
+  update public.projects set status = 'done', completed_at = now() where id = target_project;
+
+  select coalesce(nullif(full_name, ''), username, 'The client') into client_name
+    from public.profiles where id = auth.uid();
+
+  insert into public.user_notifications (user_id, type, title, message, link)
+  values (
+    proj.freelancer_id, 'project_done', 'Project marked as done',
+    client_name || ' confirmed "' || proj.title || '" is done. It now shows on both your histories.',
+    '/dashboard/project-details/' || target_project
+  );
+end;
+$$;
+
+revoke execute on function public.mark_project_done(uuid) from public, anon;
+grant execute on function public.mark_project_done(uuid) to authenticated;
+
+-- The client sends it back for changes. Only while Submitted.
+create or replace function public.request_project_changes(target_project uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  proj record;
+  client_name text;
+begin
+  select * into proj from public.projects where id = target_project;
+
+  if not found or proj.client_id <> auth.uid() then
+    raise exception 'Only the client on this project can request changes.';
+  end if;
+  if proj.status <> 'submitted' then
+    raise exception 'There''s no submitted work waiting for your review.';
+  end if;
+
+  update public.projects set status = 'started' where id = target_project;
+
+  select coalesce(nullif(full_name, ''), username, 'The client') into client_name
+    from public.profiles where id = auth.uid();
+
+  insert into public.user_notifications (user_id, type, title, message, link)
+  values (
+    proj.freelancer_id, 'project_changes', 'Changes requested',
+    client_name || ' asked for changes on "' || proj.title || '". Check your chat for details, then attach your updated work.',
+    '/dashboard/project-details/' || target_project
+  );
+end;
+$$;
+
+revoke execute on function public.request_project_changes(uuid) from public, anon;
+grant execute on function public.request_project_changes(uuid) to authenticated;

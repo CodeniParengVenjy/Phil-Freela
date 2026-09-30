@@ -228,4 +228,29 @@ application), `lib/notifications.js`, `lib/pageTitles.js`, `App.jsx`
 `views/ProjectsView.jsx`, `views/ProjectDetailsView.jsx`,
 `views/JobDetailsView.jsx`, `views/PostNeedView.jsx`.
 
-Next: plan Step 3 in detail (submit the work, Mark as Done).
+Step 3 (submit the work, Mark as Done): built and pushed (2026-09-30).
+Its SQL has been run on Supabase (migration "projects_submit_done"), so
+don't run it again. Tested with a self-contained job/application made and
+rolled back inside the test itself (the live application rows had already
+been used or cleared by other testing): a submission with no file and no
+link is refused, a file path for a different project is refused, a link
+that isn't https:// is refused, only the freelancer can submit and only
+the client can Mark as Done or Request changes, both only while the
+matching status, and a full Started → Submitted → (changes) → Started →
+Submitted → Done cycle works with a real resubmission overwriting the
+first file. Still needs the user to test it on the live site.
+
+Change from the plan: viewing the submitted work is one "View submitted
+file" button that opens a link expiring after 60 seconds (the same
+pattern already used for resumes), instead of an embedded video/photo
+player. Simpler, and consistent with the rest of the app.
+
+Step 3 files: `database/supabase_projects_schema.sql`, `lib/projects.js`
+(`checkDeliverable`, `submitProject`, `openDeliverable`,
+`markProjectDone`, `requestProjectChanges`, `deliverableIcon`),
+`views/SubmitProjectView.jsx` (real upload at
+`submit-project/:projectId`), `views/ProjectDetailsView.jsx` (the
+submitted file, link, message, and the client's Mark as Done / Request
+changes buttons), `App.jsx`, `lib/pageTitles.js`.
+
+Next: plan Step 4 in detail (Ratings and Feedback).

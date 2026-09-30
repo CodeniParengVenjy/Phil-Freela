@@ -1,24 +1,69 @@
-import { useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { MAX_SUBMISSION_MESSAGE_LENGTH, getProject, submitProject } from "../../../lib/projects";
 
+// "Attach your files" (screen 6), at /dashboard/submit-project/:projectId.
+// The freelancer sends the finished work: a file, a link, or both, plus an
+// optional message. This turns the project to Submitted and notifies the
+// client (see submit_project in database/supabase_projects_schema.sql).
 export default function SubmitProjectView() {
-  const { showToast } = useOutletContext();
+  const { projectId } = useParams();
+  const { currentUserId, showToast } = useOutletContext();
   const navigate = useNavigate();
-  const [fileName, setFileName] = useState("");
-  const [portfolioUrl, setPortfolioUrl] = useState("");
-  const [notes, setNotes] = useState("");
+  // undefined while loading, null when it doesn't exist or isn't the user's.
+  const [project, setProject] = useState(undefined);
+  const [file, setFile] = useState(null);
+  const [link, setLink] = useState("");
+  const [message, setMessage] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const acceptFile = (file) => {
-    if (!file) return;
-    setFileName(`${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+  useEffect(() => {
+    let active = true;
+    getProject(projectId).then((data) => {
+      if (active) setProject(data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
+
+  const acceptFile = (picked) => {
+    if (picked) setFile(picked);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    showToast("Upload complete! Your deliverable has been submitted.");
-    setTimeout(() => navigate("/dashboard/project-details?status=Done"), 1500);
+    if (submitting) return;
+    setSubmitting(true);
+    const { error } = await submitProject(currentUserId, projectId, file, link, message);
+    setSubmitting(false);
+    if (error) {
+      showToast(error);
+      return;
+    }
+    showToast("Your work was sent! The client will review it.");
+    navigate(`/dashboard/project-details/${projectId}`);
   };
+
+  if (project === undefined) {
+    return <section className="dashboard-view active-view"><p className="text-secondary fs-7">Loading project...</p></section>;
+  }
+
+  const notMine = project === null || project.freelancer_id !== currentUserId;
+  if (notMine || project.status !== "started") {
+    return (
+      <section className="dashboard-view active-view">
+        <div className="glass-card rounded-4 p-5 border border-secondary border-opacity-25 text-center">
+          <i className="bi bi-cloud-arrow-up text-secondary" style={{ fontSize: "2.5rem" }}></i>
+          <p className="text-secondary fs-7 mt-3 mb-3">
+            {notMine ? "This project wasn't found." : "This project already has submitted work waiting for the client."}
+          </p>
+          <Link to="/dashboard/projects" className="btn btn-outline-role rounded-pill px-4 fw-bold">Back to Projects</Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="dashboard-view active-view">
@@ -26,7 +71,7 @@ export default function SubmitProjectView() {
         <div className="mb-4 text-center">
           <span className="badge bg-warning text-dark rounded-pill px-3 py-1 fw-bold fs-8 mb-2">PROJECT DELIVERABLE</span>
           <h2 className="display-6 fw-bold text-white mb-2">Submit Your Project</h2>
-          <p className="text-secondary fs-7">Upload your completed deliverables or paste your portfolio URL for client review.</p>
+          <p className="text-secondary fs-7">"{project.title}" — upload your completed deliverable or paste your portfolio URL for client review.</p>
         </div>
 
         <form className="d-flex flex-column gap-4" onSubmit={handleSubmit}>
@@ -44,7 +89,7 @@ export default function SubmitProjectView() {
             <input
               type="file"
               className="position-absolute top-0 start-0 opacity-0 cursor-pointer w-100 h-100"
-              multiple
+              accept=".mp4,.webm,.mov,.jpg,.jpeg,.png,.webp,.pdf,.zip"
               onChange={(e) => acceptFile(e.target.files?.[0])}
             />
 
@@ -52,13 +97,13 @@ export default function SubmitProjectView() {
               <div className="icon-circle mx-auto mb-3 bg-orange bg-opacity-10 text-orange rounded-circle d-flex align-items-center justify-content-center" style={{ width: 72, height: 72 }}>
                 <i className="bi bi-cloud-arrow-up-fill fs-1"></i>
               </div>
-              <h5 className="text-white fw-bold mb-2">{fileName ? `Selected: ${fileName}` : "Drop your file or Paste your portfolio"}</h5>
-              <p className="text-secondary fs-7 mb-0">Supports MP4, MOV, ZIP, PDF, PNG, JPG (Max 500MB)</p>
+              <h5 className="text-white fw-bold mb-2">{file ? `Selected: ${file.name}` : "Drop your file or Paste your portfolio"}</h5>
+              <p className="text-secondary fs-7 mb-0">Supports MP4, WebM, MOV, JPG, PNG, WebP, PDF, ZIP (Max 50MB)</p>
             </div>
 
-            {fileName && (
+            {file && (
               <div className="text-success fw-bold mt-2">
-                <i className="bi bi-file-earmark-check-fill me-1"></i> <span>{fileName}</span>
+                <i className="bi bi-file-earmark-check-fill me-1"></i> <span>{file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
               </div>
             )}
           </div>
@@ -72,8 +117,8 @@ export default function SubmitProjectView() {
                 id="portfolioUrl"
                 className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                 placeholder="https://drive.google.com/file/d/..."
-                value={portfolioUrl}
-                onChange={(e) => setPortfolioUrl(e.target.value)}
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
               />
             </div>
           </div>
@@ -84,15 +129,17 @@ export default function SubmitProjectView() {
               id="deliveryNotes"
               className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
               rows="3"
+              maxLength={MAX_SUBMISSION_MESSAGE_LENGTH}
               placeholder="Add any comments or instructions for the client..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
             ></textarea>
+            <small className="text-secondary fs-8">{message.length}/{MAX_SUBMISSION_MESSAGE_LENGTH}</small>
           </div>
 
           <div className="text-center pt-2">
-            <button type="submit" className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow">
-              <i className="bi bi-upload me-2"></i> Upload Project Deliverable
+            <button type="submit" className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow" disabled={submitting}>
+              <i className="bi bi-upload me-2"></i>{submitting ? "Uploading..." : "Upload Project Deliverable"}
             </button>
           </div>
         </form>
