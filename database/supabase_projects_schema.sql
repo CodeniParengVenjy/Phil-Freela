@@ -332,3 +332,114 @@ $$;
 
 revoke execute on function public.request_project_changes(uuid) from public, anon;
 grant execute on function public.request_project_changes(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Step 4: ratings and feedback, once a project is Done.
+-- ---------------------------------------------------------------------------
+
+create table public.project_ratings (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  rater_id uuid not null references public.profiles(id) on delete cascade,
+  ratee_id uuid not null references public.profiles(id) on delete cascade,
+  stars smallint not null check (stars between 1 and 5),
+  -- Only the client's rating shows a feedback box (screen 4); the
+  -- freelancer's is trust stars only (screen 5), so this is always null for them.
+  feedback text check (feedback is null or char_length(feedback) <= 1000),
+  created_at timestamptz not null default now(),
+  constraint project_ratings_not_self check (rater_id <> ratee_id),
+  -- Each side rates the other once per project.
+  constraint project_ratings_one_per_person unique (project_id, rater_id)
+);
+
+create index project_ratings_ratee_id_idx on public.project_ratings (ratee_id);
+
+alter table public.project_ratings enable row level security;
+
+-- Feature 5, Profile transparency: every signed-in user can read ratings
+-- (they're part of a user's public track record), not just the two people
+-- on that project.
+create policy "project_ratings: signed-in users can view"
+  on public.project_ratings for select
+  to authenticated
+  using (true);
+
+-- Rate only as yourself, only the other person on that project, and only
+-- once it's Done. No update or delete rule: a sent rating can't be edited.
+create policy "project_ratings: rate the other person once a project is done"
+  on public.project_ratings for insert
+  to authenticated
+  with check (
+    rater_id = (select auth.uid())
+    and exists (
+      select 1 from public.projects p
+      where p.id = project_ratings.project_id
+        and p.status = 'done'
+        and (
+          (p.client_id = auth.uid() and p.freelancer_id = project_ratings.ratee_id)
+          or (p.freelancer_id = auth.uid() and p.client_id = project_ratings.ratee_id)
+        )
+    )
+  );
+
+-- New kind of notification: someone left you a rating.
+alter table public.user_notifications drop constraint user_notifications_type_check;
+alter table public.user_notifications add constraint user_notifications_type_check
+  check (type in ('verification_approved', 'verification_rejected', 'suspension',
+                  'suspension_lifted', 'appeal_accepted', 'appeal_rejected',
+                  'report_resolved', 'report_dismissed',
+                  'project_hired', 'project_submitted', 'project_done', 'project_changes',
+                  'project_rated'));
+
+-- Tells the other person about a new rating. A trigger (not the function
+-- Step 2-3 use) because the insert itself is a plain table insert governed
+-- by the policy above, with nothing else for the browser to ask for.
+create or replace function public.notify_project_rated()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  rater_name text;
+  proj_title text;
+begin
+  select coalesce(nullif(full_name, ''), username, 'Someone') into rater_name
+    from public.profiles where id = new.rater_id;
+  select title into proj_title from public.projects where id = new.project_id;
+
+  insert into public.user_notifications (user_id, type, title, message, link)
+  values (
+    new.ratee_id, 'project_rated', 'You got a new rating',
+    rater_name || ' rated you ' || new.stars || E'★ for "' || coalesce(proj_title, 'a project') || '".'
+      || case when new.feedback is not null and btrim(new.feedback) <> '' then E'\n\n"' || new.feedback || '"' else '' end,
+    '/dashboard/project-details/' || new.project_id
+  );
+  return new;
+end;
+$$;
+
+revoke execute on function public.notify_project_rated() from public, anon, authenticated;
+
+create trigger project_ratings_notify
+  after insert on public.project_ratings
+  for each row execute function public.notify_project_rated();
+
+-- Each user's average stars and how many ratings they have, for showing
+-- "★ 4.8 (5)" next to a name. Reads are already open to everyone (the
+-- select policy above), so this can safely run as the caller.
+create or replace function public.rating_summaries(ids uuid[])
+returns table (user_id uuid, avg_stars numeric, rating_count integer)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select ratee_id, round(avg(stars)::numeric, 1), count(*)::integer
+  from public.project_ratings
+  where ratee_id = any(ids)
+  group by ratee_id;
+$$;
+
+revoke execute on function public.rating_summaries(uuid[]) from public, anon;
+grant execute on function public.rating_summaries(uuid[]) to authenticated;

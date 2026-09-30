@@ -83,7 +83,7 @@ function App() {
         <Route path="check-ownership" element={<CheckOwnershipView />} />
         <Route path="search" element={<SearchResultsView />} />
         <Route path="moodboard-match" element={<MoodboardMatchView />} />
-        <Route path="feedback" element={<FeedbackView />} />
+        <Route path="feedback/:projectId" element={<FeedbackView />} />
         <Route path="job-details/:jobId" element={<JobDetailsView />} />
         <Route path="project-details/:projectId" element={<ProjectDetailsView />} />
         <Route path="submit-project/:projectId" element={<SubmitProjectView />} />

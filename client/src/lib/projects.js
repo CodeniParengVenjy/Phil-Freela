@@ -197,3 +197,43 @@ export async function requestProjectChanges(projectId) {
   if (error) return error.code === "P0001" ? error.message : "Couldn't request changes. Please try again.";
   return "";
 }
+
+// Ratings and feedback (Step 4), once a project is Done. Screen 4 (the
+// client rates the freelancer) sends feedback too; screen 5 (the freelancer
+// rates the client) is trust stars only, so feedback stays null for them.
+// A rating can't be edited once sent (no update rule in the database).
+export const MAX_FEEDBACK_LENGTH = 1000;
+
+// Sends a rating. Returns {} when sent, or { error } with a message.
+export async function rateProject(raterId, projectId, rateeId, stars, feedback) {
+  if (!stars || stars < 1 || stars > 5) return { error: "Pick 1 to 5 stars." };
+  if (feedback && feedback.length > MAX_FEEDBACK_LENGTH) return { error: `Your feedback can be up to ${MAX_FEEDBACK_LENGTH} characters.` };
+
+  const { error } = await supabase.from("project_ratings").insert({
+    project_id: projectId,
+    rater_id: raterId,
+    ratee_id: rateeId,
+    stars,
+    feedback: feedback?.trim() || null
+  });
+  if (error) {
+    if (error.code === "23505") return { error: "You already rated this project." };
+    // The database rules refused it: not Done yet, or not your project.
+    if (error.code === "42501") return { error: "You can only rate a project once it's done." };
+    console.error("Sending the rating failed:", error);
+    return { error: "Couldn't send your rating. Please try again." };
+  }
+  return {};
+}
+
+// The signed-in user's own rating for a project, or null if they haven't
+// rated it yet.
+export async function getMyRating(raterId, projectId) {
+  const { data } = await supabase
+    .from("project_ratings")
+    .select("stars, feedback, created_at")
+    .eq("rater_id", raterId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  return data;
+}

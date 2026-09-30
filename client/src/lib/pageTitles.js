@@ -54,6 +54,7 @@ function getPageTitle(pathname) {
   if (path.startsWith("/dashboard/job-details/")) return pageTitles["/dashboard/job-details"];
   if (path.startsWith("/dashboard/project-details/")) return pageTitles["/dashboard/project-details"];
   if (path.startsWith("/dashboard/submit-project/")) return pageTitles["/dashboard/submit-project"];
+  if (path.startsWith("/dashboard/feedback/")) return pageTitles["/dashboard/feedback"];
   return pageTitles[path];
 }
 

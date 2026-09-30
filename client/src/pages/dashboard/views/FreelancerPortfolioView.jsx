@@ -3,6 +3,7 @@ import { useOutletContext, useParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { fetchIsVerified } from "../../../lib/verification";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import StarRating from "../../../components/StarRating";
 import Avatar from "../../../components/Avatar";
 import PortfolioSection from "../components/PortfolioSection";
 import ReportDialog from "../components/ReportDialog";
@@ -60,7 +61,11 @@ export default function FreelancerPortfolioView() {
             {freelancer.full_name}
             <VerifiedBadge verified={verified} showUnverified />
           </h3>
-          <p className="text-secondary fs-7 mb-0">@{freelancer.username} • Freelancer</p>
+          <p className="text-secondary fs-7 mb-0 d-flex align-items-center gap-2">
+            <span>@{freelancer.username} • Freelancer</span>
+            {/* Their average rating from completed projects (Feature 5, transparency). */}
+            <StarRating userId={freelancer.id} />
+          </p>
         </div>
         {isOwnPage ? (
           <span className="text-secondary fs-8">This is how others see your portfolio.</span>

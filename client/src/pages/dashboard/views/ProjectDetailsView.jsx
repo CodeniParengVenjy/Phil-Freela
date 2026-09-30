@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import {
-  deliverableIcon, formatDay, getProject, markProjectDone, openDeliverable,
+  deliverableIcon, formatDay, getMyRating, getProject, markProjectDone, openDeliverable,
   personName, projectStatuses, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
 import Avatar from "../../../components/Avatar";
@@ -18,6 +18,8 @@ export default function ProjectDetailsView() {
   // undefined while loading, null when it doesn't exist or isn't the user's.
   const [project, setProject] = useState(undefined);
   const [working, setWorking] = useState(false);
+  // undefined while loading (or not Done yet), null = hasn't rated, else the rating.
+  const [myRating, setMyRating] = useState(undefined);
 
   useEffect(() => {
     let active = true;
@@ -28,6 +30,19 @@ export default function ProjectDetailsView() {
       active = false;
     };
   }, [projectId]);
+
+  // Once it's Done, check whether the signed-in user already rated it
+  // (screen 4/5 unlock the "Add your ratings and feedback" button).
+  useEffect(() => {
+    if (project?.status !== "done" || !currentUserId) return undefined;
+    let active = true;
+    getMyRating(currentUserId, project.id).then((rating) => {
+      if (active) setMyRating(rating);
+    });
+    return () => {
+      active = false;
+    };
+  }, [project?.status, project?.id, currentUserId]);
 
   const handleViewDeliverable = async () => {
     const problem = await openDeliverable(project.submission_path);
@@ -217,6 +232,23 @@ export default function ProjectDetailsView() {
                 <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-4 fw-bold" onClick={handleRequestChanges} disabled={working}>
                   <i className="bi bi-arrow-repeat me-1"></i> Request Changes
                 </button>
+              </div>
+            )}
+
+            {/* Once it's Done, each side rates the other once (screen 4/5). */}
+            {project.status === "done" && (
+              <div className="text-center pt-2">
+                {myRating === undefined && <p className="text-secondary fs-7 mb-0">Loading your rating...</p>}
+                {myRating === null && (
+                  <Link to={`/dashboard/feedback/${project.id}`} className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow">
+                    <i className="bi bi-star-fill me-2"></i> Add your ratings and feedback
+                  </Link>
+                )}
+                {myRating && (
+                  <p className="text-white-50 fs-7 mb-0">
+                    <i className="bi bi-star-fill text-warning me-1"></i> You rated this project {myRating.stars}/5. Thanks for the feedback!
+                  </p>
+                )}
               </div>
             )}
           </div>

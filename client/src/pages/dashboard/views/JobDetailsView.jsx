@@ -8,6 +8,7 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { MAX_NOTE_LENGTH, applyToJob, getMyApplicationForJob, openResume, withdrawApplication } from "../../../lib/applications";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import StarRating from "../../../components/StarRating";
 import BlockedNotice from "../components/BlockedNotice";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import ReportDialog from "../components/ReportDialog";
@@ -212,10 +213,12 @@ export default function JobDetailsView() {
           <Avatar path={job.client?.avatar_path} name={clientName} size={80} />
           <div className="flex-grow-1 overflow-hidden">
             <h2 className="h3 fw-bold text-white mb-1 text-break">{job.title}</h2>
-            <p className="text-white-50 fs-7 mb-2">
+            <p className="text-white-50 fs-7 mb-2 d-flex flex-wrap align-items-center gap-2">
               Posted by <span className="text-white fw-semibold">{clientName}</span>
               <VerifiedBadge verified={clientVerified} showUnverified />
-              {" "}• {new Date(job.created_at).toLocaleDateString()}
+              {/* The client's average rating from past projects (Feature 5, transparency). */}
+              <StarRating userId={job.client?.id} />
+              <span>• {new Date(job.created_at).toLocaleDateString()}</span>
             </p>
             <div className="d-flex flex-wrap align-items-center gap-2">
               <span className="badge bg-role text-white px-3 py-2 rounded-pill"><i className={`bi ${category.icon} me-1`}></i>{category.label}</span>

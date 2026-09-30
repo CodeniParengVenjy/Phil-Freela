@@ -253,4 +253,28 @@ Step 3 files: `database/supabase_projects_schema.sql`, `lib/projects.js`
 submitted file, link, message, and the client's Mark as Done / Request
 changes buttons), `App.jsx`, `lib/pageTitles.js`.
 
-Next: plan Step 4 in detail (Ratings and Feedback).
+Step 4 (Ratings and Feedback): built and pushed (2026-09-30). Its SQL has
+been run on Supabase (migration "project_ratings"), so don't run it
+again. Tested with a self-contained job/application made and rolled back
+inside the test itself: rating before Done is refused, rating yourself is
+refused, someone not on the project is refused, a second rating for the
+same project is refused (one per person), and a client rating with
+feedback plus a freelancer rating (trust stars only) both went through,
+each producing a `project_rated` notification for the other person and
+each averaging correctly through `rating_summaries`. Any signed-in user
+(not just the two on the project) can read the ratings, matching Feature
+5's transparency goal. Still needs the user to test it on the live site.
+
+All 4 steps in this plan are built. This plan is done; the next piece of
+Feature 5 (a full transaction history list on profiles, beyond the
+average rating shown here) isn't in scope yet — see "Not included" above.
+
+Step 4 files: `database/supabase_projects_schema.sql`, `lib/projects.js`
+(`rateProject`, `getMyRating`), new `lib/ratings.js`
+(`fetchRatingSummaries`, `useRatingSummary`), new
+`components/StarRating.jsx` (the read-only "★ 4.8 (5)" badge),
+`views/FeedbackView.jsx` (real ratings at `feedback/:projectId`, screen 4
+for the client and screen 5 for the freelancer), `views/ProjectDetailsView.jsx`
+(the "Add your ratings and feedback" button once Done), `views/JobDetailsView.jsx`
+and `views/FreelancerPortfolioView.jsx` (the star badge next to the name),
+`lib/notifications.js`, `App.jsx`, `lib/pageTitles.js`.
