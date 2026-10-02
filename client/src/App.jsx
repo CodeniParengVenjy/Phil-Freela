@@ -6,6 +6,8 @@ import ResetPassword from "./pages/login/ResetPassword";
 import CompleteProfile from "./pages/login/CompleteProfile";
 import VerifyPhone from "./pages/verify-phone/VerifyPhone";
 import AppealPage from "./pages/appeal/AppealPage";
+import TermsOfService from "./pages/legal/TermsOfService";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import DashboardLayout from "./pages/dashboard/layouts/DashboardLayout";
 import DashboardFreelancerRoute from "./pages/dashboard/layouts/DashboardFreelancerRoute";
 import DashboardClientRoute from "./pages/dashboard/layouts/DashboardClientRoute";
@@ -61,6 +63,8 @@ function App() {
       <Route path="/verify-phone/:token" element={<VerifyPhone />} />
       {/* Suspended and banned users appeal here (banned users can't use anything else). */}
       <Route path="/appeal" element={<AppealPage />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/dashboard-freelancer" element={<DashboardFreelancerRoute />}>
         <Route index element={<FreelancerFYPView />} />
       </Route>

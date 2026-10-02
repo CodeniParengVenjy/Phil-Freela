@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, fetchDescription, fetchEmailWhenOffline, saveDescription, saveDisplayName, saveEmailWhenOffline } from "../../../lib/profile";
 import { checkAvatarFile, uploadAvatar } from "../../../lib/avatar";
+import { deleteMyAccount, downloadAsFile, exportMyData } from "../../../lib/privacy";
 import Avatar from "../../../components/Avatar";
 import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
@@ -10,7 +11,16 @@ const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings
 
 export default function SettingsView() {
   const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
+  const navigate = useNavigate();
   const [activeSubNav, setActiveSubNav] = useState("Profile Settings");
+  // "Download your data" (feature 6): null = idle, so the button shows its
+  // normal label until clicked.
+  const [exporting, setExporting] = useState(false);
+  // "Delete your account": typing the username unlocks the real button, so
+  // nobody deletes an account with one accidental click.
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   // null = not edited yet, so the box shows the saved name. (Copying it in
   // once at the start would keep "User", the placeholder shown while the
   // dashboard is still loading.)
@@ -56,6 +66,29 @@ export default function SettingsView() {
     }
     setEmailWhenOffline(on);
     showToast(on ? "You'll get emails while you're offline." : "Offline emails turned off.");
+  };
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      const data = await exportMyData(currentUserId);
+      downloadAsFile(data, `philfreela-data-${username || currentUserId}.json`);
+    } catch {
+      showToast("Couldn't put your data together. Please try again.");
+    }
+    setExporting(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteMyAccount();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      setDeleteError(error.message);
+      setDeleting(false);
+    }
   };
 
   // Frees the old preview's memory whenever it's replaced or the page closes.
@@ -202,23 +235,67 @@ export default function SettingsView() {
                 <p className="text-secondary fs-7">Only freelancers upload work, so there's nothing to set here.</p>
               )
             ) : activeSubNav === "Privacy & Notifications" ? (
-              <div className="form-check form-switch">
-                <input
-                  id="emailWhenOffline"
-                  type="checkbox"
-                  role="switch"
-                  className="form-check-input"
-                  checked={emailWhenOffline === true}
-                  onChange={handleEmailSettingChange}
-                  disabled={emailWhenOffline === null || savingEmailSetting}
-                />
-                <label htmlFor="emailWhenOffline" className="form-check-label text-white fw-semibold fs-7">Email me when I'm offline</label>
-                <p className="text-secondary fs-8 mb-0 mt-1">
-                  {emailWhenOffline === null
-                    ? "Loading..."
-                    : "When you're not on PhilFreela, we'll email you about new messages (at most one per chat every 30 minutes), missed calls, job applications, and news about your account. Messages themselves are never put in the email."}
+              <>
+                <div className="form-check form-switch">
+                  <input
+                    id="emailWhenOffline"
+                    type="checkbox"
+                    role="switch"
+                    className="form-check-input"
+                    checked={emailWhenOffline === true}
+                    onChange={handleEmailSettingChange}
+                    disabled={emailWhenOffline === null || savingEmailSetting}
+                  />
+                  <label htmlFor="emailWhenOffline" className="form-check-label text-white fw-semibold fs-7">Email me when I'm offline</label>
+                  <p className="text-secondary fs-8 mb-0 mt-1">
+                    {emailWhenOffline === null
+                      ? "Loading..."
+                      : "When you're not on PhilFreela, we'll email you about new messages (at most one per chat every 30 minutes), missed calls, job applications, and news about your account. Messages themselves are never put in the email."}
+                  </p>
+                </div>
+
+                {/* Feature 6, Data Privacy Compliance (RA 10173): "review" and
+                    "download" your own data. */}
+                <hr className="border-secondary border-opacity-25 my-4" />
+                <h6 className="text-white fw-bold mb-1">Your data</h6>
+                <p className="text-secondary fs-8 mb-3">
+                  Download everything PhilFreela has about your account -- your profile, posts, portfolio, and a summary of
+                  your activity -- as one file. See our{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover-orange">Privacy Policy</a>{" "}
+                  for what this does and doesn't include.
                 </p>
-              </div>
+                <button type="button" className="btn btn-outline-role rounded-pill px-4 py-2 fw-bold" onClick={handleExportData} disabled={exporting || !currentUserId}>
+                  {exporting ? "Preparing your file..." : <><i className="bi bi-download me-2"></i>Download your data</>}
+                </button>
+
+                {/* "Removal": deleting your own account. Typing the username
+                    is the confirmation step, so this can't happen by accident. */}
+                <hr className="border-secondary border-opacity-25 my-4" />
+                <h6 className="text-danger fw-bold mb-1">Delete your account</h6>
+                <p className="text-secondary fs-8 mb-3">
+                  Permanently removes your profile, posts, portfolio, and messages. This can't be undone. Type your
+                  username (<strong className="text-white">{username}</strong>) to confirm.
+                </p>
+                <div className="d-flex flex-column flex-sm-row gap-2" style={{ maxWidth: 420 }}>
+                  <input
+                    type="text"
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    placeholder="Type your username"
+                    value={deleteConfirmText}
+                    onChange={(event) => setDeleteConfirmText(event.target.value)}
+                    disabled={deleting}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-danger rounded-pill px-4 py-2 fw-bold text-nowrap"
+                    disabled={deleting || deleteConfirmText !== username}
+                    onClick={handleDeleteAccount}
+                  >
+                    {deleting ? "Deleting..." : "Delete my account"}
+                  </button>
+                </div>
+                {deleteError && <p className="text-danger fs-8 mt-2 mb-0">{deleteError}</p>}
+              </>
             ) : (
               <p className="text-secondary fs-7">This section isn't wired up yet.</p>
             )}

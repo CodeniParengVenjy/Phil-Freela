@@ -15,7 +15,8 @@ const initialForm = {
   confirmPassword: "",
   gender: "male",
   accountType: "client",
-  keepLogin: false
+  keepLogin: false,
+  agreedToTerms: false
 };
 
 export default function Login() {
@@ -135,7 +136,7 @@ export default function Login() {
   };
 
   const updateField = (field) => (event) => {
-    const value = field === "keepLogin" ? event.target.checked : event.target.value;
+    const value = field === "keepLogin" || field === "agreedToTerms" ? event.target.checked : event.target.value;
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -186,6 +187,11 @@ export default function Login() {
 
     if (isSignup && !["male", "female"].includes(form.gender)) {
       setMessage({ text: "Please choose Male or Female.", type: "error" });
+      return;
+    }
+
+    if (isSignup && !form.agreedToTerms) {
+      setMessage({ text: "Please agree to the Terms of Service and Privacy Policy to create an account.", type: "error" });
       return;
     }
 
@@ -526,6 +532,24 @@ export default function Login() {
                 </div>
               )}
             </div>
+
+            {isSignup && (
+              <div className="form-check my-2">
+                <input
+                  id="agreedToTerms"
+                  type="checkbox"
+                  className="form-check-input bg-dark border-secondary"
+                  checked={form.agreedToTerms}
+                  onChange={updateField("agreedToTerms")}
+                />
+                <label className="form-check-label text-white-50 fs-8" htmlFor="agreedToTerms">
+                  I agree to PhilFreela's{" "}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover-orange">Terms of Service</a>{" "}
+                  and{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover-orange">Privacy Policy</a>
+                </label>
+              </div>
+            )}
 
             <div className="d-flex align-items-center justify-content-between my-2">
               <div className="form-check">

@@ -245,8 +245,8 @@ export default function Homepage() {
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-center pt-4 border-top border-secondary border-opacity-25 fs-7 text-secondary">
             <p className="mb-2 mb-md-0">© 2026 PhilFreela. All rights reserved. Built for Filipino freelancers and global clients.</p>
             <div className="d-flex gap-4">
-              <a href="#" className="text-secondary text-decoration-none hover-orange">Terms of Service</a>
-              <a href="#" className="text-secondary text-decoration-none hover-orange">Privacy Policy</a>
+              <Link to="/terms" className="text-secondary text-decoration-none hover-orange">Terms of Service</Link>
+              <Link to="/privacy" className="text-secondary text-decoration-none hover-orange">Privacy Policy</Link>
               <a href="#" className="text-secondary text-decoration-none hover-orange">Security</a>
             </div>
           </div>

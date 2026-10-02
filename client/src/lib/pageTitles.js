@@ -9,6 +9,8 @@ const pageTitles = {
   "/reset-password": "Reset Password",
   "/complete-profile": "Complete Your Profile",
   "/appeal": "Appeal",
+  "/terms": "Terms of Service",
+  "/privacy": "Privacy Policy",
 
   "/dashboard-freelancer": "Dashboard",
   "/dashboard-client": "Dashboard",
