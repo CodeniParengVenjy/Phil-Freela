@@ -23,6 +23,7 @@ import NotificationsView from "./pages/dashboard/views/NotificationsView";
 import ServicesView from "./pages/dashboard/views/ServicesView";
 import PostNeedView from "./pages/dashboard/views/PostNeedView";
 import ProjectsView from "./pages/dashboard/views/ProjectsView";
+import BookingsView from "./pages/dashboard/views/BookingsView";
 import SettingsView from "./pages/dashboard/views/SettingsView";
 import VerifyIdentityView from "./pages/dashboard/views/VerifyIdentityView";
 import CheckOwnershipView from "./pages/dashboard/views/CheckOwnershipView";
@@ -82,6 +83,7 @@ function App() {
         <Route path="services" element={<ServicesView />} />
         <Route path="post-need" element={<PostNeedView />} />
         <Route path="projects" element={<ProjectsView />} />
+        <Route path="bookings" element={<BookingsView />} />
         <Route path="settings" element={<SettingsView />} />
         <Route path="verify-identity" element={<VerifyIdentityView />} />
         <Route path="check-ownership" element={<CheckOwnershipView />} />

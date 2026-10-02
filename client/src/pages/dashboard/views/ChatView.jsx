@@ -6,6 +6,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import ReportDialog from "../components/ReportDialog";
+import BookDialog from "../components/BookDialog";
 import BlockedNotice from "../components/BlockedNotice";
 import { isMessagingBlocked } from "../../../lib/suspensions";
 import { startCall, useCall } from "../../../lib/calls";
@@ -36,7 +37,7 @@ function formatRelativeTime(dateString) {
 
 export default function ChatView() {
   const { conversationId } = useParams();
-  const { currentUserId, showToast, refreshUnreadCount, openPreview, suspension } = useOutletContext();
+  const { currentUserId, accountType, showToast, refreshUnreadCount, openPreview, suspension } = useOutletContext();
   // Suspended for a messaging violation (e.g. harassment): they can read this
   // chat, but can't send, forward, or edit messages.
   const messagingBlocked = isMessagingBlocked(suspension);
@@ -44,6 +45,8 @@ export default function ChatView() {
   const [otherProfile, setOtherProfile] = useState(null);
   // The person being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
+  // The freelancer being booked (null = Book popup closed). Only clients book.
+  const [bookTarget, setBookTarget] = useState(null);
   const [otherLastReadAt, setOtherLastReadAt] = useState(null);
   const [messages, setMessages] = useState(null);
   const [notFound, setNotFound] = useState(false);
@@ -109,8 +112,8 @@ export default function ChatView() {
         .from("conversations")
         .select(`
           id, user_a, user_b, user_a_last_read_at, user_b_last_read_at,
-          a:profiles!conversations_user_a_fkey(id, full_name, username, avatar_path),
-          b:profiles!conversations_user_b_fkey(id, full_name, username, avatar_path)
+          a:profiles!conversations_user_a_fkey(id, full_name, username, avatar_path, account_type),
+          b:profiles!conversations_user_b_fkey(id, full_name, username, avatar_path, account_type)
         `)
         .eq("id", conversationId)
         .maybeSingle();
@@ -454,6 +457,17 @@ export default function ChatView() {
             </div>
           </div>
           <div className="d-flex flex-shrink-0">
+            {/* A client chatting with a freelancer can book one of their services. */}
+            {accountType === "client" && otherProfile?.account_type === "freelancer" && (
+              <button
+                className="btn btn-sm btn-outline-secondary text-white border-0"
+                title="Book a service"
+                aria-label="Book a service"
+                onClick={() => setBookTarget({ freelancerId: otherProfile.id, freelancerName: recipientName, service: null })}
+              >
+                <i className="bi bi-calendar-check-fill fs-5"></i>
+              </button>
+            )}
             {/* Suspended from messaging: no calls either (the database checks too). */}
             {!messagingBlocked && (
               <>
@@ -779,6 +793,15 @@ export default function ChatView() {
       />
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
+      <BookDialog
+        key={bookTarget?.freelancerId}
+        target={bookTarget}
+        onClose={() => setBookTarget(null)}
+        onBooked={() => {
+          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
+          setBookTarget(null);
+        }}
+      />
     </section>
   );
 }

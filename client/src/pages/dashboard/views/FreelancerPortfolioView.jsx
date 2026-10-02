@@ -7,19 +7,22 @@ import StarRating from "../../../components/StarRating";
 import Avatar from "../../../components/Avatar";
 import PortfolioSection from "../components/PortfolioSection";
 import ReportDialog from "../components/ReportDialog";
+import BookDialog from "../components/BookDialog";
 
 // A freelancer's public page (/dashboard/freelancers/:freelancerId): their
-// name, Verified badge, Message and Report buttons, their description, and their portfolio. Reached from
+// name, Verified badge, Book (clients only), Message and Report buttons, their description, and their portfolio. Reached from
 // "by <name>" on Browse Services. The freelancer's @username is shown faintly
 // over their slides, so a screenshot still shows whose work it is.
 export default function FreelancerPortfolioView() {
   const { freelancerId } = useParams();
-  const { currentUserId, openChat, showToast } = useOutletContext();
+  const { currentUserId, accountType, openChat, showToast } = useOutletContext();
   // undefined while loading, null when there's no such freelancer.
   const [freelancer, setFreelancer] = useState(undefined);
   const [verified, setVerified] = useState(false);
   // The freelancer being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
+  // The freelancer being booked (null = Book popup closed). Only clients book.
+  const [bookTarget, setBookTarget] = useState(null);
   const isOwnPage = freelancerId === currentUserId;
 
   useEffect(() => {
@@ -70,7 +73,16 @@ export default function FreelancerPortfolioView() {
         {isOwnPage ? (
           <span className="text-secondary fs-8">This is how others see your portfolio.</span>
         ) : (
-          <div className="d-flex gap-2 flex-shrink-0">
+          <div className="d-flex flex-wrap gap-2 flex-shrink-0">
+            {accountType === "client" && (
+              <button
+                type="button"
+                className="btn btn-outline-role rounded-pill px-4 fw-bold"
+                onClick={() => setBookTarget({ freelancerId: freelancer.id, freelancerName: freelancer.full_name || freelancer.username, service: null })}
+              >
+                <i className="bi bi-calendar-check me-1"></i> Book
+              </button>
+            )}
             <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={() => openChat(freelancer.id)}>
               <i className="bi bi-chat-dots-fill me-1"></i> Message
             </button>
@@ -101,6 +113,15 @@ export default function FreelancerPortfolioView() {
       </div>
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
+      <BookDialog
+        key={bookTarget?.freelancerId}
+        target={bookTarget}
+        onClose={() => setBookTarget(null)}
+        onBooked={() => {
+          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
+          setBookTarget(null);
+        }}
+      />
     </section>
   );
 }

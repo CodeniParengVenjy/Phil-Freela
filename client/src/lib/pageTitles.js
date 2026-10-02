@@ -23,6 +23,7 @@ const pageTitles = {
   "/dashboard/services": "My Services",
   "/dashboard/post-need": "Post a Project",
   "/dashboard/projects": "Projects & Resumes",
+  "/dashboard/bookings": "Bookings",
   "/dashboard/settings": "Settings",
   "/dashboard/check-ownership": "Check Ownership",
   "/dashboard/search": "Search",

@@ -10,6 +10,7 @@ const sidebarLinks = [
   { to: "/dashboard/profile", icon: "bi-person-circle", label: "Profile" },
   { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox" },
   { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications" },
+  { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project" },
   { to: "/dashboard/check-ownership", icon: "bi-shield-check", label: "Check Ownership" },
   { to: "/dashboard/settings", icon: "bi-gear-fill", label: "Settings" }

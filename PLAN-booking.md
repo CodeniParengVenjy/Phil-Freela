@@ -231,3 +231,45 @@ client is blocked from posting ("This client can't start new projects right
 now."), the same rule Hire uses for clients.
 
 Step 1 file: `database/supabase_bookings_schema.sql`.
+
+Step 2 (Book a service): built and pushed (2026-10-03). No new SQL.
+Tested in a real browser (Playwright, Chromium) against the running site,
+with every Supabase request answered by a fake in memory that follows the
+same rules as the real functions (no test accounts were made on the live
+database; the real rules were already tested in SQL in Step 1, and the
+website's booking query was checked against the live API: it resolves, and
+signed-out visitors get "permission denied"). 37/37 checks passed, twice in a
+row, with no page errors: a Book button on each service card (clients only),
+the popup names the freelancer and the service, Send booking shows a toast
+and sends the service, the trimmed note and the date; a second pending
+booking for the same service shows the database's message and the popup stays
+open; a past date isn't sent and the date box starts at today; Escape closes
+the popup; My Bookings shows the card (service, freelancer with Verified
+check, note, date needed, Pending, Cancel booking, Message) and the tab
+title is "Bookings"; the freelancer page's Book button lists that
+freelancer's services, refuses to send without choosing one, and a freelancer
+with no services gets a friendly message with Send turned off; the chat
+header has a Book button for a client chatting with a freelancer (and none
+for a freelancer chatting with a client, or a freelancer looking at another
+freelancer); Cancel booking asks first (Keep booking / Cancel booking), then
+the card shows Cancelled; the freelancer's Booking Requests page lists the
+requests, pending first, with a "1 waiting" badge; the freelancer's
+notifications show the requests and the cancellation, and "Open bookings"
+goes to the page; on a 390 px phone the card buttons stay inside the card,
+the popup fits and the page doesn't scroll sideways. Still needs the user to
+test it on the live site.
+
+Changes from the plan:
+- `DeleteConfirmDialog.jsx` got an optional `cancelLabel` (the grey button's
+  words, default "Cancel"), so the popup reads "Keep booking / Cancel
+  booking" instead of two buttons that both say Cancel. Nothing else that
+  uses it changes.
+- The row of buttons under each service card now wraps on very narrow
+  cards, to make room for Book beside Report and Message.
+
+Step 2 files: `lib/bookings.js`, `components/BookDialog.jsx`,
+`views/BookingsView.jsx`, `App.jsx`, `lib/pageTitles.js`,
+`lib/notifications.js`, `layouts/ClientDashboardLayout.jsx`,
+`layouts/FreelancerDashboardLayout.jsx`, `views/BrowseServicesView.jsx`,
+`views/FreelancerPortfolioView.jsx`, `views/ChatView.jsx` (the chat's profile
+lookup also asks for `account_type`), `components/DeleteConfirmDialog.jsx`.

@@ -8,18 +8,21 @@ import { SLIDES_SELECT, isOriginalWork, itemSlides } from "../../../lib/slides";
 import OriginalBadge from "../../../components/OriginalBadge";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import ReportDialog from "../components/ReportDialog";
+import BookDialog from "../components/BookDialog";
 import MediaCarousel from "../components/MediaCarousel";
 
 export default function BrowseServicesView() {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Services): admins get a Remove button instead of Message.
-  const { openChat, isAdmin, currentUserId, showToast } = useOutletContext();
+  const { openChat, isAdmin, currentUserId, accountType, showToast } = useOutletContext();
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
   const [services, setServices] = useState(null);
   const [error, setError] = useState("");
   // The service being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
+  // The service being booked (null = Book popup closed). Only clients book.
+  const [bookTarget, setBookTarget] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -148,7 +151,7 @@ export default function BrowseServicesView() {
                       ) : freelancerName}
                       <VerifiedBadge verified={verifiedIds.has(s.freelancer?.id)} />
                     </p>
-                    <div className="d-flex align-items-center justify-content-between gap-2">
+                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
                       <span className="fw-bold text-role fs-7">
                         {s.price ? `From ₱${Number(s.price).toLocaleString()}` : "Price on request"}
                       </span>
@@ -161,7 +164,7 @@ export default function BrowseServicesView() {
                           <i className="bi bi-trash me-1"></i> Remove
                         </button>
                       ) : (
-                        <div className="d-flex gap-1">
+                        <div className="d-flex flex-wrap gap-1 ms-auto">
                           {s.freelancer?.id !== currentUserId && (
                             <button
                               type="button"
@@ -171,6 +174,15 @@ export default function BrowseServicesView() {
                               onClick={() => setReportTarget({ type: "service", id: s.id, name: s.title })}
                             >
                               <i className="bi bi-flag"></i>
+                            </button>
+                          )}
+                          {accountType === "client" && s.freelancer?.id && s.freelancer.id !== currentUserId && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold"
+                              onClick={() => setBookTarget({ freelancerId: s.freelancer.id, freelancerName, service: { id: s.id, title: s.title } })}
+                            >
+                              <i className="bi bi-calendar-check me-1"></i> Book
                             </button>
                           )}
                           <button
@@ -192,6 +204,15 @@ export default function BrowseServicesView() {
       </div>
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
+      <BookDialog
+        key={bookTarget?.service?.id}
+        target={bookTarget}
+        onClose={() => setBookTarget(null)}
+        onBooked={() => {
+          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
+          setBookTarget(null);
+        }}
+      />
     </section>
   );
 }

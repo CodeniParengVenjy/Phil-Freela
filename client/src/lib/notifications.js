@@ -70,7 +70,12 @@ export const notificationIcons = {
   project_submitted: { icon: "bi-box-arrow-up", className: "bg-info text-dark" },
   project_done: { icon: "bi-check2-circle", className: "bg-success text-white" },
   project_changes: { icon: "bi-arrow-repeat", className: "bg-warning text-dark" },
-  project_rated: { icon: "bi-star-fill", className: "bg-warning text-dark" }
+  project_rated: { icon: "bi-star-fill", className: "bg-warning text-dark" },
+  // A step in a booking (database/supabase_bookings_schema.sql).
+  booking_requested: { icon: "bi-calendar-plus-fill", className: "bg-info text-dark" },
+  booking_accepted: { icon: "bi-calendar-check-fill", className: "bg-success text-white" },
+  booking_declined: { icon: "bi-calendar-x-fill", className: "bg-danger text-white" },
+  booking_cancelled: { icon: "bi-calendar-minus-fill", className: "bg-secondary text-white" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -83,5 +88,9 @@ export const notificationLinkLabels = {
   project_submitted: "Open project",
   project_done: "Open project",
   project_changes: "Open project",
-  project_rated: "Open project"
+  project_rated: "Open project",
+  booking_requested: "Open bookings",
+  booking_accepted: "Open project",
+  booking_declined: "Open bookings",
+  booking_cancelled: "Open bookings"
 };

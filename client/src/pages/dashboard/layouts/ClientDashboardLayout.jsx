@@ -10,6 +10,7 @@ const sidebarLinks = [
   { to: "/dashboard/profile", icon: "bi-person-circle", label: "Profile" },
   { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox" },
   { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications" },
+  { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings" },
   { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes" },
   // AI Moodboard Matching (feature 2): clients only, since it finds
