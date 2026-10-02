@@ -87,3 +87,10 @@ until the typed text exactly matches the username.
 
 Not yet tested live: the delete button actually deleting an account (needs
 the SQL above run first).
+
+Update 2026-10-03 (by the booking work, see PLAN-booking.md): the "Download
+your data" file's projects part asked for a column `created_at`, but the
+projects table has `started_at` (no `created_at`), so that request failed
+and projects came out as an empty list. It now asks for `started_at`,
+`due_date` and `completed_at`, and the file also lists the user's `bookings`.
+`delete_my_account()` was still not on the live database on 2026-10-03.

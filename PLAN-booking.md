@@ -273,3 +273,48 @@ Step 2 files: `lib/bookings.js`, `components/BookDialog.jsx`,
 `layouts/FreelancerDashboardLayout.jsx`, `views/BrowseServicesView.jsx`,
 `views/FreelancerPortfolioView.jsx`, `views/ChatView.jsx` (the chat's profile
 lookup also asks for `account_type`), `components/DeleteConfirmDialog.jsx`.
+
+Step 3 (Answer a booking): built and pushed (2026-10-03). No new SQL (the
+functions were made and tested in Step 1). Tested the same way as Step 2
+(real browser, fake in-memory backend that also refuses any column the real
+`projects` and `bookings` tables don't have): 30/30 passed, no page errors.
+A pending request shows Accept, Decline and Message; one whose date passed
+shows "(date passed)" in red and Accept is turned off; Accept starts the
+project with the booking's title, note, date needed (as the due date) and both
+people, the card turns into "Accepted • Open project", the "N waiting" badge
+goes down, and Open project shows the Project page ("Started", the client's
+note, dates, Attach your files); Decline asks first ("Not now" changes
+nothing), then the card says Declined; when the client cancelled while the
+page was open, a stale click shows the database's message and the list
+reloads to show Cancelled; "Download your data" now lists the user's bookings
+and their projects; on a 390 px phone the buttons stay inside the card and
+the page doesn't scroll sideways; the client sees Accepted with Open project,
+Declined with no Cancel button, and still-pending ones with Cancel booking,
+and gets the Booking accepted ("Open project") and Booking declined ("Open
+bookings") notifications. Still needs the user to test it on the live site,
+and the full path with two real accounts (Book, Accept, Submit, Done, Rate)
+is untested on the live site.
+
+Changes from the plan:
+- The Bookings page also reloads when a new notification arrives (the unread
+  count changes), so a freelancer who has the page open sees a new request
+  without refreshing. Not tested in the browser test (it can't send live
+  updates); it is one extra dependency on the page's load effect.
+- When Accept, Decline or Cancel fails (for example the other person
+  answered first), the popup closes, the message shows as a toast, and the
+  list reloads. (Step 2 kept the Cancel popup open on a failure.)
+- The data-download fix was done as planned: the projects part asked for
+  `created_at`, which the projects table doesn't have (checked on the live
+  database and API on 2026-10-03: error 42703), so projects were silently
+  missing. It now asks for `started_at`, `due_date` and `completed_at`.
+
+Step 3 files: `lib/bookings.js` (`acceptBooking`, `declineBooking`),
+`views/BookingsView.jsx`, `lib/privacy.js`.
+
+All 3 steps in this plan are built. This plan is done. Not included (see
+above): time slots and calendars, a Book button on the AI search results /
+Recommended for you / Moodboard Match cards, a sidebar number badge, and
+freelancer-started bookings. Later, for Feature 1 (Hybrid recommendation
+system): use `responded_at` (how fast a freelancer answers a booking) in the
+ranking's response time, and "clients like you booked them" in collaborative
+filtering.

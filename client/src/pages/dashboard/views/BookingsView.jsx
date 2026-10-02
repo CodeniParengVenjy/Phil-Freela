@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { bookingStatuses, cancelBooking, getMyBookings } from "../../../lib/bookings";
+import { acceptBooking, bookingStatuses, cancelBooking, declineBooking, getMyBookings } from "../../../lib/bookings";
 import { formatDay, personName, todayInManila } from "../../../lib/projects";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
@@ -8,8 +8,11 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 
 // One booking: the other person, the service, the note, the date needed and
-// the status. The buttons depend on who is looking and on the status.
-function BookingCard({ booking, isFreelancer, today, verified, onMessage, onCancel }) {
+// the status. The buttons depend on who is looking and on the status:
+//  - freelancer, pending: Accept (starts a project) or Decline
+//  - client, pending: Cancel booking
+//  - accepted: Open project
+function BookingCard({ booking, isFreelancer, today, verified, working, onMessage, onAccept, onDecline, onCancel }) {
   // The other person on the booking.
   const other = isFreelancer ? booking.client : booking.freelancer;
   const otherName = personName(other, isFreelancer ? "Client" : "Freelancer");
@@ -56,9 +59,26 @@ function BookingCard({ booking, isFreelancer, today, verified, onMessage, onCanc
             <i className="bi bi-check-circle-fill me-1"></i> Accepted • Open project
           </Link>
         )}
+        {/* The freelancer answers a request. Accept is off once the date has passed. */}
+        {isPending && isFreelancer && (
+          <>
+            <button
+              type="button"
+              className="btn btn-gradient-role text-white rounded-pill px-3 fs-7 fw-bold"
+              disabled={working || datePassed}
+              title={datePassed ? "The date needed has passed. Message the client to book again." : undefined}
+              onClick={() => onAccept(booking)}
+            >
+              <i className="bi bi-check-lg me-1"></i> Accept
+            </button>
+            <button type="button" className="btn btn-dark border border-danger text-danger rounded-pill px-3 fs-7 fw-bold" disabled={working} onClick={() => onDecline(booking)}>
+              <i className="bi bi-x-lg me-1"></i> Decline
+            </button>
+          </>
+        )}
         {/* The client can take back a booking nobody answered yet. */}
         {isPending && !isFreelancer && (
-          <button type="button" className="btn btn-dark border border-danger text-danger rounded-pill px-3 fs-7 fw-bold" onClick={() => onCancel(booking)}>
+          <button type="button" className="btn btn-dark border border-danger text-danger rounded-pill px-3 fs-7 fw-bold" disabled={working} onClick={() => onCancel(booking)}>
             <i className="bi bi-x-circle me-1"></i> Cancel booking
           </button>
         )}
@@ -74,29 +94,40 @@ function BookingCard({ booking, isFreelancer, today, verified, onMessage, onCanc
 // services they booked ("My Bookings"); a freelancer sees the requests for
 // their services ("Booking Requests"). Pending ones come first.
 export default function BookingsView() {
-  const { currentUserId, accountType, openChat, showToast } = useOutletContext();
+  const { currentUserId, accountType, openChat, showToast, unreadNotifications } = useOutletContext();
   const isFreelancer = accountType === "freelancer";
   // null while loading, then the list.
   const [bookings, setBookings] = useState(null);
   const [failed, setFailed] = useState(false);
-  // The booking in the Cancel popup (null = closed).
-  const [cancelTarget, setCancelTarget] = useState(null);
-  const [cancelling, setCancelling] = useState(false);
+  // Goes up when something went wrong (e.g. the other person answered first),
+  // so the list reloads and shows what is really there.
+  const [reloadKey, setReloadKey] = useState(0);
+  // An accept, decline or cancel is being sent (turns the buttons off).
+  const [working, setWorking] = useState(false);
+  // The Decline (freelancer) or Cancel (client) popup: { action, booking },
+  // or null when closed.
+  const [confirm, setConfirm] = useState(null);
 
+  // Also loads again when a new notification arrives (the unread count
+  // changes), so a new booking request shows up without a refresh.
   useEffect(() => {
     if (!currentUserId) return undefined;
     let active = true;
 
     getMyBookings(currentUserId, isFreelancer).then(({ data, error }) => {
       if (!active) return;
-      if (error) setFailed(true);
-      else setBookings(data);
+      if (error) {
+        setFailed(true);
+      } else {
+        setFailed(false);
+        setBookings(data);
+      }
     });
 
     return () => {
       active = false;
     };
-  }, [currentUserId, isFreelancer]);
+  }, [currentUserId, isFreelancer, unreadNotifications, reloadKey]);
 
   // The Verified check next to each freelancer's name (a client's list only).
   const verifiedIds = useVerifiedIds(isFreelancer ? [] : (bookings || []).map((b) => b.freelancer?.id));
@@ -109,19 +140,49 @@ export default function BookingsView() {
   const pendingCount = sorted.filter((b) => b.status === "pending").length;
   const today = todayInManila();
 
-  const handleCancel = async () => {
-    const booking = cancelTarget;
-    setCancelling(true);
-    const problem = await cancelBooking(booking.id);
-    setCancelling(false);
-    if (problem) {
-      showToast(problem);
+  // Accept: starts a project, and the card turns into "Open project".
+  const handleAccept = async (booking) => {
+    setWorking(true);
+    const { projectId, error } = await acceptBooking(booking.id);
+    setWorking(false);
+    if (error) {
+      showToast(error);
+      setReloadKey((n) => n + 1);
       return;
     }
-    setBookings((prev) => prev.map((b) => (b.id === booking.id ? { ...b, status: "cancelled" } : b)));
-    setCancelTarget(null);
-    showToast(`Your booking for "${booking.title}" was cancelled.`);
+    setBookings((prev) => prev.map((b) => (
+      b.id === booking.id ? { ...b, status: "accepted", responded_at: new Date().toISOString(), project: { id: projectId, status: "started" } } : b
+    )));
+    showToast(`You accepted "${booking.title}". The project has started.`);
   };
+
+  // Decline (freelancer) or Cancel (client), after the popup's confirm.
+  const handleConfirm = async () => {
+    const { action, booking } = confirm;
+    setWorking(true);
+    const problem = action === "decline" ? await declineBooking(booking.id) : await cancelBooking(booking.id);
+    setWorking(false);
+    setConfirm(null);
+    if (problem) {
+      showToast(problem);
+      setReloadKey((n) => n + 1);
+      return;
+    }
+    setBookings((prev) => prev.map((b) => (b.id === booking.id ? { ...b, status: action === "decline" ? "declined" : "cancelled" } : b)));
+    showToast(action === "decline" ? `You declined "${booking.title}".` : `Your booking for "${booking.title}" was cancelled.`);
+  };
+
+  const popup = confirm?.action === "decline"
+    ? {
+        title: "Decline this booking?",
+        message: `"${confirm.booking.title}" from ${personName(confirm.booking.client, "the client")} will be declined, and they'll be told. You can explain in chat.`,
+        confirmLabel: "Decline", busyLabel: "Declining...", cancelLabel: "Not now"
+      }
+    : {
+        title: "Cancel this booking?",
+        message: confirm ? `Your request to book "${confirm.booking.title}" will be cancelled, and ${personName(confirm.booking.freelancer, "the freelancer")} will be told.` : "",
+        confirmLabel: "Cancel booking", busyLabel: "Cancelling...", cancelLabel: "Keep booking"
+      };
 
   return (
     <section className="dashboard-view active-view">
@@ -156,23 +217,26 @@ export default function BookingsView() {
               isFreelancer={isFreelancer}
               today={today}
               verified={verifiedIds.has(b.freelancer?.id)}
+              working={working}
               onMessage={openChat}
-              onCancel={setCancelTarget}
+              onAccept={handleAccept}
+              onDecline={(booking) => setConfirm({ action: "decline", booking })}
+              onCancel={(booking) => setConfirm({ action: "cancel", booking })}
             />
           ))}
         </div>
       </div>
 
       <DeleteConfirmDialog
-        open={Boolean(cancelTarget)}
-        title="Cancel this booking?"
-        message={cancelTarget ? `Your request to book "${cancelTarget.title}" will be cancelled, and ${personName(cancelTarget.freelancer, "the freelancer")} will be told.` : ""}
-        busy={cancelling}
-        confirmLabel="Cancel booking"
-        busyLabel="Cancelling..."
-        cancelLabel="Keep booking"
-        onConfirm={handleCancel}
-        onCancel={() => setCancelTarget(null)}
+        open={Boolean(confirm)}
+        title={popup.title}
+        message={popup.message}
+        busy={working}
+        confirmLabel={popup.confirmLabel}
+        busyLabel={popup.busyLabel}
+        cancelLabel={popup.cancelLabel}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirm(null)}
       />
     </section>
   );

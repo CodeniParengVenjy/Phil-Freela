@@ -60,6 +60,28 @@ export function getMyBookings(userId, asFreelancer) {
     .order("created_at", { ascending: false });
 }
 
+// The freelancer accepts a pending booking. That starts a project (the client's
+// note and the date needed become its note and due date). Returns
+// { projectId }, or { error } with a message.
+export async function acceptBooking(bookingId) {
+  const { data, error } = await supabase.rpc("accept_booking", { target_booking: bookingId });
+  if (error) {
+    // P0001 = a problem the database function explains in plain words
+    // (already answered, the date passed, a suspension...).
+    if (error.code === "P0001") return { error: error.message };
+    console.error("Accepting the booking failed:", error);
+    return { error: "Couldn't accept this booking. Please try again." };
+  }
+  return { projectId: data };
+}
+
+// The freelancer declines a pending booking. Returns "" or a message.
+export async function declineBooking(bookingId) {
+  const { error } = await supabase.rpc("decline_booking", { target_booking: bookingId });
+  if (error) return error.code === "P0001" ? error.message : "Couldn't decline this booking. Please try again.";
+  return "";
+}
+
 // The client cancels a booking that is still pending. Returns "" or a message.
 export async function cancelBooking(bookingId) {
   const { error } = await supabase.rpc("cancel_booking", { target_booking: bookingId });
