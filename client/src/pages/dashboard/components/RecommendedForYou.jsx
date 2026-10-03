@@ -15,6 +15,9 @@ const JOB_COLUMNS = "id, title, category, budget, client:profiles!job_posts_clie
 const REASONS = {
   match: { icon: "bi-stars", jobs: "Matches your work", services: "Matches what you need" },
   similar_users: { icon: "bi-people-fill", jobs: "Freelancers like you applied", services: "Clients like you contacted them" },
+  // The owner's record from completed projects (Feature 5), used by the ranking.
+  rated: { icon: "bi-star-fill", text: "Highly rated" },
+  experienced: { icon: "bi-trophy-fill", text: "5+ projects done" },
   verified: { icon: "bi-patch-check-fill", text: "Verified" },
   fast_reply: { icon: "bi-lightning-charge-fill", text: "Replies within an hour" },
   new: { icon: "bi-clock-fill", text: "New" }
@@ -70,8 +73,8 @@ export default function RecommendedForYou() {
   const title = state.loading || state.personalized ? "Recommended for you" : "New and trusted on PhilFreela";
   const subtitle = state.personalized
     ? (want === "jobs"
-      ? "Picked by PhilFreela's AI from your profile and services, the jobs freelancers like you applied to, and how active each client is."
-      : "Picked by PhilFreela's AI from your profile and projects, the freelancers clients like you contacted, and who replies fast.")
+      ? "Picked by PhilFreela's AI from your profile and services, the jobs freelancers like you applied to, and how reliable each client's record is."
+      : "Picked by PhilFreela's AI from your profile and projects, the freelancers clients like you contacted, and who has a strong record and replies fast.")
     : (want === "jobs"
       ? "Write a profile description in Settings or post a service to get jobs that match your work."
       : "Write a profile description in Settings or post a project to get freelancers that match what you need.");

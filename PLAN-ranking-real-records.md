@@ -162,3 +162,50 @@ so the profile and the ranking agree; a signed-in user and a signed-out
 visitor can't call it (only the AI service's role can).
 
 Step 1 file: `database/supabase_ranking_records_schema.sql`.
+
+Step 2 (The scoring, the chips and the tests): built and pushed
+(2026-10-03). No new SQL. Tested three ways:
+
+1. `python test_ranking.py` (run here with the AI service's own virtual
+   environment, no database, no model): 33/33 passed. It checks the weights
+   add up to 1 and the paper's four factors to 0.65; the rating examples (none
+   0.5, one 5-star 0.63, five 5-star 0.81, twenty averaging 4.8 0.89, two
+   1-star 0.30), that more ratings are worth more and an average that arrives
+   as text is read; completed projects (0, 0.5, 1); made-up rankings (a
+   well-rated experienced owner beats an owner with no record at the same
+   relevance, a bad record ranks below no record, one 5-star rating doesn't
+   beat a long good record, with equal records the better match leads, a
+   clearly better match with no record beats an unrelated post with a decent
+   record, a post with no record row is scored without a problem, verified and
+   fast replies help); the reasons' limits and their steady order; and the
+   whole `recommend()` flow with a fake database client: the owners' records
+   are asked for and put the credible owner first among equal matches, and if
+   the records can't be read (for example the SQL isn't run yet) the ranking
+   still works without them.
+2. The whole AI service still loads (`import main`, with its
+   `/recommendations` route) and the changed files compile.
+3. The browser (Playwright, the fake backend, with a made-up AI answer):
+   10/10 passed, no page errors. Both new chips show next to the old ones in
+   the AI's order, an unknown reason code is skipped, job cards for
+   freelancers read "Matches your work / Highly rated / 5+ projects done", the
+   subtitles mention each person's record, the "New and trusted on
+   PhilFreela" fallback still shows the chips, and on a 390 px phone seven
+   chips wrap inside the card. The earlier browser suites (Booking and
+   profiles) were run again and still pass.
+
+Not tested: the live AI service itself, since asking it needs a signed-in
+user. Still needs the user to open "Recommended for you" on the live site
+once there are real completed and rated projects (the new chips only appear
+for owners with a record).
+
+Changes from the plan:
+- The scoring loop is now `score_posts(signals, records, content,
+  collaborative)` in `recommendations.py`, pure math with no database, plus
+  `fetch_records(supabase, post_ids)`; `recommend()` calls both.
+- The test file also tests `recommend()` with a fake database client, to
+  check the "carry on without records" safety net.
+
+Step 2 files: `ai-service/recommendations.py`, `ai-service/test_ranking.py`
+(new), `client/src/pages/dashboard/components/RecommendedForYou.jsx`.
+
+Both steps in this plan are built. This plan is done.
