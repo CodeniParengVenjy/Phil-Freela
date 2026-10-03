@@ -153,28 +153,80 @@ Hybrid recommender.
 
 ## Step 2: SMS log in (Hard)
 
-User: make a Twilio trial account, then in Supabase turn on the Phone
-provider and paste the Twilio Account SID, Auth Token and Message Service
-SID. The trial can only text phone numbers verified in Twilio first, and
-its texts start with "Sent from your Twilio trial account".
+Google sign up is done (`CompleteProfile.jsx`, `resolvePostAuthRoute` in
+`lib/profile.js`), so this can start.
 
-How it works:
+User, before any code is tested: Twilio doesn't offer a free trial for
+Philippines-based accounts (it demands a paid "Full access" account), so
+this uses **Vonage** instead — Supabase supports it as a built-in phone
+provider too, it gives €2 free credit with no credit card, and it needs
+no phone number purchase (SMS can send from an alphanumeric sender name
+like "PhilFreela" instead of a rented number). Make a free Vonage account
+at vonage.com, then in Supabase, Authentication > Sign In / Providers >
+Phone, turn it on, pick Vonage, and paste the API Key and API Secret from
+the Vonage dashboard. The free credit can only text a handful of numbers
+while the account is in trial/demo mode, which is fine for testing.
 
-- Login page, "Continue with phone": type a PH mobile number, get a
-  6-digit code by SMS, type it in, signed in.
-- A new number goes to the Complete Profile page (built with Google sign
-  up).
-- Email accounts can add a phone number in Settings, Account Security
-  (confirmed with a code), then log in by SMS too.
+**How Supabase phone auth works** (why no new database table is needed):
+a phone number lives directly on the `auth.users` row, the same way an
+email does, and it's globally unique across the project.
+- `signInWithOtp({ phone })` texts a 6-digit code, making a brand-new
+  account if that number isn't linked to one yet.
+- `verifyOtp({ phone, token, type: "sms" })` checks the code and returns a
+  session, exactly like a successful password sign-in.
+- To add a number to an *already signed-in* account instead of making a
+  new one: `updateUser({ phone })` texts a code for that account, and
+  `verifyOtp({ phone, token, type: "phone_change" })` confirms it. The
+  number is now permanently tied to that account, so a later
+  "Continue with phone" sign-in with the same number opens that same
+  account rather than creating a duplicate.
+- `resolvePostAuthRoute` (already built) already sends any signed-in user
+  with no `profiles` row to Complete Profile, however they signed in — a
+  brand-new phone account needs no changes there.
 
-Code:
+**What the user sees:**
 
-1. New `pages/login/PhoneLogin.jsx`: send the code, check the code, resend
-   after 60 seconds.
-2. `lib/validators.js`: PH mobile number check, converted to +63 format.
-3. `SettingsView.jsx`, Account Security: add and confirm a phone number.
+1. Login page: a "Continue with phone" link near the Google button, opens
+   `/login-phone`.
+2. Step 1: a PH mobile number box (`09XXXXXXXXX`), Send Code.
+3. Step 2: a 6-digit code box, Verify; Resend code (disabled for 60
+   seconds); a link back to fix a mistyped number.
+4. Verified: a brand-new number goes to Complete Profile, same as Google;
+   an existing account's number goes straight to its dashboard.
+5. Settings, Account Security (currently an empty placeholder tab): shows
+   the account's confirmed number, or an Add a phone number form (the
+   same Step 1 / Step 2 pattern) when there isn't one yet.
 
-Database: none (Supabase keeps the phone on the login account).
+**Code:**
+
+1. `lib/validators.js`: `PH_MOBILE_PATTERN` and `normalizePhMobile(input)`
+   → `"+63XXXXXXXXXX"` or `null`. Accepts `09XXXXXXXXX` or `+639XXXXXXXXX`,
+   ignoring spaces and dashes.
+2. New `pages/login/PhoneLogin.jsx` at `/login-phone`: the two-step form
+   above, styled like `Login.jsx` (same `auth.css` card). Signs in with
+   `resolvePostAuthRoute`, exactly like Google.
+3. `Login.jsx`: the "Continue with phone" link.
+4. New `components/PhoneSecurityForm.jsx`, used by `SettingsView.jsx`'s
+   Account Security tab: reads the number from `supabase.auth.getUser()`,
+   or shows the add/confirm form.
+5. `CompleteProfile.jsx`: the greeting line falls back to the phone number
+   when there's no email ("Signed in as +63 9XX XXX XXXX").
+6. `lib/errors.js`: one added mapping for `"sms rate limit exceeded"`.
+7. `App.jsx` route, `lib/pageTitles.js` title "Sign In by Phone".
+
+Database: none (Supabase keeps the phone on the login account itself, the
+same place it already keeps the email).
+
+Not in this step: changing or removing a phone once it's confirmed (only
+adding one); 2FA; a WhatsApp OTP channel.
+
+Tests: a real number verified in Twilio's trial console signs up and
+reaches Complete Profile; a second real number added to an existing email
+account in Settings, then signing out and back in by phone opens that
+same account (not a duplicate); a wrong code is refused; the 60-second
+resend cooldown; and whatever error Supabase actually returns for a
+number already tied to another account (mapped in `errors.js` if it isn't
+already readable).
 
 ## Step 3: Voice call + video call (Hardest)
 
