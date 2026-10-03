@@ -113,3 +113,21 @@ text on narrow screens (the card now wraps), instead of squeezing the title.
 
 Step 1 files: `views/SearchResultsView.jsx`,
 `components/RecommendedForYou.jsx`, `views/MoodboardMatchView.jsx`.
+
+Step 2 (The Bookings badge): built and pushed (2026-10-03). No SQL. Tested in
+the same way: 9/9 passed, no page errors. A freelancer's Bookings link shows
+the number of Pending requests (3 with 3 waiting, a declined and an accepted
+one not counted), the page's own "3 waiting" agrees; after Accept it drops to
+2 and after Decline to 1 without a refresh; a request made meanwhile is
+counted when they move to another page; a failed Accept (the client cancelled
+first) still brings the number up to date; at zero the badge goes away; a
+client's Bookings link never shows a number; on a 390 px phone the number sits
+inside the open menu's Bookings button.
+
+Change from the plan: the number is also counted again whenever the person
+moves to another page (one small count request), so it stays right even if a
+live update is missed.
+
+Step 2 files: `hooks/useDashboardShell.js` (`pendingBookings`,
+`refreshPendingBookings`), `layouts/FreelancerDashboardLayout.jsx`,
+`views/BookingsView.jsx`.

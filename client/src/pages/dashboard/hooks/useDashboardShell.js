@@ -224,6 +224,34 @@ export function useDashboardShell() {
     setUnreadNotifications(await countUnreadNotifications(currentUserId));
   }, [currentUserId]);
 
+  // The number on a freelancer's Bookings link: booking requests still waiting
+  // for their answer (read under the database's own booking rules; clients get
+  // no number). It is counted again when a notification arrives, when the
+  // person moves to another page, and when the Bookings page asks (after an
+  // Accept or Decline, which bumps bookingsTick).
+  const [pendingBookings, setPendingBookings] = useState(0);
+  const [bookingsTick, setBookingsTick] = useState(0);
+  const refreshPendingBookings = useCallback(() => setBookingsTick((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!currentUserId || accountType !== "freelancer") return undefined;
+    let active = true;
+
+    // head: true = just the count, no rows.
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("freelancer_id", currentUserId)
+      .eq("status", "pending")
+      .then(({ count }) => {
+        if (active) setPendingBookings(count || 0);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUserId, accountType, unreadNotifications, bookingsTick, location.pathname]);
+
   // A new announcement or personal notification updates the badge and pops a
   // toast. The database rules only send each user the ones meant for them.
   useEffect(() => {
@@ -357,6 +385,7 @@ export function useDashboardShell() {
     avatarPath, setAvatarPath,
     unreadCount, refreshUnreadCount,
     unreadNotifications, refreshUnreadNotifications,
+    pendingBookings, refreshPendingBookings,
     suspension,
     toast, closeToast, showToast,
     preview, openPreview, closePreview,

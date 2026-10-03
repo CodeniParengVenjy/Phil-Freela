@@ -95,7 +95,7 @@ function BookingCard({ booking, isFreelancer, today, verified, working, onMessag
 // services they booked ("My Bookings"); a freelancer sees the requests for
 // their services ("Booking Requests"). Pending ones come first.
 export default function BookingsView() {
-  const { currentUserId, accountType, openChat, showToast, unreadNotifications } = useOutletContext();
+  const { currentUserId, accountType, openChat, showToast, unreadNotifications, refreshPendingBookings } = useOutletContext();
   const isFreelancer = accountType === "freelancer";
   // null while loading, then the list.
   const [bookings, setBookings] = useState(null);
@@ -146,6 +146,7 @@ export default function BookingsView() {
     setWorking(true);
     const { projectId, error } = await acceptBooking(booking.id);
     setWorking(false);
+    refreshPendingBookings?.(); // the number on the Bookings link in the sidebar
     if (error) {
       showToast(error);
       setReloadKey((n) => n + 1);
@@ -164,6 +165,7 @@ export default function BookingsView() {
     const problem = action === "decline" ? await declineBooking(booking.id) : await cancelBooking(booking.id);
     setWorking(false);
     setConfirm(null);
+    refreshPendingBookings?.();
     if (problem) {
       showToast(problem);
       setReloadKey((n) => n + 1);
