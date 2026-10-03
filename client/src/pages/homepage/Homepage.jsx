@@ -84,7 +84,7 @@ export default function Homepage() {
           </div>
           <h1 className="welcome-heading fw-bold text-white mb-4">Where Filipino talent meets <span className="text-gradient-orange">global opportunity</span></h1>
           <p className="hero-subtext fs-5 mx-auto mb-0" style={{ maxWidth: 720 }}>
-            Designers, illustrators, editors, and writers: get discovered by clients who value your craft, or hire Filipino creatives who bring your ideas to life.
+            Get discovered by clients who value your craft, or hire Filipino creatives who bring your ideas to life.
           </p>
         </div>
       </section>
