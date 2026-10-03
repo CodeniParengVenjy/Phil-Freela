@@ -23,6 +23,11 @@ export default function PrivacyPolicy() {
         </li>
         <li>Messages you send to other users, and files or portfolio work you upload (which carry an invisible, automatic ownership mark -- see our Terms of Service).</li>
         <li>Basic usage information needed to run features like search and "Recommended for you" (for example, which posts you've viewed or messaged about).</li>
+        <li>
+          Your track record on PhilFreela: the projects you complete (title, finish date, who it was with, and the ratings),
+          how quickly you usually reply in chats, and when you joined. It's shown on your public profile so people can judge
+          how reliable you are. The notes, files and links of a project, and the text of your messages, are never part of it.
+        </li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Legitimate purpose</h5>

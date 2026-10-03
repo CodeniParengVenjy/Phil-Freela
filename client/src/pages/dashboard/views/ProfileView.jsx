@@ -3,6 +3,8 @@ import { Link, useOutletContext } from "react-router-dom";
 import { fetchIsVerified } from "../../../lib/verification";
 import { fetchDescription } from "../../../lib/profile";
 import PortfolioSection from "../components/PortfolioSection";
+import PerformanceBox from "../components/PerformanceBox";
+import CompletedProjects from "../components/CompletedProjects";
 import Avatar from "../../../components/Avatar";
 
 const initialSkills = ["Critical Thinker", "Web Developer", "Creativity", "Video Editing"];
@@ -75,6 +77,13 @@ export default function ProfileView() {
                 </div>
               </div>
 
+              {/* The projects the client marked Done, in the role you have now (Feature 5). */}
+              {currentUserId && (
+                <div className="text-start mb-4">
+                  <CompletedProjects userId={currentUserId} role={accountType} />
+                </div>
+              )}
+
               {/* Only freelancers have a portfolio. */}
               {accountType === "freelancer" && currentUserId && (
                 <div className="text-start">
@@ -86,25 +95,8 @@ export default function ProfileView() {
         </div>
 
         <div className="col-lg-4">
-          <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
-            <h5 className="text-white fw-bold mb-3"><i className="bi bi-bar-chart-line text-warning me-2"></i> Performance</h5>
-            <div className="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary border-opacity-25">
-              <span className="text-secondary fs-7">Completed Orders</span>
-              <span className="fw-bold text-white fs-6">67</span>
-            </div>
-            <div className="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary border-opacity-25">
-              <span className="text-secondary fs-7">On-time Delivery</span>
-              <span className="fw-bold text-success fs-6">99%</span>
-            </div>
-            <div className="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary border-opacity-25">
-              <span className="text-secondary fs-7">Response Time</span>
-              <span className="fw-bold text-info fs-6">1 hour</span>
-            </div>
-            <div className="d-flex justify-content-between align-items-center py-2">
-              <span className="text-secondary fs-7">Member Since</span>
-              <span className="fw-bold text-white fs-6">August 2026</span>
-            </div>
-          </div>
+          {/* Real numbers from your projects, ratings and chats (Feature 5). */}
+          <PerformanceBox userId={currentUserId} role={accountType} className="mb-4" />
 
           <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
             <h5 className="text-white fw-bold mb-3"><i className="bi bi-shield-check text-success me-2"></i> Verifications</h5>

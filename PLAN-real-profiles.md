@@ -56,8 +56,8 @@ ones where they were the client.
 4. Response time: the same measure "Recommended for you" already uses: how
    long the person usually waits before replying in a chat (the median of
    the last 30 days; a message still unanswered after a day counts as a very
-   long wait). It shows "about 25 min", "about 3 h", "about 2 days", "More
-   than a day", or "No chats yet".
+   long wait). It shows "About 25 min", "About 3 h", "More than a day" (a
+   day or more), or "No chats yet".
 5. Services posted (freelancers) or Job posts (clients): how many listings
    they have.
 6. Member since: the month and year the account was made.
@@ -249,3 +249,40 @@ empty). The two public functions are granted to signed-in users;
 plan can call it).
 
 Step 1 file: `database/supabase_profiles_schema.sql`.
+
+Step 2 (The real Performance box and Completed projects): built and pushed
+(2026-10-03). No new SQL. Tested in a real browser (Playwright, the fake
+in-memory backend as in Booking, which also refuses any column the real
+tables don't have): 30/30 passed, no page errors; the website's calls to the
+two functions were also checked against the live API with the public key
+(they resolve, and signed-out visitors get "permission denied"; a wrong
+argument name gives "could not find the function"). Checked: the
+freelancer's Performance box has Completed Projects, On-time Delivery (83%
+with "5 of 6"), Average Rating (4.2 with the count), Response Time, Services
+Posted and Member Since, in that order, and the old made-up numbers (Completed
+Orders 67, 99%, 1 hour) are gone; 5 projects show at first with "Show all
+(6)" and "Show fewer"; on your own page every row has "Open project" to that
+project's page; a client sees "Open project" only on a project they were on,
+and a stranger's rows have none; rows show the title, the other person, the
+finish date, the stars and the feedback, "Not rated yet" when there are none,
+and never a note, due date or file; a freelancer with nothing yet shows zeros,
+"—", "No ratings yet", "No chats yet" and "No completed projects yet."; a
+client's box has no On-time row and shows Job Posts; a client's rows name the
+freelancer and link to their page; when the numbers can't be loaded both parts
+say so and the rest of the page still shows; on a 390 px phone neither page
+scrolls sideways. Still needs the user to test it on the live site (with real
+completed projects).
+
+Changes from the plan:
+- Waits of a day or more all read "More than a day" (the plan had "About 2
+  days"): an unanswered message counts as a very long wait, so the middle
+  value can land between a real wait and that stand-in. Other waits read
+  "Under a minute", "About 25 min", "About 3 h".
+- A client's name in a list row is plain text for now, because their page
+  comes in Step 3; the link is switched on there (`profilePath` in
+  `lib/profileStats.js`).
+
+Step 2 files: `lib/profileStats.js`, `components/PerformanceBox.jsx`,
+`components/CompletedProjects.jsx`, `views/ProfileView.jsx`,
+`views/FreelancerPortfolioView.jsx`, `pages/legal/TermsOfService.jsx`,
+`pages/legal/PrivacyPolicy.jsx`.

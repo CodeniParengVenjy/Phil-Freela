@@ -6,6 +6,8 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import StarRating from "../../../components/StarRating";
 import Avatar from "../../../components/Avatar";
 import PortfolioSection from "../components/PortfolioSection";
+import PerformanceBox from "../components/PerformanceBox";
+import CompletedProjects from "../components/CompletedProjects";
 import ReportDialog from "../components/ReportDialog";
 import BookDialog from "../components/BookDialog";
 
@@ -106,6 +108,20 @@ export default function FreelancerPortfolioView() {
           <p className="text-light-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{freelancer.description}</p>
         </div>
       )}
+
+      {/* Their real track record (Feature 5, Profile transparency): the numbers
+          and the projects clients marked Done. key: start fresh when moving
+          from one freelancer's page to another's. */}
+      <div className="row g-4 mb-4" key={`record-${freelancerId}`}>
+        <div className="col-lg-4">
+          <PerformanceBox userId={freelancerId} role="freelancer" className="h-100" />
+        </div>
+        <div className="col-lg-8">
+          <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100">
+            <CompletedProjects userId={freelancerId} role="freelancer" />
+          </div>
+        </div>
+      </div>
 
       <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
         {/* key: start fresh when moving from one freelancer's page to another's. */}

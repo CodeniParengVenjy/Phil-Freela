@@ -43,6 +43,11 @@ export default function TermsOfService() {
         Once a project is marked done, both sides can rate each other once. Ratings are shown publicly on profiles and
         can't be edited or removed afterward, since they're meant to reflect real completed work.
       </p>
+      <p className="text-secondary">
+        A profile also shows a track record other people can see: how many projects were marked done, how many of
+        those were delivered by the due date, the title, finish date and other person of each completed project, and how
+        quickly you usually reply in chats. The notes, files and links of a project stay private to the two people on it.
+      </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Ending your account</h5>
       <p className="text-secondary">
