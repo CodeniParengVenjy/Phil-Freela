@@ -5,6 +5,7 @@ import { searchListings } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import BookDialog from "../components/BookDialog";
 
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
 const JOB_COLUMNS = "id, title, category, budget, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
@@ -18,9 +19,11 @@ export default function SearchResultsView() {
   const [params] = useSearchParams();
   const query = (params.get("q") || "").trim();
   const navigate = useNavigate();
-  const { accountType, currentUserId, openChat } = useOutletContext();
+  const { accountType, currentUserId, openChat, showToast } = useOutletContext();
   // The search these results belong to (still loading while it's not `query`).
   const [result, setResult] = useState({ query: null, services: [], jobs: [], error: "" });
+  // The service being booked (null = Book popup closed). Only clients book.
+  const [bookTarget, setBookTarget] = useState(null);
 
   useEffect(() => {
     if (query.length < 2) return undefined;
@@ -132,18 +135,31 @@ export default function SearchResultsView() {
                   verifiedIds={verifiedIds}
                   currentUserId={currentUserId}
                   onMessage={openChat}
+                  canBook={accountType === "client"}
+                  onBook={setBookTarget}
                 />
               ))}
             </div>
           </div>
         ))}
       </div>
+
+      <BookDialog
+        key={bookTarget?.service?.id}
+        target={bookTarget}
+        onClose={() => setBookTarget(null)}
+        onBooked={() => {
+          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
+          setBookTarget(null);
+        }}
+      />
     </section>
   );
 }
 
-// One matching service or job post.
-function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage }) {
+// One matching service or job post. A client can book a service right here
+// (canBook); the popup opens with that service already chosen.
+function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage, canBook, onBook }) {
   const owner = isService ? item.freelancer : item.client;
   const ownerName = owner?.full_name || owner?.username || (isService ? "Freelancer" : "Client");
   const category = getCategory(item.category);
@@ -151,12 +167,13 @@ function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage }) 
   const isMine = owner?.id === currentUserId;
 
   return (
-    <div className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-3 hover-lift">
+    <div className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex flex-wrap align-items-center gap-3 hover-lift">
       <div className="rounded-3 bg-role-subtle text-role d-flex align-items-center justify-content-center flex-shrink-0 fs-4" style={{ width: 52, height: 52 }}>
         <i className={`bi ${category.icon}`}></i>
       </div>
 
-      <div className="flex-grow-1 overflow-hidden">
+      {/* flexBasis: on a phone the buttons drop under the text instead of squeezing it. */}
+      <div className="flex-grow-1 overflow-hidden" style={{ flexBasis: 200 }}>
         <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
           <h6 className="text-white fw-bold mb-0 text-break">{item.title}</h6>
           {/* How close its meaning is to the search (see listing_search.py). */}
@@ -179,13 +196,24 @@ function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage }) 
       {isMine ? (
         <span className="badge bg-secondary bg-opacity-25 text-secondary flex-shrink-0">Your post</span>
       ) : owner?.id && (
-        <button
-          type="button"
-          className="btn btn-gradient-role rounded-pill px-3 py-2 fw-bold text-white text-nowrap fs-7 flex-shrink-0"
-          onClick={() => onMessage(owner.id)}
-        >
-          <i className="bi bi-chat-dots me-1"></i> Message
-        </button>
+        <div className="d-flex gap-2 flex-shrink-0 ms-auto">
+          {isService && canBook && (
+            <button
+              type="button"
+              className="btn btn-outline-role rounded-pill px-3 py-2 fw-bold text-nowrap fs-7"
+              onClick={() => onBook({ freelancerId: owner.id, freelancerName: ownerName, service: { id: item.id, title: item.title } })}
+            >
+              <i className="bi bi-calendar-check me-1"></i> Book
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-gradient-role rounded-pill px-3 py-2 fw-bold text-white text-nowrap fs-7"
+            onClick={() => onMessage(owner.id)}
+          >
+            <i className="bi bi-chat-dots me-1"></i> Message
+          </button>
+        </div>
       )}
     </div>
   );

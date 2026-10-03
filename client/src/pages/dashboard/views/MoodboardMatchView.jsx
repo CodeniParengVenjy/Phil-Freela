@@ -8,6 +8,7 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import MediaDropzone from "../components/MediaDropzone";
+import BookDialog from "../components/BookDialog";
 
 const PICTURE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 10 * 1024 * 1024; // shrunk before sending
@@ -19,7 +20,10 @@ const MAX_BYTES = 10 * 1024 * 1024; // shrunk before sending
 // freelancer ids and scores, and this page loads their profile and matching
 // picture itself, under the normal database rules.
 export default function MoodboardMatchView() {
-  const { currentUserId, openChat } = useOutletContext();
+  const { currentUserId, openChat, showToast } = useOutletContext();
+  // The freelancer being booked (null = Book popup closed). The match is a
+  // freelancer, not one service, so the popup lists their services to pick from.
+  const [bookTarget, setBookTarget] = useState(null);
   const [file, setFile] = useState(null);
   const [fileError, setFileError] = useState("");
   const [matching, setMatching] = useState(false);
@@ -125,19 +129,30 @@ export default function MoodboardMatchView() {
                   verified={verifiedIds.has(match.freelancer.id)}
                   isMine={match.freelancer.id === currentUserId}
                   onMessage={openChat}
+                  onBook={setBookTarget}
                 />
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <BookDialog
+        key={bookTarget?.freelancerId}
+        target={bookTarget}
+        onClose={() => setBookTarget(null)}
+        onBooked={() => {
+          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
+          setBookTarget(null);
+        }}
+      />
     </section>
   );
 }
 
-// One matching freelancer: their closest-styled portfolio picture, name and
-// a Message button.
-function MatchCard({ match, verified, isMine, onMessage }) {
+// One matching freelancer: their closest-styled portfolio picture, name, and
+// Book and Message buttons (this page is for clients).
+function MatchCard({ match, verified, isMine, onMessage, onBook }) {
   const { freelancer, slide, strong } = match;
   const name = freelancer.full_name || freelancer.username || "Freelancer";
 
@@ -166,9 +181,18 @@ function MatchCard({ match, verified, isMine, onMessage }) {
             View portfolio
           </Link>
           {!isMine && (
-            <button type="button" className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white" onClick={() => onMessage(freelancer.id)}>
-              <i className="bi bi-chat-dots"></i>
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold"
+                onClick={() => onBook({ freelancerId: freelancer.id, freelancerName: name, service: null })}
+              >
+                <i className="bi bi-calendar-check me-1"></i> Book
+              </button>
+              <button type="button" className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white" aria-label={`Message ${name}`} onClick={() => onMessage(freelancer.id)}>
+                <i className="bi bi-chat-dots"></i>
+              </button>
+            </>
           )}
         </div>
       </div>

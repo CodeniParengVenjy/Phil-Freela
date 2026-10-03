@@ -5,6 +5,7 @@ import { getRecommendations } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import BookDialog from "./BookDialog";
 
 const SHOW = 8;
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
@@ -29,9 +30,11 @@ const REASONS = {
 // orders the posts; this loads them under the normal database rules (hidden
 // posts are left out) and keeps the AI's order.
 export default function RecommendedForYou() {
-  const { accountType, currentUserId, openChat } = useOutletContext();
+  const { accountType, currentUserId, openChat, showToast } = useOutletContext();
   const want = accountType === "freelancer" ? "jobs" : "services";
   const [state, setState] = useState({ loading: true, personalized: false, items: [], error: false });
+  // The service being booked (null = Book popup closed). Only clients book.
+  const [bookTarget, setBookTarget] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -102,17 +105,30 @@ export default function RecommendedForYou() {
                 verified={verifiedIds.has(ownerOf(item)?.id)}
                 isMine={ownerOf(item)?.id === currentUserId}
                 onMessage={openChat}
+                canBook={accountType === "client"}
+                onBook={setBookTarget}
               />
             </div>
           ))}
         </div>
       </div>
+
+      <BookDialog
+        key={bookTarget?.service?.id}
+        target={bookTarget}
+        onClose={() => setBookTarget(null)}
+        onBooked={() => {
+          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
+          setBookTarget(null);
+        }}
+      />
     </section>
   );
 }
 
-// One recommended job post or service, with the reasons it was picked.
-function RecommendationCard({ item, want, owner, verified, isMine, onMessage }) {
+// One recommended job post or service, with the reasons it was picked. A
+// client can book a recommended service right here (canBook).
+function RecommendationCard({ item, want, owner, verified, isMine, onMessage, canBook, onBook }) {
   const category = getCategory(item.category);
   const ownerName = owner?.full_name || owner?.username || (want === "jobs" ? "Client" : "Freelancer");
   const amount = want === "jobs" ? item.budget : item.price;
@@ -158,9 +174,20 @@ function RecommendationCard({ item, want, owner, verified, isMine, onMessage }) 
             View job
           </Link>
         ) : !isMine && owner?.id && (
-          <button type="button" className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white w-100" onClick={() => onMessage(owner.id)}>
-            <i className="bi bi-chat-dots me-1"></i> Message
-          </button>
+          <div className="d-flex gap-2">
+            {canBook && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold flex-grow-1"
+                onClick={() => onBook({ freelancerId: owner.id, freelancerName: ownerName, service: { id: item.id, title: item.title } })}
+              >
+                <i className="bi bi-calendar-check me-1"></i> Book
+              </button>
+            )}
+            <button type="button" className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white flex-grow-1" onClick={() => onMessage(owner.id)}>
+              <i className="bi bi-chat-dots me-1"></i> Message
+            </button>
+          </div>
         )}
       </div>
     </div>
