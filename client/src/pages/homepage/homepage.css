@@ -304,8 +304,9 @@ body {
 .hero-bg .slide {
   position: absolute;
   inset: 0;
-  transform: translateX(100%);
-  animation: slideShow 24s linear infinite;
+  opacity: 0;
+  animation: slideMorph 24s ease-in-out infinite both;
+  will-change: opacity, transform, filter;
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
@@ -332,12 +333,15 @@ body {
   animation-delay: 18s;
 }
 
-@keyframes slideShow {
-  0% { transform: translateX(100%); }
-  4% { transform: translateX(0%); }
-  25% { transform: translateX(0%); }
-  29% { transform: translateX(-100%); }
-  100% { transform: translateX(-100%); }
+/* Morph: each photo blurs and zooms in as the previous one blurs and
+   dissolves away, so one picture melts into the next. Each slide gets 6s of
+   the 24s loop; its 0-8% and 25-33% stretches overlap with its neighbours. */
+@keyframes slideMorph {
+  0%   { opacity: 0; transform: scale(1.14); filter: brightness(0.56) saturate(1.03) blur(18px); }
+  8%   { opacity: 1; transform: scale(1.08); filter: brightness(0.56) saturate(1.03) blur(0); }
+  25%  { opacity: 1; transform: scale(1.02); filter: brightness(0.56) saturate(1.03) blur(0); }
+  33%  { opacity: 0; transform: scale(0.98); filter: brightness(0.56) saturate(1.03) blur(18px); }
+  100% { opacity: 0; transform: scale(0.98); filter: brightness(0.56) saturate(1.03) blur(18px); }
 }
 
 .hero::before {
