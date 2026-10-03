@@ -83,8 +83,8 @@ export default function Homepage() {
             <span className="fs-7 text-uppercase fw-bold text-amber">Welcome to PhilFreela</span>
           </div>
           <h1 className="welcome-heading fw-bold text-white mb-4">Where Filipino talent meets <span className="text-gradient-orange">global opportunity</span></h1>
-          <p className="text-secondary fs-5 mx-auto mb-0" style={{ maxWidth: 640 }}>
-            Connect with skilled Filipino freelancers or find the right client for your next project — all in one place.
+          <p className="hero-subtext fs-5 mx-auto mb-0" style={{ maxWidth: 720 }}>
+            Designers, illustrators, editors, and writers: get discovered by clients who value your craft, or hire Filipino creatives who bring your ideas to life.
           </p>
         </div>
       </section>

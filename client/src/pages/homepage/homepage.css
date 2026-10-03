@@ -289,6 +289,11 @@ body {
   padding: 24px;
 }
 
+.hero-subtext {
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7);
+}
+
 .hero-bg {
   position: absolute;
   inset: 0;
