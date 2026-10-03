@@ -15,8 +15,8 @@ import ReportDialog from "../components/ReportDialog";
 
 // One client job post (opened from Find Jobs). Freelancers apply here with a
 // PDF resume and an optional note; the client then sees them in Projects &
-// Resumes. Clients have no public page of their own, so this is also where
-// a freelancer can report the client.
+// Resumes. The client's name opens their public page (their record); this is
+// also where a freelancer can report the client.
 export default function JobDetailsView() {
   const { jobId } = useParams();
   const { currentUserId, accountType, suspension, showToast, openChat } = useOutletContext();
@@ -214,7 +214,11 @@ export default function JobDetailsView() {
           <div className="flex-grow-1 overflow-hidden">
             <h2 className="h3 fw-bold text-white mb-1 text-break">{job.title}</h2>
             <p className="text-white-50 fs-7 mb-2 d-flex flex-wrap align-items-center gap-2">
-              Posted by <span className="text-white fw-semibold">{clientName}</span>
+              Posted by{" "}
+              {/* Opens the client's public page: their record, to check before applying. */}
+              {job.client?.id
+                ? <Link to={`/dashboard/clients/${job.client.id}`} className="text-white fw-semibold text-decoration-none hover-role">{clientName}</Link>
+                : <span className="text-white fw-semibold">{clientName}</span>}
               <VerifiedBadge verified={clientVerified} showUnverified />
               {/* The client's average rating from past projects (Feature 5, transparency). */}
               <StarRating userId={job.client?.id} />

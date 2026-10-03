@@ -53,9 +53,7 @@ export default function CompletedProjects({ userId, role }) {
                   <h6 className="text-white fw-bold mb-1 text-break">{row.title}</h6>
                   <p className="text-white-50 fs-8 mb-1 text-break">
                     {role === "freelancer" ? "Client" : "Freelancer"}:{" "}
-                    {path
-                      ? <Link to={path} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
-                      : <strong className="text-white">{otherName}</strong>}
+                    <Link to={path} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
                     {" "}• Finished {new Date(row.completed_at).toLocaleDateString()}
                   </p>
                   {row.stars ? (

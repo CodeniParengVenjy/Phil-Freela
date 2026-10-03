@@ -286,3 +286,32 @@ Step 2 files: `lib/profileStats.js`, `components/PerformanceBox.jsx`,
 `components/CompletedProjects.jsx`, `views/ProfileView.jsx`,
 `views/FreelancerPortfolioView.jsx`, `pages/legal/TermsOfService.jsx`,
 `pages/legal/PrivacyPolicy.jsx`.
+
+Step 3 (A public page for clients): built and pushed (2026-10-03). No new
+SQL. Tested the same way as Step 2: 20/20 passed, no page errors, and the
+earlier suites (Step 2 profile tests, and both Booking suites) were run again
+after the changes and still pass (117 browser checks in all). Checked: the
+page at `/dashboard/clients/:clientId` shows the name, "@username • Client",
+"Not verified" (or the Verified check), Message and Report buttons (and no
+Book button), the real client numbers (no on-time row, Job Posts) and the
+list with the freelancer's name linking to their page; the tab title is
+"Client Profile"; Report opens the report popup for that client; Message
+opens the chat; a freelancer's id or an unknown id gives "This client wasn't
+found."; on your own client page it says "This is how others see your
+profile." with no Message or Report; a client's name now opens that page from
+Find Jobs, Job Details ("Posted by"), the Project page ("Client:", when you
+are the freelancer), Bookings (a freelancer's requests), My Applications and
+the Completed Projects rows; the freelancer links on the client side still
+work; on a 390 px phone the page doesn't scroll sideways. Still needs the
+user to test it on the live site.
+
+Change from the plan: in Find Jobs the client's name is a link everywhere
+except in the admin panel (admins stay in their panel). The comment on Job
+Details that said clients have no page was updated.
+
+Step 3 files: `views/ClientProfileView.jsx` (new), `App.jsx` (route),
+`lib/pageTitles.js`, `lib/profileStats.js` (`profilePath` now gives the client
+page too), `components/CompletedProjects.jsx` (the name is always a link),
+`views/FindJobsView.jsx`, `views/JobDetailsView.jsx`,
+`views/ProjectDetailsView.jsx`, `views/BookingsView.jsx`,
+`components/ApplicationsPanel.jsx`.

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { acceptBooking, bookingStatuses, cancelBooking, declineBooking, getMyBookings } from "../../../lib/bookings";
 import { formatDay, personName, todayInManila } from "../../../lib/projects";
+import { profilePath } from "../../../lib/profileStats";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
@@ -29,9 +30,9 @@ function BookingCard({ booking, isFreelancer, today, verified, working, onMessag
           <h6 className="text-white fw-bold mb-1 text-break">{booking.title}</h6>
           <p className="text-white-50 fs-7 mb-0 text-break">
             {isFreelancer ? "Client" : "Freelancer"}:{" "}
-            {/* Freelancers have a public portfolio page; clients don't yet. */}
-            {!isFreelancer && other?.id ? (
-              <Link to={`/dashboard/freelancers/${other.id}`} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
+            {/* Both have a public page: a freelancer's portfolio, a client's record. */}
+            {other?.id ? (
+              <Link to={profilePath(isFreelancer ? "client" : "freelancer", other.id)} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
             ) : (
               <strong className="text-white">{otherName}</strong>
             )}

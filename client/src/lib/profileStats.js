@@ -42,9 +42,8 @@ export function formatMemberSince(date) {
   return new Date(date).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
-// The public page for someone on a project: freelancers have one today;
-// clients get theirs in the next step, so for now a client is shown by name
-// only (null = no link).
+// The public page for a person, by the role they have today: a client's page
+// or a freelancer's page.
 export function profilePath(accountType, userId) {
-  return accountType === "freelancer" ? `/dashboard/freelancers/${userId}` : null;
+  return accountType === "client" ? `/dashboard/clients/${userId}` : `/dashboard/freelancers/${userId}`;
 }

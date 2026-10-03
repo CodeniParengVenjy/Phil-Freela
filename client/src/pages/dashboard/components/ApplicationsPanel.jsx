@@ -90,7 +90,13 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
               <div key={row.id} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
                 <div className="overflow-hidden">
                   <h6 className="fw-bold mb-1 text-break">{jobLink}</h6>
-                  <p className="text-white-50 fs-7 mb-0">{clientName} • sent {sentOn}</p>
+                  <p className="text-white-50 fs-7 mb-0">
+                    {/* Opens the client's public page: their record, to check before they answer. */}
+                    {row.job?.client?.id
+                      ? <Link to={`/dashboard/clients/${row.job.client.id}`} className="text-white-50 text-decoration-underline">{clientName}</Link>
+                      : clientName}
+                    {" "}• sent {sentOn}
+                  </p>
                 </div>
                 <div className="d-flex flex-wrap gap-2 flex-shrink-0">
                   {row.project && <HiredLink project={row.project} />}

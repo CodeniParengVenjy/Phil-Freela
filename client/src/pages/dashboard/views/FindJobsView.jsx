@@ -101,7 +101,10 @@ export default function FindJobsView() {
                     </h5>
                     <div className="d-flex align-items-center gap-2 fs-7 mb-2">
                       <span className="text-white-50">
-                        {clientName}
+                        {/* Opens the client's public page (admins stay in the admin panel). */}
+                        {!isAdmin && job.client?.id
+                          ? <Link to={`/dashboard/clients/${job.client.id}`} className="text-white-50 text-decoration-underline">{clientName}</Link>
+                          : clientName}
                         <VerifiedBadge verified={verifiedIds.has(job.client?.id)} showUnverified />
                       </span>
                       {job.budget && <span className="text-warning">₱{Number(job.budget).toLocaleString()}</span>}

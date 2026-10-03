@@ -4,6 +4,7 @@ import {
   deliverableIcon, formatDay, getMyRating, getProject, markProjectDone, openDeliverable,
   personName, projectStatuses, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
+import { profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
@@ -136,9 +137,9 @@ export default function ProjectDetailsView() {
           <Avatar path={other?.avatar_path} name={otherName} size={36} />
           <span className="text-white-50 fs-7">
             {iAmClient ? "Freelancer" : "Client"}:{" "}
-            {/* Freelancers have a public portfolio page; clients don't yet. */}
-            {iAmClient && other?.id ? (
-              <Link to={`/dashboard/freelancers/${other.id}`} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
+            {/* Both have a public page: a freelancer's portfolio, a client's record. */}
+            {other?.id ? (
+              <Link to={profilePath(iAmClient ? "freelancer" : "client", other.id)} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
             ) : (
               <strong className="text-white">{otherName}</strong>
             )}
