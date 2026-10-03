@@ -192,3 +192,17 @@ $$;
 
 revoke execute on function public.profile_history(uuid, text, integer) from public, anon;
 grant execute on function public.profile_history(uuid, text, integer) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Step 4: Skills on a profile.
+-- ---------------------------------------------------------------------------
+
+-- A freelancer's skills, shown as chips on their Profile and on their public
+-- page. The same rule as a job post's required skills (is_valid_skill_list in
+-- supabase_projects_schema.sql): up to 10 skills, each 1 to 40 characters
+-- with no spaces around it. Users can already update their own profile row,
+-- and every signed-in user can already read profiles, so no new rules are
+-- needed. Empty = no skills yet.
+alter table public.profiles
+  add column skills text[] not null default '{}'
+  constraint profiles_skills_check check (public.is_valid_skill_list(skills));

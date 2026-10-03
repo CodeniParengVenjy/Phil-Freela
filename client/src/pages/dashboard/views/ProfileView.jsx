@@ -5,13 +5,11 @@ import { fetchDescription } from "../../../lib/profile";
 import PortfolioSection from "../components/PortfolioSection";
 import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
+import SkillsBox from "../components/SkillsBox";
 import Avatar from "../../../components/Avatar";
-
-const initialSkills = ["Critical Thinker", "Web Developer", "Creativity", "Video Editing"];
 
 export default function ProfileView() {
   const { displayName, avatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
-  const [skills, setSkills] = useState(initialSkills);
   // null while checking, then true/false (approved identity verification).
   const [verified, setVerified] = useState(null);
   // undefined while loading, null if it couldn't load, "" if not written yet.
@@ -28,14 +26,6 @@ export default function ProfileView() {
     });
     return () => { active = false; };
   }, [currentUserId]);
-
-  const addSkill = () => {
-    const skill = window.prompt("Enter a new skill (e.g., Motion Graphics, Photoshop, React):");
-    if (skill && skill.trim()) {
-      setSkills((prev) => [...prev, skill.trim()]);
-      showToast(`Skill "${skill.trim()}" added to profile!`);
-    }
-  };
 
   return (
     <section className="dashboard-view active-view">
@@ -65,17 +55,12 @@ export default function ProfileView() {
                 {description && <p className="text-light-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{description}</p>}
               </div>
 
-              <div className="text-start mb-4">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <h5 className="text-white fw-bold mb-0"><i className="bi bi-tools text-orange me-2"></i> Skills</h5>
-                  <button className="btn btn-sm btn-outline-warning rounded-pill fs-8 fw-bold" onClick={addSkill}>+ Add Skill</button>
+              {/* Only freelancers have skills: saved on their profile, and shown on their public page too. */}
+              {accountType === "freelancer" && currentUserId && (
+                <div className="text-start mb-4">
+                  <SkillsBox userId={currentUserId} showToast={showToast} />
                 </div>
-                <div className="d-flex flex-wrap gap-2">
-                  {skills.map((skill) => (
-                    <span key={skill} className="badge bg-secondary bg-opacity-75 text-light px-3 py-2 rounded-pill fs-7">{skill}</span>
-                  ))}
-                </div>
-              </div>
+              )}
 
               {/* The projects the client marked Done, in the role you have now (Feature 5). */}
               {currentUserId && (

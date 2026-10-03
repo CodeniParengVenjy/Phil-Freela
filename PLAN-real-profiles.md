@@ -315,3 +315,45 @@ page too), `components/CompletedProjects.jsx` (the name is always a link),
 `views/FindJobsView.jsx`, `views/JobDetailsView.jsx`,
 `views/ProjectDetailsView.jsx`, `views/BookingsView.jsx`,
 `components/ApplicationsPanel.jsx`.
+
+Step 4 (Real Skills): built and pushed (2026-10-03). Its SQL has been run on
+Supabase (migration "profile_skills"), so don't run it again. Tested in a
+transaction that was rolled back afterward (nothing left behind, checked
+afterward): a new profile starts with an empty list (not null); the owner
+saves their own skills; exactly 10 skills of exactly 40 characters are
+accepted; 11 skills, a 41-character skill, an empty skill, a skill with a
+space in front, a null skill and a null list are refused; another signed-in
+user can read the skills but can't change them (0 rows). In the browser (the
+same fake backend, now also answering profile saves and refusing columns the
+real table doesn't have): 22/22 passed, five runs in a row, no page errors:
+the made-up skills ("Critical Thinker" and the others) are gone and an empty
+box says what to do; "+ Add Skill" opens a box that takes the cursor; Enter
+adds a chip and saves, and the box stays open for the next one; a comma adds
+what was typed; a repeat (in any capitals) and an empty Enter add and save
+nothing; a skill over 40 characters is cut to 40; a skill typed without Enter
+is kept when you click away; the x removes one and saves the shorter list; a
+refresh keeps them; Escape closes the box; a failed save shows "Couldn't save
+your skills. Please try again." and the list goes back; at 10 skills the box
+and the button go away with a note; the public page shows the same skills
+read-only (and no Skills card when there are none); a client's Profile has no
+Skills box; "Download your data" includes the skills; on a 390 px phone ten
+chips wrap and the page doesn't scroll sideways. Still needs the user to test
+it on the live site.
+
+Changes from the plan:
+- The Skills box is its own component (`components/SkillsBox.jsx`), and
+  `lib/profile.js` has the three helpers (`fetchSkills`, `saveSkills`,
+  `addSkillsFromText`) plus the two limits.
+- One save at a time: while a save is going on, Enter and commas are
+  ignored and the typed text stays in the box (a person types a skill much
+  slower than a save takes). A failed save puts the old list back.
+- A skill typed without pressing Enter is added when the box loses focus.
+
+Step 4 files: `database/supabase_profiles_schema.sql` (Step 4 added to it),
+`lib/profile.js`, `components/SkillsBox.jsx`, `views/ProfileView.jsx`,
+`views/FreelancerPortfolioView.jsx`, `lib/privacy.js`.
+
+All 4 steps in this plan are built. This plan is done. Next (see "Not
+included"): the recommendation ranking can now use real ratings, completed
+projects, on-time delivery and the booking reply speed, and the new skills
+can feed the content-based part of "Recommended for you".

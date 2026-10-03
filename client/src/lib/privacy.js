@@ -18,7 +18,7 @@ import { supabase } from "./supabaseClient";
 export async function exportMyData(userId) {
   const [profile, verification, services, jobPosts, portfolioItems, applications, projects, bookings, ratingsGiven, ratingsReceived, conversations] =
     await Promise.all([
-      supabase.from("profiles").select("full_name, username, gender, account_type, description, avatar_path, email_when_offline, created_at, updated_at").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select("full_name, username, gender, account_type, description, skills, avatar_path, email_when_offline, created_at, updated_at").eq("id", userId).maybeSingle(),
       supabase.from("identity_verifications").select("id_type, status, created_at").eq("user_id", userId).order("created_at", { ascending: false }),
       supabase.from("services").select("id, title, category, description, price, skill, created_at").eq("freelancer_id", userId),
       supabase.from("job_posts").select("id, title, category, description, budget, created_at").eq("client_id", userId),

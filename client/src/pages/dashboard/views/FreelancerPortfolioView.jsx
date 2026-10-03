@@ -30,7 +30,7 @@ export default function FreelancerPortfolioView() {
   useEffect(() => {
     let active = true;
     Promise.all([
-      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, description").eq("id", freelancerId).maybeSingle(),
+      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, description, skills").eq("id", freelancerId).maybeSingle(),
       fetchIsVerified(freelancerId)
     ]).then(([{ data }, isVerified]) => {
       if (!active) return;
@@ -106,6 +106,18 @@ export default function FreelancerPortfolioView() {
         <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
           <h5 className="text-white fw-bold mb-2"><i className="bi bi-text-paragraph text-orange me-2"></i> Description</h5>
           <p className="text-light-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{freelancer.description}</p>
+        </div>
+      )}
+
+      {/* The skills the freelancer saved on their own Profile (hidden until they add some). */}
+      {freelancer.skills?.length > 0 && (
+        <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
+          <h5 className="text-white fw-bold mb-3"><i className="bi bi-tools text-orange me-2"></i> Skills</h5>
+          <div className="d-flex flex-wrap gap-2">
+            {freelancer.skills.map((skill) => (
+              <span key={skill} className="badge bg-secondary bg-opacity-75 text-light px-3 py-2 rounded-pill fs-7">{skill}</span>
+            ))}
+          </div>
         </div>
       )}
 

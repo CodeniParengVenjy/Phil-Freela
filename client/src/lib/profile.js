@@ -58,6 +58,40 @@ export async function saveDescription(userId, text) {
   return "";
 }
 
+// A freelancer's skills (Profile > Skills), shown as chips on their Profile and
+// on their public page. The database allows up to 10 skills, each 1 to 40
+// characters (the same rule as a job post's required skills).
+export const MAX_SKILLS = 10;
+export const MAX_SKILL_LENGTH = 40;
+
+// The user's saved skills, or null when they couldn't be loaded.
+export async function fetchSkills(userId) {
+  const { data, error } = await supabase.from("profiles").select("skills").eq("id", userId).maybeSingle();
+  if (error) return null;
+  return data?.skills ?? [];
+}
+
+// Saves the whole list of skills. Returns "" when saved, or a message to show.
+export async function saveSkills(userId, skills) {
+  if (skills.length > MAX_SKILLS) return `You can add up to ${MAX_SKILLS} skills.`;
+  const { data, error } = await supabase.from("profiles").update({ skills }).eq("id", userId).select("id");
+  if (error || !data?.length) return "Couldn't save your skills. Please try again.";
+  return "";
+}
+
+// Adds typed text (one skill, or several split by commas) to a list of skills,
+// skipping blanks and repeats (capital letters don't count as different) and
+// stopping at the most allowed. Returns the new list.
+export function addSkillsFromText(current, text) {
+  const next = [...current];
+  for (const part of text.split(",")) {
+    const skill = part.trim().slice(0, MAX_SKILL_LENGTH).trim();
+    const isRepeat = next.some((s) => s.toLowerCase() === skill.toLowerCase());
+    if (skill && !isRepeat && next.length < MAX_SKILLS) next.push(skill);
+  }
+  return next;
+}
+
 // Settings > Privacy & Notifications > "Email me when I'm offline". When on,
 // the database emails the user about new messages, missed calls, job
 // applications and account news that arrive while they're away
