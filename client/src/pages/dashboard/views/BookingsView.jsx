@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { acceptBooking, bookingStatuses, cancelBooking, declineBooking, getMyBookings } from "../../../lib/bookings";
-import { formatDay, personName, todayInManila } from "../../../lib/projects";
+import { formatDay, personName, projectStatuses, todayInManila } from "../../../lib/projects";
 import { profilePath } from "../../../lib/profileStats";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
@@ -54,11 +54,17 @@ function BookingCard({ booking, isFreelancer, today, verified, working, onMessag
       </p>
 
       <div className="d-flex flex-wrap gap-2">
-        {/* An accepted booking started a project: it carries on there. */}
+        {/* An accepted booking started a project: it carries on there, and its
+            status shows here so this list works as a tracker. */}
         {booking.status === "accepted" && booking.project && (
-          <Link to={`/dashboard/project-details/${booking.project.id}`} className="btn btn-dark border border-success text-success rounded-pill px-3 fs-7 fw-bold">
-            <i className="bi bi-check-circle-fill me-1"></i> Accepted • Open project
-          </Link>
+          <>
+            <Link to={`/dashboard/project-details/${booking.project.id}`} className="btn btn-dark border border-success text-success rounded-pill px-3 fs-7 fw-bold">
+              <i className="bi bi-check-circle-fill me-1"></i> Accepted • Open project
+            </Link>
+            <span className={`badge rounded-pill px-3 py-2 align-self-center ${projectStatuses[booking.project.status]?.className || "bg-secondary text-white"}`}>
+              Project: {projectStatuses[booking.project.status]?.label || booking.project.status}
+            </span>
+          </>
         )}
         {/* The freelancer answers a request. Accept is off once the date has passed. */}
         {isPending && isFreelancer && (

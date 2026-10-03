@@ -131,3 +131,16 @@ live update is missed.
 Step 2 files: `hooks/useDashboardShell.js` (`pendingBookings`,
 `refreshPendingBookings`), `layouts/FreelancerDashboardLayout.jsx`,
 `views/BookingsView.jsx`.
+
+Step 3 (Project status on accepted bookings): built and pushed (2026-10-03).
+No SQL. Tested the same way: 12/12 passed, no page errors, for both the
+freelancer and the client: a started project shows "Project: Started", one
+waiting for review "Project: Submitted", a finished one "Project: Done"; a
+pending booking has no project badge; every accepted card still has "Open
+project"; after the project moves on the card shows the new status; on a 390
+px phone the page doesn't scroll sideways. The earlier Booking browser suites
+(37, 30, 13 and 9 checks) were run again and still pass.
+
+Step 3 file: `views/BookingsView.jsx` (uses `projectStatuses`).
+
+All 3 steps in this plan are built. This plan is done.
