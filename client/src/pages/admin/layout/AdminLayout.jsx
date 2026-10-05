@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import AdminCreatePassword from "../components/AdminCreatePassword";
 import "../admin.css";
+
+const ADMIN_COLUMNS = "id, full_name, username, role, must_change_password";
 
 const sidebarLinks = [
   { to: "/admin", end: true, icon: "bi-speedometer2", label: "Overview" },
@@ -91,7 +94,7 @@ export default function AdminLayout() {
       // sends non-admins to the right page.
       const { data: adminRow } = await supabase
         .from("admins")
-        .select("id, full_name, username, role")
+        .select(ADMIN_COLUMNS)
         .eq("id", session.user.id)
         .maybeSingle();
 
@@ -103,10 +106,13 @@ export default function AdminLayout() {
       }
 
       setAdmin(adminRow);
-      refreshPendingReports();
-      refreshPendingVerifications();
-      refreshPendingAppeals();
-      refreshPendingFlagged();
+      // Nothing to count yet for an admin who still has to choose a password.
+      if (!adminRow.must_change_password) {
+        refreshPendingReports();
+        refreshPendingVerifications();
+        refreshPendingAppeals();
+        refreshPendingFlagged();
+      }
     })();
 
     return () => { active = false; };
@@ -117,6 +123,25 @@ export default function AdminLayout() {
     navigate("/admin/login", { replace: true });
   };
 
+  // Called by the "Create your password" screen after it saves. The database
+  // switches the flag off by itself when the password really changes, so this
+  // only re-reads the row. True means the panel can open.
+  const recheckPassword = async () => {
+    const { data } = await supabase
+      .from("admins")
+      .select(ADMIN_COLUMNS)
+      .eq("id", admin.id)
+      .maybeSingle();
+    if (!data || data.must_change_password) return false;
+
+    setAdmin(data);
+    refreshPendingReports();
+    refreshPendingVerifications();
+    refreshPendingAppeals();
+    refreshPendingFlagged();
+    return true;
+  };
+
   if (!admin) {
     return <div className="admin-shell min-vh-100" />;
   }
@@ -124,6 +149,12 @@ export default function AdminLayout() {
   const adminName = admin.full_name || admin.username || "Admin";
   // Only for showing or hiding buttons; the database enforces the real rule.
   const isSuperAdmin = admin.role === "super_admin";
+
+  // A new admin on the default password sees only this screen. The database
+  // also gives them no admin rights until they choose their own.
+  if (admin.must_change_password) {
+    return <AdminCreatePassword adminName={adminName} onDone={recheckPassword} onSignOut={handleSignOut} />;
+  }
 
   return (
     <div className="admin-shell text-light min-vh-100">

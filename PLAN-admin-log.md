@@ -64,9 +64,14 @@ and "Load more" (50 at a time).
    one-line change.
 2. The log starts empty. Nothing that happened before it was built is
    recorded.
-3. The default password is a constant in the page's code, as asked. The risk is
-   the short window between "super admin adds them" and "they first sign in".
-   Point 4 above is what keeps that window safe.
+3. The default password is a constant in the page's code, as asked. The risk:
+   between "the new admin confirms their email" and "they first sign in",
+   anyone who knows their email could sign in with `Admin123` and choose the
+   password themselves. What limits it: the email must be confirmed first, the
+   Admins page marks every admin who is still on the default password
+   ("Password not set yet") so a super admin can remove one that looks wrong,
+   and the log shows what every admin does. New admins should sign in right
+   away.
 
 ## Not included
 
@@ -141,3 +146,18 @@ Changes from the plan:
    (the existing appeal trigger lifts it).
 4. Names in the log are full names ("Elena Cruz suspended Keanne Reyes for 14
    days (Harassment).").
+
+Step 2 (Default password): built and pushed (2026-10-05). Lint and build pass;
+the browser check is step 4. The Add Admin form asks for name, username and
+email only and creates the login with `Admin123`; a new admin who signs in
+sees only the "Create Your Password" screen until they choose their own (not
+`Admin123`, same strength rules). The `alter policy` line (a new admin must
+have the flag) was applied right after the push, as migration
+`admins_insert_requires_password_flag`.
+
+Step 2 files: `lib/adminPassword.js` (new),
+`pages/admin/components/AdminCreatePassword.jsx` (new),
+`pages/admin/layout/AdminLayout.jsx`, `pages/admin/views/AdminAdminsView.jsx`.
+
+Change from the plan: the Admins page also shows "Password not set yet" beside
+an admin who is still on the default password.

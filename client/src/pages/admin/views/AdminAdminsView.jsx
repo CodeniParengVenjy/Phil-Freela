@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase, supabaseSignup } from "../../../lib/supabaseClient";
-import { EMAIL_PATTERN, getPasswordStrengthMessage } from "../../../lib/validators";
+import { EMAIL_PATTERN } from "../../../lib/validators";
 import { getFriendlyErrorMessage } from "../../../lib/errors";
+import { DEFAULT_ADMIN_PASSWORD } from "../../../lib/adminPassword";
 
-const emptyForm = { fullName: "", username: "", email: "", password: "" };
+const emptyForm = { fullName: "", username: "", email: "" };
 
 export default function AdminAdminsView() {
   const { adminId, isSuperAdmin } = useOutletContext();
@@ -23,7 +24,7 @@ export default function AdminAdminsView() {
     (async () => {
       const { data, error } = await supabase
         .from("admins")
-        .select("id, full_name, username, role, created_at")
+        .select("id, full_name, username, role, must_change_password, created_at")
         .order("created_at", { ascending: true });
 
       if (!active) return;
@@ -45,17 +46,12 @@ export default function AdminAdminsView() {
     const email = form.email.trim().toLowerCase();
 
     // Check the form in the browser first so obvious mistakes never reach the server.
-    if (!fullName || !username || !email || !form.password) {
+    if (!fullName || !username || !email) {
       setMessage({ text: "Please fill in all fields.", type: "error" });
       return;
     }
     if (!EMAIL_PATTERN.test(email)) {
       setMessage({ text: "Please enter a valid email address.", type: "error" });
-      return;
-    }
-    const strengthMessage = getPasswordStrengthMessage(form.password);
-    if (strengthMessage) {
-      setMessage({ text: strengthMessage, type: "error" });
       return;
     }
 
@@ -69,10 +65,12 @@ export default function AdminAdminsView() {
       if (taken) throw new Error("That username is already used by another admin.");
 
       // 1) Create the login account on the separate connection, so the
-      //    admin using this page stays signed in as themselves.
+      //    admin using this page stays signed in as themselves. Every new
+      //    admin starts with the default password; the super admin never
+      //    chooses or sees the one they end up with.
       const { data, error } = await supabaseSignup.auth.signUp({
         email,
-        password: form.password,
+        password: DEFAULT_ADMIN_PASSWORD,
         options: {
           // The new admin's confirmation link opens the Admin Sign In page.
           emailRedirectTo: `${window.location.origin}/admin/login`,
@@ -88,14 +86,17 @@ export default function AdminAdminsView() {
       // No session means Supabase is waiting for them to confirm their email.
       const needsConfirm = !data.session;
 
-      // 2) Mark the new account as an admin. The "admins can add admins"
-      //    database rule only lets a super admin do this, and only as a
-      //    plain admin (a super admin is made by promoting).
+      // 2) Mark the new account as an admin. The "super admins can add
+      //    admins" database rule only lets a super admin do this, only as a
+      //    plain admin (a super admin is made by promoting), and only with
+      //    must_change_password on. While that is on they have no admin
+      //    rights; the database switches it off when they choose a password.
       const { error: adminError } = await supabase.from("admins").insert({
         id: data.user.id,
         full_name: fullName,
         username,
-        role: "admin"
+        role: "admin",
+        must_change_password: true
       });
       if (adminError) throw new Error("The account was created, but it could not be made an admin: " + adminError.message);
 
@@ -104,8 +105,8 @@ export default function AdminAdminsView() {
 
       setMessage({
         text: needsConfirm
-          ? `${fullName} is now an admin. They must click the confirmation link sent to ${email} before they can sign in.`
-          : `${fullName} is now an admin.`,
+          ? `${fullName} is now an admin. They must click the confirmation link sent to ${email}, then sign in with the default password (${DEFAULT_ADMIN_PASSWORD}) and create their own.`
+          : `${fullName} is now an admin. They sign in with the default password (${DEFAULT_ADMIN_PASSWORD}) and will be asked to create their own.`,
         type: "success"
       });
       setForm(emptyForm);
@@ -191,9 +192,12 @@ export default function AdminAdminsView() {
               <label htmlFor="newAdminEmail" className="form-label text-white-50 fs-7 mb-1">Email Address</label>
               <input id="newAdminEmail" type="email" className="form-control admin-input" value={form.email} onChange={updateField("email")} required />
             </div>
-            <div className="col-12 col-md-6">
-              <label htmlFor="newAdminPassword" className="form-label text-white-50 fs-7 mb-1">Password</label>
-              <input id="newAdminPassword" type="password" className="form-control admin-input" placeholder="Min 8 chars, upper/lower/number" value={form.password} onChange={updateField("password")} required />
+            <div className="col-12">
+              <p className="text-white-50 fs-7 mb-0">
+                <i className="bi bi-key me-1"></i> You don't set their password. They sign in with the default
+                password <strong className="text-white">{DEFAULT_ADMIN_PASSWORD}</strong> and must create their own
+                before the Admin Panel opens.
+              </p>
             </div>
           </div>
           <button type="submit" className="btn btn-admin-orange rounded-pill px-4 fw-bold mt-3" disabled={submitting}>
@@ -232,6 +236,8 @@ export default function AdminAdminsView() {
                     <span className={`badge ${admin.role === "super_admin" ? "admin-badge-orange" : "bg-secondary"} fw-normal`}>
                       {admin.role === "super_admin" ? "Super admin" : "Admin"}
                     </span>
+                    {/* Still on the default password: no admin rights yet. */}
+                    {admin.must_change_password && <span className="badge text-bg-warning ms-2 fw-normal">Password not set yet</span>}
                   </td>
                   <td>{new Date(admin.created_at).toLocaleDateString()}</td>
                   {isSuperAdmin && (
