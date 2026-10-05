@@ -113,14 +113,44 @@ export default function AdminUsersView() {
     setBlockTarget(null);
   };
 
-  // Unsuspending and unbanning both just delete the row. The pop-up below
-  // shows what's being lifted first.
+  // Unsuspending and unbanning normally just delete the row. But when the user
+  // has an appeal waiting for this same penalty, lifting it means accepting
+  // that appeal: the appeal is marked accepted, and the database then lifts
+  // the penalty and tells the user (exactly what Accept on the Appeals page
+  // does). Otherwise the appeal would stay open for a penalty that is already
+  // gone, and rejecting it later would tell the user the penalty was kept.
+  // The pop-up below shows what's being lifted first.
   const confirmLift = async () => {
     const { user, status } = liftTarget;
     const word = status === "banned" ? "unban" : "unsuspend";
 
     setBusy(true);
-    const { error } = await supabase.from("user_suspensions").delete().eq("user_id", user.id);
+    // An appeal belongs to one penalty: the one that started at this time.
+    const lookup = await supabase
+      .from("appeals")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("suspension_started_at", suspensions[user.id].created_at)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    let error = lookup.error;
+    let appealAccepted = false;
+    if (!error && lookup.data) {
+      // ".select" returns the rows that changed. None means another admin
+      // reviewed the appeal a moment ago, so the plain lift below runs instead.
+      const result = await supabase
+        .from("appeals")
+        .update({ status: "accepted", admin_note: null, reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+        .eq("id", lookup.data.id)
+        .eq("status", "pending")
+        .select("id");
+      error = result.error;
+      appealAccepted = !error && result.data.length > 0;
+    }
+    if (!error && !appealAccepted) {
+      ({ error } = await supabase.from("user_suspensions").delete().eq("user_id", user.id));
+    }
     setBusy(false);
     setLiftTarget(null);
 
@@ -134,7 +164,12 @@ export default function AdminUsersView() {
       delete next[user.id];
       return next;
     });
-    setMessage({ text: `${user.full_name} is active again.`, type: "success" });
+    setMessage({
+      text: appealAccepted
+        ? `${user.full_name} is active again. Their pending appeal was accepted, so they have been told.`
+        : `${user.full_name} is active again.`,
+      type: "success"
+    });
   };
 
   // delete_user() is a database function that re-checks on the server that the

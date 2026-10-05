@@ -219,8 +219,27 @@ trigger functions are closed off, so these were closed off too (migration
 that admin actions are still logged afterwards (3 of 3), and on the live
 database that none of the 12 is callable and all 12 triggers are on.
 
-Found while checking, not fixed (it was there before this plan): an appeal can
-still be rejected after an admin has already lifted its suspension from the
-Users page. The user is then told the suspension was kept until its end date,
-although it is gone. Needs a decision: close a pending appeal automatically
-when its penalty is lifted, or only change the wording.
+Fixed after the owner's OK (2026-10-05): an appeal could still be rejected
+after an admin had already lifted its suspension from the Users page, and the
+user was then told the suspension was kept until its end date although it was
+gone. Now, when an admin unsuspends or unbans someone who has an appeal
+waiting for that same penalty, the Users page accepts that appeal instead of
+deleting the penalty row. The database then lifts the penalty and tells the
+user, exactly as Accept on the Appeals page does, so the appeal is never left
+open. With no such appeal, the lift works as before.
+
+1. File: `pages/admin/views/AdminUsersView.jsx` (`confirmLift`). No SQL: it
+   uses the rule admins already have for reviewing appeals.
+2. Tested in a real browser with a fake backend: 14 of 14, no page errors.
+   With a pending appeal the page accepts it and does not delete the penalty;
+   with none it lifts the plain way; if another admin reviewed the appeal a
+   moment before, the plain lift still runs; if the appeals cannot be read,
+   nothing is changed and the admin sees the error; an appeal about an earlier
+   penalty is left alone. That accepting an appeal lifts the penalty and
+   writes both log lines was tested on the real database in step 1.
+3. Not tried on the live site yet.
+4. Limits: this lives in the Users page, not in the database, so it covers
+   lifting through the website (the only way admins lift). Two cases are
+   unchanged: an appeal still pending when its suspension ends by itself, and
+   one whose penalty was replaced by a new one. Both can only be rejected,
+   and the rejection message still says the penalty is being kept.
