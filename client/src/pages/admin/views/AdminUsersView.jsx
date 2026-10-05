@@ -26,7 +26,7 @@ const blockText = {
 };
 
 export default function AdminUsersView() {
-  const { adminId } = useOutletContext();
+  const { adminId, isSuperAdmin } = useOutletContext();
   const [users, setUsers] = useState(null);
   const verifiedIds = useVerifiedIds((users || []).map((user) => user.id));
   // user_id -> suspension row, so each table row can look up its status fast.
@@ -43,6 +43,8 @@ export default function AdminUsersView() {
   const [fields, setFields] = useState(emptyViolationFields);
   // The open Unsuspend / Unban pop-up: { user, status } (null = closed).
   const [liftTarget, setLiftTarget] = useState(null);
+  // The open Delete account pop-up (super admins only): the user, or null (closed).
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -133,6 +135,26 @@ export default function AdminUsersView() {
       return next;
     });
     setMessage({ text: `${user.full_name} is active again.`, type: "success" });
+  };
+
+  // delete_user() is a database function that re-checks on the server that the
+  // caller is a super admin and the target isn't an admin, then deletes the
+  // login account and everything tied to it.
+  const confirmDelete = async () => {
+    const user = deleteTarget;
+
+    setBusy(true);
+    const { error } = await supabase.rpc("delete_user", { target_id: user.id });
+    setBusy(false);
+    setDeleteTarget(null);
+
+    if (error) {
+      setMessage({ text: error.message || "Failed to delete the account.", type: "error" });
+      return;
+    }
+
+    setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    setMessage({ text: `${user.full_name}'s account was deleted.`, type: "success" });
   };
 
   return (
@@ -256,6 +278,12 @@ export default function AdminUsersView() {
                           <i className="bi bi-ban"></i> Ban
                         </button>
                       )}
+                      {/* Hiding this is only for looks; the database refuses anyone but a super admin. */}
+                      {isSuperAdmin && (
+                        <button className="btn btn-danger btn-sm ms-2" onClick={() => { setDeleteTarget(user); setMessage({ text: "", type: "" }); }}>
+                          <i className="bi bi-trash"></i> Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -286,6 +314,40 @@ export default function AdminUsersView() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Delete account pop-up (super admins only): permanent, so it spells out
+          what is lost before the admin confirms. */}
+      {isSuperAdmin && deleteTarget && (
+        <div className="admin-modal-backdrop" onClick={() => !busy && setDeleteTarget(null)}>
+          <div
+            className="admin-card admin-modal rounded-4 p-4 text-center"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deleteTitle"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-lift-icon mx-auto mb-3 text-danger">
+              <i className="bi bi-trash-fill"></i>
+            </div>
+            <h2 id="deleteTitle" className="h5 fw-bold text-white mb-2">Delete {deleteTarget.full_name}'s account?</h2>
+            <p className="text-secondary fs-7 mb-1">
+              {deleteTarget.username} · {deleteTarget.email}
+            </p>
+            <p className="text-secondary fs-7 mb-4">
+              This permanently deletes their login and everything in the account. It cannot be undone. To stop someone without deleting them, use Suspend or Ban instead.
+            </p>
+            <div className="d-flex justify-content-center gap-2">
+              <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-4" onClick={() => setDeleteTarget(null)} disabled={busy}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-danger btn-sm rounded-pill px-4 fw-bold" onClick={confirmDelete} disabled={busy}>
+                <i className="bi bi-trash me-1"></i>
+                {busy ? "Deleting..." : "Delete account"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

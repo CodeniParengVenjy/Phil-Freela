@@ -3,8 +3,8 @@
 Status (2026-10-05): approved ("continue"). Step 1 done: the SQL
 (database/supabase_super_admin_schema.sql) is applied to the live database and
 database/test_super_admin.sql passed 19/19 (rolled back, nothing left behind).
-Step 2 done (admin setup, layout, Admins page). Step 3 (Users page delete
-button) and step 4 (browser check) are next.
+Steps 2 and 3 done (admin setup, layout, Admins page, Users page Delete
+button). Step 4 (browser check) is next.
 
 Change from the plan below: the separate "last super admin" guards were left
 out. Nobody can remove or re-role themselves, and only a super admin can call
