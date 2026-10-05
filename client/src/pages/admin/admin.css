@@ -195,6 +195,12 @@ body {
   font-size: 1.5rem;
 }
 
+/* Red version of the icon circle, for the Delete account pop-up. */
+.admin-lift-icon.danger {
+  background: rgba(220, 53, 69, 0.2);
+  color: #f87171;
+}
+
 .admin-lift-details {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.12);

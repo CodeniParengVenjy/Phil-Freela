@@ -328,7 +328,7 @@ export default function AdminUsersView() {
             aria-labelledby="deleteTitle"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="admin-lift-icon mx-auto mb-3 text-danger">
+            <div className="admin-lift-icon danger mx-auto mb-3">
               <i className="bi bi-trash-fill"></i>
             </div>
             <h2 id="deleteTitle" className="h5 fw-bold text-white mb-2">Delete {deleteTarget.full_name}'s account?</h2>
