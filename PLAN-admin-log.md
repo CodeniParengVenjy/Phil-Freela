@@ -200,7 +200,27 @@ changing.
 
 All 4 steps in this plan are built. This plan is done.
 
-Not yet tried with real accounts on the live site: adding a real admin (the
-confirmation email, the first sign-in with `Admin123`, choosing a password)
-and seeing a real action appear in the log. The 9 DELETE checks in
-`database/test_admin_log.sql` also still need one run in the SQL Editor.
+Tried on the live site by the owner (2026-10-05, evening): lifting a
+suspension from the Users page, rejecting an appeal and adding an admin each
+wrote the right line to the Activity Log, and the new admin is listed as
+"Password not set yet".
+
+Still not tried with a real account: the new admin's own first sign-in (the
+confirmation email, signing in with `Admin123`, the Create Your Password
+screen). The 9 DELETE checks in `database/test_admin_log.sql` also still need
+one run in the SQL Editor.
+
+Follow-up (2026-10-05): Supabase's security check listed the 12 new trigger
+functions as callable through the API. They cannot do anything when called
+that way (a trigger function only runs as a trigger), but the project's other
+trigger functions are closed off, so these were closed off too (migration
+`admin_log_trigger_functions_not_callable`, now also at the end of
+`database/supabase_admin_log_schema.sql`). Checked in a rolled-back block
+that admin actions are still logged afterwards (3 of 3), and on the live
+database that none of the 12 is callable and all 12 triggers are on.
+
+Found while checking, not fixed (it was there before this plan): an appeal can
+still be rejected after an admin has already lifted its suspension from the
+Users page. The user is then told the suspension was kept until its end date,
+although it is gone. Needs a decision: close a pending appeal automatically
+when its penalty is lifted, or only change the wording.

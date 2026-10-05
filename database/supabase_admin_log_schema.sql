@@ -483,3 +483,21 @@ $$;
 create trigger profiles_log
   after delete on public.profiles
   for each row execute function public.log_user_delete();
+
+-- ---- Nobody calls the trigger functions directly --------------------------
+
+-- They only ever run as triggers. Like the project's other trigger functions,
+-- nobody needs to be able to call them through the API. (A trigger still
+-- fires for whoever changes the row; that needs no grant.)
+revoke execute on function public.clear_must_change_password() from public, anon, authenticated;
+revoke execute on function public.log_suspension_change() from public, anon, authenticated;
+revoke execute on function public.log_report_review() from public, anon, authenticated;
+revoke execute on function public.log_verification_review() from public, anon, authenticated;
+revoke execute on function public.log_appeal_review() from public, anon, authenticated;
+revoke execute on function public.log_announcement_change() from public, anon, authenticated;
+revoke execute on function public.log_flagged_slide() from public, anon, authenticated;
+revoke execute on function public.log_flagged_document() from public, anon, authenticated;
+revoke execute on function public.log_service_delete() from public, anon, authenticated;
+revoke execute on function public.log_job_delete() from public, anon, authenticated;
+revoke execute on function public.log_admin_change() from public, anon, authenticated;
+revoke execute on function public.log_user_delete() from public, anon, authenticated;
