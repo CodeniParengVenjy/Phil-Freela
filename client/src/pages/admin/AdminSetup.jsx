@@ -39,11 +39,13 @@ export default function AdminSetup() {
       if (error) throw new Error(error.message);
 
       // Gated server-side: the "bootstrap first admin only" RLS policy only
-      // admits this insert while the admins table is still empty.
+      // admits this insert while the admins table is still empty, and only as
+      // a super admin.
       const { error: adminError } = await supabase.from("admins").insert({
         id: data.user.id,
         full_name: form.fullName.trim(),
-        username: form.username.trim()
+        username: form.username.trim(),
+        role: "super_admin"
       });
 
       if (adminError) throw new Error("An admin account already exists. Setup is locked.");

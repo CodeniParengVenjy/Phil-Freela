@@ -91,7 +91,7 @@ export default function AdminLayout() {
       // sends non-admins to the right page.
       const { data: adminRow } = await supabase
         .from("admins")
-        .select("id, full_name, username")
+        .select("id, full_name, username, role")
         .eq("id", session.user.id)
         .maybeSingle();
 
@@ -122,6 +122,8 @@ export default function AdminLayout() {
   }
 
   const adminName = admin.full_name || admin.username || "Admin";
+  // Only for showing or hiding buttons; the database enforces the real rule.
+  const isSuperAdmin = admin.role === "super_admin";
 
   return (
     <div className="admin-shell text-light min-vh-100">
@@ -142,6 +144,7 @@ export default function AdminLayout() {
         <div className="d-flex align-items-center gap-3">
           <span className="text-white-50 fs-7 d-none d-sm-inline">
             <i className="bi bi-person-circle me-1"></i> {adminName}
+            {isSuperAdmin && <span className="badge admin-badge-orange ms-2 fw-normal">Super admin</span>}
           </span>
           <button className="btn btn-outline-light btn-sm rounded-pill" onClick={handleSignOut}>
             <i className="bi bi-box-arrow-right me-1"></i> Sign Out
@@ -182,7 +185,7 @@ export default function AdminLayout() {
           <main className="col-12 col-md-9 col-xl-10">
             {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                 to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged }} />
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged }} />
           </main>
         </div>
       </div>

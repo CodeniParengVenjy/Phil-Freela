@@ -7,7 +7,7 @@ import { getFriendlyErrorMessage } from "../../../lib/errors";
 const emptyForm = { fullName: "", username: "", email: "", password: "" };
 
 export default function AdminAdminsView() {
-  const { adminId } = useOutletContext();
+  const { adminId, isSuperAdmin } = useOutletContext();
   const [admins, setAdmins] = useState(null);
   const [listError, setListError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -23,7 +23,7 @@ export default function AdminAdminsView() {
     (async () => {
       const { data, error } = await supabase
         .from("admins")
-        .select("id, full_name, username, created_at")
+        .select("id, full_name, username, role, created_at")
         .order("created_at", { ascending: true });
 
       if (!active) return;
@@ -89,11 +89,13 @@ export default function AdminAdminsView() {
       const needsConfirm = !data.session;
 
       // 2) Mark the new account as an admin. The "admins can add admins"
-      //    database rule only lets an existing admin do this.
+      //    database rule only lets a super admin do this, and only as a
+      //    plain admin (a super admin is made by promoting).
       const { error: adminError } = await supabase.from("admins").insert({
         id: data.user.id,
         full_name: fullName,
-        username
+        username,
+        role: "admin"
       });
       if (adminError) throw new Error("The account was created, but it could not be made an admin: " + adminError.message);
 
@@ -120,7 +122,7 @@ export default function AdminAdminsView() {
     if (!window.confirm(`Remove ${admin.full_name} as an admin? Their login account will be deleted.`)) return;
 
     // remove_admin() is a database function that re-checks everything on the
-    // server: the caller must be an admin and can't remove themselves.
+    // server: the caller must be a super admin and can't remove themselves.
     const { error } = await supabase.rpc("remove_admin", { target_id: admin.id });
     if (error) {
       setMessage({ text: error.message || "Failed to remove admin.", type: "error" });
@@ -131,23 +133,49 @@ export default function AdminAdminsView() {
     setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
   };
 
+  // Promote an admin to super admin, or demote one back. set_admin_role() is
+  // the only way to change a role; it re-checks that the caller is a super
+  // admin and isn't changing their own role.
+  const changeRole = async (admin, newRole) => {
+    const promoting = newRole === "super_admin";
+    const question = promoting
+      ? `Promote ${admin.full_name} to super admin? They will be able to add and remove admins and delete users.`
+      : `Demote ${admin.full_name} to a regular admin? They will lose those powers.`;
+    if (!window.confirm(question)) return;
+
+    const { error } = await supabase.rpc("set_admin_role", { target_id: admin.id, new_role: newRole });
+    if (error) {
+      setMessage({ text: error.message || "Failed to change the role.", type: "error" });
+      return;
+    }
+
+    setMessage({ text: `${admin.full_name} is now ${promoting ? "a super admin" : "a regular admin"}.`, type: "success" });
+    setAdmins((prev) => prev.map((a) => (a.id === admin.id ? { ...a, role: newRole } : a)));
+  };
+
   return (
     <section>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <h1 className="h4 fw-bold mb-0">Admins</h1>
-        <button
-          className="btn btn-admin-orange btn-sm rounded-pill px-3 fw-bold"
-          onClick={() => { setShowForm((prev) => !prev); setMessage({ text: "", type: "" }); }}
-        >
-          <i className={`bi ${showForm ? "bi-x-lg" : "bi-plus-lg"} me-1`}></i> {showForm ? "Cancel" : "Add Admin"}
-        </button>
+        {isSuperAdmin && (
+          <button
+            className="btn btn-admin-orange btn-sm rounded-pill px-3 fw-bold"
+            onClick={() => { setShowForm((prev) => !prev); setMessage({ text: "", type: "" }); }}
+          >
+            <i className={`bi ${showForm ? "bi-x-lg" : "bi-plus-lg"} me-1`}></i> {showForm ? "Cancel" : "Add Admin"}
+          </button>
+        )}
       </div>
+
+      {!isSuperAdmin && (
+        <p className="text-white-50 fs-7">Only a super admin can add, remove or change the role of admins.</p>
+      )}
 
       {message.text && (
         <p className={`admin-message ${message.type} fs-7 fw-semibold`} aria-live="polite">{message.text}</p>
       )}
 
-      {showForm && (
+      {isSuperAdmin && showForm && (
         <form className="admin-card rounded-4 p-3 p-md-4 mb-4" noValidate onSubmit={handleAddAdmin}>
           <h2 className="h6 fw-bold text-white mb-3">New Admin Account</h2>
           <div className="row g-3">
@@ -181,16 +209,17 @@ export default function AdminAdminsView() {
               <tr>
                 <th>Full Name</th>
                 <th>Username</th>
+                <th>Role</th>
                 <th>Admin Since</th>
-                <th className="text-end">Action</th>
+                {isSuperAdmin && <th className="text-end">Action</th>}
               </tr>
             </thead>
             <tbody>
               {listError && (
-                <tr><td colSpan={4} className="text-center text-white-50 py-4">{listError}</td></tr>
+                <tr><td colSpan={5} className="text-center text-white-50 py-4">{listError}</td></tr>
               )}
               {!listError && admins === null && (
-                <tr><td colSpan={4} className="text-center text-white-50 py-4">Loading admins...</td></tr>
+                <tr><td colSpan={5} className="text-center text-white-50 py-4">Loading admins...</td></tr>
               )}
               {!listError && admins?.map((admin) => (
                 <tr key={admin.id}>
@@ -199,15 +228,33 @@ export default function AdminAdminsView() {
                     {admin.id === adminId && <span className="badge admin-badge-orange ms-2 fw-normal">You</span>}
                   </td>
                   <td>{admin.username}</td>
-                  <td>{new Date(admin.created_at).toLocaleDateString()}</td>
-                  <td className="text-end">
-                    {/* No Remove button on your own row; the database blocks it too. */}
-                    {admin.id !== adminId && (
-                      <button className="btn btn-outline-danger btn-sm" onClick={() => removeAdmin(admin)}>
-                        <i className="bi bi-trash"></i> Remove
-                      </button>
-                    )}
+                  <td>
+                    <span className={`badge ${admin.role === "super_admin" ? "admin-badge-orange" : "bg-secondary"} fw-normal`}>
+                      {admin.role === "super_admin" ? "Super admin" : "Admin"}
+                    </span>
                   </td>
+                  <td>{new Date(admin.created_at).toLocaleDateString()}</td>
+                  {isSuperAdmin && (
+                    <td className="text-end">
+                      {/* No buttons on your own row; the database blocks those too. */}
+                      {admin.id !== adminId && (
+                        <div className="d-inline-flex flex-wrap justify-content-end gap-2">
+                          {admin.role === "super_admin" ? (
+                            <button className="btn btn-outline-light btn-sm" onClick={() => changeRole(admin, "admin")}>
+                              <i className="bi bi-arrow-down-circle"></i> Demote
+                            </button>
+                          ) : (
+                            <button className="btn btn-outline-warning btn-sm" onClick={() => changeRole(admin, "super_admin")}>
+                              <i className="bi bi-arrow-up-circle"></i> Promote
+                            </button>
+                          )}
+                          <button className="btn btn-outline-danger btn-sm" onClick={() => removeAdmin(admin)}>
+                            <i className="bi bi-trash"></i> Remove
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

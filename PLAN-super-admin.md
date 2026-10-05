@@ -1,10 +1,10 @@
 # Super admin: plan
 
-Status (2026-10-05): approved ("continue"). Step 1 file written
-(database/supabase_super_admin_schema.sql) but NOT yet applied to the live
-database: the Supabase connection needs authorizing. Steps 2 and 3 (client)
-wait until the SQL is applied, because the client reads the new `role` column
-and would lock admins out of the panel before it exists.
+Status (2026-10-05): approved ("continue"). Step 1 done: the SQL
+(database/supabase_super_admin_schema.sql) is applied to the live database and
+database/test_super_admin.sql passed 19/19 (rolled back, nothing left behind).
+Step 2 done (admin setup, layout, Admins page). Step 3 (Users page delete
+button) and step 4 (browser check) are next.
 
 Change from the plan below: the separate "last super admin" guards were left
 out. Nobody can remove or re-role themselves, and only a super admin can call
