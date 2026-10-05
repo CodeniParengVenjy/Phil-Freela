@@ -45,6 +45,7 @@ const pageTitles = {
   "/admin/appeals": "Monitor Appeals",
   "/admin/announcements": "Monitor Announcements",
   "/admin/admins": "Monitor Accounts",
+  "/admin/log": "Activity Log",
   "/admin/browse-services": "Monitor Browse Services",
   "/admin/browse-jobs": "Monitor Browse Jobs"
 };

@@ -161,3 +161,16 @@ Step 2 files: `lib/adminPassword.js` (new),
 
 Change from the plan: the Admins page also shows "Password not set yet" beside
 an admin who is still on the default password.
+
+Step 3 (Activity Log page): built and pushed (2026-10-05). Lint and build
+pass; the browser check is step 4. A new "Activity Log" link in the admin
+sidebar opens `/admin/log`: the sentences newest first with the date and time
+and the kind of action, a search box, a filter by admin, a filter by action,
+and "Load more" (50 at a time). The database applies the filters.
+
+Step 3 files: `pages/admin/views/AdminLogView.jsx` (new), `App.jsx` (the
+route), `pages/admin/layout/AdminLayout.jsx` (the sidebar link),
+`lib/pageTitles.js` (the tab title).
+
+Note: the "by admin" filter lists the admins who exist now. Lines by an admin
+who was removed are still in the log and can be found by searching their name.
