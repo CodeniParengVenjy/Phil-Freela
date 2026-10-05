@@ -174,3 +174,33 @@ route), `pages/admin/layout/AdminLayout.jsx` (the sidebar link),
 
 Note: the "by admin" filter lists the admins who exist now. Lines by an admin
 who was removed are still in the log and can be found by searching their name.
+
+Step 4 (Browser check): passed (2026-10-05). Tested in a real browser
+(Playwright, with a fake backend that follows the rules tested in SQL, so no
+real accounts), on a laptop and a 390 px phone: 39 of 39, no page errors, and
+no page asked for a column the real tables do not have. No code needed
+changing.
+
+1. Add Admin: the form has only Full Name, Username and Email and says the
+   new admin starts on the default password; the login is created with
+   `Admin123`; the row is saved as a plain admin who must change the password;
+   the list marks them "Password not set yet".
+2. Create Your Password: an admin on the default password sees only that
+   screen (no sidebar, and the log is not even requested); a weak password,
+   `Admin123` and two different passwords are refused without sending anything;
+   if the database does not accept the password the screen stays and says so; a
+   proper password opens the panel on the page they asked for and it stays open
+   after a reload; Sign Out works from that screen.
+3. Activity Log: the sidebar link opens it; 50 lines at first, newest first,
+   with the admin's name in bold, the date and time ("Oct 5, 2026, 10:46 PM")
+   and the kind of action; Load more brings the rest; the filters by action and
+   by admin and the search box each show only matching lines, and say so when
+   nothing matches; a regular admin can read it too.
+4. On the phone neither screen scrolls sideways.
+
+All 4 steps in this plan are built. This plan is done.
+
+Not yet tried with real accounts on the live site: adding a real admin (the
+confirmation email, the first sign-in with `Admin123`, choosing a password)
+and seeing a real action appear in the log. The 9 DELETE checks in
+`database/test_admin_log.sql` also still need one run in the SQL Editor.
