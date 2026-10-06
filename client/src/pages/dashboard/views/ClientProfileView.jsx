@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useOutletContext, useParams } from "react-router-dom";
+import { Navigate, useOutletContext, useParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { fetchIsVerified } from "../../../lib/verification";
 import VerifiedBadge from "../../../components/VerifiedBadge";
@@ -19,7 +19,7 @@ import ReportDialog from "../components/ReportDialog";
 export default function ClientProfileView() {
   const { clientId } = useParams();
   const { currentUserId, openChat, showToast } = useOutletContext();
-  // undefined while loading, null when there's no such client.
+  // undefined while loading, null when there's no such person.
   const [client, setClient] = useState(undefined);
   const [verified, setVerified] = useState(false);
   // The client being reported (null = Report popup closed).
@@ -33,7 +33,7 @@ export default function ClientProfileView() {
       fetchIsVerified(clientId)
     ]).then(([{ data }, isVerified]) => {
       if (!active) return;
-      setClient(data?.account_type === "client" ? data : null);
+      setClient(data || null);
       setVerified(isVerified);
     });
     return () => {
@@ -54,6 +54,14 @@ export default function ClientProfileView() {
         </div>
       </section>
     );
+  }
+
+  // The person exists but is a freelancer today: they switched roles after
+  // posting a job, and the link on that job still points here. Send the
+  // visitor to their freelancer page instead of saying "not found". (replace:
+  // the Back button then skips this address instead of bouncing forward again.)
+  if (client.account_type === "freelancer") {
+    return <Navigate to={`/dashboard/freelancers/${client.id}`} replace />;
   }
 
   const name = client.full_name || client.username;
