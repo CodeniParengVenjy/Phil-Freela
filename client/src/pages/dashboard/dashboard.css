@@ -1067,6 +1067,58 @@ body.sidebar-collapsed .sidebar-wrapper {
   box-shadow: 0 0 25px color-mix(in srgb, var(--accent-orange) 20%, transparent);
 }
 
+/* The billboard on the dashboard home (DashboardBillboard.jsx): a wide
+   picture, trimmed to fit, with the headline and message under it. */
+.dashboard-billboard {
+  position: relative;
+}
+
+.dashboard-billboard-slide {
+  animation: fadeIn 0.35s ease;
+}
+
+.dashboard-billboard-picture {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 1;
+  object-fit: cover;
+  background: #000;
+}
+
+/* Phones: taller, so the picture isn't a thin strip. */
+@media (max-width: 767.98px) {
+  .dashboard-billboard-picture {
+    aspect-ratio: 16 / 7;
+  }
+}
+
+/* One dot per billboard when several take turns; the current one is in the
+   accent color. */
+.dashboard-billboard-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 0 14px;
+}
+
+.dashboard-billboard-dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.45);
+  cursor: pointer;
+}
+
+.dashboard-billboard-dot.is-current {
+  background: var(--accent-role);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-billboard-slide { animation: none; }
+}
+
 /* Settings > Appearance: the Dark and Light choices. The picked one gets the
    accent color around it. */
 .mode-choice {

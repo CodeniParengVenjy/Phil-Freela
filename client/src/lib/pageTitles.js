@@ -45,6 +45,7 @@ const pageTitles = {
   "/admin/flagged": "Monitor Flagged Content",
   "/admin/appeals": "Monitor Appeals",
   "/admin/announcements": "Monitor Announcements",
+  "/admin/billboard": "Dashboard Billboard",
   "/admin/admins": "Monitor Accounts",
   "/admin/log": "Activity Log",
   "/admin/browse-services": "Monitor Browse Services",

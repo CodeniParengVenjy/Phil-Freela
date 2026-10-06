@@ -229,3 +229,15 @@ body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Billboard page: the picture, in the same wide shape it has on dashboards. */
+.admin-billboard-preview {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 4 / 1;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #000;
+}

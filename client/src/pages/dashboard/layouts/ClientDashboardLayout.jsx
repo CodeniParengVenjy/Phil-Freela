@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import DashboardTopNav from "../components/DashboardTopNav";
 import DashboardOverlays from "../components/DashboardOverlays";
 import SuspensionBanner from "../components/SuspensionBanner";
+import DashboardBillboard from "../components/DashboardBillboard";
 import Avatar from "../../../components/Avatar";
 import "../dashboard.css";
 import "../theme.css";
@@ -110,6 +111,9 @@ export default function ClientDashboardLayout({
               </div>
             </div>
           )}
+
+          {/* What an admin posted for this user (admin panel > Billboard). */}
+          {isDashboardHome && <DashboardBillboard />}
 
           <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, suspension }} />
         </main>

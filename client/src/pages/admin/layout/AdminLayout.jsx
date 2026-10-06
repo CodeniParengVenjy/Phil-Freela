@@ -15,6 +15,7 @@ const sidebarLinks = [
   { to: "/admin/appeals", icon: "bi-envelope-paper-fill", label: "Appeals", showPendingAppeals: true },
   { to: "/admin/flagged", icon: "bi-images", label: "Flagged Content", showPendingFlagged: true },
   { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements" },
+  { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard" },
   { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins" },
   { to: "/admin/log", icon: "bi-journal-text", label: "Activity Log" },
   // The same Browse Services / Find Jobs pages users see, shown in admin mode.
