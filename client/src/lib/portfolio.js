@@ -37,6 +37,17 @@ export async function fetchPortfolio(freelancerId) {
   return data;
 }
 
+// How many projects a person has in their portfolio (0 when it couldn't be
+// counted). head: true = just the count, no rows. The public profile uses it
+// to decide whether to show a Portfolio box for someone who is a client today.
+export async function countPortfolio(freelancerId) {
+  const { count } = await supabase
+    .from("portfolio_items")
+    .select("id", { count: "exact", head: true })
+    .eq("freelancer_id", freelancerId);
+  return count || 0;
+}
+
 // Saves a new project (without slides; those are uploaded next).
 export async function createPortfolioItem(freelancerId, { title, description, category, tags }) {
   const { data, error } = await supabase

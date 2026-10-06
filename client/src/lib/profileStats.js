@@ -42,8 +42,9 @@ export function formatMemberSince(date) {
   return new Date(date).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
-// The public page for a person, by the role they have today: a client's page
-// or a freelancer's page.
+// The address of a person's public profile. There is one profile page for
+// everyone (views/PublicProfileView.jsx) and both addresses open it; the
+// address just follows the role they have today.
 export function profilePath(accountType, userId) {
   return accountType === "client" ? `/dashboard/clients/${userId}` : `/dashboard/freelancers/${userId}`;
 }

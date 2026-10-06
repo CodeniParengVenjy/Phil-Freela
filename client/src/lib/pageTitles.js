@@ -15,8 +15,9 @@ const pageTitles = {
   "/dashboard-freelancer": "Dashboard",
   "/dashboard-client": "Dashboard",
   "/dashboard/profile": "Profile",
-  "/dashboard/freelancers": "Freelancer Portfolio",
-  "/dashboard/clients": "Client Profile",
+  // Both open the same public profile page (views/PublicProfileView.jsx).
+  "/dashboard/freelancers": "Profile",
+  "/dashboard/clients": "Profile",
   "/dashboard/find-jobs": "Find Jobs",
   "/dashboard/inbox": "Inbox",
   "/dashboard/chat": "Chat",
