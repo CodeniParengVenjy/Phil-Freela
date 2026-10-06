@@ -8,7 +8,15 @@ export default function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState({ text: "", type: "" });
+  // True when this page was opened by a confirmation link that no longer
+  // works: the reason comes back after the # in the address.
+  const [deadLink] = useState(() => Boolean(new URLSearchParams(window.location.hash.slice(1)).get("error_description")));
+  const [message, setMessage] = useState(() => (deadLink
+    ? { text: "That confirmation link no longer works. A new email cancels the links in older ones, and links also expire. Type your admin email below and send a new one, then use the link in the newest email.", type: "error" }
+    : { text: "", type: "" }));
+  // Shows the "Resend confirmation email" button: after a dead link, or when
+  // signing in fails because the email isn't confirmed yet.
+  const [canResend, setCanResend] = useState(deadLink);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event) => {
@@ -45,9 +53,32 @@ export default function AdminLogin() {
       navigate("/admin");
     } catch (error) {
       setMessage({ text: getFriendlyErrorMessage(error), type: "error" });
+      if (error.message?.toLowerCase().includes("email not confirmed")) setCanResend(true);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Sends the confirmation email again, for a new admin who lost it or whose
+  // link no longer works. The link in it opens this page.
+  const handleResend = async () => {
+    const address = email.trim().toLowerCase();
+    if (!address) {
+      setMessage({ text: "Type your admin email above first.", type: "error" });
+      return;
+    }
+
+    setSubmitting(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: address,
+      options: { emailRedirectTo: `${window.location.origin}/admin/login` }
+    });
+    setSubmitting(false);
+
+    setMessage(error
+      ? { text: getFriendlyErrorMessage(error), type: "error" }
+      : { text: `If that account still needs confirming, a new link was sent to ${address}. Use the link in the newest email (older links stop working), and check your spam folder too.`, type: "success" });
   };
 
   return (
@@ -77,6 +108,8 @@ export default function AdminLogin() {
                 <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50"><i className="bi bi-envelope"></i></span>
                 <input id="email" type="email" className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
+              {/* An admin login is separate from the person's own account (lib/adminEmail.js). */}
+              <div className="form-text text-white-50 fs-8">For Gmail, your admin email ends in +admin, like name+admin@gmail.com.</div>
             </div>
             <div className="field">
               <label htmlFor="password" className="form-label text-white-50 fw-semibold fs-7 mb-1">Password</label>
@@ -92,6 +125,14 @@ export default function AdminLogin() {
 
           {message.text && (
             <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">{message.text}</p>
+          )}
+
+          {canResend && (
+            <div className="text-center mt-2">
+              <button type="button" className="btn btn-link text-orange fs-7 fw-semibold text-decoration-none p-0 hover-orange" onClick={handleResend} disabled={submitting}>
+                <i className="bi bi-arrow-repeat me-1"></i> Resend confirmation email
+              </button>
+            </div>
           )}
 
           <div className="text-center pt-4 mt-3 border-top border-secondary border-opacity-25">

@@ -243,3 +243,33 @@ open. With no such appeal, the lift works as before.
    unchanged: an appeal still pending when its suspension ends by itself, and
    one whose penalty was replaced by a new one. Both can only be rejected,
    and the rejection message still says the penalty is being kept.
+
+Follow-up after the first real new admin got stuck (2026-10-06), built after
+the owner's OK:
+
+What happened: the new admin's email was never confirmed. A second
+confirmation email had been requested, which cancels the link in the first
+one, and then the first email's link was opened. It was refused, the Admin
+Sign In page gave no reason, and that page had no way to send a new email.
+
+1. Admin Sign In (`pages/admin/AdminLogin.jsx`) now explains a confirmation
+   link that no longer works, and has a "Resend confirmation email" button
+   (after a dead link, or when signing in fails because the email is not
+   confirmed). The new link comes back to Admin Sign In. It also says that a
+   Gmail admin email ends in `+admin`.
+2. Add Admin now takes the person's normal email. For a Gmail address the
+   admin login is made as `name+admin@gmail.com` (new `lib/adminEmail.js`),
+   shown under the Email field before saving and in the success message. Mail
+   for it arrives in the person's normal inbox, and their own user account
+   keeps the normal address. Other mail providers, and Gmail addresses that
+   already have a `+`, are left exactly as typed, because a `+` address is not
+   delivered everywhere.
+3. Tested in a real browser with a fake backend: 19 of 19, no page errors,
+   and the two earlier admin checks (39 and 14) still pass. Lint and build
+   pass. Not tried on the live site yet.
+
+Not done: marking the stuck admin's email as confirmed by hand in the
+database. The safety check on Claude's database tool refused it, because it
+skips the proof that the person owns the inbox on an account that still has
+the default password. She confirms it the normal way with the new Resend
+button.

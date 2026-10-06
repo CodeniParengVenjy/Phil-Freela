@@ -4,6 +4,7 @@ import { supabase, supabaseSignup } from "../../../lib/supabaseClient";
 import { EMAIL_PATTERN } from "../../../lib/validators";
 import { getFriendlyErrorMessage } from "../../../lib/errors";
 import { DEFAULT_ADMIN_PASSWORD } from "../../../lib/adminPassword";
+import { adminEmailFor } from "../../../lib/adminEmail";
 
 const emptyForm = { fullName: "", username: "", email: "" };
 
@@ -38,22 +39,29 @@ export default function AdminAdminsView() {
 
   const updateField = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
 
+  // The email as typed, and the admin sign-in email it becomes. They differ
+  // only for Gmail, and the form shows the second one as soon as they do.
+  const typedEmail = form.email.trim().toLowerCase();
+  const adminEmail = adminEmailFor(typedEmail);
+
   const handleAddAdmin = async (event) => {
     event.preventDefault();
 
     const fullName = form.fullName.trim();
     const username = form.username.trim();
-    const email = form.email.trim().toLowerCase();
 
     // Check the form in the browser first so obvious mistakes never reach the server.
-    if (!fullName || !username || !email) {
+    if (!fullName || !username || !typedEmail) {
       setMessage({ text: "Please fill in all fields.", type: "error" });
       return;
     }
-    if (!EMAIL_PATTERN.test(email)) {
+    if (!EMAIL_PATTERN.test(typedEmail)) {
       setMessage({ text: "Please enter a valid email address.", type: "error" });
       return;
     }
+    // The login is made with the admin email, which for Gmail is the typed
+    // address with "+admin" added (lib/adminEmail.js).
+    const email = adminEmail;
 
     setSubmitting(true);
     setMessage({ text: "Creating admin account...", type: "" });
@@ -105,8 +113,8 @@ export default function AdminAdminsView() {
 
       setMessage({
         text: needsConfirm
-          ? `${fullName} is now an admin. They must click the confirmation link sent to ${email}, then sign in with the default password (${DEFAULT_ADMIN_PASSWORD}) and create their own.`
-          : `${fullName} is now an admin. They sign in with the default password (${DEFAULT_ADMIN_PASSWORD}) and will be asked to create their own.`,
+          ? `${fullName} is now an admin. Their admin sign-in email is ${email}. They must click the confirmation link sent to ${email === typedEmail ? "it" : `${typedEmail} (their normal inbox)`}, then sign in with the default password (${DEFAULT_ADMIN_PASSWORD}) and create their own.`
+          : `${fullName} is now an admin. They sign in with ${email} and the default password (${DEFAULT_ADMIN_PASSWORD}), and will be asked to create their own.`,
         type: "success"
       });
       setForm(emptyForm);
@@ -191,6 +199,12 @@ export default function AdminAdminsView() {
             <div className="col-12 col-md-6">
               <label htmlFor="newAdminEmail" className="form-label text-white-50 fs-7 mb-1">Email Address</label>
               <input id="newAdminEmail" type="email" className="form-control admin-input" value={form.email} onChange={updateField("email")} required />
+              {EMAIL_PATTERN.test(typedEmail) && adminEmail !== typedEmail && (
+                <div className="form-text text-white-50 fs-8">
+                  Their admin sign-in email will be <strong className="text-white">{adminEmail}</strong>. Its mail arrives in
+                  their normal Gmail inbox, and their own account keeps the address you typed.
+                </div>
+              )}
             </div>
             <div className="col-12">
               <p className="text-white-50 fs-7 mb-0">
