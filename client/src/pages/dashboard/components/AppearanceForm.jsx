@@ -4,9 +4,15 @@ import { ACCENT_PRESETS, applyAppearance, fetchAppearance, isHexColor, readSaved
 // The usual accent of each role, shown on the "Default" choice.
 const ROLE_COLOR = { freelancer: "#ff6b00", client: "#06b6d4" };
 
-// Settings > Appearance: the user's own accent color. A change shows on the
-// page at once and is saved on their profile, so it follows them to any
-// device (see lib/appearance.js).
+// The two modes. Light re-colors the dashboard through pages/dashboard/theme.css.
+const MODES = [
+  { value: "dark", label: "Dark", icon: "bi-moon-stars-fill", hint: "Easy on the eyes at night" },
+  { value: "light", label: "Light", icon: "bi-sun-fill", hint: "Bright, like paper" }
+];
+
+// Settings > Appearance: dark or light mode, and the user's own accent color.
+// A change shows on the page at once and is saved on their profile, so it
+// follows them to any device (see lib/appearance.js).
 export default function AppearanceForm({ userId, accountType, showToast }) {
   // Starts from what this browser remembers; the saved profile replaces it
   // once it has loaded.
@@ -68,6 +74,35 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
 
   return (
     <div className="d-flex flex-column gap-4">
+      <div>
+        <h6 className="text-white fw-bold mb-1">Mode</h6>
+        <p className="text-secondary fs-8 mb-3">How your dashboard looks. The top bar stays dark in both.</p>
+        <div className="row g-3" role="radiogroup" aria-label="Mode">
+          {MODES.map((mode) => {
+            const picked = appearance.mode === mode.value;
+            return (
+              <div className="col-sm-6" key={mode.value}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={picked}
+                  className={`mode-choice w-100 text-start rounded-3 p-3 d-flex align-items-center gap-3${picked ? " is-selected" : ""}`}
+                  onClick={() => !picked && change({ ...appearance, mode: mode.value })}
+                  disabled={busy}
+                >
+                  <i className={`bi ${mode.icon} fs-4 text-role`}></i>
+                  <span>
+                    <span className="d-block text-white fw-bold fs-7">{mode.label}</span>
+                    <span className="d-block text-secondary fs-8">{mode.hint}</span>
+                  </span>
+                  {picked && <i className="bi bi-check-circle-fill text-role ms-auto"></i>}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div>
         <h6 className="text-white fw-bold mb-1">Accent color</h6>
         <p className="text-secondary fs-8 mb-3">

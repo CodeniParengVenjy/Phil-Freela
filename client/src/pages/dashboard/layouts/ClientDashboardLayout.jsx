@@ -4,6 +4,7 @@ import DashboardOverlays from "../components/DashboardOverlays";
 import SuspensionBanner from "../components/SuspensionBanner";
 import Avatar from "../../../components/Avatar";
 import "../dashboard.css";
+import "../theme.css";
 
 const sidebarLinks = [
   { to: "/dashboard-client", end: true, icon: "bi-speedometer2", label: "Dashboard" },

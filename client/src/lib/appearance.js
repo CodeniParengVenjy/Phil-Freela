@@ -99,6 +99,7 @@ export function applyAppearance(appearance) {
       for (const part of ACCENT_PARTS) style.removeProperty(name + part);
     }
     style.removeProperty("--accent-on");
+    style.removeProperty("--accent-on-rgb");
     return;
   }
 
@@ -114,7 +115,10 @@ export function applyAppearance(appearance) {
   // Text on top of the accent (button labels): white, or dark on a light
   // color. 0.45 keeps white on the site's own orange and cyan, and gives
   // yellow and lighter colors dark labels.
-  style.setProperty("--accent-on", brightness(rgb) > 0.45 ? "#0f172a" : "#ffffff");
+  const darkLabels = brightness(rgb) > 0.45;
+  style.setProperty("--accent-on", darkLabels ? "#0f172a" : "#ffffff");
+  // The same color as three numbers, for the text inside accent-colored boxes.
+  style.setProperty("--accent-on-rgb", darkLabels ? "15, 23, 42" : "255, 255, 255");
 }
 
 // Back to the usual look, for the pages outside the dashboard (login, homepage).

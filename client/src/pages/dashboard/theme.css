@@ -1,0 +1,291 @@
+/* ──────────────────────────────────────
+   PhilFreela Dashboard – Light mode (Settings > Appearance)
+   ──────────────────────────────────────
+   The dashboard was written for a dark background: its pages use Bootstrap's
+   "text-white", "bg-dark" and so on. Instead of rewriting every page, this
+   file re-colors them while <body> has the "theme-light" class, which
+   lib/appearance.js adds when the user picks Light.
+
+   How it works, in three parts:
+   1. The colors: dashboard.css and Bootstrap both read their colors from
+      named settings, so changing those here re-colors most things at once.
+   2. Areas that stay dark in both modes (the top bar, calls, the photo and
+      video viewers) get the usual values back.
+   3. The few things that set their own colors are fixed one by one.
+
+   Only the dashboard has this class. The homepage, login pages and admin
+   panel always keep the dark look. */
+
+/* ---- 1. The colors ------------------------------------------------------ */
+
+body.theme-light {
+  /* dashboard.css */
+  --bg-dark: #eef2f7;   /* the page behind the cards */
+  --bg-card: #ffffff;   /* cards */
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+
+  /* A deeper orange and cyan: the bright ones are hard to read on white. (A
+     color the user picked in Settings replaces these, see appearance.js.) */
+  --accent-orange: #ea580c;
+  --accent-orange-2: #f97316;
+  --accent-orange-glow: rgba(234, 88, 12, 0.3);
+  --accent-orange-subtle: rgba(234, 88, 12, 0.12);
+  --accent-cyan: #0891b2;
+  --accent-role: var(--accent-orange);
+  --accent-role-2: var(--accent-orange-2);
+  --accent-role-glow: var(--accent-orange-glow);
+  --accent-role-subtle: var(--accent-orange-subtle);
+
+  /* Bootstrap: "white" text becomes dark ink, and "dark" and "black"
+     backgrounds become light greys. Every text-white, text-light, bg-dark and
+     bg-black on the pages follows these. */
+  --bs-white-rgb: 15, 23, 42;
+  --bs-light-rgb: 30, 41, 59;
+  --bs-dark-rgb: 241, 245, 249;
+  --bs-black-rgb: 226, 232, 240;
+
+  /* Yellow and light blue text can't be read on white, so they get darker. */
+  --tone-warning: #b45309;
+  --tone-info: #0e7490;
+}
+
+/* Clients keep cyan as their role color. */
+body.theme-light.theme-client {
+  --accent-role: var(--accent-cyan);
+  --accent-role-2: #06b6d4;
+  --accent-role-glow: rgba(8, 145, 178, 0.3);
+  --accent-role-subtle: rgba(8, 145, 178, 0.12);
+}
+
+/* ---- 2. Areas that stay dark -------------------------------------------- */
+
+/* The top bar (the logo is white, so it needs a dark bar), the call window,
+   and the photo and video viewers look the same in both modes. Putting the
+   usual values back here undoes part 1 for everything inside them. The rules
+   in part 3 skip these areas with the same list. */
+body.theme-light :is(#topNavbar, .call-backdrop, .call-window, .media-carousel, .media-fullscreen) {
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --bs-white-rgb: 255, 255, 255;
+  --bs-light-rgb: 248, 249, 250;
+  --bs-dark-rgb: 33, 37, 41;
+  --bs-black-rgb: 0, 0, 0;
+  --tone-warning: #ffc107;
+  --tone-info: #0dcaf0;
+}
+
+/* ---- 3. Things that set their own colors -------------------------------- */
+
+/* Text */
+body.theme-light .text-white-50 { color: rgba(var(--bs-white-rgb), 0.62) !important; }
+/* "text-dark" (the labels on yellow and light blue badges) reads the setting
+   part 1 turned light, so it is set back to dark here. */
+body.theme-light .text-dark { color: #212529 !important; }
+/* The same for "bg-white" (the white box around the QR code, which a phone
+   can't scan on a dark background). */
+body.theme-light .bg-white { background-color: #fff !important; }
+body.theme-light .text-warning { color: var(--tone-warning) !important; }
+body.theme-light .text-info { color: var(--tone-info) !important; }
+
+/* Labels on solid colored buttons and badges stay white. (A grey badge only
+   counts as solid when it isn't see-through: "bg-opacity-50" ones are pale,
+   so they keep the dark text from part 1.) */
+body.theme-light :is(.btn-primary, .btn-secondary, .btn-success, .btn-danger, .bg-primary, .bg-success, .bg-danger).text-white,
+body.theme-light .badge.bg-secondary.text-white:not([class*="bg-opacity"]) {
+  color: #fff !important;
+}
+
+/* Badges on a grey background get dark text (Bootstrap makes badge text white). */
+body.theme-light .badge:is(.bg-dark, .bg-black, .bg-secondary.bg-opacity-50) {
+  color: var(--text-main);
+}
+
+/* The page and the side menu */
+body.theme-light .sidebar-wrapper {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+body.theme-light .sidebar-pill-btn {
+  background: rgba(15, 23, 42, 0.05);
+  color: #334155;
+  box-shadow: none;
+}
+
+body.theme-light .sidebar-pill-btn i {
+  color: #64748b;
+}
+
+body.theme-light .sidebar-pill-btn:hover {
+  color: var(--text-main);
+}
+
+body.theme-light .sidebar-pill-btn:hover i {
+  color: var(--accent-role);
+}
+
+/* The page you're on: filled with the accent color. */
+body.theme-light .sidebar-pill-btn.active {
+  background: linear-gradient(135deg, var(--accent-role) 0%, var(--accent-role-2) 100%);
+  color: var(--accent-on);
+  box-shadow: 0 4px 12px var(--accent-role-glow);
+}
+
+body.theme-light .sidebar-pill-btn.active i {
+  color: var(--accent-on);
+}
+
+body.theme-light .sidebar-identity {
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+/* Cards: a soft shadow and a thin grey edge instead of the dark glass look. */
+body.theme-light .glass-card {
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+}
+
+body.theme-light .hover-lift:hover {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+/* Popups (Book, Hire, Report, Delete...) are white, not the grey of panels. */
+body.theme-light .role-confirm-card.bg-dark {
+  background-color: #fff !important;
+}
+
+/* Buttons. Bootstrap's dark and light buttons carry their own colors, so each
+   gets a light-mode set. The :not(...) part leaves the dark areas alone. */
+body.theme-light .btn-dark:not(:is(#topNavbar, .call-backdrop, .call-window, .media-carousel, .media-fullscreen) *) {
+  --bs-btn-color: #0f172a;
+  --bs-btn-bg: #e2e8f0;
+  --bs-btn-border-color: #cbd5e1;
+  --bs-btn-hover-color: #0f172a;
+  --bs-btn-hover-bg: #cbd5e1;
+  --bs-btn-hover-border-color: #94a3b8;
+  --bs-btn-active-color: #0f172a;
+  --bs-btn-active-bg: #cbd5e1;
+  --bs-btn-active-border-color: #94a3b8;
+  --bs-btn-disabled-color: #64748b;
+  --bs-btn-disabled-bg: #e2e8f0;
+  --bs-btn-disabled-border-color: #e2e8f0;
+}
+
+body.theme-light .btn-outline-light:not(:is(#topNavbar, .call-backdrop, .call-window, .media-carousel, .media-fullscreen) *) {
+  --bs-btn-color: #334155;
+  --bs-btn-border-color: #94a3b8;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: #334155;
+  --bs-btn-hover-border-color: #334155;
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: #334155;
+  --bs-btn-active-border-color: #334155;
+}
+
+body.theme-light .btn-outline-secondary:not(:is(#topNavbar, .call-backdrop, .call-window, .media-carousel, .media-fullscreen) *) {
+  --bs-btn-hover-color: #0f172a;
+  --bs-btn-hover-bg: #e2e8f0;
+  --bs-btn-hover-border-color: #94a3b8;
+  --bs-btn-active-color: #0f172a;
+  --bs-btn-active-bg: #cbd5e1;
+  --bs-btn-active-border-color: #94a3b8;
+}
+
+body.theme-light .btn-outline-warning:not(:is(#topNavbar, .call-backdrop, .call-window, .media-carousel, .media-fullscreen) *) {
+  --bs-btn-color: #b45309;
+  --bs-btn-border-color: #d97706;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: #d97706;
+  --bs-btn-hover-border-color: #d97706;
+}
+
+body.theme-light .btn-outline-info:not(:is(#topNavbar, .call-backdrop, .call-window, .media-carousel, .media-fullscreen) *) {
+  --bs-btn-color: #0e7490;
+  --bs-btn-border-color: #0891b2;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: #0891b2;
+  --bs-btn-hover-border-color: #0891b2;
+}
+
+/* The X that closes a popup is drawn white for dark cards; on a white card it
+   goes back to dark. (The toast keeps its white X: it sits on the accent color.) */
+body.theme-light .btn-close-white:not(:is(#topNavbar, .call-backdrop, .call-window, .media-carousel, .media-fullscreen, .toast) *) {
+  filter: none;
+}
+
+/* Text boxes and dropdowns */
+body.theme-light :is(.form-control, .form-select).bg-secondary {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.theme-light .form-control::placeholder {
+  color: #94a3b8;
+}
+
+/* The dropdown rules in src/index.css make the open list dark; here it is light. */
+body.theme-light select.form-select.text-white {
+  color-scheme: light;
+  --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23334155' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+body.theme-light select.form-select.text-white option {
+  background-color: #fff;
+  color: #0f172a;
+}
+
+body.theme-light select.form-select.text-white option:disabled {
+  color: #94a3b8;
+}
+
+/* Two date boxes ask for a dark calendar in their own style (Post a Project,
+   the Hire popup); !important is what lets a stylesheet overrule that. */
+body.theme-light input[type="date"] {
+  color-scheme: light !important;
+}
+
+/* The search boxes on the pages (the one in the top bar stays dark). */
+body.theme-light .content-wrapper .nav-search-input {
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+  color: var(--text-main) !important;
+}
+
+body.theme-light .content-wrapper .nav-search-input::placeholder {
+  color: #94a3b8;
+}
+
+body.theme-light .media-dropzone {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+body.theme-light .media-dropzone.is-filled:hover {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+/* Chat */
+body.theme-light .chat-time-divider::before,
+body.theme-light .chat-time-divider::after {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+body.theme-light .presence-dot-on-avatar {
+  border-color: #fff;
+}
+
+/* Portfolio cards (components/portfolio.css) */
+body.theme-light .portfolio-card {
+  background: #fff;
+  color: var(--text-main);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+body.theme-light .portfolio-card-category {
+  color: #64748b;
+}
+
+body.theme-light .portfolio-tag {
+  background: rgba(2, 132, 199, 0.12);
+  color: #0369a1;
+}

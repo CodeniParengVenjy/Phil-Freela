@@ -16,6 +16,7 @@
   /* Text on top of the accent color (button labels): white, or dark when the
      picked color is a light one. */
   --accent-on: #fff;
+  --accent-on-rgb: 255, 255, 255;
   --accent-cyan: #06b6d4;
   --accent-amber: #f59e0b;
   --text-main: #f8fafc;
@@ -289,6 +290,16 @@ body.sidebar-collapsed .sidebar-wrapper {
    the user picked a light accent color (yellow, for example). */
 :is(.btn-gradient-role, .btn-gradient-orange, .bg-role, .bg-orange).text-white {
   color: var(--accent-on) !important;
+}
+
+/* The same for text inside an accent-colored box, like the time under your
+   own chat messages. Bootstrap's "text-white" reads --bs-white-rgb. */
+:is(.btn-gradient-role, .btn-gradient-orange, .bg-role, .bg-orange) {
+  --bs-white-rgb: var(--accent-on-rgb);
+}
+
+:is(.btn-gradient-role, .btn-gradient-orange, .bg-role, .bg-orange) .text-white-50 {
+  color: rgba(var(--accent-on-rgb), 0.6) !important;
 }
 
 .shadow-glow-role {
@@ -1020,6 +1031,30 @@ body.sidebar-collapsed .sidebar-wrapper {
   border-color: var(--accent-orange) !important;
   background: color-mix(in srgb, var(--accent-orange) 8%, transparent) !important;
   box-shadow: 0 0 25px color-mix(in srgb, var(--accent-orange) 20%, transparent);
+}
+
+/* Settings > Appearance: the Dark and Light choices. The picked one gets the
+   accent color around it. */
+.mode-choice {
+  background: rgba(148, 163, 184, 0.08);
+  border: 2px solid rgba(148, 163, 184, 0.25);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.mode-choice:hover:not(:disabled),
+.mode-choice:focus-visible {
+  border-color: var(--accent-role);
+  outline: none;
+}
+
+.mode-choice.is-selected {
+  border-color: var(--accent-role);
+  background: var(--accent-role-subtle);
+}
+
+.mode-choice:disabled {
+  cursor: default;
 }
 
 /* Settings > Appearance: the round color choices. The picked one gets a ring. */
