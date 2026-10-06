@@ -125,6 +125,16 @@
   color: #fff6ec;
 }
 
+/* The red error line right under one box of a form. */
+.field-error {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #ef4444;
+  text-align: left;
+}
+
 .config-warning {
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.4);

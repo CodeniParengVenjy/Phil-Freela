@@ -19,6 +19,25 @@ const initialForm = {
   agreedToTerms: false
 };
 
+// An error that belongs to one box of the form. It is shown right under that
+// box instead of at the bottom of the card.
+function fieldError(field, text) {
+  const error = new Error(text);
+  error.field = field;
+  return error;
+}
+
+// The red line under a box. Draws nothing unless the current message is an
+// error for this box.
+function FieldError({ message, field }) {
+  if (message.type !== "error" || message.field !== field) return null;
+  return (
+    <p className="field-error" role="alert">
+      <i className="bi bi-exclamation-circle me-1"></i>{message.text}
+    </p>
+  );
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -138,6 +157,8 @@ export default function Login() {
   const updateField = (field) => (event) => {
     const value = field === "keepLogin" || field === "agreedToTerms" ? event.target.checked : event.target.value;
     setForm((prev) => ({ ...prev, [field]: value }));
+    // Typing in a box clears the error shown under it.
+    setMessage((prev) => (prev.field === field ? { text: "", type: "" } : prev));
   };
 
   const handleTilt = useCallback((event) => {
@@ -162,36 +183,38 @@ export default function Login() {
 
     const normalizedEmail = form.email.trim().toLowerCase();
 
+    // Each check names the box it is about ("field"), so the error shows
+    // right under that box.
     if (!EMAIL_PATTERN.test(normalizedEmail)) {
-      setMessage({ text: "Use a valid email format like name@example.com.", type: "error" });
+      setMessage({ text: "Use a valid email format like name@example.com.", type: "error", field: "email" });
       return;
     }
 
     if (isSignup && form.fullName.trim().length > 100) {
-      setMessage({ text: "Full Name must not exceed 100 characters.", type: "error" });
+      setMessage({ text: "Full Name must not exceed 100 characters.", type: "error", field: "fullName" });
       return;
     }
 
     if (isSignup && form.password !== form.confirmPassword) {
-      setMessage({ text: "Passwords do not match.", type: "error" });
+      setMessage({ text: "Passwords do not match.", type: "error", field: "confirmPassword" });
       return;
     }
 
     if (isSignup) {
       const strengthMessage = getPasswordStrengthMessage(form.password);
       if (strengthMessage) {
-        setMessage({ text: strengthMessage, type: "error" });
+        setMessage({ text: strengthMessage, type: "error", field: "password" });
         return;
       }
     }
 
     if (isSignup && !["male", "female"].includes(form.gender)) {
-      setMessage({ text: "Please choose Male or Female.", type: "error" });
+      setMessage({ text: "Please choose Male or Female.", type: "error", field: "gender" });
       return;
     }
 
     if (isSignup && !form.agreedToTerms) {
-      setMessage({ text: "Please agree to the Terms of Service and Privacy Policy to create an account.", type: "error" });
+      setMessage({ text: "Please agree to the Terms of Service and Privacy Policy to create an account.", type: "error", field: "agreedToTerms" });
       return;
     }
 
@@ -232,7 +255,7 @@ export default function Login() {
         // With "Confirm email" on, Supabase doesn't report an email that's
         // already used. It returns a user with no identities and sends nothing.
         if (data.user?.identities?.length === 0) {
-          throw new Error("That email already has an account. Sign in instead, or use Forgot Password.");
+          throw fieldError("email", "That email already has an account. Sign in instead, or use Forgot Password.");
         }
 
         if (data.session) {
@@ -245,7 +268,8 @@ export default function Login() {
           });
 
           if (profileError) {
-            throw new Error(profileError.code === "23505" ? "That username is already taken." : profileError.message);
+            if (profileError.code === "23505") throw fieldError("username", "That username is already taken.");
+            throw new Error(profileError.message);
           }
 
           setMessage({ text: "Account created successfully.", type: "success" });
@@ -275,6 +299,8 @@ export default function Login() {
             if (wasDeleted) {
               throw new Error("This account was deleted after a ban and can no longer be used. You can create a new account with this email.");
             }
+            // A wrong email or password shows under the Password box.
+            throw fieldError("password", "Incorrect email or password.");
           }
           throw error;
         }
@@ -284,7 +310,9 @@ export default function Login() {
         navigate(destination, { replace: true });
       }
     } catch (error) {
-      setMessage({ text: getFriendlyErrorMessage(error), type: "error" });
+      // error.field is only set by fieldError(); any other error stays at the
+      // bottom of the card.
+      setMessage({ text: getFriendlyErrorMessage(error), type: "error", field: error.field });
       if (error.message?.toLowerCase().includes("email not confirmed")) setResendEmail(normalizedEmail);
     } finally {
       setSubmitting(false);
@@ -405,6 +433,7 @@ export default function Login() {
                         required
                       />
                     </div>
+                    <FieldError message={message} field="fullName" />
                   </div>
                 </div>
 
@@ -424,6 +453,7 @@ export default function Login() {
                         required
                       />
                     </div>
+                    <FieldError message={message} field="username" />
                   </div>
                 </div>
               </div>
@@ -447,6 +477,7 @@ export default function Login() {
                       required
                     />
                   </div>
+                  <FieldError message={message} field="email" />
                 </div>
               </div>
 
@@ -463,6 +494,7 @@ export default function Login() {
                       <option value="male">Male</option>
                       <option value="female">Female</option>
                     </select>
+                    <FieldError message={message} field="gender" />
                   </div>
                 </div>
               )}
@@ -500,6 +532,7 @@ export default function Login() {
                       <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
                     </button>
                   </div>
+                  <FieldError message={message} field="password" />
                 </div>
               </div>
 
@@ -528,6 +561,7 @@ export default function Login() {
                         <i className={`bi ${showConfirmPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
                       </button>
                     </div>
+                    <FieldError message={message} field="confirmPassword" />
                   </div>
                 </div>
               )}
@@ -548,6 +582,7 @@ export default function Login() {
                   and{" "}
                   <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover-orange">Privacy Policy</a>
                 </label>
+                <FieldError message={message} field="agreedToTerms" />
               </div>
             )}
 
@@ -597,13 +632,15 @@ export default function Login() {
             </button>
           )}
 
-          {message.text && (
+          {/* Messages that aren't about one box (signing in, account created,
+              no internet). Box errors are drawn by <FieldError> above. */}
+          {message.text && !message.field && (
             <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">
               {message.text}
             </p>
           )}
 
-          {message.text && resendEmail && (
+          {message.text && !message.field && resendEmail && (
             <div className="text-center mt-2">
               <button type="button" className="btn btn-link text-orange fs-7 fw-semibold text-decoration-none p-0 hover-orange" onClick={handleResend} disabled={submitting}>
                 <i className="bi bi-arrow-repeat me-1"></i> Resend confirmation email
