@@ -27,6 +27,8 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
   const [failed, setFailed] = useState(false);
   // The applicant in the Hire popup (null = closed).
   const [hireTarget, setHireTarget] = useState(null);
+  // What the client typed in the search box above their resumes list.
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     if (!currentUserId) return undefined;
@@ -60,6 +62,14 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
     onHired?.();
   };
 
+  // The client's search: keeps the resumes whose freelancer name or job title
+  // has the typed words. (Freelancers have no search box, so they see all.)
+  const q = query.trim().toLowerCase();
+  const shownRows = (rows || []).filter((row) => {
+    const name = row.freelancer?.full_name || row.freelancer?.username || "";
+    return `${name} ${row.job?.title || ""}`.toLowerCase().includes(q);
+  });
+
   return (
     <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100">
       <h4 className="text-white fw-bold mb-3">
@@ -79,8 +89,26 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
         </p>
       )}
 
+      {/* The client's search box: filters the resumes below as they type. */}
+      {!isFreelancer && rows?.length > 0 && (
+        <div className="position-relative search-nav-box mb-3">
+          <i className="bi bi-search search-icon text-secondary"></i>
+          <input
+            type="search"
+            className="form-control nav-search-input py-2"
+            placeholder="Search..."
+            aria-label="Search resumes by freelancer or job"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+      )}
+      {rows?.length > 0 && shownRows.length === 0 && (
+        <p className="text-secondary fs-7 mb-0">No resumes match "{query.trim()}".</p>
+      )}
+
       <div className="d-flex flex-column gap-3">
-        {rows?.map((row) => {
+        {shownRows.map((row) => {
           const sentOn = new Date(row.created_at).toLocaleDateString();
           const jobLink = <Link to={`/dashboard/job-details/${row.job?.id}`} className="text-role fw-semibold text-decoration-none">{row.job?.title}</Link>;
 
@@ -113,15 +141,24 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
           const note = row.cover_note || "";
           return (
             <div key={row.id} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25">
+              {/* Picture, name and "Has sent a resume", with View (the resume) on the right. */}
               <div className="d-flex align-items-center gap-3 mb-2">
-                <Avatar path={freelancer?.avatar_path} name={name} size={48} to={freelancer?.id ? `/dashboard/freelancers/${freelancer.id}` : undefined} />
-                <div className="overflow-hidden">
+                <Avatar path={freelancer?.avatar_path} name={name} size={56} to={freelancer?.id ? `/dashboard/freelancers/${freelancer.id}` : undefined} />
+                <div className="flex-grow-1 overflow-hidden">
                   <h6 className="text-white fw-bold mb-0 text-break">
                     <Link to={`/dashboard/freelancers/${freelancer?.id}`} className="text-white text-decoration-none hover-role">{name}</Link>
                     <VerifiedBadge verified={verifiedIds.has(freelancer?.id)} />
                   </h6>
-                  <p className="text-white-50 fs-7 mb-0 text-break">Applied to {jobLink} • {sentOn}</p>
+                  <p className="text-white-50 fs-7 mb-0 text-break">Has sent a resume for {jobLink} • {sentOn}</p>
                 </div>
+                <button
+                  type="button"
+                  className="btn btn-outline-role rounded-pill px-4 fs-7 fw-bold flex-shrink-0"
+                  aria-label={`View ${name}'s resume`}
+                  onClick={() => handleViewResume(row.resume_path)}
+                >
+                  View
+                </button>
               </div>
               {note && (
                 <p className="text-light-50 fs-7 fst-italic mb-2 text-break" title={note}>
@@ -140,9 +177,6 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
                     <i className="bi bi-briefcase-fill me-1"></i> Hire
                   </button>
                 )}
-                <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => handleViewResume(row.resume_path)}>
-                  <i className="bi bi-file-earmark-pdf me-1"></i> View resume
-                </button>
                 <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => openChat(freelancer?.id)}>
                   <i className="bi bi-chat-dots-fill me-1"></i> Message
                 </button>
