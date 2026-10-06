@@ -32,6 +32,12 @@ portfolio projects (`POST /slides`):
   laid over every frame and the invisible code is hidden in every frame (the
   HiDDeN pattern is worked out every 2 seconds and reused in between, to fit
   Vercel's single CPU). The finished video is read back as a self-check.
+- **Documents** (`text_watermark.py`, `document_pages.py`): a PDF, DOCX or
+  TXT is kept as text with an invisible code written in zero-width
+  characters. A PDF's first 5 pages are also kept as pictures, drawn by
+  **PDFium** (the PDF reader inside Google Chrome, through the `pypdfium2`
+  package, Apache 2.0 / BSD), each with the freelancer's name repeated
+  faintly across the page and the same code hidden in it with HiDDeN.
 
 ## Online: Vercel (free)
 

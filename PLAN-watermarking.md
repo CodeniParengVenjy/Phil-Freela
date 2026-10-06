@@ -1,6 +1,6 @@
 # Watermarking System: plan and progress
 
-Last updated: 2026-09-27. To continue in a new Claude session, say:
+Last updated: 2026-10-07. To continue in a new Claude session, say:
 "Read PLAN-watermarking.md and continue from the current step."
 
 Each step gets its own detailed plan, approved by the user, before any code.
@@ -15,7 +15,8 @@ items. Every upload is protected automatically:
    Settings). On by default, can be turned off.
 2. Hidden watermark: always on. HiDDeN (Meta's pretrained 48-bit model, as
    ONNX) for images and every video frame; invisible zero-width characters
-   for documents. Each slide/document gets its own code.
+   for documents (and, from step 11, HiDDeN in a PDF's page pictures). Each
+   slide/document gets its own code.
 3. Copy check: always on. ViT (`facebook/dino-vits16`) for images and 5
    video frames; `all-MiniLM-L6-v2` for document paragraphs. A match with
    another freelancer's work hides that slide/document until an admin
@@ -35,7 +36,9 @@ Vercel's free plan (500 MB bundle, 4.5 MB per request, 5 minutes, 1 CPU).
 
 - Image slide: JPG, PNG, WEBP, up to 10 MB (shrunk in the browser first).
 - Video slide: MP4, MOV, WEBM, up to 30 seconds, 50 MB (saved as a 720p MP4).
-- Document: pasted text, TXT, DOCX, PDF (text only), up to 5 MB.
+- Document: pasted text, TXT, DOCX, PDF, up to 4 MB and 20,000 characters.
+  Kept as text; a PDF's first 5 pages are also kept as pictures (step 11).
+  A PDF with no readable text (a scan) is refused.
 - 10 slides per post; 50 items and 5 videos per freelancer in total.
 
 ## Steps
@@ -53,6 +56,7 @@ Vercel's free plan (500 MB bundle, 4.5 MB per request, 5 minutes, 1 CPU).
 8. Documents (PDF, DOCX, TXT) in Post a Service slideshows.
 9. Ownership check when posting photos and videos (reads the hidden code first).
 10. Portfolio: one upload for every kind of file, "Original" badge, category and tags.
+11. PDF pages as watermarked pictures (Portfolio and Post a Service).
 
 ## Current step
 
@@ -456,7 +460,77 @@ Step 10 files: `database/supabase_portfolio_tags_schema.sql`,
 `PortfolioSection.jsx`, `PortfolioViewer.jsx`, `portfolio.css`,
 `views/BrowseServicesView.jsx`, `views/ServicesView.jsx`.
 
+Step 11 (PDF pages as watermarked pictures): built and pushed 2026-10-07
+(the user asked "concerns with upload docs file, how can we watermark
+those??", picked Portfolio and Post a Service, and said "gooo" to the plan).
+Database: migration "document_pages" is applied, so don't run
+`supabase_document_pages_schema.sql` again. Still needs a live test (and how
+long a 5-page PDF takes on Vercel).
+
+What Step 11 does:
+- Before, a PDF was kept as text only, so its layout, fonts and pictures
+  were lost. Now `POST /slides` also turns a PDF's first 5 pages into
+  pictures (PDFium through `pypdfium2`, longer side 1200 px), saved next to
+  the text file as `<slide id>-p1.jpg` ... `-p5.jpg` in slide-media;
+  `media_slides.page_count` says how many. The PDF file itself is never kept
+  or handed out. DOCX and TXT stay text-only (Vercel has no Word to draw
+  their pages), and so does a PDF whose pages can't be drawn.
+- Visible watermark on pages (`document_pages.py`, `page_style`): the
+  freelancer's own words and on/off switch, but always small, 15% strong and
+  repeated across the whole page, dark on light paper and white on a dark
+  page. Their photo style (white, one corner by default) would be invisible
+  on white paper and easy to crop off.
+- Hidden code on pages: the SAME 48-bit code as the document's text (one
+  `watermark_codes` row per slide, as before), hidden with HiDDeN. So a
+  screenshot of a page is found by Check Ownership > Picture (which shows
+  page 1 as the original), and held when someone else posts it as a photo
+  (step 9). Pages try one more pattern strength than photos (5.5).
+- No picture copy check (ViT) on pages, on purpose: the ViT judges look, not
+  words, so two different text documents on white paper would be flagged as
+  copies. The text copy check and the hidden text code stay as they were.
+- Website: a PDF's slide shows page 1 (a click or "Read document" opens the
+  reader on its pages, with a Pages / Text switch); page 1 is the cover on
+  portfolio cards and service rows; deleting a service, project or flagged
+  copy also deletes the page pictures. Admin > Flagged Content shows a
+  screenshot of a page next to the PDF's first page. Settings > Watermark
+  Settings has a line explaining the page look.
+- Fixed on the way: a sideways swipe inside the document reader on a phone
+  reached the slideshow behind it, changed the slide and closed the reader.
+
+Step 11 test results:
+- Pages holding the hidden code (13 pages of the 3 project PDFs, 4 random
+  codes each): 50 of 52 at the photo strengths, 52 of 52 with the extra one.
+  Most need x2.5 or x4.0, which leaves a faint colour tint on white paper
+  (PSNR 30-35 dB). The plan said the code stays on pages despite the tint,
+  and the user approved the plan.
+- Where the code held (13 pages): owner still found after JPEG 70 on 13,
+  JPEG 50 on 11, half size on 13, a screenshot-like copy (80% size, JPEG 85)
+  on 12.
+- About 4 seconds and 240 KB per page on the laptop (several times slower on
+  Vercel's 1 CPU). `pypdfium2` adds about 8 MB to the service.
+- Endpoint (fake database, 28 checks): a 3-page PDF in a service and a PDF
+  in a portfolio project saved with their pages; a 7-page PDF keeps 5; DOCX,
+  TXT and an undrawable PDF saved as text only; a failed page upload or
+  failed save leaves no files behind; a screenshot of a page finds the owner
+  and the service (45 of 48 bits) and is held when someone else posts it as
+  a photo; someone else's copy of the PDF is still held by the text check.
+- Website (the real components with made-up data in a browser, 28 checks):
+  slide, reader, Pages / Text, card covers, deleting, and the admin page.
+
+Step 11 files: `database/supabase_document_pages_schema.sql`,
+`ai-service/document_pages.py`, `main.py` (`page_path`, `watermarked_pages`,
+`add_slide`, `describe_match`), `hidden_watermark.py` (`protect_photo`
+takes `strengths`), `requirements.txt`, `README.md`,
+`client/src/lib/slides.js` (`slidePagePaths`, `pages`), `MediaCarousel.jsx`,
+`slides.css`, `PortfolioSection.jsx`, `portfolio.css`, `ServiceCard.jsx`,
+`WatermarkSettingsForm.jsx`, `admin/views/AdminFlaggedView.jsx`.
+
 ## Reminders for later steps
+
+- Step 11, possible next: accept PDFs with no readable text (scans, designs
+  exported as pictures), checked like photos with the ViT; today they are
+  refused. And the same page pictures as the client's preview of a PDF
+  deliverable (left out on purpose so far: PLAN-projects-and-ratings.md).
 
 
 - LATER (user said "later", 2026-09-28), two plagiarism gaps:

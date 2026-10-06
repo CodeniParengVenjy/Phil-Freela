@@ -32,7 +32,7 @@ function DocumentCover({ url }) {
 }
 
 // A freelancer's portfolio as a grid of cards: projects (the first file is
-// the cover: a photo, a video, or a document's first lines) and older
+// the cover: a photo, a video, a PDF's first page, or a document's first lines) and older
 // writing items; clicking one opens it big. Each card shows its category and,
 // if it earned it, the "Original" badge (step 10); chips on top filter by
 // category. Used on the owner's own Profile page (isOwner: can add and
@@ -147,7 +147,10 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
                     <video src={`${cover.url}#t=0.1`} muted preload="metadata" onContextMenu={blockSaveMenu} />
                   )}
                   {cover?.mediaType === "image" && <img src={cover.url} alt="" draggable={false} onContextMenu={blockSaveMenu} />}
-                  {cover?.mediaType === "document" && <DocumentCover url={cover.url} />}
+                  {/* A PDF's cover is its first page (step 11); other documents show their first lines. */}
+                  {cover?.mediaType === "document" && (cover.pages?.length > 0
+                    ? <img src={cover.pages[0]} alt="" className="is-page" draggable={false} onContextMenu={blockSaveMenu} />
+                    : <DocumentCover url={cover.url} />)}
                   {isOriginalWork(item) && <OriginalBadge className="portfolio-card-original" />}
                   {!cover && item.kind !== "document" && <i className="bi bi-images portfolio-card-empty"></i>}
                   {cover?.mediaType === "video" && <i className="bi bi-play-circle-fill portfolio-card-play"></i>}

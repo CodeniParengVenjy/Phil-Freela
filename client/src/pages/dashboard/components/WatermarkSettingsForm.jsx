@@ -198,6 +198,11 @@ export default function WatermarkSettingsForm({ userId, username, fullName, show
         <label htmlFor="wmFooter" className="form-check-label text-white fw-semibold fs-7">
           Add a footer to my documents: <span className="text-secondary fw-normal">"© {watermarkText(settings, { username, fullName })} · PhilFreela"</span>
         </label>
+        {/* Step 11: a PDF's pages are shown as pictures with the same words. */}
+        <p className="text-secondary fs-8 mb-0 mt-1">
+          PDF pages show your watermark text too, always small, faint and repeated across the whole page, so the text under it stays readable.
+          Turning the visible watermark off also removes it from PDF pages.
+        </p>
       </div>
 
       <div>

@@ -3,19 +3,24 @@ import { itemSlides } from "../../../lib/slides";
 
 const mediaBox = { width: 64, height: 64 };
 
-// One posted service as a row: its first photo or video (a document icon for
-// a document, or the category icon when it has none), title, category, price and date. Pass onDelete to show a
+// One posted service as a row: its first photo or video (a PDF's first page,
+// a document icon for another document, or the category icon when it has
+// none), title, category, price and date. Pass onDelete to show a
 // Delete button.
 export default function ServiceCard({ service, onDelete }) {
   const category = getCategory(service.category);
   const cover = itemSlides(service)[0];
+  // The picture to show: the photo itself, or a PDF's first page (step 11),
+  // which is shown from the top of the page down.
+  const isDocument = cover?.mediaType === "document";
+  const coverPicture = isDocument ? cover.pages?.[0] : cover?.url;
 
   return (
     <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 d-flex gap-3 align-items-center">
-      {cover && cover.mediaType !== "document" ? (
-        cover.mediaType === "video"
-          ? <video src={`${cover.url}#t=0.1`} muted preload="metadata" className="rounded-3 flex-shrink-0" style={{ ...mediaBox, objectFit: "cover" }} />
-          : <img src={cover.url} alt="" className="rounded-3 flex-shrink-0" style={{ ...mediaBox, objectFit: "cover" }} />
+      {cover?.mediaType === "video" ? (
+        <video src={`${cover.url}#t=0.1`} muted preload="metadata" className="rounded-3 flex-shrink-0" style={{ ...mediaBox, objectFit: "cover" }} />
+      ) : coverPicture ? (
+        <img src={coverPicture} alt="" className="rounded-3 flex-shrink-0" style={{ ...mediaBox, objectFit: "cover", objectPosition: isDocument ? "top" : undefined }} />
       ) : cover ? (
         <div className="rounded-3 flex-shrink-0 bg-role-subtle text-role d-flex align-items-center justify-content-center fs-3" style={mediaBox}>
           <i className="bi bi-file-earmark-text"></i>

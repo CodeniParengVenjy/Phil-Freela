@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { fetchSlideText, slideUrl } from "../../../lib/slides";
+import { fetchSlideText, slidePagePaths, slideUrl } from "../../../lib/slides";
 import { withoutHiddenCharacters } from "../../../lib/portfolio";
 
 // A slide (photo, video or document), its uploader, and the service or
-// portfolio project it's in.
-const SLIDE_COLUMNS = `id, media_type, file_path, created_at, freelancer_id,
+// portfolio project it's in. page_count: a PDF's page pictures (step 11).
+const SLIDE_COLUMNS = `id, media_type, file_path, page_count, created_at, freelancer_id,
   owner:profiles!media_slides_freelancer_id_fkey(full_name, username),
   service:services(title), project:portfolio_items(title)`;
 
@@ -74,16 +74,19 @@ function SlideText({ filePath }) {
 }
 
 // One side of a comparison: a slide (the photo, the video, or a document's
-// text) and whose it is.
-function SlideCard({ label, slide }) {
+// text) and whose it is. showPage: show a PDF's first page instead of its
+// text, for when the other side is a picture (a screenshot of that page).
+function SlideCard({ label, slide, showPage = false }) {
   const where = slide?.service ? `Service "${slide.service.title}"` : slide?.project ? `Portfolio project "${slide.project.title}"` : "";
   const mediaStyle = { height: 260, objectFit: "contain" };
+  const page = showPage && slide?.media_type === "document" ? slidePagePaths(slide)[0] : null;
   return (
     <div className="col-md-6">
       <p className="text-white-50 fs-8 mb-1">{label}</p>
       {slide ? (
         <>
-          {slide.media_type === "document" ? <SlideText filePath={slide.file_path} />
+          {page ? <img src={slideUrl(page)} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />
+            : slide.media_type === "document" ? <SlideText filePath={slide.file_path} />
             : slide.media_type === "video" ? <video src={slideUrl(slide.file_path)} controls preload="metadata" className="w-100 rounded-3 bg-black" style={mediaStyle} />
               : <img src={slideUrl(slide.file_path)} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />}
           <Owner item={slide} where={where} />
@@ -186,8 +189,9 @@ export default function AdminFlaggedView() {
       setMessage({ text: `Couldn't remove that ${itemName(item)}. Please try again.`, type: "error" });
       return;
     }
-    // The row is gone; if deleting the file fails it only leaves an unused file.
-    if (item.type === "slide") await supabase.storage.from("slide-media").remove([item.file_path]);
+    // The row is gone; if deleting the files (a PDF also has page pictures)
+    // fails it only leaves unused files.
+    if (item.type === "slide") await supabase.storage.from("slide-media").remove([item.file_path, ...slidePagePaths(item)]);
     setBusyId(null);
     done(item, "Removed: the copy was deleted.");
   };
@@ -197,6 +201,11 @@ export default function AdminFlaggedView() {
     if (item.type === "slide" && item.matched_item_id) return <DocumentCard label="Looks like this document" doc={item.matchedDocument} />;
     if (item.type === "document" && item.matched_slide_id) return <SlideCard label="Looks like this document" slide={item.matchedSlide} />;
     if (item.type === "document") return <DocumentCard label="Looks like this document" doc={item.matched} />;
+    // A photo can carry a document's hidden code: a screenshot of one of a
+    // PDF's pages (step 11). Then the PDF's first page is shown next to it.
+    if (item.media_type !== "document" && item.matched?.media_type === "document") {
+      return <SlideCard label="Carries this document's hidden code" slide={item.matched} showPage />;
+    }
     return <SlideCard label={`Looks like this ${itemName(item)}`} slide={item.matched} />;
   };
 

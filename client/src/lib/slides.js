@@ -18,8 +18,9 @@ export const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // shrunk to about 0.5 MB before sending
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_VIDEO_SECONDS = 30;
-// Documents (step 8, services only): only the text is kept, like portfolio
-// writing. 4 MB fits in one request to the AI service.
+// Documents (step 8): the text is kept, like portfolio writing, and a PDF's
+// first pages are also kept as watermarked pictures (step 11). 4 MB fits in
+// one request to the AI service.
 const DOCUMENT_EXTENSIONS = /\.(pdf|docx|txt)$/i;
 const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
 
@@ -27,14 +28,15 @@ export const SLIDE_ACCEPT = [...IMAGE_TYPES, ...VIDEO_TYPES, ".mov"].join(",");
 export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, MOV, WebM) up to 50 MB and 30 seconds; each video takes up to 2 minutes to watermark.";
 // Services (step 8) and portfolio projects (step 10) also take documents.
 export const SLIDE_ACCEPT_WITH_DOCUMENTS = `${SLIDE_ACCEPT},.pdf,.docx,.txt`;
-export const SLIDE_HINT_WITH_DOCUMENTS = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: only the text is kept, with your invisible code and footer.`;
+export const SLIDE_HINT_WITH_DOCUMENTS = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: the text is kept, with your invisible code and footer. A PDF also shows its first 5 pages as pictures with your name across them (about a minute to watermark).`;
 
 // Add this to a services select to get each service's slides with it.
 // watermarked: the file carries the watermark itself (photos from step 3 on).
 // promo: the freelancer marked it as a promo/ad, so it has no visible watermark.
 // status: "flagged" = nearly the same as another freelancer's photo, so only
 // its uploader and the admins see it until an admin reviews it (step 5).
-export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file_path, watermarked, promo, status)";
+// page_count: how many page pictures a document has (a PDF, step 11).
+export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file_path, page_count, watermarked, promo, status)";
 
 // (Some browsers give .mov files no type at all, so the name counts too.)
 export const isVideoFile = (file) => VIDEO_TYPES.includes(file.type) || /\.mov$/i.test(file.name);
@@ -188,7 +190,7 @@ export async function uploadSlides(target, items, userId, onProgress) {
     onProgress(isVideoFile(file)
       ? `Watermarking video ${index + 1} of ${items.length} (up to 2 minutes)...`
       : isDocumentFile(file)
-        ? `Watermarking document ${index + 1} of ${items.length}...`
+        ? `Watermarking document ${index + 1} of ${items.length} (a PDF takes about a minute)...`
         : `Uploading ${index + 1} of ${items.length}...`);
     try {
       slides.push(await uploadSlide(target, file, userId, promo));
@@ -202,6 +204,15 @@ export async function uploadSlides(target, items, userId, onProgress) {
 // The public link of a saved slide.
 export function slideUrl(filePath) {
   return supabase.storage.from("slide-media").getPublicUrl(filePath).data.publicUrl;
+}
+
+// Where a document slide's page pictures are (step 11): next to its text
+// file, "<user id>/<slide id>.txt" -> "<user id>/<slide id>-p1.jpg",
+// "-p2.jpg" and so on. The AI service saves them under these names
+// (page_path in ai-service/main.py). [] for a slide without page pictures.
+export function slidePagePaths(slide) {
+  const stem = slide.file_path.replace(/\.[^./]+$/, "");
+  return Array.from({ length: slide.page_count || 0 }, (_, i) => `${stem}-p${i + 1}.jpg`);
 }
 
 // The text of a document slide (step 8), fetched once per page load.
@@ -220,10 +231,11 @@ export function fetchSlideText(url) {
 }
 
 // A service's or project's slides in slideshow order, as
-// [{ id, mediaType, url, showOwnerName, underReview }]. mediaType: "image",
-// "video" or "document" (a .txt file, step 8). showOwnerName: the page draws
-// the uploader's name faintly over it, because the file itself has no
-// watermark (older photos, videos until step 7) and it isn't a promo.
+// [{ id, mediaType, url, pages, showOwnerName, underReview }]. mediaType:
+// "image", "video" or "document" (a .txt file, step 8). pages: the links of a
+// document's page pictures (a PDF, step 11; [] otherwise). showOwnerName: the
+// page draws the uploader's name faintly over it, because the file itself has
+// no watermark (older photos, videos until step 7) and it isn't a promo.
 // underReview: flagged by the copy check, waiting for an admin.
 // Services posted before slideshows existed have one photo or video
 // (image_url), shown as a one-slide slideshow.
@@ -235,6 +247,7 @@ export function itemSlides(item) {
         id: slide.id,
         mediaType: slide.media_type,
         url: slideUrl(slide.file_path),
+        pages: slidePagePaths(slide).map(slideUrl),
         // (Photos from step 3 and videos from step 7 on carry their own watermark.)
         showOwnerName: !slide.watermarked && !slide.promo,
         underReview: slide.status === "flagged"
@@ -244,11 +257,11 @@ export function itemSlides(item) {
   return [];
 }
 
-// After a service or project is deleted, deletes its files too: its slides,
-// or the one photo/video of an older service. A failure only leaves unused
-// files behind.
+// After a service or project is deleted, deletes its files too: its slides
+// (with a document's page pictures), or the one photo/video of an older
+// service. A failure only leaves unused files behind.
 export async function removeItemFiles(item) {
-  const slidePaths = (item.slides || []).map((slide) => slide.file_path);
+  const slidePaths = (item.slides || []).flatMap((slide) => [slide.file_path, ...slidePagePaths(slide)]);
   if (slidePaths.length) await supabase.storage.from("slide-media").remove(slidePaths);
 
   const oldPath = storagePathFromUrl(item.image_url);

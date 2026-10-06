@@ -40,6 +40,11 @@
   display: block;
 }
 
+/* A PDF's first page as the cover: shown from the top of the page down. */
+.portfolio-card-cover img.is-page {
+  object-position: top;
+}
+
 .portfolio-card-empty {
   font-size: 2rem;
   color: rgba(148, 163, 184, 0.6);

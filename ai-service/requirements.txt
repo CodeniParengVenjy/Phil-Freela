@@ -15,6 +15,9 @@ onnxruntime>=1.20
 tokenizers>=0.20
 python-docx>=1.1
 pypdf>=5
+# Documents: turns a PDF's pages into pictures (document_pages.py). It brings
+# PDFium, the PDF reader inside Google Chrome, about 8 MB.
+pypdfium2>=5
 # Videos: FFmpeg (reads any MP4/MOV/WEBM, writes the watermarked 720p MP4),
 # through imageio-ffmpeg. Its usual package includes the whole FFmpeg program
 # (80 MB), which pushed the service past Vercel's 500 MB limit. So on Linux

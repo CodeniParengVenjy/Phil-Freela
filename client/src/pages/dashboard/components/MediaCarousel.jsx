@@ -6,10 +6,21 @@ import "./slides.css";
 // Stops the browser's "Save image/video as..." menu.
 const blockSaveMenu = (event) => event.preventDefault();
 
-// A document opened from its slide: the whole text, over the whole screen.
-// The text can be selected and copied on purpose, like portfolio writing:
-// the invisible code in every sentence goes along with any copy.
-function DocumentReader({ text, onClose }) {
+// Touches inside the reader stay there: without this they'd reach the
+// slideshow behind it (React passes events up to the parent), and a sideways
+// swipe while reading would change the slide and close the reader.
+const stopTouch = { onTouchStart: (event) => event.stopPropagation(), onTouchEnd: (event) => event.stopPropagation() };
+
+// A document opened from its slide, over the whole screen. A PDF (step 11)
+// opens on its pages: pictures with the freelancer's name across them and
+// the hidden code inside, so the PDF file itself is never handed out. The
+// Text view is the whole text. It can be selected and copied on purpose,
+// like portfolio writing: the invisible code in every sentence goes along
+// with any copy.
+function DocumentReader({ text, pages = [], onClose }) {
+  // "pages" or "text" (a DOCX or TXT has only its text).
+  const [view, setView] = useState(pages.length ? "pages" : "text");
+
   // Escape closes it.
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -28,6 +39,7 @@ function DocumentReader({ text, onClose }) {
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
       onClick={onClose}
+      {...stopTouch}
     >
       <div
         role="dialog"
@@ -37,13 +49,34 @@ function DocumentReader({ text, onClose }) {
         style={{ maxWidth: 760, width: "100%" }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex justify-content-between align-items-center gap-2 mb-3">
           <h5 className="fw-bold mb-0"><i className="bi bi-file-earmark-text me-2"></i>Document</h5>
-          <button type="button" className="btn btn-sm btn-outline-light rounded-circle" aria-label="Close" onClick={onClose}>
+          {pages.length > 0 && (
+            <div className="btn-group btn-group-sm ms-auto" role="group" aria-label="How to show the document">
+              <button type="button" className={`btn ${view === "pages" ? "btn-light" : "btn-outline-light"}`} aria-pressed={view === "pages"} onClick={() => setView("pages")}>
+                <i className="bi bi-file-earmark-richtext me-1"></i>Pages
+              </button>
+              <button type="button" className={`btn ${view === "text" ? "btn-light" : "btn-outline-light"}`} aria-pressed={view === "text"} onClick={() => setView("text")}>
+                <i className="bi bi-text-paragraph me-1"></i>Text
+              </button>
+            </div>
+          )}
+          <button type="button" className="btn btn-sm btn-outline-light rounded-circle flex-shrink-0" aria-label="Close" onClick={onClose}>
             <i className="bi bi-x-lg"></i>
           </button>
         </div>
-        <div className="document-reader-text">{text}</div>
+        {view === "pages" ? (
+          <div className="document-reader-pages" onContextMenu={blockSaveMenu}>
+            {pages.map((page, i) => (
+              <img key={page} src={page} alt={`Page ${i + 1}`} draggable={false} loading={i ? "lazy" : undefined} />
+            ))}
+            <p className="document-reader-note">
+              The first {pages.length === 1 ? "page is" : `${pages.length} pages are`} shown as {pages.length === 1 ? "a picture" : "pictures"}. Switch to Text for the whole document.
+            </p>
+          </div>
+        ) : (
+          <div className="document-reader-text">{text}</div>
+        )}
       </div>
     </div>,
     document.body
@@ -51,11 +84,14 @@ function DocumentReader({ text, onClose }) {
 }
 
 // A document slide (step 8): the start of its text and a Read button. The
-// text is a small .txt file, loaded when the slide is shown.
-function DocumentSlide({ url }) {
+// text is a small .txt file, loaded when the slide is shown. A PDF (step 11)
+// shows its first page instead (pages: the links of its page pictures); a
+// click on the page opens the reader too.
+function DocumentSlide({ url, pages = [], fit }) {
   // null = loading; otherwise the text, or an error message.
   const [loaded, setLoaded] = useState(null);
   const [reading, setReading] = useState(false);
+  const hasPages = pages.length > 0;
 
   useEffect(() => {
     let active = true;
@@ -67,15 +103,28 @@ function DocumentSlide({ url }) {
     };
   }, [url]);
 
+  // What the slide and the reader's Text view say while the text loads.
+  const shownText = loaded === null ? "Loading document..." : loaded.error || loaded.text;
+
   return (
-    <div className="media-carousel-document">
-      {loaded === null ? "Loading document..." : loaded.error || loaded.text.slice(0, 1200)}
-      {loaded?.text && (
+    <div className={`media-carousel-document${hasPages ? " has-pages" : ""}`}>
+      {hasPages ? (
+        <img
+          src={pages[0]}
+          alt="First page of the document"
+          draggable={false}
+          onContextMenu={blockSaveMenu}
+          onClick={() => setReading(true)}
+          className="media-carousel-page"
+          style={{ objectFit: fit }}
+        />
+      ) : shownText.slice(0, 1200)}
+      {(hasPages || loaded?.text) && (
         <button type="button" className="btn btn-sm btn-light rounded-pill px-3 fw-semibold media-carousel-read" onClick={() => setReading(true)}>
           <i className="bi bi-book me-1"></i> Read document
         </button>
       )}
-      {reading && <DocumentReader text={loaded.text} onClose={() => setReading(false)} />}
+      {reading && <DocumentReader text={shownText} pages={pages} onClose={() => setReading(false)} />}
     </div>
   );
 }
@@ -179,7 +228,7 @@ export default function MediaCarousel({ slides, height = 140, aspectRatio, fit =
             (slides.css) plays every time the slide changes. */}
         <div key={current.id} className={`media-carousel-slide${direction ? ` is-from-${direction}` : ""}`}>
           {current.mediaType === "document" ? (
-            <DocumentSlide url={current.url} />
+            <DocumentSlide url={current.url} pages={current.pages} fit={fit} />
           ) : current.mediaType === "video" ? (
             <video
               src={current.url}

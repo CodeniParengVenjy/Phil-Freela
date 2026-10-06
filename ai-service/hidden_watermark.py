@@ -193,12 +193,13 @@ def _jpeg(image, quality):
     return buffer.getvalue()
 
 
-def protect_photo(image, code):
+def protect_photo(image, code, strengths=STRENGTHS):
     """Hides the code in the photo, using the faintest pattern that passes the
     self-check. Returns (jpeg_bytes, has_code): has_code is False when even
     the strongest pattern doesn't read back (a very plain picture), and the
-    photo is then returned without the code."""
-    for strength in STRENGTHS:
+    photo is then returned without the code. strengths: the pattern strengths
+    to try, faintest first (document pages add a stronger one)."""
+    for strength in strengths:
         data = _jpeg(_add_code(image, code, strength), SAVED_QUALITY)
         saved = Image.open(io.BytesIO(data)).convert("RGB")
         if wrong_bits(read_code(saved), code) > MAX_WRONG_BITS_SAVED:

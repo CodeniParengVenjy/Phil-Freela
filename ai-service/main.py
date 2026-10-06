@@ -34,6 +34,7 @@ from pydantic import BaseModel
 from pypdf import PdfReader
 from supabase import ClientOptions, create_client
 
+from document_pages import render_pages, watermark_page
 from face_check import NoFaceError, check_faces, find_duplicate, prepare_image
 from id_qr import check_philsys_qr
 from hidden_watermark import new_code, protect_photo, read_code, read_code_from_frames, read_uncropped_codes
@@ -634,6 +635,30 @@ def watermark_style(user_id):
     return (settings[0] if settings else None), profile.get("username", ""), profile.get("full_name", "")
 
 
+def page_path(file_path, number):
+    """Where a document slide's page picture is saved (step 11): next to its
+    text file, "<user id>/<slide id>.txt" -> "<user id>/<slide id>-p1.jpg".
+    The website builds the same names (slidePagePaths in lib/slides.js)."""
+    return f"{file_path.rsplit('.', 1)[0]}-p{number}.jpg"
+
+
+def watermarked_pages(user_id, data, code):
+    """Step 11: the first pages of a PDF as JPEG pictures, each with the
+    freelancer's name across it and the document's hidden code inside (see
+    document_pages.py). Returns [] for a DOCX or TXT, and for a PDF whose
+    pages can't be drawn: those stay text-only, as before."""
+    # The first bytes show the real file type, whatever the file is called.
+    if data[:5] != b"%PDF-":
+        return []
+    try:
+        pictures = render_pages(data)
+    except Exception:
+        logger.warning("Couldn't draw the pages of a PDF; it is saved as text only")
+        return []
+    style = watermark_style(user_id)
+    return [watermark_page(picture, code, *style)[0] for picture in pictures]
+
+
 # Step 7: 5 frames of each video go through the ViT for the copy check.
 VIDEO_CHECK_FRAMES = 5
 
@@ -734,7 +759,9 @@ def add_slide(
     promo: the freelancer marked it as an ad, so it gets no visible watermark.
     Photos and documents come with the request. Videos are too big for that
     (Vercel allows 4.5 MB per request), so the browser uploads them to
-    slide-uploads first and sends where it put them."""
+    slide-uploads first and sends where it put them.
+    A document is saved as its text; a PDF also as pictures of its first
+    pages (step 11, page_count in the reply)."""
     user_id = get_user_id(authorization)
     if (service_id is None) == (portfolio_item_id is None):
         raise HTTPException(400, "Send one service or one project.")
@@ -747,7 +774,7 @@ def add_slide(
     media_type = "image" if image is not None else "video" if video_path is not None else "document"
     position = next_slide_position(user_id, owner, item_id, media_type)
 
-    code, embeddings, text_embeddings = None, {}, []
+    code, embeddings, text_embeddings, pages = None, {}, [], []
     status, matched_slide_id, matched_item_id, match_score = "active", None, None, None
     if image is not None:
         # Same checks as ID photos (a real JPG/PNG/WEBP under 5 MB), then the
@@ -779,18 +806,36 @@ def add_slide(
             status, matched_slide_id, match_score = copy_check(user_id, frames_as_uploaded)
     else:
         # Writing (step 8): a PDF, DOCX or TXT, handled like portfolio writing.
-        # Only the text is kept; it gets the footer and the invisible code, is
-        # compared with other freelancers' writing, and is saved as a .txt file.
+        # Its text gets the footer and the invisible code, is compared with
+        # other freelancers' writing, and is saved as a .txt file.
         raw = read_document(None, document)
         clean = strip_hidden(raw).strip()
         text_embeddings = embed_texts(paragraphs_for_check(clean))
         status, matched_item_id, matched_slide_id, match_score = check_copied_writing(user_id, raw, text_embeddings)
         body, code = watermark_writing(user_id, clean)
         data, extension, content_type = body.encode("utf-8"), "txt", "text/plain"
+        # Step 11: a PDF's first pages are also kept as watermarked pictures,
+        # so viewers see its real layout. They carry the same code as the text.
+        document.file.seek(0)
+        pages = watermarked_pages(user_id, document.file.read(), code)
 
     slide_id = str(uuid.uuid4())
     file_path = f"{user_id}/{slide_id}.{extension}"
-    upload_slide_file(file_path, data, content_type)
+    # Every file of this slide: the slide itself, then a document's page pictures.
+    saved_paths = [file_path] + [page_path(file_path, number) for number in range(1, len(pages) + 1)]
+
+    def remove_saved_files():
+        """Don't leave files behind for a slide that wasn't saved."""
+        for path in saved_paths:
+            remove_quietly(SLIDE_BUCKET, path)
+
+    try:
+        upload_slide_file(file_path, data, content_type)
+        for path, page in zip(saved_paths[1:], pages):
+            upload_slide_file(path, page, "image/jpeg")
+    except HTTPException:
+        remove_saved_files()
+        raise
 
     try:
         supabase.table("media_slides").insert({
@@ -800,6 +845,7 @@ def add_slide(
             "position": position,
             "media_type": media_type,
             "file_path": file_path,
+            "page_count": len(pages),
             "watermarked": code is not None,
             "promo": promo,
             "status": status,
@@ -808,8 +854,7 @@ def add_slide(
             "match_score": match_score,
         }).execute()
     except APIError as error:
-        # Don't leave a file behind for a slide that wasn't saved.
-        remove_quietly(SLIDE_BUCKET, file_path)
+        remove_saved_files()
         if error.code == "23505":  # another upload took the same spot at the same moment
             raise HTTPException(409, "Another upload was saving at the same time. Please try again.")
         if error.code == "23503":  # the service or project was deleted meanwhile
@@ -824,7 +869,7 @@ def add_slide(
             # Practically impossible (the same random code twice), but then undo the slide.
             logger.exception("Saving the watermark code for slide %s failed", slide_id)
             supabase.table("media_slides").delete().eq("id", slide_id).execute()
-            remove_quietly(SLIDE_BUCKET, file_path)
+            remove_saved_files()
             raise HTTPException(409, "Something went wrong while saving that file. Please try again.")
 
     # The copy check's numbers, for comparing future uploads with this photo,
@@ -852,6 +897,7 @@ def add_slide(
         held_because = "watermark" if match_score == 1.0 else "similar"
     return {
         "id": slide_id, "position": position, "media_type": media_type, "file_path": file_path,
+        "page_count": len(pages),
         "watermarked": code is not None, "promo": promo, "status": status, "held_because": held_because,
     }
 
@@ -898,7 +944,7 @@ def describe_match(match, user_id):
     slide = []
     if match["slide_id"]:
         slide = (
-            supabase.table("media_slides").select("file_path, service_id, portfolio_item_id")
+            supabase.table("media_slides").select("file_path, media_type, page_count, service_id, portfolio_item_id")
             .eq("id", match["slide_id"]).limit(1).execute().data
         )
     if slide:
@@ -908,7 +954,12 @@ def describe_match(match, user_id):
             else ("project", "portfolio_items", slide["portfolio_item_id"])
         )
         item = supabase.table(table).select("title").eq("id", item_id).limit(1).execute().data
-        source = {"kind": kind, "title": item[0]["title"] if item else None, "file_path": slide["file_path"]}
+        # The picture shown as "the original". A screenshot of a document's
+        # page (step 11) is found by the document's code: show its page 1.
+        picture_path = slide["file_path"]
+        if slide["media_type"] == "document":
+            picture_path = page_path(slide["file_path"], 1) if slide["page_count"] else None
+        source = {"kind": kind, "title": item[0]["title"] if item else None, "file_path": picture_path}
 
     return {
         "found": True,
