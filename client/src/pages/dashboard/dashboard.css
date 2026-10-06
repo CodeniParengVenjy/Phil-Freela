@@ -89,6 +89,40 @@ body.fixed-layout {
   color: rgba(255, 255, 255, 0.5);
 }
 
+/* Search by picture (top bar): the search box lights up while a picture is
+   dragged over the bar, and a camera button sits at its right end. */
+.search-nav-box.is-dropping .nav-search-input {
+  border-color: var(--accent-orange) !important;
+  box-shadow: 0 0 0 3px var(--accent-orange-glow) !important;
+}
+
+.nav-search-input.has-scan-button {
+  padding-right: 42px !important;
+}
+
+.search-scan-button {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  z-index: 5;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.search-scan-button:hover,
+.search-scan-button:focus-visible {
+  color: var(--accent-on);
+  background: var(--accent-orange);
+  outline: none;
+}
+
 .search-icon {
   position: absolute;
   left: 14px;

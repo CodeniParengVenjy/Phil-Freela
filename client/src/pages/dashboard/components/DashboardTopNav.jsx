@@ -1,5 +1,7 @@
+import { useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { dashboardRouteFor } from "../../../lib/profile";
+import { PICTURE_TYPES, checkPicture, holdPicture } from "../../../lib/pictureSearch";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
@@ -7,7 +9,7 @@ import Avatar from "../../../components/Avatar";
 // Identical between the freelancer and client dashboards -- brand, search,
 // the three quick links, and the account dropdown -- so both layouts share
 // this instead of each keeping their own copy.
-export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, onToggleSidebar, onSignOut, onSwitchRole }) {
+export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, onToggleSidebar, onSignOut, onSwitchRole, showToast }) {
   const isVerified = useVerifiedIds([currentUserId]).has(currentUserId);
   const switchLabel = accountType === "client" ? "Switch to Freelancer" : "Switch to Client";
   const switchHref = accountType === "client" ? "/dashboard-freelancer" : "/dashboard-client";
@@ -25,6 +27,52 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
     if (text) navigate(`/dashboard/search?q=${encodeURIComponent(text)}`);
   };
 
+  // Search by picture (AI Moodboard Matching, feature 2): a client drops a
+  // picture anywhere on this top bar, or picks one with the camera button, and
+  // the Moodboard Match page scans it. Moodboard matching finds freelancers,
+  // so it is for clients; a freelancer who drops a picture is told so.
+  const canScanPictures = accountType === "client";
+  // True while a file is being dragged over the bar (the search box lights up).
+  const [dropping, setDropping] = useState(false);
+  const pictureInputRef = useRef(null);
+
+  const scanPicture = (file) => {
+    if (!file) return;
+    if (!canScanPictures) {
+      showToast("Searching by picture is for clients: it finds freelancers whose work matches the picture.");
+      return;
+    }
+    const problem = checkPicture(file);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+    // The picture waits in memory and the page gets its ticket (lib/pictureSearch.js).
+    navigate("/dashboard/moodboard-match", { state: { scan: holdPicture(file) } });
+  };
+
+  // Only files count: dragging text or a link over the bar does nothing.
+  const carriesFiles = (event) => Array.from(event.dataTransfer?.types || []).includes("Files");
+
+  const handleDragOver = (event) => {
+    if (!carriesFiles(event)) return;
+    event.preventDefault(); // lets the bar take the drop (the browser would open the file instead)
+    setDropping(true);
+  };
+
+  const handleDrop = (event) => {
+    if (!carriesFiles(event)) return;
+    event.preventDefault();
+    setDropping(false);
+    scanPicture(event.dataTransfer.files?.[0]);
+  };
+
+  const handlePicturePick = (event) => {
+    const picked = event.target.files?.[0];
+    event.target.value = ""; // so choosing the same picture again still counts
+    scanPicture(picked);
+  };
+
   // Already on the dashboard home: reload the page instead. The role is read
   // again from the database, so it stays the same.
   const handleLogoClick = (event) => {
@@ -35,7 +83,13 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
   };
 
   return (
-    <nav className="navbar navbar-expand-lg fixed-top border-bottom border-secondary border-opacity-25" id="topNavbar">
+    <nav
+      className="navbar navbar-expand-lg fixed-top border-bottom border-secondary border-opacity-25"
+      id="topNavbar"
+      onDragOver={handleDragOver}
+      onDragLeave={() => setDropping(false)}
+      onDrop={handleDrop}
+    >
       <div className="container-fluid px-3 px-lg-4">
         <div className="d-flex align-items-center gap-3">
           <button
@@ -51,9 +105,24 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           </NavLink>
         </div>
 
-        <form className="d-none d-md-flex mx-auto position-relative search-nav-box" style={{ width: 380 }} role="search" onSubmit={handleSearch}>
+        <form className={`d-none d-md-flex mx-auto position-relative search-nav-box${dropping ? " is-dropping" : ""}`} style={{ width: 380 }} role="search" onSubmit={handleSearch}>
           <i className="bi bi-search search-icon text-secondary"></i>
-          <input name="q" type="search" className="form-control nav-search-input" placeholder="Search people, services and jobs..." aria-label="Search people, services and jobs" maxLength={200} />
+          <input
+            name="q"
+            type="search"
+            className={`form-control nav-search-input${canScanPictures ? " has-scan-button" : ""}`}
+            placeholder={dropping && canScanPictures ? "Drop the picture here to scan it" : canScanPictures ? "Search, or drop a picture to scan..." : "Search people, services and jobs..."}
+            aria-label="Search people, services and jobs"
+            maxLength={200}
+          />
+          {canScanPictures && (
+            <>
+              <input ref={pictureInputRef} type="file" className="d-none" accept={PICTURE_TYPES.join(",")} onChange={handlePicturePick} />
+              <button type="button" className="search-scan-button" title="Search by picture" aria-label="Search by picture" onClick={() => pictureInputRef.current?.click()}>
+                <i className="bi bi-camera"></i>
+              </button>
+            </>
+          )}
         </form>
 
         <div className="d-flex align-items-center gap-3">

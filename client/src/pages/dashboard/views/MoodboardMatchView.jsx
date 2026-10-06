@@ -1,17 +1,39 @@
-import { useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { matchMoodboard } from "../../../lib/aiService";
 import { shrinkImage } from "../../../lib/shrinkImage";
 import { slideUrl } from "../../../lib/slides";
+import { PICTURE_HINT, PICTURE_TYPES, checkPicture, pictureFor } from "../../../lib/pictureSearch";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import MediaDropzone from "../components/MediaDropzone";
 import BookDialog from "../components/BookDialog";
 
-const PICTURE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_BYTES = 10 * 1024 * 1024; // shrunk before sending
+// Scans one picture: asks the AI service who matches, then loads each
+// freelancer and their matching picture under the normal database rules.
+// Returns the matches, best first ([] = nothing close enough).
+async function findMatches(picture) {
+  const results = await matchMoodboard(await shrinkImage(picture, 800));
+  if (results.length === 0) return [];
+
+  const freelancerIds = results.map((r) => r.freelancer_id);
+  const slideIds = results.map((r) => r.slide_id);
+  const [{ data: freelancers, error: fErr }, { data: slides, error: sErr }] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, username, avatar_path").in("id", freelancerIds),
+    supabase.from("media_slides").select("id, file_path").in("id", slideIds)
+  ]);
+  if (fErr || sErr) throw new Error("Couldn't load the matching freelancers. Please try again.");
+
+  const freelancerById = Object.fromEntries((freelancers || []).map((f) => [f.id, f]));
+  const slideById = Object.fromEntries((slides || []).map((s) => [s.id, s]));
+  // Anything that failed to load (e.g. a freelancer who stopped being
+  // verified between the search and now) simply drops out here.
+  return results
+    .filter((r) => freelancerById[r.freelancer_id] && slideById[r.slide_id])
+    .map((r) => ({ ...r, freelancer: freelancerById[r.freelancer_id], slide: slideById[r.slide_id] }));
+}
 
 // AI Moodboard Matching (feature 2 in PhilFreela-System-Functions.md, clients
 // only): upload a reference image and find the freelancers whose portfolio
@@ -19,17 +41,44 @@ const MAX_BYTES = 10 * 1024 * 1024; // shrunk before sending
 // describe their style (color, composition, mood); the AI service returns
 // freelancer ids and scores, and this page loads their profile and matching
 // picture itself, under the normal database rules.
+//
+// A picture dropped on the top search bar arrives here too (lib/pictureSearch.js)
+// and is scanned straight away. Each drop gets a new ticket, and the ticket is
+// the page's key, so a second drop starts the page fresh with the new picture.
 export default function MoodboardMatchView() {
+  const ticket = useLocation().state?.scan;
+  return <MoodboardMatch key={ticket ?? "menu"} droppedPicture={pictureFor(ticket)} />;
+}
+
+function MoodboardMatch({ droppedPicture }) {
   const { currentUserId, openChat, showToast } = useOutletContext();
   // The freelancer being booked (null = Book popup closed). The match is a
   // freelancer, not one service, so the popup lists their services to pick from.
   const [bookTarget, setBookTarget] = useState(null);
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState(droppedPicture);
   const [fileError, setFileError] = useState("");
-  const [matching, setMatching] = useState(false);
+  // A dropped picture is being scanned from the first moment the page shows.
+  const [matching, setMatching] = useState(Boolean(droppedPicture));
   const [error, setError] = useState("");
   // null = no search yet; [] = searched, nothing close enough.
   const [matches, setMatches] = useState(null);
+
+  // Scans the picture that came from the search bar.
+  useEffect(() => {
+    if (!droppedPicture) return undefined;
+    let active = true;
+    findMatches(droppedPicture)
+      .then((found) => {
+        if (active) setMatches(found);
+      })
+      .catch((err) => {
+        if (active) setError(err.message);
+      })
+      .finally(() => {
+        if (active) setMatching(false);
+      });
+    return () => { active = false; };
+  }, [droppedPicture]);
 
   const handleSelect = (picked) => {
     setMatches(null);
@@ -39,12 +88,9 @@ export default function MoodboardMatchView() {
       setFileError("");
       return;
     }
-    if (!PICTURE_TYPES.includes(picked.type)) {
-      setFileError("Please choose a JPG, PNG, or WebP picture.");
-      return;
-    }
-    if (picked.size > MAX_BYTES) {
-      setFileError("Pictures must be 10 MB or smaller.");
+    const problem = checkPicture(picked);
+    if (problem) {
+      setFileError(problem);
       return;
     }
     setFileError("");
@@ -56,29 +102,7 @@ export default function MoodboardMatchView() {
     setError("");
     setMatches(null);
     try {
-      const results = await matchMoodboard(await shrinkImage(file, 800));
-      if (results.length === 0) {
-        setMatches([]);
-        return;
-      }
-
-      const freelancerIds = results.map((r) => r.freelancer_id);
-      const slideIds = results.map((r) => r.slide_id);
-      const [{ data: freelancers, error: fErr }, { data: slides, error: sErr }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, username, avatar_path").in("id", freelancerIds),
-        supabase.from("media_slides").select("id, file_path").in("id", slideIds)
-      ]);
-      if (fErr || sErr) throw new Error("Couldn't load the matching freelancers. Please try again.");
-
-      const freelancerById = Object.fromEntries((freelancers || []).map((f) => [f.id, f]));
-      const slideById = Object.fromEntries((slides || []).map((s) => [s.id, s]));
-      // Anything that failed to load (e.g. a freelancer who stopped being
-      // verified between the search and now) simply drops out here.
-      setMatches(
-        results
-          .filter((r) => freelancerById[r.freelancer_id] && slideById[r.slide_id])
-          .map((r) => ({ ...r, freelancer: freelancerById[r.freelancer_id], slide: slideById[r.slide_id] }))
-      );
+      setMatches(await findMatches(file));
     } catch (err) {
       setError(err.message);
     }
@@ -94,6 +118,7 @@ export default function MoodboardMatchView() {
         <p className="text-secondary fs-7 mb-4" style={{ maxWidth: 640 }}>
           Upload a moodboard, a picture you like, or a screenshot of a style you want. PhilFreela's AI compares its visual
           style — color, composition, mood — with every verified freelancer's portfolio, and ranks who's closest.
+          You can also drop a picture on the search bar at the top of any page.
         </p>
 
         <div className="d-flex flex-column gap-3" style={{ maxWidth: 640 }}>
@@ -102,14 +127,14 @@ export default function MoodboardMatchView() {
             onSelect={handleSelect}
             accept={PICTURE_TYPES.join(",")}
             prompt="Click to choose a reference image"
-            hint="JPG, PNG, or WebP, up to 10 MB."
+            hint={PICTURE_HINT}
             error={fileError}
           />
           <div>
             <button type="button" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white" onClick={handleMatch} disabled={!file || matching}>
-              {matching ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Comparing styles...</> : "Find Matches"}
+              {matching ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Scanning the picture...</> : "Find Matches"}
             </button>
-            {matching && <p className="text-secondary fs-8 mb-0 mt-2">This can take a few seconds, longer the first time.</p>}
+            {matching && <p className="text-secondary fs-8 mb-0 mt-2" role="status">Comparing its style with every verified freelancer's portfolio. This can take a few seconds, longer the first time.</p>}
           </div>
           {error && <p className="text-danger fs-7 mb-0">{error}</p>}
         </div>
