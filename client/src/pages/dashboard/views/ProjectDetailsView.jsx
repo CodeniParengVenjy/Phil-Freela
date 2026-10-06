@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import {
-  deliverableIcon, formatDay, getMyRating, getProject, markProjectDone, openDeliverable,
-  personName, projectStatuses, requestProjectChanges, todayInManila
+  deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getProject, markProjectDone,
+  openDeliverable, personName, projectStatuses, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
 import { profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
@@ -44,6 +44,27 @@ export default function ProjectDetailsView() {
       active = false;
     };
   }, [project?.status, project?.id, currentUserId]);
+
+  // A submitted video or photo is shown right on the page ("video" /
+  // "image"); other files ("file": PDF, ZIP) only get the View button.
+  const submissionPath = project?.submission_path;
+  const mediaKind = deliverableKind(submissionPath);
+  // The private link the player or photo uses, kept with the file it is for:
+  // { path, link }, where link is null when it couldn't be made.
+  const [media, setMedia] = useState(null);
+  // The file the browser couldn't play or show (e.g. some .mov videos).
+  const [failedPath, setFailedPath] = useState(null);
+
+  useEffect(() => {
+    if (!submissionPath || mediaKind === "file") return undefined;
+    let active = true;
+    getDeliverableLink(submissionPath).then((link) => {
+      if (active) setMedia({ path: submissionPath, link });
+    });
+    return () => {
+      active = false;
+    };
+  }, [submissionPath, mediaKind]);
 
   const handleViewDeliverable = async () => {
     const problem = await openDeliverable(project.submission_path);
@@ -100,6 +121,10 @@ export default function ProjectDetailsView() {
   const status = projectStatuses[project.status];
   const overdue = project.status !== "done" && project.due_date < todayInManila();
   const hasSubmission = Boolean(project.submission_path || project.submission_link);
+  // undefined while the link is loading, null when it couldn't be made.
+  const mediaLink = media?.path === submissionPath ? media.link : undefined;
+  const mediaWord = mediaKind === "video" ? "video" : "photo";
+  const mediaBroken = mediaLink === null || failedPath === submissionPath;
 
   // The "Project" box: short status of the work, or where to attach it.
   const renderWorkBox = () => {
@@ -203,6 +228,41 @@ export default function ProjectDetailsView() {
               </span>
               <span className="text-white-50 fs-7">Sent by <strong className="text-white">{personName(project.freelancer, "the freelancer")}</strong> on {new Date(project.submitted_at).toLocaleDateString()}</span>
             </div>
+
+            {/* A submitted video plays right here, and a photo shows here. The
+                file row below (with View) stays for every kind of file. */}
+            {project.submission_path && mediaKind !== "file" && (
+              <div className="mb-3">
+                {mediaLink === undefined && <p className="text-secondary fs-7 mb-0">Loading the {mediaWord}...</p>}
+                {mediaBroken && (
+                  <p className="text-white-50 fs-7 mb-0">
+                    <i className="bi bi-exclamation-circle me-1"></i>This {mediaWord} can't be {mediaKind === "video" ? "played" : "shown"} here. Use View to open it.
+                  </p>
+                )}
+                {mediaLink && !mediaBroken && mediaKind === "video" && (
+                  // preload="metadata": only the length and the first picture
+                  // load until Play is pressed (kind to mobile data).
+                  <video
+                    src={mediaLink}
+                    controls
+                    preload="metadata"
+                    aria-label={`Submitted video for ${project.title}`}
+                    className="w-100 d-block rounded-3 bg-black"
+                    style={{ maxHeight: 480 }}
+                    onError={() => setFailedPath(submissionPath)}
+                  ></video>
+                )}
+                {mediaLink && !mediaBroken && mediaKind === "image" && (
+                  <img
+                    src={mediaLink}
+                    alt={`Submitted work for ${project.title}`}
+                    className="d-block mx-auto rounded-3"
+                    style={{ maxWidth: "100%", maxHeight: 480 }}
+                    onError={() => setFailedPath(submissionPath)}
+                  />
+                )}
+              </div>
+            )}
 
             {project.submission_path && (
               <div className="p-3 rounded-3 bg-black bg-opacity-50 border border-secondary border-opacity-50 d-flex align-items-center justify-content-between gap-3 mb-3">

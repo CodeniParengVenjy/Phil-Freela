@@ -30,11 +30,22 @@ const DELIVERABLE_TYPES = {
   zip: { mime: "application/zip", magicBytes: [0x50, 0x4b, 0x03, 0x04] } // "PK\x03\x04"
 };
 
+// What a submitted file is, by its extension. A "video" or an "image" can be
+// shown right on the Project page; anything else ("file": PDF, ZIP) is only
+// opened with View.
+export function deliverableKind(path) {
+  const ext = path?.split(".").pop()?.toLowerCase();
+  if (["mp4", "webm", "mov"].includes(ext)) return "video";
+  if (["jpg", "jpeg", "png", "webp"].includes(ext)) return "image";
+  return "file";
+}
+
 // The icon shown for a submitted file, by its extension.
 export function deliverableIcon(path) {
+  const kind = deliverableKind(path);
   const ext = path?.split(".").pop()?.toLowerCase();
-  if (["mp4", "webm", "mov"].includes(ext)) return "bi-camera-reels-fill";
-  if (["jpg", "jpeg", "png", "webp"].includes(ext)) return "bi-image-fill";
+  if (kind === "video") return "bi-camera-reels-fill";
+  if (kind === "image") return "bi-image-fill";
   if (ext === "pdf") return "bi-file-earmark-pdf-fill";
   if (ext === "zip") return "bi-file-earmark-zip-fill";
   return "bi-file-earmark-fill";
@@ -168,6 +179,20 @@ export async function submitProject(freelancerId, projectId, file, link, message
     return { error: "Couldn't submit your work. Please try again." };
   }
   return {};
+}
+
+// How long the link behind the Project page's video player or photo lasts.
+// A video keeps loading while it plays, so it needs more than View's 60
+// seconds.
+const PLAYER_LINK_SECONDS = 60 * 60;
+
+// A private link to a submitted video or photo, for showing it on the
+// Project page. Only the project's client and freelancer can get one (the
+// "deliverables" bucket rules); it is never shown on the page and stops
+// working after an hour. Returns the link, or null when it couldn't be made.
+export async function getDeliverableLink(path) {
+  const { data, error } = await supabase.storage.from(DELIVERABLES_BUCKET).createSignedUrl(path, PLAYER_LINK_SECONDS);
+  return error ? null : data?.signedUrl || null;
 }
 
 // Opens a submitted deliverable in a new tab through a link that stops
