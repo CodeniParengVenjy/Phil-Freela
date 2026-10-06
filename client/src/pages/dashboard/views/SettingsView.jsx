@@ -6,8 +6,9 @@ import { deleteMyAccount, downloadAsFile, exportMyData } from "../../../lib/priv
 import Avatar from "../../../components/Avatar";
 import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
+import AppearanceForm from "../components/AppearanceForm";
 
-const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Privacy & Notifications"];
+const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
 
 export default function SettingsView() {
   const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
@@ -234,6 +235,10 @@ export default function SettingsView() {
               ) : (
                 <p className="text-secondary fs-7">Only freelancers upload work, so there's nothing to set here.</p>
               )
+            ) : activeSubNav === "Appearance" ? (
+              currentUserId
+                ? <AppearanceForm userId={currentUserId} accountType={accountType} showToast={showToast} />
+                : <p className="text-secondary fs-7">Loading...</p>
             ) : activeSubNav === "Privacy & Notifications" ? (
               <>
                 <div className="form-check form-switch">

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getActiveSuspension } from "../../../lib/profile";
+import { applyAppearance, clearAppearance, fetchAppearance, forgetAppearance, readSavedAppearance, rememberAppearance } from "../../../lib/appearance";
 import { countUnreadNotifications } from "../../../lib/notifications";
 import { hangUp, listenForCalls } from "../../../lib/calls";
 import { startPresenceHeartbeat } from "../../../lib/presence";
@@ -75,6 +76,29 @@ export function useDashboardShell() {
     };
   }, [accountType]);
 
+  // Settings > Appearance (lib/appearance.js): the user's own accent color and
+  // dark or light mode. The look this browser remembers goes on before the
+  // page is first drawn (useLayoutEffect), so the usual colors don't show for
+  // a moment first. It comes off again when leaving the dashboard, because
+  // the login page and homepage keep the usual look.
+  useLayoutEffect(() => {
+    applyAppearance(readSavedAppearance());
+    return clearAppearance;
+  }, []);
+
+  // Then the look saved on the profile is loaded, in case it was changed on
+  // another device. If it can't be loaded, the remembered one stays.
+  useEffect(() => {
+    if (!currentUserId) return undefined;
+    let active = true;
+    fetchAppearance(currentUserId).then((saved) => {
+      if (!active || !saved) return;
+      rememberAppearance(saved);
+      applyAppearance(saved);
+    });
+    return () => { active = false; };
+  }, [currentUserId]);
+
   useEffect(() => {
     let active = true;
 
@@ -130,7 +154,10 @@ export function useDashboardShell() {
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) navigate("/login", { replace: true });
+      if (session) return;
+      // Signed out: the next person on this browser starts with the usual look.
+      forgetAppearance();
+      navigate("/login", { replace: true });
     });
 
     return () => {

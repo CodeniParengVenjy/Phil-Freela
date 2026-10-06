@@ -7,8 +7,15 @@
 :root {
   --bg-dark: #090a0f;
   --bg-card: rgba(20, 24, 36, 0.75);
+  /* Settings > Appearance can replace the orange and role colors below with a
+     color the user picked (lib/appearance.js sets them on <body>). */
   --accent-orange: #ff6b00;
+  --accent-orange-2: #ff8800;
   --accent-orange-glow: rgba(255, 107, 0, 0.4);
+  --accent-orange-subtle: rgba(255, 107, 0, 0.15);
+  /* Text on top of the accent color (button labels): white, or dark when the
+     picked color is a light one. */
+  --accent-on: #fff;
   --accent-cyan: #06b6d4;
   --accent-amber: #f59e0b;
   --text-main: #f8fafc;
@@ -25,9 +32,9 @@
      as a distinct mode of the same platform rather than a copy of the
      freelancer one. */
   --accent-role: var(--accent-orange);
-  --accent-role-2: #ff8800;
-  --accent-role-glow: rgba(255, 107, 0, 0.4);
-  --accent-role-subtle: rgba(255, 107, 0, 0.15);
+  --accent-role-2: var(--accent-orange-2);
+  --accent-role-glow: var(--accent-orange-glow);
+  --accent-role-subtle: var(--accent-orange-subtle);
 }
 
 body.theme-client {
@@ -73,7 +80,7 @@ body.fixed-layout {
 
 .nav-search-input:focus {
   border-color: var(--accent-orange) !important;
-  box-shadow: 0 0 15px rgba(255, 107, 0, 0.3) !important;
+  box-shadow: 0 0 15px var(--accent-orange-glow) !important;
 }
 
 /* The hint text ("Search...") in light grey, so it can be read on the dark box. */
@@ -195,7 +202,7 @@ body.sidebar-collapsed .sidebar-wrapper {
 .content-wrapper {
   height: 100%;
   overflow-y: auto;
-  background: radial-gradient(circle at 80% 20%, rgba(255, 107, 0, 0.08) 0%, rgba(9, 10, 15, 1) 70%);
+  background: radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--accent-orange) 8%, transparent) 0%, var(--bg-dark) 70%);
 }
 
 /* View Containers */
@@ -223,23 +230,23 @@ body.sidebar-collapsed .sidebar-wrapper {
 }
 
 .bg-orange { background-color: var(--accent-orange) !important; }
-.bg-orange-subtle { background-color: rgba(255, 107, 0, 0.15) !important; }
+.bg-orange-subtle { background-color: var(--accent-orange-subtle) !important; }
 .text-orange { color: var(--accent-orange) !important; }
 
 .btn-gradient-orange {
-  background: linear-gradient(135deg, #ff6b00 0%, #ff8800 100%);
+  background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-orange-2) 100%);
   border: none;
   transition: all 0.3s ease;
 }
 
 .btn-gradient-orange:hover {
-  background: linear-gradient(135deg, #ff8800 0%, #ffa500 100%);
+  filter: brightness(1.08);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 107, 0, 0.4);
+  box-shadow: 0 8px 20px var(--accent-orange-glow);
 }
 
 .shadow-glow {
-  box-shadow: 0 0 15px rgba(255, 107, 0, 0.35);
+  box-shadow: 0 0 15px var(--accent-orange-glow);
 }
 
 /* Role-accent equivalents of the classes above -- orange for freelancers,
@@ -253,7 +260,7 @@ body.sidebar-collapsed .sidebar-wrapper {
 .btn-gradient-role {
   background: linear-gradient(135deg, var(--accent-role) 0%, var(--accent-role-2) 100%);
   border: none;
-  color: #fff;
+  color: var(--accent-on);
   transition: all 0.3s ease;
 }
 
@@ -271,11 +278,18 @@ body.sidebar-collapsed .sidebar-wrapper {
 
 .btn-outline-role:hover {
   background: var(--accent-role);
-  color: #fff;
+  color: var(--accent-on);
 }
 
 .hover-role:hover { color: var(--accent-role) !important; }
-.hover-bg-role:hover { background-color: var(--accent-role) !important; color: #fff !important; }
+.hover-bg-role:hover { background-color: var(--accent-role) !important; color: var(--accent-on) !important; }
+
+/* Buttons and badges in the accent color that also carry Bootstrap's
+   "text-white": their label follows --accent-on, so it can still be read when
+   the user picked a light accent color (yellow, for example). */
+:is(.btn-gradient-role, .btn-gradient-orange, .bg-role, .bg-orange).text-white {
+  color: var(--accent-on) !important;
+}
 
 .shadow-glow-role {
   box-shadow: 0 0 15px var(--accent-role-glow);
@@ -287,13 +301,13 @@ body.sidebar-collapsed .sidebar-wrapper {
 
 .hover-lift:hover {
   transform: translateY(-3px);
-  border-color: rgba(255, 107, 0, 0.4) !important;
+  border-color: var(--accent-orange-glow) !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
 .hover-bg-orange:hover {
   background-color: var(--accent-orange) !important;
-  color: #fff !important;
+  color: var(--accent-on) !important;
 }
 
 .hover-orange:hover {
@@ -994,8 +1008,8 @@ body.sidebar-collapsed .sidebar-wrapper {
 
 .status-tab-btn.active-tab {
   background: var(--accent-orange) !important;
-  color: #fff !important;
-  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.4);
+  color: var(--accent-on) !important;
+  box-shadow: 0 4px 15px var(--accent-orange-glow);
 }
 
 .dropzone-box {
@@ -1004,8 +1018,34 @@ body.sidebar-collapsed .sidebar-wrapper {
 
 .dropzone-box:hover, .dropzone-box.dragover {
   border-color: var(--accent-orange) !important;
-  background: rgba(255, 107, 0, 0.08) !important;
-  box-shadow: 0 0 25px rgba(255, 107, 0, 0.2);
+  background: color-mix(in srgb, var(--accent-orange) 8%, transparent) !important;
+  box-shadow: 0 0 25px color-mix(in srgb, var(--accent-orange) 20%, transparent);
+}
+
+/* Settings > Appearance: the round color choices. The picked one gets a ring. */
+.accent-swatch {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.accent-swatch:hover:not(:disabled),
+.accent-swatch:focus-visible {
+  transform: scale(1.12);
+  outline: none;
+}
+
+.accent-swatch.is-selected {
+  box-shadow: 0 0 0 3px var(--bg-dark), 0 0 0 5px var(--text-main);
+}
+
+.accent-swatch:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 /* Notifications list: each item is a button that opens the full message. */
