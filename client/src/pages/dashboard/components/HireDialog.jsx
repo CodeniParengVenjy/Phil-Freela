@@ -5,11 +5,15 @@ import { MAX_PROJECT_NOTE_LENGTH, hireApplicant, todayInManila } from "../../../
 // The Hire popup on Projects & Resumes. The client writes a note for the
 // freelancer and picks the due date; Hire starts the project (screen 2).
 // It uses the same look as the delete popup (the role-confirm-* CSS classes).
-// applicant: { applicationId, freelancerName, jobTitle }, or null when closed.
-// The parent gives it key={applicationId}, so it starts empty for each person.
+// applicant: { applicationId, freelancerName, jobTitle, jobDueDate }, or null
+// when closed. The parent gives it key={applicationId}, so it starts fresh
+// for each person.
 export default function HireDialog({ applicant, onClose, onHired }) {
   const [note, setNote] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  // The due date the client put on the job post, when it has one that is
+  // still today or later. The date box starts with it; the client can change it.
+  const jobDueDate = applicant?.jobDueDate && applicant.jobDueDate >= todayInManila() ? applicant.jobDueDate : "";
+  const [dueDate, setDueDate] = useState(jobDueDate);
   const [error, setError] = useState("");
   const [hiring, setHiring] = useState(false);
 
@@ -82,12 +86,17 @@ export default function HireDialog({ applicant, onClose, onHired }) {
         <input
           id="hireDueDate"
           type="date"
-          className="form-control bg-secondary bg-opacity-25 border-secondary text-white mb-3"
+          className="form-control bg-secondary bg-opacity-25 border-secondary text-white mb-1"
+          // colorScheme: a light calendar icon and a dark calendar, to suit the dark box.
+          style={{ colorScheme: "dark" }}
           min={todayInManila()}
           value={dueDate}
           onChange={(event) => setDueDate(event.target.value)}
           required
         />
+        <small className="text-secondary fs-8 d-block mb-3">
+          {jobDueDate ? "Filled in from your job post. You can change it." : "The day the work should be finished."}
+        </small>
 
         {error && <p className="text-danger fs-7 mb-3">{error}</p>}
 

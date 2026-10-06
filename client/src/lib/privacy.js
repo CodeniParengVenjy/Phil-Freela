@@ -21,7 +21,7 @@ export async function exportMyData(userId) {
       supabase.from("profiles").select("full_name, username, gender, account_type, description, skills, avatar_path, email_when_offline, created_at, updated_at").eq("id", userId).maybeSingle(),
       supabase.from("identity_verifications").select("id_type, status, created_at").eq("user_id", userId).order("created_at", { ascending: false }),
       supabase.from("services").select("id, title, category, description, price, skill, created_at").eq("freelancer_id", userId),
-      supabase.from("job_posts").select("id, title, category, description, budget, created_at").eq("client_id", userId),
+      supabase.from("job_posts").select("id, title, category, description, budget, due_date, created_at").eq("client_id", userId),
       supabase.from("portfolio_items").select("id, title, description, category, tags, created_at").eq("freelancer_id", userId),
       supabase.from("job_applications").select("id, job_post_id, cover_note, created_at").eq("freelancer_id", userId),
       // (A project has started_at, not created_at: asking for a column that

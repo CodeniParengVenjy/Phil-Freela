@@ -77,11 +77,12 @@ export function getMyApplications(freelancerId) {
     .order("created_at", { ascending: false });
 }
 
-// Everyone who applied to this client's job posts, newest first.
+// Everyone who applied to this client's job posts, newest first. The job's
+// due date comes along so the Hire popup can start with it.
 export function getApplicantsForMyJobs(clientId) {
   return supabase
     .from("job_applications")
-    .select(`id, resume_path, cover_note, created_at, ${PROJECT_FIELD}, job:job_posts!inner(id, title, client_id), freelancer:profiles(id, full_name, username, avatar_path)`)
+    .select(`id, resume_path, cover_note, created_at, ${PROJECT_FIELD}, job:job_posts!inner(id, title, client_id, due_date), freelancer:profiles(id, full_name, username, avatar_path)`)
     .eq("job.client_id", clientId)
     .order("created_at", { ascending: false });
 }

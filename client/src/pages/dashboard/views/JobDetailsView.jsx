@@ -6,6 +6,7 @@ import { fetchIsVerified } from "../../../lib/verification";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { MAX_NOTE_LENGTH, applyToJob, getMyApplicationForJob, openResume, withdrawApplication } from "../../../lib/applications";
+import { formatDay } from "../../../lib/projects";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import StarRating from "../../../components/StarRating";
@@ -41,7 +42,7 @@ export default function JobDetailsView() {
     Promise.all([
       supabase
         .from("job_posts")
-        .select("id, title, category, description, budget, skills, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
+        .select("id, title, category, description, budget, skills, due_date, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
         .eq("id", jobId)
         .maybeSingle(),
       getMyApplicationForJob(currentUserId, jobId),
@@ -227,6 +228,8 @@ export default function JobDetailsView() {
             <div className="d-flex flex-wrap align-items-center gap-2">
               <span className="badge bg-role text-white px-3 py-2 rounded-pill"><i className={`bi ${category.icon} me-1`}></i>{category.label}</span>
               {job.budget && <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill">Budget: ₱{Number(job.budget).toLocaleString()}</span>}
+              {/* The day the client needs the work by (older job posts don't have one). */}
+              {job.due_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-event me-1"></i>Needed by {formatDay(job.due_date)}</span>}
             </div>
           </div>
           {!isOwnJob && job.client && (

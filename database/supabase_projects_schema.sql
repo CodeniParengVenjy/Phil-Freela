@@ -443,3 +443,19 @@ $$;
 
 revoke execute on function public.rating_summaries(uuid[]) from public, anon;
 grant execute on function public.rating_summaries(uuid[]) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Job post due date (migration "job_post_due_date", 2026-10-06).
+-- ---------------------------------------------------------------------------
+
+-- The day the client needs the work by, picked on Post a Project (optional:
+-- older job posts don't have one). It shows on the Job Details page and
+-- fills in the Hire popup's due date, which the client can still change.
+-- Rule: it can't be earlier than the day the job was posted (Philippine
+-- date, the same day hire_applicant() checks against). It's compared with
+-- the posting day, not with today, so a job post can still be edited after
+-- its due date has passed.
+alter table public.job_posts
+  add column due_date date
+  constraint job_posts_due_date_check
+    check (due_date is null or due_date >= (created_at at time zone 'Asia/Manila')::date);

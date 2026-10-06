@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
+import { formatDay, todayInManila } from "../../../lib/projects";
 import BlockedNotice from "../components/BlockedNotice";
 
 // The database allows up to 10 skills, each up to 40 characters.
@@ -19,6 +20,9 @@ export default function PostNeedView() {
   // Required skills, shown as chips on the job page (e.g. "Video Editing").
   const [skills, setSkills] = useState([]);
   const [skillInput, setSkillInput] = useState("");
+  // The day the client needs the work by, as "YYYY-MM-DD" ("" = not set).
+  // It shows on the job's page and fills in the Hire popup later.
+  const [dueDate, setDueDate] = useState("");
   const [budget, setBudget] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [posts, setPosts] = useState(null);
@@ -29,7 +33,7 @@ export default function PostNeedView() {
 
     supabase
       .from("job_posts")
-      .select("id, title, category, budget, created_at")
+      .select("id, title, category, budget, due_date, created_at")
       .eq("client_id", currentUserId)
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -60,6 +64,11 @@ export default function PostNeedView() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId) return;
+    // The database refuses a past due date too (job_posts_due_date_check).
+    if (dueDate && dueDate < todayInManila()) {
+      showToast("The due date can't be in the past.");
+      return;
+    }
     setSubmitting(true);
     const finalSkills = skillInput.trim() ? addSkills(skillInput) : skills;
 
@@ -71,14 +80,16 @@ export default function PostNeedView() {
         category,
         description: description.trim(),
         skills: finalSkills,
+        due_date: dueDate || null,
         budget: budget ? Number(budget) : null
       })
-      .select("id, title, category, budget, created_at")
+      .select("id, title, category, budget, due_date, created_at")
       .single();
 
     setSubmitting(false);
     if (error) {
-      showToast("Couldn't publish that listing. Please try again.");
+      // 23514 = a table rule was broken; with a due date set, that's the date rule.
+      showToast(error.code === "23514" && dueDate ? "The due date can't be in the past." : "Couldn't publish that listing. Please try again.");
       return;
     }
 
@@ -87,6 +98,7 @@ export default function PostNeedView() {
     setCategory("");
     setDescription("");
     setSkills([]);
+    setDueDate("");
     setBudget("");
     showToast(`Your listing "${data.title}" is live for freelancers to see!`);
   };
@@ -103,7 +115,7 @@ export default function PostNeedView() {
             {!postingBlocked && (
               <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
                 <div>
-                  <label className="form-label text-white fw-semibold fs-7">Listing Title:</label>
+                  <label className="form-label text-white fw-semibold fs-7">Enter the job title:</label>
                   <input
                     type="text"
                     className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
@@ -115,15 +127,15 @@ export default function PostNeedView() {
                 </div>
 
                 <div>
-                  <label className="form-label text-white fw-semibold fs-7">Select category:</label>
+                  <label className="form-label text-white fw-semibold fs-7">Select job category:</label>
                   <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={category} onChange={(e) => setCategory(e.target.value)} required>
-                    <option value="" disabled>Select category...</option>
+                    <option value="" disabled>Select job category...</option>
                     {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="form-label text-white fw-semibold fs-7">Describe what you need:</label>
+                  <label className="form-label text-white fw-semibold fs-7">Enter job description:</label>
                   <textarea
                     className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
                     rows="5"
@@ -171,22 +183,40 @@ export default function PostNeedView() {
                   />
                 </div>
 
-                <div>
-                  <label className="form-label text-white fw-semibold fs-7">Budget (₱):</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                    placeholder="e.g. 5000"
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
-                  />
+                {/* Side by side on a laptop, one above the other on a phone. */}
+                <div className="row g-3">
+                  <div className="col-sm-6">
+                    <label htmlFor="jobDueDate" className="form-label text-white fw-semibold fs-7">Due date (optional):</label>
+                    <input
+                      id="jobDueDate"
+                      type="date"
+                      className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                      // colorScheme: a light calendar icon and a dark calendar, to suit the dark box.
+                      style={{ colorScheme: "dark" }}
+                      min={todayInManila()}
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                    />
+                    <small className="text-secondary fs-8">The day you need the work by.</small>
+                  </div>
+
+                  <div className="col-sm-6">
+                    <label className="form-label text-white fw-semibold fs-7">Budget (₱):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                      placeholder="e.g. 5000"
+                      value={budget}
+                      onChange={(e) => setBudget(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 <div className="pt-2">
                   <button type="submit" className="btn btn-gradient-role btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow-role" disabled={submitting}>
-                    {submitting ? "Publishing..." : "Post Listing"}
+                    {submitting ? "Publishing..." : "Post Job"}
                   </button>
                 </div>
               </form>
@@ -211,6 +241,7 @@ export default function PostNeedView() {
                     <p className="text-secondary fs-8 mb-0">
                       {p.budget ? `Budget ₱${Number(p.budget).toLocaleString()}` : "Budget flexible"} • {new Date(p.created_at).toLocaleDateString()}
                     </p>
+                    {p.due_date && <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-calendar-event me-1"></i>Needed by {formatDay(p.due_date)}</p>}
                   </div>
                 );
               })}
