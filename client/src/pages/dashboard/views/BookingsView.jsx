@@ -17,6 +17,9 @@ function BookingCard({ booking, isFreelancer, today, verified, working, onMessag
   // The other person on the booking.
   const other = isFreelancer ? booking.client : booking.freelancer;
   const otherName = personName(other, isFreelancer ? "Client" : "Freelancer");
+  // Both have a public page: a freelancer's portfolio, a client's record. The
+  // picture and the name link to it.
+  const otherPath = other?.id ? profilePath(isFreelancer ? "client" : "freelancer", other.id) : null;
   const status = bookingStatuses[booking.status];
   const isPending = booking.status === "pending";
   // A pending booking whose date has already gone by can't be accepted any more.
@@ -25,14 +28,13 @@ function BookingCard({ booking, isFreelancer, today, verified, working, onMessag
   return (
     <div className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25">
       <div className="d-flex align-items-start gap-3 mb-2">
-        <Avatar path={other?.avatar_path} name={otherName} size={48} />
+        <Avatar path={other?.avatar_path} name={otherName} size={48} to={otherPath} />
         <div className="flex-grow-1 overflow-hidden">
           <h6 className="text-white fw-bold mb-1 text-break">{booking.title}</h6>
           <p className="text-white-50 fs-7 mb-0 text-break">
             {isFreelancer ? "Client" : "Freelancer"}:{" "}
-            {/* Both have a public page: a freelancer's portfolio, a client's record. */}
-            {other?.id ? (
-              <Link to={profilePath(isFreelancer ? "client" : "freelancer", other.id)} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
+            {otherPath ? (
+              <Link to={otherPath} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
             ) : (
               <strong className="text-white">{otherName}</strong>
             )}

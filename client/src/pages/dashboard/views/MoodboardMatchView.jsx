@@ -167,7 +167,7 @@ function MatchCard({ match, verified, isMine, onMessage, onBook }) {
 
       <div className="p-3 d-flex flex-column flex-grow-1">
         <div className="d-flex align-items-center gap-2 mb-3">
-          <Avatar path={freelancer.avatar_path} name={name} size={36} />
+          <Avatar path={freelancer.avatar_path} name={name} size={36} to={`/dashboard/freelancers/${freelancer.id}`} />
           <div className="overflow-hidden">
             <Link to={`/dashboard/freelancers/${freelancer.id}`} className="text-white fw-bold text-truncate d-block">
               {name}

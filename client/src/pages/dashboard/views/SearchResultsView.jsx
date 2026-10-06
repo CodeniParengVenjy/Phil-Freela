@@ -3,6 +3,7 @@ import { Link, useNavigate, useOutletContext, useSearchParams } from "react-rout
 import { supabase } from "../../../lib/supabaseClient";
 import { searchListings } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
+import { profilePath } from "../../../lib/profileStats";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import BookDialog from "../components/BookDialog";
@@ -183,8 +184,9 @@ function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage, ca
         </div>
         <div className="d-flex align-items-center gap-2 fs-8 flex-wrap">
           <span className="text-white-50">
-            {isService && owner?.id ? (
-              <Link to={`/dashboard/freelancers/${owner.id}`} className="text-white-50">{ownerName}</Link>
+            {/* Opens the owner's public page: a freelancer's portfolio, a client's record. */}
+            {owner?.id ? (
+              <Link to={profilePath(isService ? "freelancer" : "client", owner.id)} className="text-white-50">{ownerName}</Link>
             ) : ownerName}
             <VerifiedBadge verified={verifiedIds.has(owner?.id)} showUnverified={!isService} />
           </span>

@@ -210,7 +210,7 @@ export default function JobDetailsView() {
         </Link>
 
         <div className="d-flex flex-column flex-md-row align-items-md-center gap-4 mb-4 pb-4 border-bottom border-secondary border-opacity-25">
-          <Avatar path={job.client?.avatar_path} name={clientName} size={80} />
+          <Avatar path={job.client?.avatar_path} name={clientName} size={80} to={job.client?.id ? `/dashboard/clients/${job.client.id}` : undefined} />
           <div className="flex-grow-1 overflow-hidden">
             <h2 className="h3 fw-bold text-white mb-1 text-break">{job.title}</h2>
             <p className="text-white-50 fs-7 mb-2 d-flex flex-wrap align-items-center gap-2">

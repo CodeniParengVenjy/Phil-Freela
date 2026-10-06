@@ -3,6 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getRecommendations } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
+import { profilePath } from "../../../lib/profileStats";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import BookDialog from "./BookDialog";
@@ -142,8 +143,9 @@ function RecommendationCard({ item, want, owner, verified, isMine, onMessage, ca
         <div className="overflow-hidden">
           <h6 className="text-white fw-bold mb-1 text-break">{item.title}</h6>
           <div className="fs-8 text-white-50">
-            {want === "services" && owner?.id ? (
-              <Link to={`/dashboard/freelancers/${owner.id}`} className="text-white-50">{ownerName}</Link>
+            {/* Opens the owner's public page: a freelancer's portfolio, a client's record. */}
+            {owner?.id ? (
+              <Link to={profilePath(want === "jobs" ? "client" : "freelancer", owner.id)} className="text-white-50">{ownerName}</Link>
             ) : ownerName}
             <VerifiedBadge verified={verified} />
           </div>

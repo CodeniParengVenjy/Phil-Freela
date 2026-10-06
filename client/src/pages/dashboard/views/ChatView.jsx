@@ -11,6 +11,7 @@ import BlockedNotice from "../components/BlockedNotice";
 import { isMessagingBlocked } from "../../../lib/suspensions";
 import { startCall, useCall } from "../../../lib/calls";
 import { presenceStatus, usePresence } from "../../../lib/presence";
+import { profilePath } from "../../../lib/profileStats";
 import { needsTimeDivider, timeDividerLabel } from "../../../lib/chatTime";
 import { FILE_ACCEPT, checkChatFile, deleteChatFile, fileIcon, formatSize, sendChatFile, sendVoiceMessage } from "../../../lib/chatFiles";
 import ChatAttachment from "../components/ChatAttachment";
@@ -429,6 +430,8 @@ export default function ChatView() {
   }
 
   const recipientName = otherProfile?.full_name || otherProfile?.username || "...";
+  // The other person's public page (their picture and name link to it).
+  const otherPath = otherProfile ? profilePath(otherProfile.account_type, otherProfile.id) : null;
   // Call lines don't get the Sent / Delivered / Seen label.
   const lastMineId = [...(messages || [])].reverse().find((m) => m.sender_id === currentUserId && !m.call_id)?.id;
 
@@ -442,10 +445,12 @@ export default function ChatView() {
             <button className="btn btn-sm btn-dark text-secondary flex-shrink-0" onClick={() => navigate("/dashboard/inbox")} aria-label="Back to Inbox">
               <i className="bi bi-arrow-left fs-5"></i>
             </button>
-            <Avatar path={otherProfile?.avatar_path} name={otherProfile ? recipientName : ""} size={40} />
+            <Avatar path={otherProfile?.avatar_path} name={otherProfile ? recipientName : ""} size={40} to={otherPath} />
             <div className="min-w-0">
               <h6 className="text-white fw-bold mb-0 text-truncate">
-                {recipientName}
+                {otherPath
+                  ? <Link to={otherPath} className="text-white text-decoration-none hover-role">{recipientName}</Link>
+                  : recipientName}
                 <VerifiedBadge verified={verifiedIds.has(otherProfile?.id)} />
               </h6>
               {otherStatus && (

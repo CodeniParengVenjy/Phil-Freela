@@ -114,7 +114,7 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
           return (
             <div key={row.id} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25">
               <div className="d-flex align-items-center gap-3 mb-2">
-                <Avatar path={freelancer?.avatar_path} name={name} size={48} />
+                <Avatar path={freelancer?.avatar_path} name={name} size={48} to={freelancer?.id ? `/dashboard/freelancers/${freelancer.id}` : undefined} />
                 <div className="overflow-hidden">
                   <h6 className="text-white fw-bold mb-0 text-break">
                     <Link to={`/dashboard/freelancers/${freelancer?.id}`} className="text-white text-decoration-none hover-role">{name}</Link>

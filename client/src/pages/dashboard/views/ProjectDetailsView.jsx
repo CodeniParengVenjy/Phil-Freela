@@ -94,6 +94,9 @@ export default function ProjectDetailsView() {
   // The other person on the project.
   const other = iAmClient ? project.freelancer : project.client;
   const otherName = personName(other, iAmClient ? "Freelancer" : "Client");
+  // Both have a public page: a freelancer's portfolio, a client's record. The
+  // picture and the name link to it.
+  const otherPath = other?.id ? profilePath(iAmClient ? "freelancer" : "client", other.id) : null;
   const status = projectStatuses[project.status];
   const overdue = project.status !== "done" && project.due_date < todayInManila();
   const hasSubmission = Boolean(project.submission_path || project.submission_link);
@@ -134,12 +137,11 @@ export default function ProjectDetailsView() {
         </div>
 
         <div className="d-flex align-items-center gap-2 mb-4 pb-4 border-bottom border-secondary border-opacity-25">
-          <Avatar path={other?.avatar_path} name={otherName} size={36} />
+          <Avatar path={other?.avatar_path} name={otherName} size={36} to={otherPath} />
           <span className="text-white-50 fs-7">
             {iAmClient ? "Freelancer" : "Client"}:{" "}
-            {/* Both have a public page: a freelancer's portfolio, a client's record. */}
-            {other?.id ? (
-              <Link to={profilePath(iAmClient ? "freelancer" : "client", other.id)} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
+            {otherPath ? (
+              <Link to={otherPath} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
             ) : (
               <strong className="text-white">{otherName}</strong>
             )}
