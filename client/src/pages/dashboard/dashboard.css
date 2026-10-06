@@ -76,6 +76,11 @@ body.fixed-layout {
   box-shadow: 0 0 15px rgba(255, 107, 0, 0.3) !important;
 }
 
+/* The hint text ("Search...") in light grey, so it can be read on the dark box. */
+.nav-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .search-icon {
   position: absolute;
   left: 14px;
@@ -1061,6 +1066,11 @@ body.sidebar-collapsed .sidebar-wrapper {
   }
 
   .notification-item h5 {
+    font-size: 1rem;
+  }
+
+  /* Find Jobs rows: a smaller title, so it isn't squeezed into many lines. */
+  .job-item-card h5 {
     font-size: 1rem;
   }
 

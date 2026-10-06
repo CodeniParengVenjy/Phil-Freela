@@ -13,6 +13,27 @@ export async function fetchRatingSummaries(userIds) {
   return new Map(data.map((row) => [row.user_id, { avgStars: row.avg_stars, count: row.rating_count }]));
 }
 
+// The summaries of every user in userIds, as a Map of id -> summary, for
+// lists (Find Jobs): one request for the whole page instead of one per row.
+// Asks the database again only when the list of users on the page changes.
+export function useRatingSummaries(userIds) {
+  const key = [...new Set(userIds.filter(Boolean))].sort().join(",");
+  const [summaries, setSummaries] = useState(() => new Map());
+
+  useEffect(() => {
+    if (!key) return undefined;
+    let active = true;
+    fetchRatingSummaries(key.split(",")).then((result) => {
+      if (active) setSummaries(result);
+    });
+    return () => {
+      active = false;
+    };
+  }, [key]);
+
+  return summaries;
+}
+
 // A user's own summary, or undefined while loading / no ratings yet.
 export function useRatingSummary(userId) {
   const [summary, setSummary] = useState(undefined);

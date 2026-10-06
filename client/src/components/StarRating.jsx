@@ -1,10 +1,10 @@
 import { useRatingSummary } from "../lib/ratings";
 
-// The read-only "★ 4.8 (5)" badge shown next to a name (Job Details, a
-// freelancer's public page). Renders nothing until that user has at least
-// one rating, so a brand new account doesn't show "★ 0.0 (0)".
-export default function StarRating({ userId, size = "fs-7" }) {
-  const summary = useRatingSummary(userId);
+// The "★ 4.8 (5)" badge for a rating summary that is already loaded. Lists
+// (Find Jobs) load every row's summary in one request (useRatingSummaries)
+// and show it with this. Renders nothing until that user has at least one
+// rating, so a brand new account doesn't show "★ 0.0 (0)".
+export function StarBadge({ summary, size = "fs-7" }) {
   if (!summary || summary.count === 0) return null;
 
   return (
@@ -13,4 +13,10 @@ export default function StarRating({ userId, size = "fs-7" }) {
       <span className="text-secondary fw-normal"> ({summary.count})</span>
     </span>
   );
+}
+
+// The same read-only badge next to one name (Job Details, a freelancer's
+// public page): it loads that user's summary itself.
+export default function StarRating({ userId, size = "fs-7" }) {
+  return <StarBadge summary={useRatingSummary(userId)} size={size} />;
 }
