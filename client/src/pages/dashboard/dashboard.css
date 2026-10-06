@@ -796,23 +796,8 @@ body.sidebar-collapsed .sidebar-wrapper {
   animation: role-confirm-icon-swap 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s backwards;
 }
 
-/* Dark dropdowns. The browser draws the open list itself, so without this it
-   shows a bright white list that clashes with the dark theme. color-scheme
-   makes the list dark; the option colors match the dashboard's navy. */
-.dashboard-view select.form-select {
-  color-scheme: dark;
-  cursor: pointer;
-  --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23cbd5e1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
-}
-
-.dashboard-view select.form-select option {
-  background-color: #151b2b;
-  color: #e2e8f0;
-}
-
-.dashboard-view select.form-select option:disabled {
-  color: #64748b;
-}
+/* (The dark dropdown list colors are in src/index.css, so they also cover the
+   dropdowns outside the dashboard pages.) */
 
 /* Softer focus ring in the role color instead of Bootstrap's bright blue glow. */
 .dashboard-view .form-select:focus,

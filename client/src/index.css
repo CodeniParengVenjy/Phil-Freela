@@ -5,3 +5,24 @@
 body {
   margin: 0;
 }
+
+/* Dark dropdowns (every dropdown with white text). The browser draws the open
+   list itself, so without this it shows a light grey list under the white
+   text, which can't be read. color-scheme makes the list dark; the option
+   colors match the site's navy. This is here, not in dashboard.css, so it
+   also covers the dropdowns outside the dashboard pages: sign-up, and the
+   popups (Book, Add to Portfolio, ID verification). */
+select.form-select.text-white {
+  color-scheme: dark;
+  cursor: pointer;
+  --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23cbd5e1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+select.form-select.text-white option {
+  background-color: #151b2b;
+  color: #e2e8f0;
+}
+
+select.form-select.text-white option:disabled {
+  color: #64748b;
+}
