@@ -17,7 +17,8 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
   const navigate = useNavigate();
 
   // The AI search box (Hybrid recommendation system, content-based
-  // filtering): Enter opens the Search page with the typed words.
+  // filtering): Enter opens the Search page with the typed words. That page
+  // also finds people by their name or @username.
   const handleSearch = (event) => {
     event.preventDefault();
     const text = String(new FormData(event.currentTarget).get("q") || "").trim();
@@ -52,7 +53,7 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
 
         <form className="d-none d-md-flex mx-auto position-relative search-nav-box" style={{ width: 380 }} role="search" onSubmit={handleSearch}>
           <i className="bi bi-search search-icon text-secondary"></i>
-          <input name="q" type="search" className="form-control nav-search-input" placeholder="Search services and jobs..." aria-label="Search services and jobs" maxLength={200} />
+          <input name="q" type="search" className="form-control nav-search-input" placeholder="Search people, services and jobs..." aria-label="Search people, services and jobs" maxLength={200} />
         </form>
 
         <div className="d-flex align-items-center gap-3">

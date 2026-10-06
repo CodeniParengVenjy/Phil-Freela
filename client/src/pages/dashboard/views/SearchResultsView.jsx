@@ -3,9 +3,11 @@ import { Link, useNavigate, useOutletContext, useSearchParams } from "react-rout
 import { supabase } from "../../../lib/supabaseClient";
 import { searchListings } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
+import { searchPeople } from "../../../lib/profile";
 import { profilePath } from "../../../lib/profileStats";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import Avatar from "../../../components/Avatar";
 import BookDialog from "../components/BookDialog";
 
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
@@ -16,6 +18,9 @@ const JOB_COLUMNS = "id, title, category, budget, client:profiles!job_posts_clie
 // service says which posts match the search's meaning and how closely; this
 // page loads those posts from the database, whose rules leave out hidden
 // ones (suspended users, unverified freelancers), and shows them best first.
+// The same search also looks for people by their name or @username. That part
+// is a plain database search (lib/profile.js, searchPeople) that runs at the
+// same time, so people still show when the AI service is offline.
 export default function SearchResultsView() {
   const [params] = useSearchParams();
   const query = (params.get("q") || "").trim();
@@ -23,6 +28,8 @@ export default function SearchResultsView() {
   const { accountType, currentUserId, openChat, showToast } = useOutletContext();
   // The search these results belong to (still loading while it's not `query`).
   const [result, setResult] = useState({ query: null, services: [], jobs: [], error: "" });
+  // The people found, and the search they belong to (same idea as `result`).
+  const [people, setPeople] = useState({ query: null, rows: [] });
   // The service being booked (null = Book popup closed). Only clients book.
   const [bookTarget, setBookTarget] = useState(null);
 
@@ -59,11 +66,30 @@ export default function SearchResultsView() {
     };
   }, [query]);
 
+  // The people search: its own request, so it doesn't wait for the AI service.
+  useEffect(() => {
+    if (query.length < 2) return undefined;
+    let active = true;
+
+    searchPeople(query).then((rows) => {
+      // null = couldn't load: the page then just has no People section.
+      if (active) setPeople({ query, rows: rows || [] });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [query]);
+
   const loading = query.length >= 2 && result.query !== query;
   const total = result.services.length + result.jobs.length;
+  // Only the people found for the words in the box now (not an older search's).
+  const peopleReady = query.length >= 2 && people.query === query;
+  const foundPeople = peopleReady ? people.rows : [];
   const verifiedIds = useVerifiedIds([
     ...result.services.map((s) => s.freelancer?.id),
-    ...result.jobs.map((j) => j.client?.id)
+    ...result.jobs.map((j) => j.client?.id),
+    ...foundPeople.map((person) => person.id)
   ]);
 
   // Clients look for services first, freelancers for jobs.
@@ -84,7 +110,7 @@ export default function SearchResultsView() {
       <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
         <h3 className="text-white fw-bold mb-1"><i className="bi bi-search text-role me-2"></i> Search</h3>
         <p className="text-secondary fs-7 mb-3">
-          Finds services and jobs by meaning, not only the exact words: "logo" also finds "brand identity design".
+          Finds people by their name or @username, and services and jobs by meaning, not only the exact words: "logo" also finds "brand identity design".
         </p>
 
         {/* key: a new search from the top bar refills this box too. */}
@@ -95,8 +121,8 @@ export default function SearchResultsView() {
               name="q"
               type="search"
               className="form-control nav-search-input"
-              placeholder="Search services and jobs..."
-              aria-label="Search services and jobs"
+              placeholder="Search people, services and jobs..."
+              aria-label="Search people, services and jobs"
               defaultValue={query}
               minLength={2}
               maxLength={200}
@@ -109,15 +135,32 @@ export default function SearchResultsView() {
         {query.length < 2 && (
           <p className="text-secondary fs-7 text-center py-4 mb-0">Type at least 2 characters, then press Enter.</p>
         )}
+
+        {/* People first: they show as soon as the database answers, even
+            while the services and jobs are still being searched. */}
+        {foundPeople.length > 0 && (
+          <div className="mb-4">
+            <h6 className="text-white fw-bold mb-3">
+              <i className="bi bi-people-fill text-role me-2"></i>
+              People <span className="text-secondary fw-normal">({foundPeople.length})</span>
+            </h6>
+            <div className="d-flex flex-column gap-3">
+              {foundPeople.map((person) => (
+                <PersonCard key={person.id} person={person} verified={verifiedIds.has(person.id)} onMessage={openChat} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading && (
           <p className="text-secondary fs-7 text-center py-4 mb-0">
             <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Searching...
           </p>
         )}
         {!loading && result.error && <p className="text-danger fs-7 text-center py-4 mb-0">{result.error}</p>}
-        {!loading && !result.error && query.length >= 2 && total === 0 && (
+        {!loading && !result.error && peopleReady && total === 0 && foundPeople.length === 0 && (
           <p className="text-secondary fs-7 text-center py-4 mb-0">
-            No matches for "{query}". Try describing the work in other words.
+            No matches for "{query}". Try describing the work in other words, or check the spelling of the name.
           </p>
         )}
 
@@ -155,6 +198,39 @@ export default function SearchResultsView() {
         }}
       />
     </section>
+  );
+}
+
+// One matching person. Their picture and name open their public page (a
+// freelancer's portfolio or a client's record, by the role they have today).
+function PersonCard({ person, verified, onMessage }) {
+  const name = person.full_name || person.username;
+  const path = profilePath(person.account_type, person.id);
+
+  return (
+    <div className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-3 hover-lift">
+      <Avatar path={person.avatar_path} name={name} size={52} to={path} />
+      {/* min-w-0: a long name ends in "..." so the button stays beside it. */}
+      <div className="flex-grow-1 min-w-0">
+        <h6 className="text-white fw-bold mb-1 text-truncate">
+          <Link to={path} className="text-white text-decoration-none hover-role">{name}</Link>
+          <VerifiedBadge verified={verified} />
+        </h6>
+        <p className="text-white-50 fs-8 mb-0 text-truncate">
+          @{person.username} • {person.account_type === "client" ? "Client" : "Freelancer"}
+        </p>
+      </div>
+      {/* On a phone the button is just the icon, to leave room for the name. */}
+      <button
+        type="button"
+        className="btn btn-gradient-role rounded-pill px-3 py-2 fw-bold text-white text-nowrap fs-7 flex-shrink-0"
+        title={`Message ${name}`}
+        aria-label={`Message ${name}`}
+        onClick={() => onMessage(person.id)}
+      >
+        <i className="bi bi-chat-dots"></i><span className="d-none d-sm-inline ms-1">Message</span>
+      </button>
+    </div>
   );
 }
 

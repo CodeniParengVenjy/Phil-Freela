@@ -92,6 +92,18 @@ export function addSkillsFromText(current, text) {
   return next;
 }
 
+// The "People" section of the Search page: the people whose name or @username
+// contains the typed text (at most 20, names that start with it first). The
+// database function leaves out yourself and anyone banned or suspended (see
+// database/supabase_people_search_schema.sql). Each row has id, full_name,
+// username, account_type and avatar_path. Returns the list, or null when it
+// couldn't be loaded.
+export async function searchPeople(text) {
+  const { data, error } = await supabase.rpc("search_people", { search: text });
+  if (error) return null;
+  return data;
+}
+
 // Settings > Privacy & Notifications > "Email me when I'm offline". When on,
 // the database emails the user about new messages, missed calls, job
 // applications and account news that arrive while they're away

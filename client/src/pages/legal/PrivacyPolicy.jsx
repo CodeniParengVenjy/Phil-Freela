@@ -34,8 +34,10 @@ export default function PrivacyPolicy() {
       <p className="text-secondary">
         We only process your data to run the platform: showing your profile and posts to other users, matching you with
         relevant freelancers or jobs, verifying identities, and keeping the community safe (reviewing reports and
-        enforcing suspensions or bans). PhilFreela does not process any payments -- hiring on this platform is about
-        connecting and messaging, not transactions.
+        enforcing suspensions or bans). Other signed-in users can find your profile by searching for your name or
+        username; the search only shows your name, username, role (freelancer or client) and profile picture.
+        PhilFreela does not process any payments -- hiring on this platform is about connecting and messaging, not
+        transactions.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Consent and transparency</h5>
