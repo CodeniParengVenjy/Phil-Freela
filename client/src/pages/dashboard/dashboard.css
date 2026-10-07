@@ -17,6 +17,13 @@
      picked color is a light one. */
   --accent-on: #fff;
   --accent-on-rgb: 255, 255, 255;
+  /* The top bar: the menu (burger) icon, and the three shades of the gold
+     "Phil" in the logo (components/AccentLogo.jsx). A picked accent color
+     replaces these too. */
+  --topbar-icon: #ffc107;
+  --logo-light: #ffbf45;
+  --logo-mid: #ffa228;
+  --logo-dark: #f58600;
   --accent-cyan: #06b6d4;
   --accent-amber: #f59e0b;
   --text-main: #f8fafc;
@@ -67,7 +74,17 @@ body.fixed-layout {
 
 .logo-img {
   height: 38px;
-  filter: drop-shadow(0 0 8px rgba(255, 107, 0, 0.4));
+  filter: drop-shadow(0 0 8px var(--accent-orange-glow));
+}
+
+/* The logo's letters are drawn as text; this stops them being highlighted
+   like text when the logo is clicked. */
+svg.logo-img {
+  user-select: none;
+}
+
+.topbar-burger {
+  color: var(--topbar-icon);
 }
 
 .nav-search-input {

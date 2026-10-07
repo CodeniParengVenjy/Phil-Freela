@@ -85,6 +85,8 @@ export function readableAccent(hex, mode) {
 // The color settings dashboard.css reads (see the top of that file).
 const ACCENT_NAMES = ["--accent-orange", "--accent-role"];
 const ACCENT_PARTS = ["", "-2", "-glow", "-subtle"];
+// The top bar's own colors: the menu (burger) icon and the logo's "Phil".
+const TOP_BAR_NAMES = ["--topbar-icon", "--logo-light", "--logo-mid", "--logo-dark"];
 
 // Puts the look on the page: the "theme-light" class on <body> (see
 // pages/dashboard/theme.css) and the accent colors. With no accent picked the
@@ -100,6 +102,7 @@ export function applyAppearance(appearance) {
     }
     style.removeProperty("--accent-on");
     style.removeProperty("--accent-on-rgb");
+    for (const name of TOP_BAR_NAMES) style.removeProperty(name);
     return;
   }
 
@@ -119,6 +122,15 @@ export function applyAppearance(appearance) {
   style.setProperty("--accent-on", darkLabels ? "#0f172a" : "#ffffff");
   // The same color as three numbers, for the text inside accent-colored boxes.
   style.setProperty("--accent-on-rgb", darkLabels ? "15, 23, 42" : "255, 255, 255");
+
+  // The top bar stays dark in both modes, so its menu icon and the logo's
+  // "Phil" use the color as it reads on a dark background, even in light
+  // mode. The logo keeps its three shades: lighter, the color, darker.
+  const onDark = readableAccent(accent, "dark");
+  style.setProperty("--topbar-icon", rgbToHex(onDark));
+  style.setProperty("--logo-light", rgbToHex(mix(onDark, [255, 255, 255], 0.3)));
+  style.setProperty("--logo-mid", rgbToHex(onDark));
+  style.setProperty("--logo-dark", rgbToHex(mix(onDark, [0, 0, 0], 0.15)));
 }
 
 // Back to the usual look, for the pages outside the dashboard (login, homepage).

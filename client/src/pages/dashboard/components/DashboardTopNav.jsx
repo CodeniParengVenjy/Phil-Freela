@@ -5,6 +5,7 @@ import { PICTURE_TYPES, checkPicture, holdPicture } from "../../../lib/pictureSe
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
+import AccentLogo from "./AccentLogo";
 
 // Identical between the freelancer and client dashboards -- brand, search,
 // the three quick links, and the account dropdown -- so both layouts share
@@ -98,10 +99,10 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
             aria-label="Toggle Sidebar"
             onClick={onToggleSidebar}
           >
-            <i className="bi bi-list fs-2 text-warning"></i>
+            <i className="bi bi-list fs-2 topbar-burger"></i>
           </button>
           <NavLink to={homeHref} onClick={handleLogoClick} className="navbar-brand d-flex align-items-center gap-2 m-0">
-            <img src="/logo-philfreela.svg" alt="PhilFreela" className="logo-img" />
+            <AccentLogo className="logo-img" />
           </NavLink>
         </div>
 
