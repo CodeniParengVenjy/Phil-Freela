@@ -158,4 +158,4 @@ applying. The Activity Log has no "request" kind, so request lines use the
 kind they are about (ban, suspend or report); adding a kind would need a
 drop, which the connector refuses.
 
-Step 2 (Hide pages): done (2026-10-07). Step 3 (Requests): done. Step 4 (Approvals page): done. Step 5 (browser check): not started.
+Step 2 (Hide pages), step 3 (Requests) and step 4 (Approvals page): done (2026-10-07). Step 5 (browser check): done, 35 of 35 checks passed with a faked Supabase (laptop width only; not checked at phone width). Regular admins do not get a "My requests" list; they see each request on the report or user row instead.
