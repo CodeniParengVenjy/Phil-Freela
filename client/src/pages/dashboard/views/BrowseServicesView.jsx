@@ -110,9 +110,11 @@ export default function BrowseServicesView() {
             const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "Freelancer";
             const slides = itemSlides(s);
             return (
-              // Two cards per row on laptops and big screens (one on phones),
-              // so each picture is big enough to see the whole photo.
-              <div className="col-md-6" key={s.id}>
+              // Four cards per row on laptops and big screens (the same as
+              // "Recommended for you" above it), two on tablets and small
+              // windows, one on phones. The pictures are smaller this way;
+              // the expand button on each one still shows it full screen.
+              <div className="col-sm-6 col-xl-3" key={s.id}>
                 <div className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
                   {/* The picture grows with the card (16:10) and shows the
                       whole photo ("contain"): trimming the edges used to cut
@@ -164,6 +166,11 @@ export default function BrowseServicesView() {
                           <i className="bi bi-trash me-1"></i> Remove
                         </button>
                       ) : (
+                        // In a narrow card (four per row with the menu open) the
+                        // buttons don't fit on one line. flex-grow-1 on Book and
+                        // Message makes each line fill the card's width then,
+                        // instead of leaving ragged gaps; in a wide card it
+                        // changes nothing.
                         <div className="d-flex flex-wrap gap-1 ms-auto">
                           {s.freelancer?.id !== currentUserId && (
                             <button
@@ -179,7 +186,7 @@ export default function BrowseServicesView() {
                           {accountType === "client" && s.freelancer?.id && s.freelancer.id !== currentUserId && (
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold"
+                              className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold flex-grow-1"
                               onClick={() => setBookTarget({ freelancerId: s.freelancer.id, freelancerName, service: { id: s.id, title: s.title } })}
                             >
                               <i className="bi bi-calendar-check me-1"></i> Book
@@ -187,7 +194,7 @@ export default function BrowseServicesView() {
                           )}
                           <button
                             type="button"
-                            className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white"
+                            className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white flex-grow-1"
                             onClick={() => openChat(s.freelancer?.id)}
                           >
                             <i className="bi bi-chat-dots-fill me-1"></i> Message
