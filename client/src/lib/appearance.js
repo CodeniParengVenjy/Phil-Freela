@@ -103,6 +103,7 @@ export function applyAppearance(appearance) {
     style.removeProperty("--accent-on");
     style.removeProperty("--accent-on-rgb");
     for (const name of TOP_BAR_NAMES) style.removeProperty(name);
+    showTabIcon(null);
     return;
   }
 
@@ -127,10 +128,55 @@ export function applyAppearance(appearance) {
   // "Phil" use the color as it reads on a dark background, even in light
   // mode. The logo keeps its three shades: lighter, the color, darker.
   const onDark = readableAccent(accent, "dark");
-  style.setProperty("--topbar-icon", rgbToHex(onDark));
-  style.setProperty("--logo-light", rgbToHex(mix(onDark, [255, 255, 255], 0.3)));
-  style.setProperty("--logo-mid", rgbToHex(onDark));
-  style.setProperty("--logo-dark", rgbToHex(mix(onDark, [0, 0, 0], 0.15)));
+  const shades = [rgbToHex(mix(onDark, [255, 255, 255], 0.3)), rgbToHex(onDark), rgbToHex(mix(onDark, [0, 0, 0], 0.15))];
+  style.setProperty("--topbar-icon", shades[1]);
+  style.setProperty("--logo-light", shades[0]);
+  style.setProperty("--logo-mid", shades[1]);
+  style.setProperty("--logo-dark", shades[2]);
+  // The small logo in the browser tab gets the same shades.
+  showTabIcon(shades);
+}
+
+// ---- The logo in the browser tab ------------------------------------------
+
+// The tab's icon is the logo file. A file can't read the page's colors, so
+// for a picked accent the file's text is loaded once, its three gold shades
+// are swapped for the accent's, and the result is handed to the browser as
+// the icon. (Only the picture can change: the words in the tab are drawn by
+// the browser in its own color.)
+const TAB_ICON_FILE = "/logo-philfreela.svg";
+// The gold shades inside that file, lightest first (the same as --logo-light,
+// --logo-mid and --logo-dark in dashboard.css).
+const FILE_GOLDS = ["#ffbf45", "#ffa228", "#f58600"];
+let logoFileText = null; // loaded the first time it's needed, then kept
+let tabIconTurn = 0;     // so a slow load can't overwrite a newer choice
+
+// shades: three colors, lightest first, or null for the usual gold icon.
+async function showTabIcon(shades) {
+  const turn = ++tabIconTurn;
+  const link = document.querySelector('link[rel="icon"]');
+  if (!link) return;
+  if (!shades) {
+    link.href = TAB_ICON_FILE;
+    return;
+  }
+
+  try {
+    logoFileText ??= fetch(TAB_ICON_FILE).then((response) => {
+      if (!response.ok) throw new Error("The logo file couldn't be loaded.");
+      return response.text();
+    });
+    let drawing = await logoFileText;
+    if (turn !== tabIconTurn) return; // the user has picked something else since
+    FILE_GOLDS.forEach((gold, index) => {
+      drawing = drawing.replace(gold, shades[index]);
+    });
+    link.href = `data:image/svg+xml,${encodeURIComponent(drawing)}`;
+  } catch {
+    // The file couldn't be loaded: the tab keeps the usual icon, and the next
+    // change tries again.
+    logoFileText = null;
+  }
 }
 
 // Back to the usual look, for the pages outside the dashboard (login, homepage).
