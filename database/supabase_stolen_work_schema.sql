@@ -1,6 +1,7 @@
--- Stolen work (PLAN-stolen-work.md, step 2). Run this once in the Supabase
--- SQL Editor, after supabase_admin_roles_schema.sql. It can be run again
--- without harm.
+-- Stolen work (PLAN-stolen-work.md, step 2). Already on the live database
+-- (applied 2026-10-08 as migration "stolen_work"), so there is no need to
+-- run it again. For a fresh database: run it in the Supabase SQL Editor after
+-- supabase_admin_roles_schema.sql. It can be run again without harm.
 --
 -- 1. "Stolen work" becomes a reason users can report and a violation admins
 --    can suspend for, and a portfolio project can be reported (and removed by

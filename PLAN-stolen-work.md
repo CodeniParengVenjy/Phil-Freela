@@ -123,11 +123,11 @@ own changes are committed.
 
 ## What the user does outside the code
 
-Run one SQL file in the Supabase SQL Editor, once, after Step 2. Claude
-can't run it: it replaces three checks and deletes a row inside a function,
-and the Supabase connector refuses those from this window. Until it is run,
-the new reason and the new button answer "couldn't save" and nothing else
-changes.
+Nothing. (The plan first said the user had to run the SQL file in the
+Supabase SQL Editor, because the connector had refused such files before.
+On 2026-10-08 the user said "go run", and the connector accepted it: the
+file is on the live database as migration `stolen_work`. Don't run it
+again; running it twice does no harm, but there is no need.)
 
 ## Step 1: The full ownership check on upload (Medium)
 
@@ -245,9 +245,10 @@ project and any file in `slide-media` (checked on the live database).
 
 New file `database/test_stolen_work.sql`: the checks from "Tests" below.
 
-Step 2: written and pushed 2026-10-08. **Not on the live database yet: the
-user has to run `database/supabase_stolen_work_schema.sql` in the Supabase
-SQL Editor.** What was built differs from the list above in three ways:
+Step 2: written and pushed 2026-10-08, and applied to the live database the
+same day as migration `stolen_work` (the user said "go run"; sent without
+the `begin` / `commit` lines, since a migration is one transaction already).
+What was built differs from the list above in three ways:
 - Admin roles (PLAN-admin-roles.md) went live the same day: a regular
   admin's "Remove" on a report is now a request a super admin approves. So
   the file also lets `admin_requests.listing_table` be `portfolio_items`
@@ -265,9 +266,14 @@ The file is wrapped in `begin` / `commit` and can be run twice.
 Step 2 test results: 28 of 28 checks passed on a stand-in Postgres (PGlite,
 with small copies of the live tables and rules, the existing functions
 copied out of the repo's schema files, and the real `admin_requests` part
-of the admin roles file). The schema file was run twice there. Not run on
-the live database: the Supabase connector refuses a file that drops
-constraints or deletes rows.
+of the admin roles file). The schema file was run twice there.
+
+Then on the live database, after the migration: `database/test_stolen_work.sql`
+passed 28 of 28 (made-up accounts, everything rolled back). Checked
+afterwards: no test users, admins, hidden codes or log lines left behind;
+the four checks have the new values; the two new functions and the trigger
+exist; a signed-in person may call `keep_flagged_remove_other` (it lets only
+admins through) and someone not signed in may not.
 
 ## Step 3: Reporting stolen work on the website (Easy)
 
@@ -340,8 +346,9 @@ regular admin (a request, nothing deleted), the Approvals page carrying it
 out, and Flagged Content (which cards get the button, the confirm box, the
 function call, the files deleted, a PDF's pages next to the photo it
 matched). The new `portfolio_items` query was also sent to the live API
-with the public key and was accepted. Not tested: any of this against the
-live database, which doesn't have the SQL file yet.
+with the public key and was accepted. Not tested: the pages themselves
+against the live database with real accounts (when this was written the
+SQL file was not on it yet; it is now, see Step 2).
 
 ## Tests
 
@@ -390,12 +397,13 @@ same day after the user asked for it. The user said "ok ok" to the whole
 plan.
 
 - Step 1: done and pushed (2026-10-07), live on Vercel.
-- Step 2 (the database file): written, tested on a stand-in and pushed
-  (2026-10-08). Waiting for the user to run it in the Supabase SQL Editor.
+- Step 2 (the database file): done, pushed and applied to the live
+  database (2026-10-08, migration `stolen_work`); its test passed 28 of 28
+  there.
 - Step 3 (reporting on the website): done and pushed (2026-10-08).
 - Step 4 ("Keep this one, remove the other"): done and pushed (2026-10-08).
 
-Left to do: the user runs the SQL file; then run the database test on the
-live project (`database/test_stolen_work.sql` in the SQL Editor, or its
-checks without DELETE statements through the connector) and try the four
-things on the live site.
+All four steps are live. Left to do: the user tries them on the live site
+with real accounts (the pages themselves were tested with a fake backend,
+the database with made-up rows). How long uploads take on Vercel is still
+not measured.
