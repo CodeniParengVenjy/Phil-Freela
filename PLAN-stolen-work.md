@@ -245,7 +245,40 @@ project and any file in `slide-media` (checked on the live database).
 
 New file `database/test_stolen_work.sql`: the checks from "Tests" below.
 
+Step 2: written and pushed 2026-10-08. **Not on the live database yet: the
+user has to run `database/supabase_stolen_work_schema.sql` in the Supabase
+SQL Editor.** What was built differs from the list above in three ways:
+- Admin roles (PLAN-admin-roles.md) went live the same day: a regular
+  admin's "Remove" on a report is now a request a super admin approves. So
+  the file also lets `admin_requests.listing_table` be `portfolio_items`
+  (check `admin_requests_listing_table_check`).
+- The removed post's hidden code is handed to the real owner
+  (`freelancer_id`), but not pointed at the kept upload: the live table
+  allows one code per slide (`watermark_codes_slide_id_key`). Check
+  Ownership then names the real owner and says the post it came from was
+  deleted.
+- `log_portfolio_delete` also covers an older writing item an admin
+  deletes ("deleted the portfolio document ..."), and skips one held by the
+  copy check, which already gets its own line.
+The file is wrapped in `begin` / `commit` and can be run twice.
+
+Step 2 test results: 28 of 28 checks passed on a stand-in Postgres (PGlite,
+with small copies of the live tables and rules, the existing functions
+copied out of the repo's schema files, and the real `admin_requests` part
+of the admin roles file). The schema file was run twice there. Not run on
+the live database: the Supabase connector refuses a file that drops
+constraints or deletes rows.
+
 ## Step 3: Reporting stolen work on the website (Easy)
+
+Changed 2026-10-08 to fit admin roles: "Remove Project" works like "Remove
+Listing". A super admin removes it at once; a regular admin sends it for
+approval, and `admin/views/AdminApprovalsView.jsx` carries it out.
+`lib/adminListings.js` (`removeListing`) learns to remove a portfolio
+project with its files.
+
+Until the SQL file is run, the new reason and the Report button on a
+project answer "This kind of report isn't switched on yet."
 
 No new endpoints. No change in the AI service.
 
@@ -323,6 +356,8 @@ Plan written 2026-10-07, and Step 1 (the full check on upload) added the
 same day after the user asked for it. The user said "ok ok" to the whole
 plan.
 
-- Step 1: done and pushed (2026-10-07).
-- Step 2 (the database file): next.
-- Steps 3 and 4: not started.
+- Step 1: done and pushed (2026-10-07), live on Vercel.
+- Step 2 (the database file): written, tested on a stand-in and pushed
+  (2026-10-08). Waiting for the user to run it in the Supabase SQL Editor.
+- Step 3 (reporting on the website): next.
+- Step 4: not started.
