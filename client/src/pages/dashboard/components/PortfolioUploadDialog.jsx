@@ -30,7 +30,7 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
   const [text, setText] = useState("");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
-  // "Uploading 2 of 5..." while the files are being sent.
+  // "Checking ownership: 2 of 5..." while the files are being sent.
   const [progress, setProgress] = useState("");
 
   // Escape closes it, unless it's saving.

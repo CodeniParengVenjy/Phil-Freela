@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { getCategory } from "../../../lib/categories";
 import { deletePortfolioItem, fetchPortfolio, withoutHiddenCharacters } from "../../../lib/portfolio";
-import { fetchSlideText, isOriginalWork, itemSlides, underReviewMessage } from "../../../lib/slides";
+import { fetchSlideText, isOriginalWork, itemSlides, ownershipPassedMessage, underReviewMessage } from "../../../lib/slides";
 import OriginalBadge from "../../../components/OriginalBadge";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import PortfolioUploadDialog from "./PortfolioUploadDialog";
@@ -68,11 +68,14 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
   const handleSaved = (project, failed) => {
     setItems((prev) => [project, ...(prev || [])]);
     setAdding(false);
-    // Anything held back for an admin (steps 5-9) is mentioned too.
+    // How many files passed the ownership check that ran on each one as it
+    // was uploaded; anything held back for an admin (steps 5-9) is mentioned too.
     const heldBack = underReviewMessage(project.slides);
-    showToast(`${failed.length
+    const passed = ownershipPassedMessage(project.slides);
+    const added = failed.length
       ? `"${project.title}" was added, but ${failed.length === 1 ? "1 file" : `${failed.length} files`} couldn't be. ${failed.join(" ")}`
-      : `"${project.title}" was added to your portfolio!`} ${heldBack}`.trim());
+      : `"${project.title}" was added to your portfolio!`;
+    showToast([added, passed, heldBack].filter(Boolean).join(" "));
   };
 
   const handleDelete = async () => {

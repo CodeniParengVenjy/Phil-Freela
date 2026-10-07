@@ -3,7 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
 import { fetchIsVerified } from "../../../lib/verification";
-import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, addPickedFiles, underReviewMessage, uploadSlides } from "../../../lib/slides";
+import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, addPickedFiles, ownershipPassedMessage, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
 import BlockedNotice from "../components/BlockedNotice";
@@ -31,7 +31,7 @@ export default function ServicesView() {
   const [slideItems, setSlideItems] = useState([]);
   const [slidesError, setSlidesError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // "Uploading 2 of 5..." while the slides are being sent.
+  // "Checking ownership: 2 of 5..." while the slides are being sent.
   const [progress, setProgress] = useState("");
   const [services, setServices] = useState(null);
   // Only freelancers with a verified identity can offer services (the
@@ -126,14 +126,17 @@ export default function ServicesView() {
     setPrice("");
     setSlideItems([]);
 
-    // Files held back for an admin (steps 5-9).
+    // Files held back for an admin (steps 5-9), and how many passed the
+    // ownership check that ran on each one as it was uploaded.
     const heldBack = underReviewMessage(slides);
+    const passed = ownershipPassedMessage(slides);
     if (failed.length) {
       setSlidesError(`Your service is live, but ${failed.length === 1 ? "1 file" : `${failed.length} files`} couldn't be added. ${failed.join(" ")} ${heldBack}`.trim());
-      showToast(`"${service.title}" is live, but some files couldn't be added.`);
+      showToast([`"${service.title}" is live, but some files couldn't be added.`, passed].filter(Boolean).join(" "));
     } else {
       setSlidesError(heldBack);
-      showToast(heldBack ? `"${service.title}" is live. ${heldBack}` : `Your new service "${service.title}" is live!`);
+      const live = heldBack ? `"${service.title}" is live.` : `Your new service "${service.title}" is live!`;
+      showToast([live, passed, heldBack].filter(Boolean).join(" "));
     }
   };
 

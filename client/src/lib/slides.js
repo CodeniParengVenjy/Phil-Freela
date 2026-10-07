@@ -167,6 +167,19 @@ export function underReviewMessage(slides) {
   return messages.join(" ");
 }
 
+// The good news to show after uploading: how many files passed the ownership
+// check ("" when none did). The AI service runs that check on every file as
+// it is uploaded (POST /slides): it reads any hidden code the file already
+// carries, then compares it with other freelancers' work. A file that passes
+// both is saved as "active"; one that doesn't is "flagged" (see above).
+export function ownershipPassedMessage(slides) {
+  const passed = slides.filter((slide) => slide.status === "active").length;
+  if (!passed) return "";
+  if (passed < slides.length) return `Ownership check passed on ${passed} of ${slides.length} files.`;
+  if (passed === 1) return "Ownership check passed.";
+  return `Ownership check passed on ${passed === 2 ? "both" : `all ${passed}`} files.`;
+}
+
 // Whether a service or portfolio project gets the "Original" badge (step 10,
 // see components/OriginalBadge.jsx): it has files, none is waiting for an
 // admin, and every one carries PhilFreela's hidden watermark, so it passed
@@ -180,7 +193,9 @@ export function isOriginalWork(item) {
 
 // Uploads the picked files ([{ key, file, promo }]) one at a time: each
 // request to the AI service must stay small, and it lets the page show
-// progress through onProgress("Uploading 2 of 5..."). If one fails the rest
+// progress through onProgress("Checking ownership: 2 of 5..."). The words
+// say "checking" because the request that uploads a file also runs the
+// ownership check on it (see ownershipPassedMessage). If one fails the rest
 // still go. Returns { slides, failed }: the saved slides, and a message per
 // failed file.
 export async function uploadSlides(target, items, userId, onProgress) {
@@ -188,10 +203,10 @@ export async function uploadSlides(target, items, userId, onProgress) {
   const failed = [];
   for (const [index, { file, promo }] of items.entries()) {
     onProgress(isVideoFile(file)
-      ? `Watermarking video ${index + 1} of ${items.length} (up to 2 minutes)...`
+      ? `Watermarking and checking video ${index + 1} of ${items.length} (up to 2 minutes)...`
       : isDocumentFile(file)
-        ? `Watermarking document ${index + 1} of ${items.length} (a PDF takes about a minute)...`
-        : `Uploading ${index + 1} of ${items.length}...`);
+        ? `Watermarking and checking document ${index + 1} of ${items.length} (a PDF takes about a minute)...`
+        : `Checking ownership: ${index + 1} of ${items.length}...`);
     try {
       slides.push(await uploadSlide(target, file, userId, promo));
     } catch (err) {
