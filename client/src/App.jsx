@@ -44,6 +44,7 @@ import AdminListingsView from "./pages/admin/views/AdminListingsView";
 import AdminReportsView from "./pages/admin/views/AdminReportsView";
 import AdminFlaggedView from "./pages/admin/views/AdminFlaggedView";
 import AdminAnnouncementsView from "./pages/admin/views/AdminAnnouncementsView";
+import AdminApprovalsView from "./pages/admin/views/AdminApprovalsView";
 import AdminBillboardView from "./pages/admin/views/AdminBillboardView";
 import AdminVerificationsView from "./pages/admin/views/AdminVerificationsView";
 import AdminAppealsView from "./pages/admin/views/AdminAppealsView";
@@ -110,6 +111,7 @@ function App() {
         <Route path="flagged" element={<AdminFlaggedView />} />
         <Route path="verifications" element={<AdminVerificationsView />} />
         <Route path="appeals" element={<AdminAppealsView />} />
+        <Route path="approvals" element={<AdminApprovalsView />} />
         <Route path="announcements" element={<AdminAnnouncementsView />} />
         <Route path="billboard" element={<AdminBillboardView />} />
         <Route path="browse-services" element={<BrowseServicesView />} />

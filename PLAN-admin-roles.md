@@ -158,4 +158,4 @@ applying. The Activity Log has no "request" kind, so request lines use the
 kind they are about (ban, suspend or report); adding a kind would need a
 drop, which the connector refuses.
 
-Step 2 (Hide pages): done (2026-10-07). Step 3 (Requests): done. Steps 4 and 5: not started.
+Step 2 (Hide pages): done (2026-10-07). Step 3 (Requests): done. Step 4 (Approvals page): done. Step 5 (browser check): not started.

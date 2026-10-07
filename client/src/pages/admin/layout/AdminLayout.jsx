@@ -16,6 +16,7 @@ const sidebarLinks = [
   { to: "/admin/flagged", icon: "bi-images", label: "Flagged Content", showPendingFlagged: true },
   // superAdminOnly: hidden from regular admins, and their address bar is
   // sent back to Overview. The database rules are the real protection.
+  { to: "/admin/approvals", icon: "bi-patch-check-fill", label: "Approvals", superAdminOnly: true, showPendingApprovals: true },
   { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements", superAdminOnly: true },
   { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard", superAdminOnly: true },
   { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins", superAdminOnly: true },
@@ -41,6 +42,18 @@ export default function AdminLayout() {
   const [pendingAppeals, setPendingAppeals] = useState(0);
   // Number shown on the Flagged Content link.
   const [pendingFlagged, setPendingFlagged] = useState(0);
+  // Number shown on the Approvals link (super admins only).
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+
+  // Counts requests waiting for a super admin. The Approvals page calls this
+  // after each decision so the badge stays correct.
+  const refreshPendingApprovals = useCallback(async () => {
+    const { count } = await supabase
+      .from("admin_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    setPendingApprovals(count || 0);
+  }, []);
 
   // Counts pending reports (head: true = just the count, no rows). The Reports
   // page calls this after resolving/dismissing so the badge stays correct.
@@ -116,11 +129,12 @@ export default function AdminLayout() {
         refreshPendingVerifications();
         refreshPendingAppeals();
         refreshPendingFlagged();
+        if (adminRow.role === "super_admin") refreshPendingApprovals();
       }
     })();
 
     return () => { active = false; };
-  }, [navigate, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged]);
+  }, [navigate, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingApprovals]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -219,6 +233,9 @@ export default function AdminLayout() {
                   {link.showPendingFlagged && pendingFlagged > 0 && (
                     <span className="badge bg-danger rounded-pill ms-auto">{pendingFlagged}</span>
                   )}
+                  {link.showPendingApprovals && pendingApprovals > 0 && (
+                    <span className="badge bg-danger rounded-pill ms-auto">{pendingApprovals}</span>
+                  )}
                 </NavLink>
               ))}
             </aside>
@@ -227,7 +244,7 @@ export default function AdminLayout() {
           <main className="col-12 col-md-9 col-xl-10">
             {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                 to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged }} />
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingApprovals }} />
           </main>
         </div>
       </div>
