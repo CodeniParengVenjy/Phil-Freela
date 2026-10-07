@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import { loadRequests, newestBy, requestKindText, sendRequest } from "../../../lib/adminRequests";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { BAN_DELETE_DAYS, SUSPENSION_COLUMNS, banDeletionDay, blockedBadges, formatEndDate, restrictionText, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields } from "../../../lib/violations";
@@ -32,6 +33,9 @@ export default function AdminUsersView() {
   // user_id -> suspension row, so each table row can look up its status fast.
   // A row with no end date is a ban (see lib/suspensions.js).
   const [suspensions, setSuspensions] = useState({});
+  // user id -> a Suspend / Ban request still waiting for a super admin (see
+  // lib/adminRequests.js). A regular admin's Suspend / Ban is such a request.
+  const [requests, setRequests] = useState({});
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -53,17 +57,23 @@ export default function AdminUsersView() {
     (async () => {
       // Load users and suspensions at the same time. admin_list_users() is a
       // database function that adds each user's email (only admins can call it).
-      const [profilesResult, suspensionsResult] = await Promise.all([
+      const [profilesResult, suspensionsResult, requestsResult] = await Promise.all([
         supabase.rpc("admin_list_users"),
-        supabase.from("user_suspensions").select(SUSPENSION_COLUMNS)
+        supabase.from("user_suspensions").select(SUSPENSION_COLUMNS),
+        loadRequests(["pending"])
       ]);
 
       if (!active) return;
 
-      if (profilesResult.error || suspensionsResult.error) {
+      if (profilesResult.error || suspensionsResult.error || requestsResult.error) {
         setLoadError("Failed to load users.");
         return;
       }
+
+      setRequests(newestBy(
+        requestsResult.data.filter((request) => request.kind === "suspend" || request.kind === "ban"),
+        (request) => request.target_user_id
+      ));
 
       setUsers(profilesResult.data);
       setSuspensions(Object.fromEntries(suspensionsResult.data.map((s) => [s.user_id, s])));
@@ -99,6 +109,21 @@ export default function AdminUsersView() {
     // length and what's blocked; a ban is saved with no end date.
     const penalty = buildPenalty(kind, fields);
     if (!penalty) return;
+
+    // A regular admin sends the Suspend / Ban to a super admin instead of doing it.
+    if (!isSuperAdmin) {
+      setBusy(true);
+      const result = await sendRequest({ adminId, kind, targetUserId: user.id, details: { fields } });
+      setBusy(false);
+      setBlockTarget(null);
+      if (result.error) {
+        setMessage({ text: result.error, type: "error" });
+        return;
+      }
+      setRequests((prev) => ({ ...prev, [user.id]: result.data }));
+      setMessage({ text: "Sent to a super admin. Nothing happens until they approve it.", type: "success" });
+      return;
+    }
 
     setBusy(true);
     const { data, error } = await saveSuspension({ userId: user.id, adminId, penalty });
@@ -257,6 +282,8 @@ export default function AdminUsersView() {
                 const suspension = suspensions[user.id];
                 // "banned", "suspended", or null (active).
                 const status = suspensionStatus(suspension);
+                // A Suspend / Ban request waiting for a super admin, if any.
+                const waiting = requests[user.id];
                 return (
                   <tr key={user.id}>
                     <td>
@@ -302,13 +329,19 @@ export default function AdminUsersView() {
                         <button className="btn btn-outline-success btn-sm" onClick={() => { setLiftTarget({ user, status }); setMessage({ text: "", type: "" }); }}>
                           <i className="bi bi-unlock"></i> {status === "banned" ? "Unban" : "Unsuspend"}
                         </button>
-                      ) : (
+                      ) : !waiting && (
                         <button className="btn btn-outline-warning btn-sm" onClick={() => openBlockDialog("suspend", user)}>
                           <i className="bi bi-slash-circle"></i> Suspend
                         </button>
                       )}
+                      {waiting && (
+                        <span className="badge bg-warning text-dark fw-normal ms-2" title={isSuperAdmin ? "Decide it on the Approvals page" : "A super admin has to approve it"}>
+                          <i className="bi bi-hourglass-split me-1"></i>
+                          {isSuperAdmin ? `${waiting.requested_by_name || "An admin"} asked to ${requestKindText[waiting.kind].toLowerCase()}` : `Waiting for a super admin: ${requestKindText[waiting.kind]}`}
+                        </span>
+                      )}
                       {/* A suspended user can still be banned; that replaces the suspension. */}
-                      {status !== "banned" && (
+                      {status !== "banned" && !waiting && (
                         <button className="btn btn-outline-danger btn-sm ms-2" onClick={() => openBlockDialog("ban", user)}>
                           <i className="bi bi-ban"></i> Ban
                         </button>
@@ -335,6 +368,12 @@ export default function AdminUsersView() {
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmBlock}>
             <h2 className="h5 fw-bold text-white mb-1">{blockText[blockTarget.kind].title} {blockTarget.user.full_name}?</h2>
             <p className="text-secondary fs-7 mb-3">{blockText[blockTarget.kind].info}</p>
+            {!isSuperAdmin && (
+              <p className="fs-8 text-warning mb-3">
+                <i className="bi bi-shield-check me-1"></i>
+                This is sent to a super admin. Nothing happens until they approve it.
+              </p>
+            )}
             <ViolationFields kind={blockTarget.kind} fields={fields} setFields={setFields} />
             <div className="d-flex justify-content-end gap-2">
               <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-3" onClick={() => setBlockTarget(null)} disabled={busy}>
@@ -345,7 +384,7 @@ export default function AdminUsersView() {
                 className={`btn ${blockText[blockTarget.kind].buttonClass} btn-sm rounded-pill px-3 fw-bold`}
                 disabled={busy || !buildPenalty(blockTarget.kind, fields)}
               >
-                {blockText[blockTarget.kind].button}
+                {isSuperAdmin ? blockText[blockTarget.kind].button : "Send for approval"}
               </button>
             </div>
           </form>

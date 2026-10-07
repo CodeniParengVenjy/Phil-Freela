@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
+import { loadRequests, newestBy, requestKindText, sendRequest } from "../../../lib/adminRequests";
 import { SLIDES_SELECT } from "../../../lib/slides";
 import { getScreenshotLinks, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
@@ -42,8 +43,12 @@ function callSummary(call) {
 }
 
 export default function AdminReportsView() {
-  const { adminId, refreshPendingReports } = useOutletContext();
+  const { adminId, isSuperAdmin, refreshPendingReports } = useOutletContext();
   const [reports, setReports] = useState(null);
+  // report id -> the newest request about it that is still waiting or was
+  // declined (see lib/adminRequests.js). A regular admin's action is a request
+  // a super admin has to approve.
+  const [requests, setRequests] = useState({});
   // targetKey -> { name, ownerId, ownerName, item } for everything reported.
   // A missing entry means the user/listing was deleted after being reported.
   const [targets, setTargets] = useState({});
@@ -67,19 +72,21 @@ export default function AdminReportsView() {
     let active = true;
 
     (async () => {
-      const [reportsResult, suspensionsResult] = await Promise.all([
+      const [reportsResult, suspensionsResult, requestsResult] = await Promise.all([
         supabase
           .from("reports")
           .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
           .order("created_at", { ascending: false }),
-        supabase.from("user_suspensions").select("user_id, ends_at")
+        supabase.from("user_suspensions").select("user_id, ends_at"),
+        loadRequests(["pending", "declined"])
       ]);
 
       if (!active) return;
-      if (reportsResult.error || suspensionsResult.error) {
+      if (reportsResult.error || suspensionsResult.error || requestsResult.error) {
         setLoadError("Failed to load reports.");
         return;
       }
+      setRequests(newestBy(requestsResult.data, (request) => request.report_id));
 
       // Look up everything that was reported, grouped by kind, so each
       // report card can show the name/title and the owner.
@@ -160,6 +167,32 @@ export default function AdminReportsView() {
     // For Suspend / Ban: the length and what's blocked, from the penalty chart.
     const penalty = actionText[kind].penalty ? buildPenalty(kind, fields) : null;
     if (actionText[kind].penalty && !penalty) return;
+
+    // A regular admin doesn't do the action: they send it to a super admin,
+    // who approves or declines it on the Approvals page.
+    if (!isSuperAdmin) {
+      setBusy(true);
+      const { data, error } = await sendRequest({
+        adminId,
+        kind: kind === "remove" ? "remove_listing" : kind,
+        reportId: report.id,
+        targetUserId: penalty ? target.ownerId : null,
+        listingTable: kind === "remove" ? (report.target_type === "service" ? "services" : "job_posts") : null,
+        listingId: kind === "remove" ? target.item.id : null,
+        // For Suspend / Ban the pop-up choices are kept, and the penalty is
+        // worked out again when a super admin approves.
+        details: penalty ? { fields } : { note: text }
+      });
+      setBusy(false);
+      setAction(null);
+      if (error) {
+        setMessage({ text: error, type: "error" });
+        return;
+      }
+      setRequests((prev) => ({ ...prev, [report.id]: data }));
+      setMessage({ text: "Sent to a super admin. Nothing happens until they approve it.", type: "success" });
+      return;
+    }
 
     setBusy(true);
     try {
@@ -290,7 +323,25 @@ export default function AdminReportsView() {
                 </p>
               )}
 
-              {report.status === "pending" && (
+              {/* A request about this report: waiting for a super admin, or declined
+                  (then the actions come back so another one can be picked). */}
+              {report.status === "pending" && requests[report.id]?.status === "pending" && (
+                <p className="fs-8 text-warning mb-0 mt-2">
+                  <i className="bi bi-hourglass-split me-1"></i>
+                  {isSuperAdmin
+                    ? `${requests[report.id].requested_by_name || "An admin"} asked to ${requestKindText[requests[report.id].kind].toLowerCase()}. Decide on the Approvals page.`
+                    : `Waiting for a super admin: ${requestKindText[requests[report.id].kind]}`}
+                </p>
+              )}
+              {report.status === "pending" && requests[report.id]?.status === "declined" && (
+                <p className="fs-8 text-white-50 mb-0 mt-2">
+                  <i className="bi bi-x-circle me-1"></i>
+                  {requestKindText[requests[report.id].kind]} request declined by {requests[report.id].decider?.full_name || "a super admin"}
+                  {requests[report.id].decision_note && ` — ${requests[report.id].decision_note}`}
+                </p>
+              )}
+
+              {report.status === "pending" && requests[report.id]?.status !== "pending" && (
                 <div className="d-flex flex-wrap gap-2 mt-3">
                   {isListing && target && (
                     <button className="btn btn-outline-danger btn-sm" onClick={() => openAction("remove", report)}>
@@ -336,6 +387,12 @@ export default function AdminReportsView() {
               {action.kind === "resolve" && "Use this when the problem has been handled."}
               {action.kind === "dismiss" && "Use this when the report isn't a real problem."}
             </p>
+            {!isSuperAdmin && (
+              <p className="fs-8 text-warning mb-3">
+                <i className="bi bi-shield-check me-1"></i>
+                This is sent to a super admin. Nothing happens until they approve it.
+              </p>
+            )}
             {actionText[action.kind].penalty ? (
               <ViolationFields kind={action.kind} fields={fields} setFields={setFields} />
             ) : (
@@ -363,7 +420,7 @@ export default function AdminReportsView() {
                 className={`btn ${actionText[action.kind].buttonClass} btn-sm rounded-pill px-3 fw-bold`}
                 disabled={busy || (actionText[action.kind].penalty && !buildPenalty(action.kind, fields))}
               >
-                {actionText[action.kind].button}
+                {isSuperAdmin ? actionText[action.kind].button : "Send for approval"}
               </button>
             </div>
           </form>
