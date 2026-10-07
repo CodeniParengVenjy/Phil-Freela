@@ -2,16 +2,15 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 
-// One card per number returned by the admin_stats() database function.
+// One card per number returned by the admin_stats() database function. The
+// Users card is drawn separately below because it shows two numbers in one:
+// all users and who is online right now.
 const statCards = [
-  { key: "total_users", label: "Total Users", icon: "bi-people-fill", color: "orange" },
   { key: "freelancers", label: "Freelancers", icon: "bi-person-workspace", color: "orange" },
   { key: "clients", label: "Clients", icon: "bi-briefcase-fill", color: "cyan" },
   { key: "new_this_week", label: "New Users This Week", icon: "bi-person-plus-fill", color: "green" },
   { key: "services", label: "Services Posted", icon: "bi-grid-fill", color: "orange" },
   { key: "job_posts", label: "Job Posts", icon: "bi-megaphone-fill", color: "cyan" },
-  { key: "conversations", label: "Conversations", icon: "bi-chat-dots-fill", color: "green" },
-  { key: "messages", label: "Messages Sent", icon: "bi-send-fill", color: "green" },
   { key: "admins", label: "Admins", icon: "bi-shield-lock-fill", color: "cyan" },
   { key: "open_reports", label: "Open Reports", icon: "bi-flag-fill", color: "red" }
 ];
@@ -49,6 +48,22 @@ export default function AdminOverviewView() {
 
       {!error && (
         <div className="row g-3">
+          {/* All users and the ones online right now (seen in the last 2 minutes). */}
+          <div className="col-12 col-sm-6 col-xl-4">
+            <div className="admin-card admin-stat-card rounded-4 p-3 d-flex align-items-center gap-3">
+              <span className="admin-stat-icon admin-stat-orange">
+                <i className="bi bi-people-fill"></i>
+              </span>
+              <div>
+                <div className="admin-stat-value">{stats ? stats.total_users : "..."}</div>
+                <div className="text-secondary fs-7">Users</div>
+                <div className="fs-8 text-success fw-semibold">
+                  <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>
+                  {stats ? stats.online_users : "..."} online now
+                </div>
+              </div>
+            </div>
+          </div>
           {statCards.map((card) => (
             <div key={card.key} className="col-12 col-sm-6 col-xl-4">
               <div className="admin-card admin-stat-card rounded-4 p-3 d-flex align-items-center gap-3">
