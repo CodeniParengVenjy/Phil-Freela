@@ -94,7 +94,9 @@ export default function SubmitProjectView() {
             />
 
             <div className="dropzone-content py-3" style={{ pointerEvents: "none" }}>
-              <div className="icon-circle mx-auto mb-3 bg-orange bg-opacity-10 text-orange rounded-circle d-flex align-items-center justify-content-center" style={{ width: 72, height: 72 }}>
+              {/* A pale circle with the icon in the accent color. (It used to be a
+                  solid orange circle with an orange icon, so the icon couldn't be seen.) */}
+              <div className="icon-circle mx-auto mb-3 bg-orange-subtle text-orange rounded-circle d-flex align-items-center justify-content-center" style={{ width: 72, height: 72 }}>
                 <i className="bi bi-cloud-arrow-up-fill fs-1"></i>
               </div>
               <h5 className="text-white fw-bold mb-2">{file ? `Selected: ${file.name}` : "Drop your file or Paste your portfolio"}</h5>

@@ -7,6 +7,7 @@ import Avatar from "../../../components/Avatar";
 import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
+import AccountSecurityForm from "../components/AccountSecurityForm";
 
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
 
@@ -302,7 +303,9 @@ export default function SettingsView() {
                 {deleteError && <p className="text-danger fs-8 mt-2 mb-0">{deleteError}</p>}
               </>
             ) : (
-              <p className="text-secondary fs-7">This section isn't wired up yet.</p>
+              // The tab left is Account Security: how you sign in, changing
+              // your password, and signing out your other devices.
+              <AccountSecurityForm showToast={showToast} />
             )}
           </div>
         </div>
