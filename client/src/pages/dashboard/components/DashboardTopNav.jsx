@@ -1,16 +1,17 @@
 import { useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { dashboardRouteFor } from "../../../lib/profile";
-import { PICTURE_TYPES, checkPicture, holdPicture } from "../../../lib/pictureSearch";
+import { PICTURE_TYPES, checkPicture } from "../../../lib/pictureSearch";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import AccentLogo from "./AccentLogo";
+import PictureSearchDialog from "./PictureSearchDialog";
 
 // Identical between the freelancer and client dashboards -- brand, search,
 // the three quick links, and the account dropdown -- so both layouts share
 // this instead of each keeping their own copy.
-export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, onToggleSidebar, onSignOut, onSwitchRole, showToast }) {
+export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, onToggleSidebar, onSignOut, onSwitchRole, showToast, openChat }) {
   const isVerified = useVerifiedIds([currentUserId]).has(currentUserId);
   const switchLabel = accountType === "client" ? "Switch to Freelancer" : "Switch to Client";
   const switchHref = accountType === "client" ? "/dashboard-freelancer" : "/dashboard-client";
@@ -30,9 +31,13 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
 
   // Search by picture (AI Moodboard Matching, feature 2): a client drops a
   // picture anywhere on this top bar, or picks one with the camera button, and
-  // the Moodboard Match page scans it. Moodboard matching finds freelancers,
-  // so it is for clients; a freelancer who drops a picture is told so.
+  // a popup scans it over the page they are on (PictureSearchDialog.jsx).
+  // Moodboard matching finds freelancers, so it is for clients; a freelancer
+  // who drops a picture is told so.
   const canScanPictures = accountType === "client";
+  // The picture being scanned (null = popup closed). Each picture gets a new
+  // ticket, which is the popup's key, so a second picture starts it fresh.
+  const [scan, setScan] = useState(null);
   // True while a file is being dragged over the bar (the search box lights up).
   const [dropping, setDropping] = useState(false);
   const pictureInputRef = useRef(null);
@@ -48,8 +53,7 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
       showToast(problem);
       return;
     }
-    // The picture waits in memory and the page gets its ticket (lib/pictureSearch.js).
-    navigate("/dashboard/moodboard-match", { state: { scan: holdPicture(file) } });
+    setScan({ file, ticket: Date.now() });
   };
 
   // Only files count: dragging text or a link over the bar does nothing.
@@ -157,6 +161,17 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           </div>
         </div>
       </div>
+
+      {/* The popup covers the whole screen, but React still counts it as part
+          of this bar: a picture dropped on the open popup is scanned too. */}
+      <PictureSearchDialog
+        key={scan?.ticket}
+        picture={scan?.file || null}
+        onClose={() => setScan(null)}
+        currentUserId={currentUserId}
+        openChat={openChat}
+        showToast={showToast}
+      />
     </nav>
   );
 }

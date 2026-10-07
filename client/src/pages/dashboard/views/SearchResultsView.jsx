@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { searchListings } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
+import { PICTURE_TYPES, checkPicture } from "../../../lib/pictureSearch";
 import { searchPeople } from "../../../lib/profile";
 import { profilePath } from "../../../lib/profileStats";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import BookDialog from "../components/BookDialog";
+import PictureSearchDialog from "../components/PictureSearchDialog";
 
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
 const JOB_COLUMNS = "id, title, category, budget, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
@@ -32,6 +34,22 @@ export default function SearchResultsView() {
   const [people, setPeople] = useState({ query: null, rows: [] });
   // The service being booked (null = Book popup closed). Only clients book.
   const [bookTarget, setBookTarget] = useState(null);
+  // Search by picture (AI Moodboard Matching, clients only): the same camera
+  // button as the top bar's search box, which phones don't have room for.
+  // scan = the picture being scanned (null = popup closed); its ticket is the
+  // popup's key, so a second picture starts the popup fresh.
+  const canScanPictures = accountType === "client";
+  const pictureInputRef = useRef(null);
+  const [scan, setScan] = useState(null);
+
+  const handlePicturePick = (event) => {
+    const picked = event.target.files?.[0];
+    event.target.value = ""; // so choosing the same picture again still counts
+    if (!picked) return;
+    const problem = checkPicture(picked);
+    if (problem) showToast(problem);
+    else setScan({ file: picked, ticket: Date.now() });
+  };
 
   useEffect(() => {
     if (query.length < 2) return undefined;
@@ -120,7 +138,7 @@ export default function SearchResultsView() {
             <input
               name="q"
               type="search"
-              className="form-control nav-search-input"
+              className={`form-control nav-search-input${canScanPictures ? " has-scan-button" : ""}`}
               placeholder="Search people, services and jobs..."
               aria-label="Search people, services and jobs"
               defaultValue={query}
@@ -128,6 +146,14 @@ export default function SearchResultsView() {
               maxLength={200}
               autoFocus={!query}
             />
+            {canScanPictures && (
+              <>
+                <input ref={pictureInputRef} type="file" className="d-none" accept={PICTURE_TYPES.join(",")} onChange={handlePicturePick} />
+                <button type="button" className="search-scan-button" title="Search by picture" aria-label="Search by picture" onClick={() => pictureInputRef.current?.click()}>
+                  <i className="bi bi-camera"></i>
+                </button>
+              </>
+            )}
           </div>
           <button type="submit" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white">Search</button>
         </form>
@@ -196,6 +222,14 @@ export default function SearchResultsView() {
           showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
           setBookTarget(null);
         }}
+      />
+      <PictureSearchDialog
+        key={scan?.ticket}
+        picture={scan?.file || null}
+        onClose={() => setScan(null)}
+        currentUserId={currentUserId}
+        openChat={openChat}
+        showToast={showToast}
       />
     </section>
   );

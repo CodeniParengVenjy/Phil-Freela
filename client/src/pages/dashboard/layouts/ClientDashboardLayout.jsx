@@ -15,9 +15,8 @@ const sidebarLinks = [
   { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings" },
   { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes" },
-  // AI Moodboard Matching (feature 2): clients only, since it finds
-  // freelancers for a client's reference image, not the other way around.
-  { to: "/dashboard/moodboard-match", icon: "bi-palette2", label: "Moodboard Match" },
+  // (AI Moodboard Matching has no link here: it is the camera button in the
+  // search box, see DashboardTopNav.jsx.)
   { to: "/dashboard/check-ownership", icon: "bi-shield-check", label: "Check Ownership" },
   { to: "/dashboard/settings", icon: "bi-gear-fill", label: "Settings" }
 ];
@@ -42,7 +41,7 @@ export default function ClientDashboardLayout({
 
   return (
     <div className="bg-dark text-light">
-      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} />
+      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} openChat={openChat} />
 
       <div className="app-container d-flex">
         <aside className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">

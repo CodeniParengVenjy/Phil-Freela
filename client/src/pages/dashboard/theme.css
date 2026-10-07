@@ -256,6 +256,12 @@ body.theme-light .content-wrapper .nav-search-input::placeholder {
   color: #94a3b8;
 }
 
+/* The camera button in the Search page's box (Search by picture): grey on the
+   white box. While pointed at it keeps the accent colors from dashboard.css. */
+body.theme-light .content-wrapper .search-scan-button:not(:hover, :focus-visible) {
+  color: #64748b;
+}
+
 body.theme-light .media-dropzone {
   background: rgba(15, 23, 42, 0.02);
 }

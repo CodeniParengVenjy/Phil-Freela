@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import Homepage from "./pages/homepage/Homepage";
 import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
@@ -28,7 +28,6 @@ import SettingsView from "./pages/dashboard/views/SettingsView";
 import VerifyIdentityView from "./pages/dashboard/views/VerifyIdentityView";
 import CheckOwnershipView from "./pages/dashboard/views/CheckOwnershipView";
 import SearchResultsView from "./pages/dashboard/views/SearchResultsView";
-import MoodboardMatchView from "./pages/dashboard/views/MoodboardMatchView";
 import FeedbackView from "./pages/dashboard/views/FeedbackView";
 import JobDetailsView from "./pages/dashboard/views/JobDetailsView";
 import ProjectDetailsView from "./pages/dashboard/views/ProjectDetailsView";
@@ -94,7 +93,9 @@ function App() {
         <Route path="verify-identity" element={<VerifyIdentityView />} />
         <Route path="check-ownership" element={<CheckOwnershipView />} />
         <Route path="search" element={<SearchResultsView />} />
-        <Route path="moodboard-match" element={<MoodboardMatchView />} />
+        {/* The old Moodboard Match page is gone (it is the camera button in
+            the search box now); an old link to it lands on Search. */}
+        <Route path="moodboard-match" element={<Navigate to="/dashboard/search" replace />} />
         <Route path="feedback/:projectId" element={<FeedbackView />} />
         <Route path="job-details/:jobId" element={<JobDetailsView />} />
         <Route path="project-details/:projectId" element={<ProjectDetailsView />} />

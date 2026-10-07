@@ -141,3 +141,25 @@ so CLIP's 89 MB 8-bit model didn't fit. Fixed two ways:
 
 Still needs: the user to try it on the live site once a few more
 freelancers have real portfolio pictures (today there's only one).
+
+## Changed 2026-10-08: search bar only (side task)
+
+The user asked for moodboard matching to be in the search bar only, and to
+appear instead of opening a page. The Moodboard Match page and its sidebar
+link are gone. Picking a picture with the camera button of a search box (the
+top bar, or the Search page's box, which is the one phones have), or dropping
+one on the top bar, opens a popup over the page the client is on
+(`components/PictureSearchDialog.jsx`): it scans, then lists the matching
+freelancers with View portfolio, Book and Message. The matching code moved
+into that file unchanged; the AI endpoint and the database are untouched.
+An old link to `/dashboard/moodboard-match` lands on Search.
+
+Files: `components/PictureSearchDialog.jsx` (new),
+`components/DashboardTopNav.jsx`, `views/SearchResultsView.jsx`,
+`layouts/ClientDashboardLayout.jsx`, `App.jsx`, `lib/pageTitles.js`,
+`lib/pictureSearch.js`, `theme.css`; `views/MoodboardMatchView.jsx` deleted.
+
+Tested in a real browser with a fake backend (33/33): desktop and a 390 px
+phone, dark mode and light mode with a yellow accent, Book and Message from
+the popup, a wrong file type, no matches, and the AI service offline. Not yet
+tried on the live site with a real picture.
