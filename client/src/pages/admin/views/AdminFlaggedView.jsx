@@ -210,6 +210,53 @@ export default function AdminFlaggedView() {
     done(item, "Removed: the copy was deleted.");
   };
 
+  // What a flagged item matched, whichever kind that is: a slide or a
+  // portfolio document (null when it was deleted since).
+  const otherOf = (item) => (item.type === "slide"
+    ? (item.matched_item_id ? item.matchedDocument : item.matched)
+    : (item.matched_slide_id ? item.matchedSlide : item.matched));
+
+  // "Keep this one, remove the other" is offered when the two only look alike
+  // and the earlier post is still there. Not when the held-back file carries
+  // the other freelancer's hidden code: a download can't be the original.
+  const canKeep = (item) => item.match_score < 1 && Boolean(otherOf(item));
+
+  // "Keep this one, remove the other": for when the copier posted first, so
+  // the real owner's upload is the one that was held back. One database
+  // function does all of it together (keep_flagged_remove_other in
+  // database/supabase_stolen_work_schema.sql): this one is shown, the earlier
+  // post is removed, and that post's hidden code is handed to this one's
+  // owner, so Check Ownership names them for any copy of it.
+  const keep = async (item) => {
+    const other = otherOf(item);
+    const keeper = item.owner?.full_name || "this freelancer";
+    const copier = other.owner?.full_name || "the other freelancer";
+    if (!window.confirm(`Keep ${keeper}'s ${itemName(item)} and remove ${copier}'s earlier one?\n\nUse this only when ${copier} is the one who copied. This cannot be undone.`)) return;
+    setBusyId(item.id);
+    const { data, error } = await supabase.rpc("keep_flagged_remove_other", { item_type: item.type, item_id: item.id });
+    if (error) {
+      setBusyId(null);
+      // PGRST202 = the database doesn't have the function yet (the SQL file
+      // hasn't been run). P0001 = the function refused, and says why.
+      setMessage({
+        text: error.code === "PGRST202" ? "This button isn't switched on yet: the database update for stolen work hasn't been run."
+          : error.code === "P0001" ? error.message : "Couldn't do that. Please try again.",
+        type: "error"
+      });
+      return;
+    }
+    // The earlier post is gone; delete its file too (a PDF also has page
+    // pictures). If that fails it only leaves unused files.
+    const removed = data?.[0];
+    if (removed?.removed_path) {
+      await supabase.storage.from("slide-media").remove([removed.removed_path, ...slidePagePaths({ file_path: removed.removed_path, page_count: removed.removed_pages })]);
+    }
+    setBusyId(null);
+    // Other held-back files that matched the same post now show it as deleted.
+    setFlagged((prev) => prev.map((one) => (otherOf(one)?.id === other.id ? { ...one, matched: null, matchedDocument: null, matchedSlide: null } : one)));
+    done(item, `Kept: ${keeper}'s ${itemName(item)} is visible now, and ${copier}'s earlier one was removed.`);
+  };
+
   // A PDF held because one of its pages carries a photo's (or video's) hidden
   // code: someone saved that picture into a PDF (step 12). Its page pictures
   // are shown, not its text, so the admin can see the picture.
@@ -236,8 +283,9 @@ export default function AdminFlaggedView() {
       <p className="text-white-50 fs-7 mb-3" style={{ maxWidth: 760 }}>
         Photos, videos and documents the copy check held back because they're nearly the same as another freelancer's work
         (a Vision Transformer compares photos and video frames, a text model compares writing). Only the uploader and admins
-        can see them until you decide. The earlier upload is usually the original, and Check Ownership shows whose hidden
-        watermark something carries.
+        can see them until you decide. The earlier upload is usually the original: then remove the copy. If the two only
+        look alike, show it. If the earlier one is the copy (the copier posted first), keep this one and remove the other.
+        Check Ownership shows whose hidden watermark something carries.
       </p>
 
       {message.text && (
@@ -272,6 +320,11 @@ export default function AdminFlaggedView() {
               <button className="btn btn-outline-success btn-sm rounded-pill px-3" disabled={busyId === item.id} onClick={() => approve(item)}>
                 <i className="bi bi-check-lg me-1"></i> Looks fine, show it
               </button>
+              {canKeep(item) && (
+                <button className="btn btn-outline-warning btn-sm rounded-pill px-3" disabled={busyId === item.id} onClick={() => keep(item)}>
+                  <i className="bi bi-arrow-left-right me-1"></i> Keep this one, remove the other
+                </button>
+              )}
               <button className="btn btn-outline-danger btn-sm rounded-pill px-3" disabled={busyId === item.id} onClick={() => remove(item)}>
                 <i className="bi bi-trash me-1"></i> Remove the copy
               </button>
