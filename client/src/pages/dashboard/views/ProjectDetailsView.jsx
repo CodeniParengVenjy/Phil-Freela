@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import {
-  deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getProject, getRatingOfMe, markProjectDone,
+  deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getProject, getRatingOfMe, isBlenderFile, markProjectDone,
   openDeliverable, personName, projectStatuses, ratingDeadline, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
 import { profilePath } from "../../../lib/profileStats";
@@ -53,7 +53,7 @@ export default function ProjectDetailsView() {
   }, [project?.status, project?.id, currentUserId]);
 
   // A submitted video or photo is shown right on the page ("video" /
-  // "image"); other files ("file": PDF, ZIP) only get the View button.
+  // "image"); other files ("file": PDF, ZIP, Blender) only get the View button.
   const submissionPath = project?.submission_path;
   const mediaKind = deliverableKind(submissionPath);
   // The private link the player or photo uses, kept with the file it is for:
@@ -283,6 +283,15 @@ export default function ProjectDetailsView() {
                   <i className="bi bi-box-arrow-up-right me-1"></i> View
                 </button>
               </div>
+            )}
+
+            {/* A Blender file can't be shown in the browser, and it can carry
+                scripts, so the page says how to open it safely. */}
+            {isBlenderFile(project.submission_path) && (
+              <p className="text-white-50 fs-7 mb-3">
+                <i className="bi bi-shield-exclamation me-1"></i>
+                This is a Blender file. View downloads it. Open it in Blender and keep "Auto Run Python Scripts" off.
+              </p>
             )}
 
             {project.submission_link && (

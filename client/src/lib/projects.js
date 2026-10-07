@@ -14,25 +14,37 @@ const DELIVERABLES_BUCKET = "deliverables";
 const MAX_DELIVERABLE_BYTES = 50 * 1024 * 1024;
 export const MAX_SUBMISSION_MESSAGE_LENGTH = 1000;
 
-// Allowed file types: extension -> { mime, magicBytes }. magicBytes is the
-// exact start of a real file of that type (like the resume's "%PDF-"
+// Allowed file types: extension -> { mime, magicBytes }. magicBytes lists
+// every way a real file of that type can start (like the resume's "%PDF-"
 // check); it's left out for video, since container formats vary too much
 // to check this simply.
 const DELIVERABLE_TYPES = {
   mp4: { mime: "video/mp4" },
   webm: { mime: "video/webm" },
   mov: { mime: "video/quicktime" },
-  jpg: { mime: "image/jpeg", magicBytes: [0xff, 0xd8, 0xff] },
-  jpeg: { mime: "image/jpeg", magicBytes: [0xff, 0xd8, 0xff] },
-  png: { mime: "image/png", magicBytes: [0x89, 0x50, 0x4e, 0x47] },
+  jpg: { mime: "image/jpeg", magicBytes: [[0xff, 0xd8, 0xff]] },
+  jpeg: { mime: "image/jpeg", magicBytes: [[0xff, 0xd8, 0xff]] },
+  png: { mime: "image/png", magicBytes: [[0x89, 0x50, 0x4e, 0x47]] },
   webp: { mime: "image/webp" },
-  pdf: { mime: "application/pdf", magicBytes: [0x25, 0x50, 0x44, 0x46] }, // "%PDF"
-  zip: { mime: "application/zip", magicBytes: [0x50, 0x4b, 0x03, 0x04] } // "PK\x03\x04"
+  pdf: { mime: "application/pdf", magicBytes: [[0x25, 0x50, 0x44, 0x46]] }, // "%PDF"
+  zip: { mime: "application/zip", magicBytes: [[0x50, 0x4b, 0x03, 0x04]] }, // "PK\x03\x04"
+  // A Blender file (3D modeling) starts with "BLENDER". One saved with
+  // Blender's Compress option starts with the Zstandard signature instead
+  // (gzip before Blender 3.0); the browser can't look inside those, so any
+  // file compressed that way and named .blend gets through this check.
+  blend: {
+    mime: "application/x-blender",
+    magicBytes: [
+      [0x42, 0x4c, 0x45, 0x4e, 0x44, 0x45, 0x52], // "BLENDER"
+      [0x28, 0xb5, 0x2f, 0xfd], // Zstandard
+      [0x1f, 0x8b] // gzip
+    ]
+  }
 };
 
 // What a submitted file is, by its extension. A "video" or an "image" can be
-// shown right on the Project page; anything else ("file": PDF, ZIP) is only
-// opened with View.
+// shown right on the Project page; anything else ("file": PDF, ZIP, Blender)
+// is only opened with View.
 export function deliverableKind(path) {
   const ext = path?.split(".").pop()?.toLowerCase();
   if (["mp4", "webm", "mov"].includes(ext)) return "video";
@@ -48,6 +60,7 @@ export function deliverableIcon(path) {
   if (kind === "image") return "bi-image-fill";
   if (ext === "pdf") return "bi-file-earmark-pdf-fill";
   if (ext === "zip") return "bi-file-earmark-zip-fill";
+  if (ext === "blend") return "bi-box-fill";
   return "bi-file-earmark-fill";
 }
 
@@ -58,15 +71,19 @@ export async function checkDeliverable(file) {
   if (!file) return "";
   const ext = file.name.split(".").pop()?.toLowerCase();
   const type = DELIVERABLE_TYPES[ext];
-  if (!type) return "That file type isn't supported. Use MP4, WebM, MOV, JPG, PNG, WebP, PDF or ZIP.";
+  if (!type) return "That file type isn't supported. Use MP4, WebM, MOV, JPG, PNG, WebP, PDF, ZIP or BLEND.";
   if (file.size > MAX_DELIVERABLE_BYTES) return "Your file must be 50 MB or smaller.";
   if (type.magicBytes) {
-    const header = new Uint8Array(await file.slice(0, type.magicBytes.length).arrayBuffer());
-    const matches = type.magicBytes.every((byte, i) => header[i] === byte);
+    const longest = Math.max(...type.magicBytes.map((start) => start.length));
+    const header = new Uint8Array(await file.slice(0, longest).arrayBuffer());
+    const matches = type.magicBytes.some((start) => start.every((byte, i) => header[i] === byte));
     if (!matches) return "That file doesn't look like a real ." + ext + " file.";
   }
   return "";
 }
+
+// True for a submitted Blender file (the Project page adds a note to it).
+export const isBlenderFile = (path) => /\.blend$/i.test(path || "");
 
 // The name and picture of both people on a project.
 const PEOPLE_FIELDS =
@@ -159,7 +176,11 @@ export async function submitProject(freelancerId, projectId, file, link, message
   if (file) {
     const ext = file.name.split(".").pop().toLowerCase();
     path = `${freelancerId}/${projectId}-${Date.now()}.${ext}`;
-    const { error: uploadError } = await supabase.storage.from(DELIVERABLES_BUCKET).upload(path, file, { contentType: file.type });
+    // Sent with the type from our own list, not the browser's: a browser
+    // gives a .blend no type at all (and can name a .zip differently), and
+    // the bucket only takes the types it knows. slice() doesn't copy the file.
+    const typedFile = file.slice(0, file.size, DELIVERABLE_TYPES[ext].mime);
+    const { error: uploadError } = await supabase.storage.from(DELIVERABLES_BUCKET).upload(path, typedFile);
     if (uploadError) {
       console.error("Deliverable upload failed:", uploadError);
       return { error: "Couldn't upload your file. Please try again." };

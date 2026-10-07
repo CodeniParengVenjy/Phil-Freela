@@ -53,8 +53,8 @@ Statuses: Started, Submitted, Done.
   as they are (portfolio + Message).
 - One project per application. A client can hire more than one applicant
   for the same job.
-- Deliverable: one file (video, photo, PDF or ZIP, up to 50 MB, the
-  Supabase free plan's limit per file) and/or one https link, plus an
+- Deliverable: one file (video, photo, PDF, ZIP or Blender file, up to
+  50 MB, the Supabase free plan's limit per file) and/or one https link, plus an
   optional message. Submitting again replaces the old file, so storage
   doesn't fill up.
 - Ratings can't be edited after they're sent.
@@ -141,7 +141,8 @@ Code:
 Database:
 
 1. Private bucket `deliverables`:
-   - Types: MP4, WebM, MOV, JPG, PNG, WebP, PDF, ZIP, up to 50 MB.
+   - Types: MP4, WebM, MOV, JPG, PNG, WebP, PDF, ZIP, BLEND (Blender, added
+     later: `supabase_blender_deliverables_schema.sql`), up to 50 MB.
    - Saved as `<freelancer id>/<project id>-<time>.<ext>`.
    - Only the project's client and freelancer can open it, through a link
      that expires.

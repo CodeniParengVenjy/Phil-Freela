@@ -89,7 +89,7 @@ export default function SubmitProjectView() {
             <input
               type="file"
               className="position-absolute top-0 start-0 opacity-0 cursor-pointer w-100 h-100"
-              accept=".mp4,.webm,.mov,.jpg,.jpeg,.png,.webp,.pdf,.zip"
+              accept=".mp4,.webm,.mov,.jpg,.jpeg,.png,.webp,.pdf,.zip,.blend"
               onChange={(e) => acceptFile(e.target.files?.[0])}
             />
 
@@ -98,7 +98,7 @@ export default function SubmitProjectView() {
                 <i className="bi bi-cloud-arrow-up-fill fs-1"></i>
               </div>
               <h5 className="text-white fw-bold mb-2">{file ? `Selected: ${file.name}` : "Drop your file or Paste your portfolio"}</h5>
-              <p className="text-secondary fs-7 mb-0">Supports MP4, WebM, MOV, JPG, PNG, WebP, PDF, ZIP (Max 50MB)</p>
+              <p className="text-secondary fs-7 mb-0">Supports MP4, WebM, MOV, JPG, PNG, WebP, PDF, ZIP, BLEND (Max 50MB)</p>
             </div>
 
             {file && (
