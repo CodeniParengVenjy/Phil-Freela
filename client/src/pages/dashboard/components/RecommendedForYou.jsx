@@ -8,7 +8,8 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import BookDialog from "./BookDialog";
 
-const SHOW = 8;
+// Three cards per row, so 9 fills three rows (the AI service sends up to 16).
+const SHOW = 9;
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
 const JOB_COLUMNS = "id, title, category, budget, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
 
@@ -98,7 +99,7 @@ export default function RecommendedForYou() {
 
         <div className="row g-3">
           {state.items.map((item) => (
-            <div className="col-sm-6 col-xl-3" key={item.id}>
+            <div className="col-sm-6 col-lg-4" key={item.id}>
               <RecommendationCard
                 item={item}
                 want={want}

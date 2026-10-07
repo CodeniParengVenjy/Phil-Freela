@@ -110,11 +110,11 @@ export default function BrowseServicesView() {
             const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "Freelancer";
             const slides = itemSlides(s);
             return (
-              // Four cards per row on laptops and big screens (the same as
+              // Three cards per row on laptops and big screens (the same as
               // "Recommended for you" above it), two on tablets and small
-              // windows, one on phones. The pictures are smaller this way;
-              // the expand button on each one still shows it full screen.
-              <div className="col-sm-6 col-xl-3" key={s.id}>
+              // windows, one on phones. The expand button on each picture
+              // still shows it full screen.
+              <div className="col-sm-6 col-lg-4" key={s.id}>
                 <div className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
                   {/* The picture grows with the card (16:10) and shows the
                       whole photo ("contain"): trimming the edges used to cut
@@ -166,8 +166,8 @@ export default function BrowseServicesView() {
                           <i className="bi bi-trash me-1"></i> Remove
                         </button>
                       ) : (
-                        // In a narrow card (four per row with the menu open) the
-                        // buttons don't fit on one line. flex-grow-1 on Book and
+                        // In a narrow card (three per row with the menu open) the
+                        // buttons may not fit on one line. flex-grow-1 on Book and
                         // Message makes each line fill the card's width then,
                         // instead of leaving ragged gaps; in a wide card it
                         // changes nothing.
