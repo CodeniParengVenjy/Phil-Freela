@@ -335,6 +335,8 @@ grant execute on function public.request_project_changes(uuid) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Step 4: ratings and feedback, once a project is Done.
+-- (Ratings are blind since 2026-10-07: supabase_blind_ratings_schema.sql
+-- changes the two rules, the notification and rating_summaries below.)
 -- ---------------------------------------------------------------------------
 
 create table public.project_ratings (
