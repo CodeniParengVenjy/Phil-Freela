@@ -240,14 +240,16 @@ body.sidebar-collapsed .sidebar-wrapper {
 }
 
 .sidebar-pill-btn.active {
-  background: linear-gradient(135deg, #e5e7eb 0%, #cbd5e1 100%);
-  color: #0f172a;
+  /* A gradient theme (Settings > Appearance) fills it with the blend;
+     otherwise it is the usual light pill. */
+  background: var(--accent-gradient, linear-gradient(135deg, #e5e7eb 0%, #cbd5e1 100%));
+  color: var(--accent-gradient-on, #0f172a);
   font-weight: 700;
   box-shadow: 0 4px 15px rgba(255, 255, 255, 0.25);
 }
 
 .sidebar-pill-btn.active i {
-  color: #0f172a;
+  color: var(--accent-gradient-on, #0f172a);
 }
 
 /* Content Area Canvas */
@@ -306,6 +308,15 @@ body.sidebar-collapsed .sidebar-wrapper {
    file). Used on shared views/components so they pick up whichever role is
    currently signed in, instead of always reading as the freelancer side. */
 .bg-role { background-color: var(--accent-role) !important; }
+
+/* Gradient theme (Settings > Appearance): boxes filled with the accent color
+   (your chat bubbles, badges, the round letter of a profile picture) are
+   filled with the blend of the two colors instead. --accent-gradient is only
+   set while a gradient is picked, so with one color nothing changes. */
+.bg-role,
+.bg-orange {
+  background-image: var(--accent-gradient, none);
+}
 .bg-role-subtle { background-color: var(--accent-role-subtle) !important; }
 .text-role { color: var(--accent-role) !important; }
 
@@ -329,7 +340,7 @@ body.sidebar-collapsed .sidebar-wrapper {
 }
 
 .btn-outline-role:hover {
-  background: var(--accent-role);
+  background: var(--accent-gradient, var(--accent-role));
   color: var(--accent-on);
 }
 
@@ -1181,6 +1192,12 @@ body.sidebar-collapsed .sidebar-wrapper {
 .accent-swatch:focus-visible {
   transform: scale(1.12);
   outline: none;
+}
+
+/* A gradient choice is wider, so the blend can be seen. */
+.accent-swatch.is-gradient {
+  width: 64px;
+  border-radius: 19px;
 }
 
 .accent-swatch.is-selected {

@@ -7,8 +7,9 @@ import { supabase } from "./supabaseClient";
 // straight away instead of showing the usual look for a moment first.
 //
 // mode: "dark" or "light". accent: a color like "#3b82f6", or null for the
-// usual one (orange for freelancers, cyan for clients).
-export const DEFAULT_APPEARANCE = { mode: "dark", accent: null };
+// usual one (orange for freelancers, cyan for clients). accent2: a second
+// color the accent blends into (a gradient theme), or null for one color.
+export const DEFAULT_APPEARANCE = { mode: "dark", accent: null, accent2: null };
 
 // The ready-made colors in Settings. Any other color can be picked too.
 export const ACCENT_PRESETS = [
@@ -23,16 +24,26 @@ export const ACCENT_PRESETS = [
   { name: "Yellow", value: "#eab308" }
 ];
 
+// The ready-made gradients in Settings: the accent color ("from") blending
+// into a second color ("to"). Any other pair can be picked too.
+export const GRADIENT_PRESETS = [
+  { name: "Sunset", from: "#ff6b00", to: "#ec4899" },
+  { name: "Ocean", from: "#06b6d4", to: "#3b82f6" },
+  { name: "Grape", from: "#8b5cf6", to: "#ec4899" },
+  { name: "Forest", from: "#22c55e", to: "#14b8a6" },
+  { name: "Fire", from: "#ef4444", to: "#eab308" }
+];
+
 // A "#" and six letters or numbers (0-9, a-f): the same rule as the database.
 const HEX_COLOR = /^#[0-9a-f]{6}$/;
 export const isHexColor = (value) => typeof value === "string" && HEX_COLOR.test(value);
 
 // Keeps only values the database accepts; anything else becomes the usual look.
 function clean(appearance) {
-  return {
-    mode: appearance?.mode === "light" ? "light" : "dark",
-    accent: isHexColor(appearance?.accent) ? appearance.accent : null
-  };
+  const accent = isHexColor(appearance?.accent) ? appearance.accent : null;
+  // A second color needs a first one, and has to be a different color.
+  const accent2 = accent && isHexColor(appearance?.accent2) && appearance.accent2 !== accent ? appearance.accent2 : null;
+  return { mode: appearance?.mode === "light" ? "light" : "dark", accent, accent2 };
 }
 
 // ---- Color math -----------------------------------------------------------
@@ -87,12 +98,14 @@ const ACCENT_NAMES = ["--accent-orange", "--accent-role"];
 const ACCENT_PARTS = ["", "-2", "-glow", "-subtle"];
 // The top bar's own colors: the menu (burger) icon and the logo's "Phil".
 const TOP_BAR_NAMES = ["--topbar-icon", "--logo-light", "--logo-mid", "--logo-dark"];
+// Only set for a gradient theme: the blend itself, and the label color on it.
+const GRADIENT_NAMES = ["--accent-gradient", "--accent-gradient-on"];
 
 // Puts the look on the page: the "theme-light" class on <body> (see
 // pages/dashboard/theme.css) and the accent colors. With no accent picked the
 // colors are taken off again, so the usual orange or cyan comes back.
 export function applyAppearance(appearance) {
-  const { mode, accent } = clean(appearance);
+  const { mode, accent, accent2 } = clean(appearance);
   const { classList, style } = document.body;
   classList.toggle("theme-light", mode === "light");
 
@@ -102,34 +115,54 @@ export function applyAppearance(appearance) {
     }
     style.removeProperty("--accent-on");
     style.removeProperty("--accent-on-rgb");
-    for (const name of TOP_BAR_NAMES) style.removeProperty(name);
+    for (const name of [...TOP_BAR_NAMES, ...GRADIENT_NAMES]) style.removeProperty(name);
     showTabIcon(null);
     return;
   }
 
+  // With a gradient theme there are two colors: the accent blends into the
+  // second one. Both get the same "can it be seen" adjustment.
   const rgb = readableAccent(accent, mode);
+  const rgb2 = accent2 ? readableAccent(accent2, mode) : null;
   const [r, g, b] = rgb.map(Math.round);
   for (const name of ACCENT_NAMES) {
     style.setProperty(name, rgbToHex(rgb));
-    // The second color of the gradient buttons: a little lighter.
-    style.setProperty(`${name}-2`, rgbToHex(mix(rgb, [255, 255, 255], 0.2)));
+    // Where the gradient buttons end: the second color, or with one color a
+    // slightly lighter shade of it.
+    style.setProperty(`${name}-2`, rgbToHex(rgb2 ?? mix(rgb, [255, 255, 255], 0.2)));
     style.setProperty(`${name}-glow`, `rgba(${r}, ${g}, ${b}, 0.4)`);
     style.setProperty(`${name}-subtle`, `rgba(${r}, ${g}, ${b}, 0.15)`);
   }
   // Text on top of the accent (button labels): white, or dark on a light
   // color. 0.45 keeps white on the site's own orange and cyan, and gives
-  // yellow and lighter colors dark labels.
-  const darkLabels = brightness(rgb) > 0.45;
-  style.setProperty("--accent-on", darkLabels ? "#0f172a" : "#ffffff");
+  // yellow and lighter colors dark labels. In a gradient the lighter of the
+  // two colors decides, so the label can be read from one end to the other.
+  const darkLabels = Math.max(brightness(rgb), rgb2 ? brightness(rgb2) : 0) > 0.45;
+  const onAccent = darkLabels ? "#0f172a" : "#ffffff";
+  style.setProperty("--accent-on", onAccent);
   // The same color as three numbers, for the text inside accent-colored boxes.
   style.setProperty("--accent-on-rgb", darkLabels ? "15, 23, 42" : "255, 255, 255");
 
+  // Gradient theme: the boxes that are one flat accent color (your chat
+  // bubbles, the active menu item, badges) are filled with the blend instead.
+  // dashboard.css reads these two only when they are set.
+  if (rgb2) {
+    style.setProperty("--accent-gradient", "linear-gradient(135deg, " + rgbToHex(rgb) + " 0%, " + rgbToHex(rgb2) + " 100%)");
+    style.setProperty("--accent-gradient-on", onAccent);
+  } else {
+    for (const name of GRADIENT_NAMES) style.removeProperty(name);
+  }
+
   // The top bar stays dark in both modes, so its menu icon and the logo's
-  // "Phil" use the color as it reads on a dark background, even in light
-  // mode. The logo keeps its three shades: lighter, the color, darker.
+  // "Phil" use the colors as they read on a dark background, even in light
+  // mode. The logo has three shades: with one color they are lighter, the
+  // color, darker; with a gradient they run from the first color to the second.
   const onDark = readableAccent(accent, "dark");
-  const shades = [rgbToHex(mix(onDark, [255, 255, 255], 0.3)), rgbToHex(onDark), rgbToHex(mix(onDark, [0, 0, 0], 0.15))];
-  style.setProperty("--topbar-icon", shades[1]);
+  const onDark2 = accent2 ? readableAccent(accent2, "dark") : null;
+  const shades = onDark2
+    ? [rgbToHex(onDark), rgbToHex(mix(onDark, onDark2, 0.5)), rgbToHex(onDark2)]
+    : [rgbToHex(mix(onDark, [255, 255, 255], 0.3)), rgbToHex(onDark), rgbToHex(mix(onDark, [0, 0, 0], 0.15))];
+  style.setProperty("--topbar-icon", rgbToHex(onDark));
   style.setProperty("--logo-light", shades[0]);
   style.setProperty("--logo-mid", shades[1]);
   style.setProperty("--logo-dark", shades[2]);
@@ -151,7 +184,8 @@ const FILE_GOLDS = ["#ffbf45", "#ffa228", "#f58600"];
 let logoFileText = null; // loaded the first time it's needed, then kept
 let tabIconTurn = 0;     // so a slow load can't overwrite a newer choice
 
-// shades: three colors, lightest first, or null for the usual gold icon.
+// shades: the three colors for "Phil", top-left to bottom-right, or null for
+// the usual gold icon.
 async function showTabIcon(shades) {
   const turn = ++tabIconTurn;
   const link = document.querySelector('link[rel="icon"]');
@@ -218,16 +252,16 @@ export function forgetAppearance() {
 
 // The look saved on the user's profile, or null when it couldn't be loaded.
 export async function fetchAppearance(userId) {
-  const { data, error } = await supabase.from("profiles").select("theme_mode, accent_color").eq("id", userId).maybeSingle();
+  const { data, error } = await supabase.from("profiles").select("theme_mode, accent_color, accent_color_2").eq("id", userId).maybeSingle();
   if (error || !data) return null;
-  return clean({ mode: data.theme_mode, accent: data.accent_color });
+  return clean({ mode: data.theme_mode, accent: data.accent_color, accent2: data.accent_color_2 });
 }
 
 // Returns "" when saved, or a message to show the user.
 export async function saveAppearance(userId, appearance) {
-  const { mode, accent } = clean(appearance);
+  const { mode, accent, accent2 } = clean(appearance);
   // .select("id") returns the updated row, so an empty result means nothing was saved.
-  const { data, error } = await supabase.from("profiles").update({ theme_mode: mode, accent_color: accent }).eq("id", userId).select("id");
+  const { data, error } = await supabase.from("profiles").update({ theme_mode: mode, accent_color: accent, accent_color_2: accent2 }).eq("id", userId).select("id");
   if (error || !data?.length) return "Couldn't save your appearance. Please try again.";
   return "";
 }

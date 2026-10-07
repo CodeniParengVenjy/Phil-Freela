@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ACCENT_PRESETS, applyAppearance, fetchAppearance, isHexColor, readSavedAppearance, rememberAppearance, saveAppearance } from "../../../lib/appearance";
+import { ACCENT_PRESETS, GRADIENT_PRESETS, applyAppearance, fetchAppearance, isHexColor, readSavedAppearance, rememberAppearance, saveAppearance } from "../../../lib/appearance";
 
 // The usual accent of each role, shown on the "Default" choice.
 const ROLE_COLOR = { freelancer: "#ff6b00", client: "#06b6d4" };
@@ -10,9 +10,10 @@ const MODES = [
   { value: "light", label: "Light", icon: "bi-sun-fill", hint: "Bright, like paper" }
 ];
 
-// Settings > Appearance: dark or light mode, and the user's own accent color.
-// A change shows on the page at once and is saved on their profile, so it
-// follows them to any device (see lib/appearance.js).
+// Settings > Appearance: dark or light mode, the user's own accent color, and
+// an optional second color it blends into (a gradient theme). A change shows
+// on the page at once and is saved on their profile, so it follows them to
+// any device (see lib/appearance.js).
 export default function AppearanceForm({ userId, accountType, showToast }) {
   // Starts from what this browser remembers; the saved profile replaces it
   // once it has loaded.
@@ -21,8 +22,9 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
   // one can't be saved over the real one.
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  // The color in the "any color" box (null = not touched yet).
+  // The colors in the two "any color" boxes (null = not touched yet).
   const [pickedColor, setPickedColor] = useState(null);
+  const [pickedSecond, setPickedSecond] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -35,7 +37,10 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
   }, [userId]);
 
   const roleColor = ROLE_COLOR[accountType] || ROLE_COLOR.freelancer;
-  const boxColor = pickedColor ?? appearance.accent ?? roleColor;
+  // The first color of a gradient: the picked accent, or the role's usual color.
+  const firstColor = appearance.accent ?? roleColor;
+  const boxColor = pickedColor ?? firstColor;
+  const secondBoxColor = pickedSecond ?? appearance.accent2 ?? "#ec4899";
   const busy = !loaded || saving;
 
   // Shows the change right away, then saves it. If it can't be saved, the
@@ -57,9 +62,11 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
     showToast("Appearance saved.");
   };
 
+  // The accent is the gradient's first color, so changing it keeps the second
+  // one. "Default" (no accent) goes back to the usual color with no gradient.
   const chooseAccent = (accent) => {
     setPickedColor(null);
-    change({ ...appearance, accent });
+    change({ ...appearance, accent, accent2: accent ? appearance.accent2 : null });
   };
 
   const applyPickedColor = () => {
@@ -70,6 +77,33 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
       return;
     }
     chooseAccent(boxColor);
+  };
+
+  // A ready-made gradient sets both colors at once.
+  const chooseGradient = (preset) => {
+    setPickedColor(null);
+    setPickedSecond(null);
+    change({ ...appearance, accent: preset.from, accent2: preset.to });
+  };
+
+  const removeGradient = () => {
+    setPickedSecond(null);
+    change({ ...appearance, accent2: null });
+  };
+
+  // Any second color. The first color is saved with it (the role's usual
+  // color when none was picked), because a blend needs both ends.
+  const applyPickedSecond = () => {
+    if (!isHexColor(secondBoxColor)) {
+      showToast("Please pick a color.");
+      return;
+    }
+    if (secondBoxColor === firstColor) {
+      showToast("Pick a second color that is different from the first one.");
+      return;
+    }
+    setPickedSecond(null);
+    change({ ...appearance, accent: firstColor, accent2: secondBoxColor });
   };
 
   return (
@@ -163,6 +197,71 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
             ? "A color that is too close to the background is adjusted a little, so buttons and icons can still be seen."
             : "Loading your appearance..."}
         </small>
+      </div>
+
+      {/* Gradient theme: the accent color blends into a second color. */}
+      <div>
+        <h6 className="text-white fw-bold mb-1">Gradient</h6>
+        <p className="text-secondary fs-8 mb-3">
+          Blend your accent color into a second color. The blend shows on buttons, the page you're on in the menu, your
+          chat messages and the logo. Icons and links keep the accent color.
+        </p>
+
+        <div className="d-flex flex-wrap align-items-center gap-3" role="radiogroup" aria-label="Gradient">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={appearance.accent2 === null}
+            className={`btn btn-sm rounded-pill px-3 fw-bold ${appearance.accent2 === null ? "btn-gradient-role text-white" : "btn-outline-secondary text-white"}`}
+            onClick={removeGradient}
+            disabled={busy || appearance.accent2 === null}
+          >
+            No gradient
+          </button>
+          {GRADIENT_PRESETS.map((preset) => {
+            const picked = appearance.accent === preset.from && appearance.accent2 === preset.to;
+            return (
+              <button
+                key={preset.name}
+                type="button"
+                role="radio"
+                aria-checked={picked}
+                aria-label={preset.name}
+                title={preset.name}
+                className={`accent-swatch is-gradient${picked ? " is-selected" : ""}`}
+                style={{ background: `linear-gradient(135deg, ${preset.from} 0%, ${preset.to} 100%)` }}
+                onClick={() => chooseGradient(preset)}
+                disabled={busy}
+              ></button>
+            );
+          })}
+        </div>
+
+        <label htmlFor="anyGradientColor" className="form-label text-white-50 fw-semibold fs-7 mt-3">Or blend into any color:</label>
+        <div className="d-flex flex-wrap align-items-center gap-3">
+          {/* The blend as it would look with the color in the box. */}
+          <span
+            className="accent-swatch is-gradient"
+            style={{ background: `linear-gradient(135deg, ${firstColor} 0%, ${secondBoxColor} 100%)`, cursor: "default" }}
+            aria-hidden="true"
+          ></span>
+          <input
+            id="anyGradientColor"
+            type="color"
+            className="form-control form-control-color bg-secondary bg-opacity-25 border-secondary"
+            value={secondBoxColor}
+            onChange={(event) => setPickedSecond(event.target.value.toLowerCase())}
+            disabled={busy}
+          />
+          <button
+            type="button"
+            className="btn btn-outline-role rounded-pill px-4 py-2 fw-bold fs-7"
+            onClick={applyPickedSecond}
+            disabled={busy || secondBoxColor === appearance.accent2}
+          >
+            {saving ? "Saving..." : "Use as second color"}
+          </button>
+        </div>
       </div>
     </div>
   );

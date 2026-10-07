@@ -14,3 +14,14 @@ alter table public.profiles
   -- A color like '#3b82f6'. Empty (null) = the usual orange or cyan.
   add column if not exists accent_color text
     check (accent_color is null or accent_color ~ '^#[0-9a-f]{6}$');
+
+-- Gradient theme: an optional second color that the accent color blends into
+-- (orange into pink, for example). Empty (null) = no gradient.
+alter table public.profiles
+  add column if not exists accent_color_2 text
+    check (accent_color_2 is null or accent_color_2 ~ '^#[0-9a-f]{6}$');
+
+-- A second color only means something next to a first one.
+alter table public.profiles
+  add constraint profiles_gradient_needs_first_color
+    check (accent_color_2 is null or accent_color is not null);
