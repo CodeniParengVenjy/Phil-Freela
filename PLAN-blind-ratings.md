@@ -182,3 +182,36 @@ Changes from the plan:
 Step 1 files: `database/supabase_blind_ratings_schema.sql`,
 `database/test_blind_ratings.sql`, `database/supabase_projects_schema.sql`
 (one pointer comment).
+
+Step 2 (the website): built and pushed (2026-10-07). No SQL. Tested in a real
+browser (Playwright, the fake backend, which applies the same blind rule):
+33/33 passed, no page errors. The client's page and the freelancer's page
+match the mockups (title on the left, no badge, "(optional)" inside the box,
+stars on the left, "Submit"); the blind note names the other person and the
+right closing date; the right rating is sent (the freelancer's with stars
+only); a star can be picked with the keyboard; the project page shows the
+four states (button + blind line, "hidden from ... until", both ratings with
+the feedback, period ended); the ratings page refuses a second rating and
+closes after 14 days; on a 390 px phone nothing scrolls sideways; in light
+mode with a yellow accent all the text is dark and readable. The site also
+builds.
+
+Changes from the plan:
+- The stars are real buttons now (they were icons), so they work with the
+  keyboard and a screen reader.
+- The "(optional)" hint was too dark to read on the dark box, so the
+  feedback box got its own hint color (`.feedback-box` in `dashboard.css`).
+  The same faint hint text is on the other dashboard text boxes in dark mode
+  (Post a Need, Services, Settings...); that was left alone, it is not part
+  of this plan.
+- On the project page, when the 14 days end and the other person never
+  rated, it says "Juan didn't rate this project."
+
+Step 2 files: `lib/projects.js` (`RATING_WINDOW_DAYS`, `ratingDeadline`,
+`getRatingOfMe`), `views/FeedbackView.jsx`, `views/ProjectDetailsView.jsx`,
+`pages/dashboard/dashboard.css`, `pages/legal/TermsOfService.jsx`,
+`DEMO-GUIDE.md`.
+
+Both steps in this plan are built. This plan is done. Still needs the user
+to test it on the live site: mark a project Done as the client, rate, then
+sign in as the freelancer and rate back.

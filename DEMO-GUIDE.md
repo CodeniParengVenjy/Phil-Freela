@@ -35,8 +35,11 @@ repository: it is the one Claude gave in the chat that day.
 3. **Browse Services**: Rico's copywriting service is not there, because he is
    not verified. Marco's is, with no record yet.
 4. **Projects**: "Holiday promo video" is waiting for Maria's review. Open it,
-   mark it done and rate Juan. This is the live Done and Rating demo, and
-   Juan's numbers change right after.
+   mark it done and rate Juan. This is the live Done and Rating demo. Ratings
+   are blind, so Juan's numbers do NOT change yet: sign in as **Juan**, whose
+   notification says a rating is waiting (no stars shown), open the project
+   and rate Maria. Now both ratings show on the project page and Juan's
+   numbers change.
 5. **Bookings**: one accepted ("Christmas menu poster", shown as Project:
    Started) and one still pending with Marco.
 6. Sign in as **Marco**: the Bookings link shows 1. Accept "Photos of our new

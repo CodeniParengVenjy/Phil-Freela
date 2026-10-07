@@ -40,8 +40,10 @@ export default function TermsOfService() {
 
       <h5 className="text-white fw-bold mt-4 mb-2">Ratings</h5>
       <p className="text-secondary">
-        Once a project is marked done, both sides can rate each other once. Ratings are shown publicly on profiles and
-        can't be edited or removed afterward, since they're meant to reflect real completed work.
+        Once a project is marked done, both sides can rate each other once, within 14 days. Ratings are blind: your
+        rating stays hidden from the other person, and from everyone else, until they have rated you too or the 14 days
+        are over. After that, ratings are shown publicly on profiles. They can't be edited or removed, since they're
+        meant to reflect real completed work.
       </p>
       <p className="text-secondary">
         A profile also shows a track record other people can see: how many projects were marked done, how many of

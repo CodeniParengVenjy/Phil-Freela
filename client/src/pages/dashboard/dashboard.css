@@ -1064,6 +1064,12 @@ body.sidebar-collapsed .sidebar-wrapper {
   transform: scale(1.2);
 }
 
+/* The "(optional)" hint inside the feedback box, in light grey so it can be
+   read on the dark box (light mode sets its own color in theme.css). */
+.feedback-box::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .status-tab-btn {
   transition: all 0.25s ease;
 }

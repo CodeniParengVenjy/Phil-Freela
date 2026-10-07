@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import {
-  deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getProject, markProjectDone,
-  openDeliverable, personName, projectStatuses, requestProjectChanges, todayInManila
+  deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getProject, getRatingOfMe, markProjectDone,
+  openDeliverable, personName, projectStatuses, ratingDeadline, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
 import { profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
@@ -21,6 +21,10 @@ export default function ProjectDetailsView() {
   const [working, setWorking] = useState(false);
   // undefined while loading (or not Done yet), null = hasn't rated, else the rating.
   const [myRating, setMyRating] = useState(undefined);
+  // The other person's rating of the signed-in user. Ratings are blind, so
+  // this stays null until the database lets it be seen (both sides rated, or
+  // the time for rating is over).
+  const [theirRating, setTheirRating] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -33,12 +37,15 @@ export default function ProjectDetailsView() {
   }, [projectId]);
 
   // Once it's Done, check whether the signed-in user already rated it
-  // (screen 4/5 unlock the "Add your ratings and feedback" button).
+  // (screen 4/5 unlock the "Add your ratings and feedback" button), and
+  // whether the other person's rating of them can be seen yet.
   useEffect(() => {
     if (project?.status !== "done" || !currentUserId) return undefined;
     let active = true;
-    getMyRating(currentUserId, project.id).then((rating) => {
-      if (active) setMyRating(rating);
+    Promise.all([getMyRating(currentUserId, project.id), getRatingOfMe(currentUserId, project.id)]).then(([mine, theirs]) => {
+      if (!active) return;
+      setMyRating(mine);
+      setTheirRating(theirs);
     });
     return () => {
       active = false;
@@ -125,6 +132,8 @@ export default function ProjectDetailsView() {
   const mediaLink = media?.path === submissionPath ? media.link : undefined;
   const mediaWord = mediaKind === "video" ? "video" : "photo";
   const mediaBroken = mediaLink === null || failedPath === submissionPath;
+  // When rating closes for a Done project (null until it's Done).
+  const deadline = project.status === "done" ? ratingDeadline(project) : null;
 
   // The "Project" box: short status of the work, or where to attach it.
   const renderWorkBox = () => {
@@ -298,19 +307,43 @@ export default function ProjectDetailsView() {
               </div>
             )}
 
-            {/* Once it's Done, each side rates the other once (screen 4/5). */}
+            {/* Once it's Done, each side rates the other once (screen 4/5).
+                Ratings are blind: a rating is hidden from the other person
+                until both have rated, or until the time for rating is over. */}
             {project.status === "done" && (
               <div className="text-center pt-2">
                 {myRating === undefined && <p className="text-secondary fs-7 mb-0">Loading your rating...</p>}
-                {myRating === null && (
-                  <Link to={`/dashboard/feedback/${project.id}`} className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow">
-                    <i className="bi bi-star-fill me-2"></i> Add your ratings and feedback
-                  </Link>
+                {myRating === null && !deadline?.ended && (
+                  <>
+                    <Link to={`/dashboard/feedback/${project.id}`} className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow">
+                      <i className="bi bi-star-fill me-2"></i> Add your ratings and feedback
+                    </Link>
+                    <p className="text-white-50 fs-8 mt-3 mb-0">
+                      <i className="bi bi-eye-slash-fill me-1"></i> Ratings are blind: neither of you sees the other's rating until you have both rated. Rating closes on {deadline?.day}.
+                    </p>
+                  </>
+                )}
+                {myRating === null && deadline?.ended && (
+                  <p className="text-white-50 fs-7 mb-0">The rating period for this project ended on {deadline.day}.</p>
                 )}
                 {myRating && (
                   <p className="text-white-50 fs-7 mb-0">
-                    <i className="bi bi-star-fill text-warning me-1"></i> You rated this project {myRating.stars}/5. Thanks for the feedback!
+                    <i className="bi bi-star-fill text-warning me-1"></i> You rated {otherName} {myRating.stars}/5.
+                    {!theirRating && !deadline?.ended && (
+                      <span className="d-block fs-8 mt-1">
+                        <i className="bi bi-eye-slash-fill me-1"></i> Hidden from {otherName} until they rate you too, or until {deadline?.day}.
+                      </span>
+                    )}
                   </p>
+                )}
+                {myRating !== undefined && theirRating && (
+                  <p className="text-white-50 fs-7 mt-2 mb-0 text-break">
+                    <i className="bi bi-star-fill text-warning me-1"></i> {otherName} rated you {theirRating.stars}/5.
+                    {theirRating.feedback && <span className="d-block fst-italic mt-1">"{theirRating.feedback}"</span>}
+                  </p>
+                )}
+                {myRating !== undefined && !theirRating && deadline?.ended && (
+                  <p className="text-secondary fs-8 mt-2 mb-0">{otherName} didn't rate this project.</p>
                 )}
               </div>
             )}

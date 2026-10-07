@@ -227,7 +227,28 @@ export async function requestProjectChanges(projectId) {
 // client rates the freelancer) sends feedback too; screen 5 (the freelancer
 // rates the client) is trust stars only, so feedback stays null for them.
 // A rating can't be edited once sent (no update rule in the database).
+//
+// Ratings are blind (database/supabase_blind_ratings_schema.sql): a rating
+// stays hidden from everyone but the person who gave it until both sides
+// have rated, or until the time for rating is over. The database does the
+// hiding; the pages here only explain it.
 export const MAX_FEEDBACK_LENGTH = 1000;
+
+// How many days each side has to rate after the project is marked Done.
+// The database enforces the same number (rating_window() in that file).
+export const RATING_WINDOW_DAYS = 14;
+
+// When rating closes for a Done project, or null if it isn't Done:
+//   day    the date it closes, like "October 21"
+//   ended  true once that moment has passed
+export function ratingDeadline(project) {
+  if (!project?.completed_at) return null;
+  const closesAt = new Date(new Date(project.completed_at).getTime() + RATING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  return {
+    day: closesAt.toLocaleDateString(undefined, { month: "long", day: "numeric" }),
+    ended: closesAt <= new Date()
+  };
+}
 
 // Sends a rating. Returns {} when sent, or { error } with a message.
 export async function rateProject(raterId, projectId, rateeId, stars, feedback) {
@@ -243,8 +264,9 @@ export async function rateProject(raterId, projectId, rateeId, stars, feedback) 
   });
   if (error) {
     if (error.code === "23505") return { error: "You already rated this project." };
-    // The database rules refused it: not Done yet, or not your project.
-    if (error.code === "42501") return { error: "You can only rate a project once it's done." };
+    // The database rules refused it: not Done yet, not your project, or
+    // the time for rating is over.
+    if (error.code === "42501") return { error: `You can only rate a project once it's done, and within ${RATING_WINDOW_DAYS} days after that.` };
     console.error("Sending the rating failed:", error);
     return { error: "Couldn't send your rating. Please try again." };
   }
@@ -258,6 +280,20 @@ export async function getMyRating(raterId, projectId) {
     .from("project_ratings")
     .select("stars, feedback, created_at")
     .eq("rater_id", raterId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  return data;
+}
+
+// The other person's rating of the signed-in user for a project, or null.
+// Blind ratings: the database only hands it over once it is visible (both
+// sides rated, or the time for rating is over), so null can also mean
+// "they rated, but you can't see it yet".
+export async function getRatingOfMe(userId, projectId) {
+  const { data } = await supabase
+    .from("project_ratings")
+    .select("stars, feedback, created_at")
+    .eq("ratee_id", userId)
     .eq("project_id", projectId)
     .maybeSingle();
   return data;
