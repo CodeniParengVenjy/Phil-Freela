@@ -39,6 +39,21 @@ portfolio projects (`POST /slides`):
   package, Apache 2.0 / BSD), each with the freelancer's name repeated
   faintly across the page and the same code hidden in it with HiDDeN.
 
+The same upload (`POST /slides`, for services and portfolio projects alike)
+also runs the ownership check on every file before it is shown. A file that
+fails waits for an admin on the Flagged Content page:
+
+- **Hidden code**: does the file already carry another freelancer's code (a
+  download of their work)? Read by `find_code_owner`, the same function the
+  Check Ownership page uses: the photo as it is, and, when it looks at least
+  a bit like someone else's photo, also as if its edges had been cropped
+  off. Videos are read from up to 16 frames, and each page picture of a PDF
+  is read too.
+- **Look-alike** (`similarity.py`): is it nearly the same as another
+  freelancer's photo or video frames? Compared with a Vision Transformer
+  (Meta's DINO ViT-S/16). Writing is compared with a text model
+  (`text_embedder.py`, all-MiniLM-L6-v2).
+
 ## Online: Vercel (free)
 
 The live website (phil-freela.pages.dev) can't run Python, so this service

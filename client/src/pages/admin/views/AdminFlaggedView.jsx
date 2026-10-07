@@ -75,18 +75,23 @@ function SlideText({ filePath }) {
 }
 
 // One side of a comparison: a slide (the photo, the video, or a document's
-// text) and whose it is. showPage: show a PDF's first page instead of its
-// text, for when the other side is a picture (a screenshot of that page).
-function SlideCard({ label, slide, showPage = false }) {
+// text) and whose it is. showPages: show a PDF's page pictures instead of its
+// text, for when the other side is a picture (a screenshot of one of its
+// pages, or a photo saved into the PDF). Several pages scroll sideways.
+function SlideCard({ label, slide, showPages = false }) {
   const where = slide?.service ? `Service "${slide.service.title}"` : slide?.project ? `Portfolio project "${slide.project.title}"` : "";
   const mediaStyle = { height: 260, objectFit: "contain" };
-  const page = showPage && slide?.media_type === "document" ? slidePagePaths(slide)[0] : null;
+  const pages = showPages && slide?.media_type === "document" ? slidePagePaths(slide) : [];
   return (
     <div className="col-md-6">
       <p className="text-white-50 fs-8 mb-1">{label}</p>
       {slide ? (
         <>
-          {page ? <img src={slideUrl(page)} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />
+          {pages.length > 1 ? (
+            <div className="d-flex gap-2 overflow-auto rounded-3 bg-black" style={{ height: 260 }}>
+              {pages.map((path, index) => <img key={path} src={slideUrl(path)} alt={`${label}, page ${index + 1}`} className="h-100" />)}
+            </div>
+          ) : pages.length === 1 ? <img src={slideUrl(pages[0])} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />
             : slide.media_type === "document" ? <SlideText filePath={slide.file_path} />
             : slide.media_type === "video" ? <video src={slideUrl(slide.file_path)} controls preload="metadata" className="w-100 rounded-3 bg-black" style={mediaStyle} />
               : <img src={slideUrl(slide.file_path)} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />}
@@ -205,16 +210,23 @@ export default function AdminFlaggedView() {
     done(item, "Removed: the copy was deleted.");
   };
 
+  // A PDF held because one of its pages carries a photo's (or video's) hidden
+  // code: someone saved that picture into a PDF (step 12). Its page pictures
+  // are shown, not its text, so the admin can see the picture.
+  const isPictureInPdf = (item) => item.type === "slide" && item.media_type === "document"
+    && Boolean(item.matched) && item.matched.media_type !== "document";
+
   // The item it was matched with: a slide or a portfolio document.
   const matchedCard = (item) => {
     if (item.type === "slide" && item.matched_item_id) return <DocumentCard label="Looks like this document" doc={item.matchedDocument} />;
     if (item.type === "document" && item.matched_slide_id) return <SlideCard label="Looks like this document" slide={item.matchedSlide} />;
     if (item.type === "document") return <DocumentCard label="Looks like this document" doc={item.matched} />;
     // A photo can carry a document's hidden code: a screenshot of one of a
-    // PDF's pages (step 11). Then the PDF's first page is shown next to it.
+    // PDF's pages (step 11). Then the PDF's pages are shown next to it.
     if (item.media_type !== "document" && item.matched?.media_type === "document") {
-      return <SlideCard label="Carries this document's hidden code" slide={item.matched} showPage />;
+      return <SlideCard label="Carries this document's hidden code" slide={item.matched} showPages />;
     }
+    if (isPictureInPdf(item)) return <SlideCard label={`A page carries this ${itemName(item.matched)}'s hidden code`} slide={item.matched} />;
     return <SlideCard label={`Looks like this ${itemName(item)}`} slide={item.matched} />;
   };
 
@@ -252,7 +264,7 @@ export default function AdminFlaggedView() {
             </div>
             <div className="row g-3 mb-3">
               {item.type === "slide"
-                ? <SlideCard label={`Flagged ${itemName(item)}`} slide={item} />
+                ? <SlideCard label={`Flagged ${itemName(item)}`} slide={item} showPages={isPictureInPdf(item)} />
                 : <DocumentCard label="Flagged document" doc={item} />}
               {matchedCard(item)}
             </div>

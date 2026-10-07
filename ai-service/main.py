@@ -642,18 +642,24 @@ def page_path(file_path, number):
     return f"{file_path.rsplit('.', 1)[0]}-p{number}.jpg"
 
 
-def watermarked_pages(user_id, data, code):
-    """Step 11: the first pages of a PDF as JPEG pictures, each with the
-    freelancer's name across it and the document's hidden code inside (see
-    document_pages.py). Returns [] for a DOCX or TXT, and for a PDF whose
-    pages can't be drawn: those stay text-only, as before."""
+def page_pictures(data):
+    """Step 11: the first pages of a PDF as pictures (see document_pages.py).
+    Returns [] for a DOCX or TXT, and for a PDF whose pages can't be drawn:
+    those stay text-only, as before."""
     # The first bytes show the real file type, whatever the file is called.
     if data[:5] != b"%PDF-":
         return []
     try:
-        pictures = render_pages(data)
+        return render_pages(data)
     except Exception:
         logger.warning("Couldn't draw the pages of a PDF; it is saved as text only")
+        return []
+
+
+def watermarked_pages(user_id, pictures, code):
+    """Step 11: the page pictures as JPEGs, each with the freelancer's name
+    across it and the document's hidden code inside."""
+    if not pictures:
         return []
     style = watermark_style(user_id)
     return [watermark_page(picture, code, *style)[0] for picture in pictures]
@@ -686,9 +692,10 @@ def watermark_video_upload(user_id, data, extension, promo):
             raise HTTPException(400, "That video couldn't be processed. Please try another MP4, MOV or WEBM video.")
         has_code = code_reads_back(finished, code)
         # Step 9: the code the upload already carries, if any (someone posting
-        # a download of a PhilFreela video), read from 5 frames as they came
-        # in, before our own code went on.
-        earlier_code = read_code_from_frames(spread(uploaded, VIDEO_CHECK_FRAMES))
+        # a download of a PhilFreela video), read from its key frames as they
+        # came in, before our own code went on. Up to 16 of them, as many as
+        # Check Ownership reads (step 12; it was 5).
+        earlier_code = read_code_from_frames(spread(uploaded, EXTRACT_VIDEO_FRAMES))
 
         # The copy check's numbers for 5 of the key frames, as they came in,
         # and as shown when they carry a visible watermark.
@@ -708,6 +715,12 @@ def watermark_video_upload(user_id, data, extension, promo):
 # scored 0.90-1.00, while different pictures stayed below 0.88 (except the
 # same poster template with other words, which an admin can clear).
 COPY_CUTOFF = 0.88
+# Step 12: a photo at least this similar to another freelancer's also gets
+# Check Ownership's 9 "cropped" readings (find_code_owner). Those take about
+# 15 times as long as the one reading every photo gets, so photos that look
+# nothing like anyone else's skip them. Different pictures scored 0.34 on
+# average in the step 5 tests.
+FULL_CHECK_FROM = 0.70
 
 
 def vector_text(numbers):
@@ -718,7 +731,9 @@ def vector_text(numbers):
 def copy_check(user_id, embeddings):
     """Compares a new photo (or the frames of a new video) with other
     freelancers' photos and video frames (as uploaded and as shown). Returns
-    (status, matched_slide_id, match_score) for the closest one."""
+    (status, matched_slide_id, match_score, closest) for the closest one.
+    closest: how similar that one is, also when it isn't held (0 when there
+    is nothing to compare with)."""
     best = None
     for embedding in embeddings:
         rows = supabase.rpc(
@@ -726,22 +741,20 @@ def copy_check(user_id, embeddings):
         ).execute().data
         if rows and (best is None or rows[0]["similarity"] > best["similarity"]):
             best = rows[0]
-    if best and best["similarity"] >= COPY_CUTOFF:
+    closest = best["similarity"] if best else 0
+    if closest >= COPY_CUTOFF:
         # (Below 1.0 even for an exact copy: 1.0 means "found by the hidden code".)
-        return "flagged", best["slide_id"], min(round(best["similarity"], 4), 0.9999)
-    return "active", None, None
+        return "flagged", best["slide_id"], min(round(closest, 4), 0.9999), closest
+    return "active", None, None, closest
 
 
-def someone_elses_code(user_id, readings):
+def someone_elses_code(user_id, match):
     """Step 9, the ownership check when posting: does the upload already carry
     another freelancer's hidden code (someone posting a download of their
-    photo or video)? readings: codes read from the upload. Returns that saved
-    code's row (with the slide it came from), or None. Re-posting your own
-    work is fine."""
-    rows = closest_codes(readings)
-    if is_match(rows, MAX_WRONG_BITS_MATCH) and rows[0]["freelancer_id"] != user_id:
-        return rows[0]
-    return None
+    photo or video)? match: the saved code the upload's readings matched (from
+    find_code_owner or saved_code), or None. Returns that saved code's row
+    (with the slide it came from), or None. Re-posting your own work is fine."""
+    return match if match and match["freelancer_id"] != user_id else None
 
 
 @app.post("/slides")
@@ -783,14 +796,16 @@ def add_slide(
         picture = read_image(image, "photo")
         data, code, embeddings = watermark_photo(user_id, picture, promo)
         extension, content_type = "jpg", "image/jpeg"
-        # Does it already carry another freelancer's hidden code (step 9), or
-        # is it nearly the same as another freelancer's photo (step 5)? Then
-        # it waits for an admin.
-        earlier = someone_elses_code(user_id, [read_code(picture)])
+        # The ownership check. Is it nearly the same as another freelancer's
+        # photo (step 5)? Does it already carry another freelancer's hidden
+        # code (step 9)? Either way it waits for an admin; the code is the
+        # surer proof, so it wins. The code is read the way Check Ownership
+        # reads it (step 12): as the photo is, and, when the photo looks at
+        # least a bit like someone else's, also as if it had been cropped.
+        status, matched_slide_id, match_score, closest = copy_check(user_id, [embeddings["uploaded"]])
+        earlier = someone_elses_code(user_id, find_code_owner(picture, cropped_too=closest >= FULL_CHECK_FROM))
         if earlier:
             status, matched_slide_id, match_score = "flagged", earlier["slide_id"], 1.0
-        else:
-            status, matched_slide_id, match_score = copy_check(user_id, [embeddings["uploaded"]])
     elif video_path is not None:
         # Checked (MP4, MOV or WEBM, at most 50 MB and 30 seconds), then saved
         # as a watermarked 720p MP4 (step 7).
@@ -798,12 +813,12 @@ def add_slide(
         data, code, embeddings, earlier_code = watermark_video_upload(user_id, raw, raw_extension, promo)
         extension, content_type = "mp4", "video/mp4"
         # The same two checks as photos, on the video's frames.
-        earlier = someone_elses_code(user_id, [earlier_code])
+        earlier = someone_elses_code(user_id, saved_code([earlier_code]))
         if earlier:
             status, matched_slide_id, match_score = "flagged", earlier["slide_id"], 1.0
         else:
             frames_as_uploaded = [e for version, e in embeddings.items() if version.startswith("uploaded")]
-            status, matched_slide_id, match_score = copy_check(user_id, frames_as_uploaded)
+            status, matched_slide_id, match_score, _ = copy_check(user_id, frames_as_uploaded)
     else:
         # Writing (step 8): a PDF, DOCX or TXT, handled like portfolio writing.
         # Its text gets the footer and the invisible code, is compared with
@@ -817,7 +832,14 @@ def add_slide(
         # Step 11: a PDF's first pages are also kept as watermarked pictures,
         # so viewers see its real layout. They carry the same code as the text.
         document.file.seek(0)
-        pages = watermarked_pages(user_id, document.file.read(), code)
+        pictures = page_pictures(document.file.read())
+        # Step 12: a page that already carries another freelancer's hidden
+        # code (their photo, or a page of their PDF, saved into this one)
+        # holds the document too, like posting it as a photo would.
+        earlier = someone_elses_code(user_id, saved_code([read_code(page) for page in pictures])) if pictures else None
+        if earlier and match_score != 1.0:
+            status, matched_item_id, matched_slide_id, match_score = "flagged", None, earlier["slide_id"], 1.0
+        pages = watermarked_pages(user_id, pictures, code)
 
     slide_id = str(uuid.uuid4())
     file_path = f"{user_id}/{slide_id}.{extension}"
@@ -912,8 +934,9 @@ def add_slide(
 # (A picture that isn't from PhilFreela gets that close to a given code about
 # once in 20 million tries.)
 MAX_WRONG_BITS_MATCH = 6
-# The "un-cropped" readings are extra tries, so they must be a bit closer
-# (more tries = more chances of a lucky, wrong match).
+# Several readings of one file (the "un-cropped" readings, the pages of a
+# PDF) are extra tries, so they must be a bit closer (more tries = more
+# chances of a lucky, wrong match).
 MAX_WRONG_BITS_GUESS = 5
 # The best match must also be clearly closer than the next closest code.
 MIN_GAP_TO_NEXT = 4
@@ -930,6 +953,28 @@ def is_match(rows, max_wrong_bits):
         return False
     next_closest = rows[1]["wrong_bits"] if len(rows) > 1 else 48
     return next_closest - rows[0]["wrong_bits"] >= MIN_GAP_TO_NEXT
+
+
+def saved_code(readings):
+    """The saved code that these readings of one file match (its row from
+    closest_codes), or None. One reading may be 6 bits off; several readings
+    must be a bit closer (5)."""
+    rows = closest_codes(readings)
+    limit = MAX_WRONG_BITS_MATCH if len(readings) == 1 else MAX_WRONG_BITS_GUESS
+    return rows[0] if is_match(rows, limit) else None
+
+
+def find_code_owner(picture, cropped_too=True):
+    """Whose hidden code does this picture carry? The one function behind
+    both the Check Ownership page and the check on every upload (step 12), so
+    the two can't drift apart. Returns the saved code's row, or None.
+    cropped_too=False skips the second reading, which is the slow one."""
+    # 1. The picture as it is.
+    match = saved_code([read_code(picture)])
+    # 2. As if its edges had been cropped off (see UNCROP_GUESSES in hidden_watermark.py).
+    if match is None and cropped_too:
+        match = saved_code(read_uncropped_codes(picture))
+    return match
 
 
 def describe_match(match, user_id):
@@ -977,18 +1022,8 @@ def extract_watermark(image: UploadFile = File(...), authorization: str | None =
     can't use it. Returns {"found": false} when there's no PhilFreela code."""
     user_id = get_user_id(authorization)
     picture = read_image(image, "picture")
-
-    # 1. The picture as it is.
-    rows = closest_codes([read_code(picture)])
-    if is_match(rows, MAX_WRONG_BITS_MATCH):
-        return describe_match(rows[0], user_id)
-
-    # 2. As if its edges had been cropped off (see UNCROP_GUESSES in hidden_watermark.py).
-    rows = closest_codes(read_uncropped_codes(picture))
-    if is_match(rows, MAX_WRONG_BITS_GUESS):
-        return describe_match(rows[0], user_id)
-
-    return {"found": False}
+    match = find_code_owner(picture)
+    return describe_match(match, user_id) if match else {"found": False}
 
 
 # Check Ownership for videos reads this many frames together (step 7).
@@ -1011,10 +1046,8 @@ def extract_video_watermark(video_path: str = Form(...), authorization: str | No
         code = read_video_code(path, EXTRACT_VIDEO_FRAMES)
     if code is None:
         return {"found": False}
-    rows = closest_codes([code])
-    if is_match(rows, MAX_WRONG_BITS_MATCH):
-        return describe_match(rows[0], user_id)
-    return {"found": False}
+    match = saved_code([code])
+    return describe_match(match, user_id) if match else {"found": False}
 
 
 # ---------------------------------------------------------------------------

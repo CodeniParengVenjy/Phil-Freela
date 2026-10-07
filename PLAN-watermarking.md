@@ -57,6 +57,7 @@ Vercel's free plan (500 MB bundle, 4.5 MB per request, 5 minutes, 1 CPU).
 9. Ownership check when posting photos and videos (reads the hidden code first).
 10. Portfolio: one upload for every kind of file, "Original" badge, category and tags.
 11. PDF pages as watermarked pictures (Portfolio and Post a Service).
+12. The full Check Ownership reading on every upload (see PLAN-stolen-work.md).
 
 ## Current step
 
@@ -530,6 +531,24 @@ takes `strengths`), `requirements.txt`, `README.md`,
 `slides.css`, `PortfolioSection.jsx`, `portfolio.css`, `ServiceCard.jsx`,
 `WatermarkSettingsForm.jsx`, `admin/views/AdminFlaggedView.jsx`.
 
+Step 12 (the full Check Ownership reading on every upload): built and
+pushed 2026-10-07 by the session working on PLAN-stolen-work.md (Step 1
+there; the user asked that Check Ownership be "a complete package,
+automatically" when uploading to the portfolio and posting a service, and
+said "ok ok" to the plan). No database change. The details, test results and
+files are in PLAN-stolen-work.md. In short, in `ai-service/main.py`:
+- `find_code_owner(picture, cropped_too)` and `saved_code(readings)` are the
+  one hidden-code reading behind both `/watermarks/extract` and `/slides`.
+- `/slides`, photo: the look-alike check runs first; the hidden code is then
+  read as the photo is, and also the 9 "un-crop" ways when the look-alike
+  score is 0.70 or more (`FULL_CHECK_FROM`). A code match wins over a
+  look-alike match.
+- `/slides`, video: the earlier code is read from up to 16 key frames.
+- `/slides`, PDF: each page picture is read for another freelancer's code
+  (`page_pictures`, then `watermarked_pages`).
+- `copy_check` returns a 4th value (the closest score), and
+  `someone_elses_code` takes the matched row instead of the readings.
+
 ## Reminders for later steps
 
 - Step 11, possible next: accept PDFs with no readable text (scans, designs
@@ -538,7 +557,9 @@ takes `strengths`), `requirements.txt`, `README.md`,
   deliverable (left out on purpose so far: PLAN-projects-and-ratings.md).
 
 
-- LATER (user said "later", 2026-09-28), two plagiarism gaps:
+- Both of these are now planned in PLAN-stolen-work.md (Steps 2 to 4 there,
+  approved 2026-10-07):
+  LATER (user said "later", 2026-09-28), two plagiarism gaps:
   1. Flagged Content: add "Keep this one, remove the other" for when the
      flagged upload is the real original (the thief posted first). Today the
      admin can only remove the flagged item.
