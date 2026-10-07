@@ -9,7 +9,18 @@ import { supabase } from "./supabaseClient";
 // mode: "dark" or "light". accent: a color like "#3b82f6", or null for the
 // usual one (orange for freelancers, cyan for clients). accent2: a second
 // color the accent blends into (a gradient theme), or null for one color.
-export const DEFAULT_APPEARANCE = { mode: "dark", accent: null, accent2: null };
+// textSize: "small", "normal" or "large".
+export const DEFAULT_APPEARANCE = { mode: "dark", accent: null, accent2: null, textSize: "normal" };
+
+// The three text sizes in Settings, as a share of the usual size. Nearly every
+// size on the dashboard is measured from the page's base text size ("rem"),
+// so changing that one number makes the words, buttons and spacing grow or
+// shrink together.
+export const TEXT_SIZES = [
+  { value: "small", label: "Small", scale: "87.5%" },
+  { value: "normal", label: "Normal", scale: "" },
+  { value: "large", label: "Large", scale: "112.5%" }
+];
 
 // The ready-made colors in Settings. Any other color can be picked too.
 export const ACCENT_PRESETS = [
@@ -43,7 +54,8 @@ function clean(appearance) {
   const accent = isHexColor(appearance?.accent) ? appearance.accent : null;
   // A second color needs a first one, and has to be a different color.
   const accent2 = accent && isHexColor(appearance?.accent2) && appearance.accent2 !== accent ? appearance.accent2 : null;
-  return { mode: appearance?.mode === "light" ? "light" : "dark", accent, accent2 };
+  const textSize = TEXT_SIZES.some((size) => size.value === appearance?.textSize) ? appearance.textSize : "normal";
+  return { mode: appearance?.mode === "light" ? "light" : "dark", accent, accent2, textSize };
 }
 
 // ---- Color math -----------------------------------------------------------
@@ -105,9 +117,11 @@ const GRADIENT_NAMES = ["--accent-gradient", "--accent-gradient-on"];
 // pages/dashboard/theme.css) and the accent colors. With no accent picked the
 // colors are taken off again, so the usual orange or cyan comes back.
 export function applyAppearance(appearance) {
-  const { mode, accent, accent2 } = clean(appearance);
+  const { mode, accent, accent2, textSize } = clean(appearance);
   const { classList, style } = document.body;
   classList.toggle("theme-light", mode === "light");
+  // Text size: the page's base text size ("" = the browser's usual one).
+  document.documentElement.style.fontSize = TEXT_SIZES.find((size) => size.value === textSize).scale;
 
   if (!accent) {
     for (const name of ACCENT_NAMES) {
@@ -252,16 +266,16 @@ export function forgetAppearance() {
 
 // The look saved on the user's profile, or null when it couldn't be loaded.
 export async function fetchAppearance(userId) {
-  const { data, error } = await supabase.from("profiles").select("theme_mode, accent_color, accent_color_2").eq("id", userId).maybeSingle();
+  const { data, error } = await supabase.from("profiles").select("theme_mode, accent_color, accent_color_2, text_size").eq("id", userId).maybeSingle();
   if (error || !data) return null;
-  return clean({ mode: data.theme_mode, accent: data.accent_color, accent2: data.accent_color_2 });
+  return clean({ mode: data.theme_mode, accent: data.accent_color, accent2: data.accent_color_2, textSize: data.text_size });
 }
 
 // Returns "" when saved, or a message to show the user.
 export async function saveAppearance(userId, appearance) {
-  const { mode, accent, accent2 } = clean(appearance);
+  const { mode, accent, accent2, textSize } = clean(appearance);
   // .select("id") returns the updated row, so an empty result means nothing was saved.
-  const { data, error } = await supabase.from("profiles").update({ theme_mode: mode, accent_color: accent, accent_color_2: accent2 }).eq("id", userId).select("id");
+  const { data, error } = await supabase.from("profiles").update({ theme_mode: mode, accent_color: accent, accent_color_2: accent2, text_size: textSize }).eq("id", userId).select("id");
   if (error || !data?.length) return "Couldn't save your appearance. Please try again.";
   return "";
 }

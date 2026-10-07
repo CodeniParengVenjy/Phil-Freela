@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ACCENT_PRESETS, GRADIENT_PRESETS, applyAppearance, fetchAppearance, isHexColor, readSavedAppearance, rememberAppearance, saveAppearance } from "../../../lib/appearance";
+import { ACCENT_PRESETS, GRADIENT_PRESETS, TEXT_SIZES, applyAppearance, fetchAppearance, isHexColor, readSavedAppearance, rememberAppearance, saveAppearance } from "../../../lib/appearance";
 
 // The usual accent of each role, shown on the "Default" choice.
 const ROLE_COLOR = { freelancer: "#ff6b00", client: "#06b6d4" };
@@ -132,6 +132,29 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
                   {picked && <i className="bi bi-check-circle-fill text-role ms-auto"></i>}
                 </button>
               </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <h6 className="text-white fw-bold mb-1">Text size</h6>
+        <p className="text-secondary fs-8 mb-3">How big the words on your dashboard are. Buttons and spacing grow or shrink with them.</p>
+        <div className="d-flex flex-wrap align-items-center gap-2" role="radiogroup" aria-label="Text size">
+          {TEXT_SIZES.map((size) => {
+            const picked = appearance.textSize === size.value;
+            return (
+              <button
+                key={size.value}
+                type="button"
+                role="radio"
+                aria-checked={picked}
+                className={`btn rounded-pill px-4 fw-bold ${picked ? "btn-gradient-role text-white" : "btn-outline-secondary text-white"}`}
+                onClick={() => !picked && change({ ...appearance, textSize: size.value })}
+                disabled={busy}
+              >
+                {size.label}
+              </button>
             );
           })}
         </div>

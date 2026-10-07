@@ -25,3 +25,8 @@ alter table public.profiles
 alter table public.profiles
   add constraint profiles_gradient_needs_first_color
     check (accent_color_2 is null or accent_color is not null);
+
+-- Text size: how big the words on the user's dashboard are.
+alter table public.profiles
+  add column if not exists text_size text not null default 'normal'
+    check (text_size in ('small', 'normal', 'large'));
