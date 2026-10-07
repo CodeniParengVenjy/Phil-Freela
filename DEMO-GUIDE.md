@@ -51,7 +51,40 @@ repository: it is the one Claude gave in the chat that day.
    were marked verified without ID photos, so the admin Verifications page
    shows them without pictures.)
 
+## Admin roles and approvals (about 4 minutes)
+
+The demo data has no admins, reports or appeals, so this part needs a little
+setup before the defense. Do it once, a day ahead, not on stage.
+
+Setup:
+
+1. Sign in at `/admin/login` with your own admin account (the first admin, a
+   super admin). On **Admins**, press **Add Admin** and make a second admin
+   with a spare email you can open (name, username, email only). The new admin
+   starts with the default password and must choose their own on the first
+   sign-in, after confirming the email.
+2. Make one pending report: sign in as **Juan** and use Report on **Sofia's**
+   job post (Find Jobs). Sign out.
+
+Path:
+
+1. As the **regular admin**: the menu has no Announcements, Billboard, Admins
+   or Approvals, and typing one of those addresses goes back to Overview. Open
+   **Reports**, press **Ban Owner** on Sofia's job post, pick a violation, and
+   press **Send for approval**. The report now says "Waiting for a super
+   admin: Ban", and nothing happened to Sofia.
+2. As the **super admin**: the menu shows **Approvals** with a number. Open
+   it, read who asked for what, and press **Approve** (the ban happens now, and
+   the report is resolved) or **Decline** with a reason (nothing changes, and
+   the regular admin sees the reason on the report).
+3. Open **Activity Log**: it shows "asked to ban ...", then "approved ...'s
+   request to ban ...", then the ban itself.
+4. Still as super admin, show what only a super admin has: **Admins** (add,
+   promote, demote, remove), **Announcements**, **Billboard**, and the red
+   **Delete** button on the Users page. Don't press Delete on a demo account.
+
 ## Things to know
+
 
 1. Reply times only count chats from the last 30 days. The demo chats are 3
    to 9 days old on the day the script runs, so after about 3 weeks the reply
@@ -63,3 +96,7 @@ repository: it is the one Claude gave in the chat that day.
    receives mail, and "email me when I'm offline" is off for all six.
 4. After the defense, run `database/demo_data_remove.sql` in the Supabase SQL
    Editor. It removes the six accounts and everything that belongs to them.
+5. The second admin and the report from the admin part are real records.
+   Afterwards remove the admin from the Admins page (Remove) and, if you
+   banned Sofia, press Unban on the Users page. `demo_data_remove.sql` does
+   not touch them.
