@@ -10,20 +10,21 @@ const SLIDE_COLUMNS = `id, media_type, file_path, page_count, created_at, freela
   owner:profiles!media_slides_freelancer_id_fkey(full_name, username),
   service:services(title), project:portfolio_items(title)`;
 
-// Flagged slides, each with the slide it matched. (A table linked to itself is
-// written with the column name, media_slides!matched_slide_id.) A document
-// slide can match a portfolio document instead (matched_item_id, step 8).
-const FLAGGED_SLIDES_SELECT = `${SLIDE_COLUMNS}, match_score, promo, matched_item_id,
-  matched:media_slides!matched_slide_id(${SLIDE_COLUMNS})`;
+// Flagged slides, with the id of what each one matched: another slide
+// (matched_slide_id) or a portfolio document (matched_item_id, step 8).
+// The matched items themselves are loaded by id afterwards (see load below).
+// They can't be asked for in the same request: for a table linked to itself,
+// "media_slides!matched_slide_id(...)" gives the LIST of slides that matched
+// this one, not the one slide this one matched.
+const FLAGGED_SLIDES_SELECT = `${SLIDE_COLUMNS}, match_score, promo, matched_slide_id, matched_item_id`;
 
 // A document and its writer.
 const DOCUMENT_COLUMNS = `id, title, body, created_at, freelancer_id,
   owner:profiles!portfolio_items_freelancer_id_fkey(full_name, username)`;
 
-// Flagged documents, each with the document it matched, or the document
-// slide in a service it matched (matched_slide_id, step 8).
-const FLAGGED_DOCUMENTS_SELECT = `${DOCUMENT_COLUMNS}, match_score, matched_slide_id,
-  matched:portfolio_items!matched_item_id(${DOCUMENT_COLUMNS})`;
+// Flagged documents, with the id of what each one matched: another document
+// (matched_item_id) or a document slide in a service (matched_slide_id, step 8).
+const FLAGGED_DOCUMENTS_SELECT = `${DOCUMENT_COLUMNS}, match_score, matched_item_id, matched_slide_id`;
 
 // The database table behind each kind of flagged item.
 const TABLES = { slide: "media_slides", document: "portfolio_items" };
@@ -141,16 +142,24 @@ export default function AdminFlaggedView() {
         supabase.from("portfolio_items").select(FLAGGED_DOCUMENTS_SELECT).eq("kind", "document").eq("status", "flagged")
       ]);
       if (slides.error || documents.error) throw new Error();
-      // A service document matched with a portfolio document (or the other
-      // way round) is looked up separately: see supabase_service_documents_schema.sql.
-      const [matchedDocuments, matchedSlides] = await Promise.all([
-        rowsById("portfolio_items", DOCUMENT_COLUMNS, slides.data.map((item) => item.matched_item_id).filter(Boolean)),
-        rowsById("media_slides", SLIDE_COLUMNS, documents.data.map((item) => item.matched_slide_id).filter(Boolean))
+      // What they matched, loaded by id: a slide or a document can each
+      // match a slide or a portfolio document (see
+      // supabase_service_documents_schema.sql). null = deleted since.
+      const everything = [...slides.data, ...documents.data];
+      const [matchedSlides, matchedDocuments] = await Promise.all([
+        rowsById("media_slides", SLIDE_COLUMNS, everything.map((item) => item.matched_slide_id).filter(Boolean)),
+        rowsById("portfolio_items", DOCUMENT_COLUMNS, everything.map((item) => item.matched_item_id).filter(Boolean))
       ]);
       const find = (rows, id) => rows.find((row) => row.id === id) || null;
       return [
-        ...slides.data.map((item) => ({ ...item, type: "slide", matchedDocument: find(matchedDocuments, item.matched_item_id) })),
-        ...documents.data.map((item) => ({ ...item, type: "document", matchedSlide: find(matchedSlides, item.matched_slide_id) }))
+        ...slides.data.map((item) => ({
+          ...item, type: "slide",
+          matched: find(matchedSlides, item.matched_slide_id), matchedDocument: find(matchedDocuments, item.matched_item_id)
+        })),
+        ...documents.data.map((item) => ({
+          ...item, type: "document",
+          matched: find(matchedDocuments, item.matched_item_id), matchedSlide: find(matchedSlides, item.matched_slide_id)
+        }))
       ].sort((a, b) => b.created_at.localeCompare(a.created_at));
     };
     load()

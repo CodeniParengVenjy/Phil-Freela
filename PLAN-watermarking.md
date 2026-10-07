@@ -209,8 +209,13 @@ What Step 5 does (photos only; video frames come with Step 7):
 - Admin > Flagged Content (/admin/flagged, sidebar count badge): the flagged
   photo next to its match, both owners and dates, "N% similar", Promo tag;
   "Looks fine, show it" (status active) or "Remove the copy" (delete).
-- PostgREST note: the self-link is written `media_slides!matched_slide_id`;
-  the constraint-name hint does NOT work for a table linked to itself.
+- PostgREST note (corrected 2026-10-07): for a table linked to itself,
+  `matched:media_slides!matched_slide_id(...)` gives a LIST of the slides
+  that matched this one, not the one slide this one matched. The page used
+  it as one item, so Flagged Content went blank the first time a real
+  flagged file existed (it had only been tested with a fake database).
+  Fixed: the page reads `matched_slide_id` / `matched_item_id` and loads
+  what they point at by id (`rowsById` in `AdminFlaggedView.jsx`).
 
 Step 5 test results (30 test pictures; wallpapers grouped by design):
 | A thief uploads... | Lowest similarity | Average |
