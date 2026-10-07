@@ -1,6 +1,6 @@
 # Admin roles, round 2: who sees what, and super admin approval
 
-Last updated: 2026-10-07. Status: PLAN ONLY, waiting for the owner's OK.
+Last updated: 2026-10-07. Plan approved by the owner, building step by step.
 To continue in a new Claude session, say:
 "Read PLAN-admin-roles.md and continue from the current step."
 
@@ -147,4 +147,15 @@ The Python AI service is not involved.
 
 ## Current step
 
-Plan written 2026-10-07. Nothing built yet. Waiting for the owner's OK.
+Plan approved by the owner on 2026-10-07 ("Super Admin can do all, but
+Announcements, Billboard, Admins, and new Approvals is for Super Admin only
+role, lets go").
+
+Step 1 (Database): built and applied to the live database (2026-10-07) as
+`admin_requests_table`, `admin_requests_log` and `admin_roles_policies`. The
+rolled-back test (`database/test_admin_roles.sql`) passed 29 of 29 before
+applying. The Activity Log has no "request" kind, so request lines use the
+kind they are about (ban, suspend or report); adding a kind would need a
+drop, which the connector refuses.
+
+Steps 2 to 5: not started.

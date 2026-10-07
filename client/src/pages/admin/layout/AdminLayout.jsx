@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import AdminCreatePassword from "../components/AdminCreatePassword";
 import "../admin.css";
@@ -14,9 +14,11 @@ const sidebarLinks = [
   { to: "/admin/verifications", icon: "bi-person-vcard-fill", label: "Verifications", showPendingVerifications: true },
   { to: "/admin/appeals", icon: "bi-envelope-paper-fill", label: "Appeals", showPendingAppeals: true },
   { to: "/admin/flagged", icon: "bi-images", label: "Flagged Content", showPendingFlagged: true },
-  { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements" },
-  { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard" },
-  { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins" },
+  // superAdminOnly: hidden from regular admins, and their address bar is
+  // sent back to Overview. The database rules are the real protection.
+  { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements", superAdminOnly: true },
+  { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard", superAdminOnly: true },
+  { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins", superAdminOnly: true },
   { to: "/admin/log", icon: "bi-journal-text", label: "Activity Log" },
   // The same Browse Services / Find Jobs pages users see, shown in admin mode.
   { to: "/admin/browse-services", icon: "bi-shop", label: "Browse Services" },
@@ -158,6 +160,13 @@ export default function AdminLayout() {
     return <AdminCreatePassword adminName={adminName} onDone={recheckPassword} onSignOut={handleSignOut} />;
   }
 
+  // A regular admin who types a super-admin-only address goes back to Overview.
+  const visibleLinks = sidebarLinks.filter((link) => isSuperAdmin || !link.superAdminOnly);
+  const onSuperAdminPage = sidebarLinks.some((link) => link.superAdminOnly && (pathname === link.to || pathname.startsWith(`${link.to}/`)));
+  if (!isSuperAdmin && onSuperAdminPage) {
+    return <Navigate to="/admin" replace />;
+  }
+
   return (
     <div className="admin-shell text-light min-vh-100">
       <nav className="admin-topbar px-3 px-md-4">
@@ -189,7 +198,7 @@ export default function AdminLayout() {
         <div className="row g-4">
           <div className="col-12 col-md-3 col-xl-2">
             <aside className="admin-sidebar p-2 rounded-4">
-              {sidebarLinks.map((link) => (
+              {visibleLinks.map((link) => (
                 <NavLink
                   key={link.to}
                   to={link.to}
