@@ -14,6 +14,13 @@ export const requestKindText = {
   remove_listing: "Remove listing"
 };
 
+// What one request is called on screen. A reported portfolio project is
+// removed with the same kind of request as a listing, under its own name.
+export function requestText(request) {
+  if (request.kind === "remove_listing" && request.listing_table === "portfolio_items") return "Remove project";
+  return requestKindText[request.kind];
+}
+
 // Everything a request card needs. "decider" is the super admin who answered.
 export const REQUEST_COLUMNS =
   "id, kind, report_id, target_user_id, listing_table, listing_id, details, status, decision_note, requested_by_name, created_at, decided_at, decider:admins!admin_requests_decided_by_fkey(full_name)";

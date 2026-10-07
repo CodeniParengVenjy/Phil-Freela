@@ -7,6 +7,8 @@ export const violations = [
   { value: "spam", label: "Spam", days: 3, blocksPosting: true, blocksMessaging: false },
   { value: "inappropriate", label: "Inappropriate content", days: 7, blocksPosting: true, blocksMessaging: false },
   { value: "harassment", label: "Harassment", days: 14, blocksPosting: false, blocksMessaging: true },
+  // Posting someone else's work as their own (PLAN-stolen-work.md).
+  { value: "stolen_work", label: "Stolen work", days: 14, blocksPosting: true, blocksMessaging: false },
   { value: "scam", label: "Scam / Fraud", days: 30, blocksPosting: true, blocksMessaging: true },
   // Ban only: a suspension can't fix a fake account.
   { value: "fake_profile", label: "Fake profile", banOnly: true },

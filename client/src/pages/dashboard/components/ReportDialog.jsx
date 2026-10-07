@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { MAX_SCREENSHOTS, checkScreenshot, reportReasons, sendReport } from "../../../lib/reports";
+import { MAX_SCREENSHOTS, checkScreenshot, reasonsFor, reportReasons, sendReport } from "../../../lib/reports";
 
-// "Report" popup for a user, service, or job post. The report is saved to the
-// reports table, where admins review it on the admin Reports page.
-//   target: { type: "user" | "service" | "job_post", id, name } or null (closed)
+// For "Stolen work", the reporter must say where the original is, in at
+// least this many characters (so "x" or "idk" isn't enough for an admin).
+const MIN_PROOF_LENGTH = 10;
+
+// "Report" popup for a user, service, job post, or portfolio project. The
+// report is saved to the reports table, where admins review it on the admin
+// Reports page.
+//   target: { type: "user" | "service" | "job_post" | "portfolio_item", id, name } or null (closed)
 //           From a call it also has callId and callKind ("voice" / "video").
 //   onDone(message): called after sending, e.g. to show a toast
 export default function ReportDialog({ target, onClose, onDone }) {
@@ -39,6 +44,9 @@ export default function ReportDialog({ target, onClose, onDone }) {
 
   if (!target) return null;
 
+  // "Stolen work" needs proof: where the original is (see lib/reports.js).
+  const needsDetails = Boolean(reportReasons.find((r) => r.value === reason)?.needsDetails);
+
   const addScreenshots = (event) => {
     const picked = [...event.target.files];
     event.target.value = ""; // so picking the same file again still works
@@ -66,6 +74,10 @@ export default function ReportDialog({ target, onClose, onDone }) {
       setError("Please pick a reason.");
       return;
     }
+    if (needsDetails && details.trim().length < MIN_PROOF_LENGTH) {
+      setError("Please say where the original is: paste a link, or say whose work it is.");
+      return;
+    }
 
     setSending(true);
     setError("");
@@ -78,11 +90,15 @@ export default function ReportDialog({ target, onClose, onDone }) {
     setSending(false);
 
     if (sendError) {
-      // 23505 = the "one pending report per target" rule. Other database
-      // errors get a general message; upload problems explain themselves.
+      // 23505 = the "one pending report per target" rule. 23514 = the
+      // database doesn't know this reason or kind of target yet (the stolen
+      // work update, database/supabase_stolen_work_schema.sql, hasn't been
+      // run). Other database errors get a general message; upload problems
+      // explain themselves.
       setError(sendError.code === "23505"
         ? "You already reported this. An admin will review it soon."
-        : sendError.code ? "Couldn't send the report. Please try again." : sendError.message);
+        : sendError.code === "23514" ? "This kind of report isn't switched on yet. Please try again later."
+          : sendError.code ? "Couldn't send the report. Please try again." : sendError.message);
       return;
     }
 
@@ -123,7 +139,7 @@ export default function ReportDialog({ target, onClose, onDone }) {
 
         <label className="form-label text-white-50 fs-7 mb-2">Why are you reporting this?</label>
         <div className="d-flex flex-column gap-2 mb-3">
-          {reportReasons.map((r) => (
+          {reasonsFor(target.type).map((r) => (
             <label key={r.value} className="d-flex align-items-center gap-2 fs-7 cursor-pointer">
               <input
                 type="radio"
@@ -138,13 +154,15 @@ export default function ReportDialog({ target, onClose, onDone }) {
           ))}
         </div>
 
-        <label htmlFor="report-details" className="form-label text-white-50 fs-7 mb-1">Details (optional)</label>
+        <label htmlFor="report-details" className="form-label text-white-50 fs-7 mb-1">
+          {needsDetails ? "Where is the original?" : "Details (optional)"}
+        </label>
         <textarea
           id="report-details"
           className="form-control bg-secondary bg-opacity-25 border-secondary text-white fs-7 mb-3"
           rows={3}
           maxLength={1000}
-          placeholder="Tell us what happened..."
+          placeholder={needsDetails ? "Paste a link to the original, or say whose work it is..." : "Tell us what happened..."}
           value={details}
           onChange={(e) => setDetails(e.target.value)}
         />

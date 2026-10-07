@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
-import { REQUEST_COLUMNS, loadRequests, requestKindText } from "../../../lib/adminRequests";
+import { REQUEST_COLUMNS, loadRequests, requestText } from "../../../lib/adminRequests";
 import { SLIDES_SELECT } from "../../../lib/slides";
 import { reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { saveSuspension } from "../../../lib/suspensions";
@@ -13,6 +13,10 @@ const tabs = [
   { key: "decided", label: "Decided" }
 ];
 
+// What a "remove" request points at, by its table: the same words reports
+// use for their targets ("service:<id>" and so on in the names list below).
+const targetOfTable = { services: "service", job_posts: "job_post", portfolio_items: "portfolio_item" };
+
 // Super admins only (the menu hides it, and the database refuses everyone
 // else). A regular admin's Suspend, Ban, Resolve, Dismiss and Remove listing
 // arrive here as requests. Approving does the action as the super admin, the
@@ -21,7 +25,8 @@ const tabs = [
 export default function AdminApprovalsView() {
   const { adminId, refreshPendingApprovals, refreshPendingReports } = useOutletContext();
   const [requests, setRequests] = useState(null);
-  // report id -> the report; "user:<id>" / "service:<id>" / "job_post:<id>" -> a name.
+  // report id -> the report; "user:<id>" / "service:<id>" / "job_post:<id>" /
+  // "portfolio_item:<id>" -> a name.
   const [reports, setReports] = useState({});
   const [names, setNames] = useState({});
   const [loadError, setLoadError] = useState("");
@@ -55,11 +60,13 @@ export default function AdminApprovalsView() {
       const userIds = [...new Set([...idsOf("user"), ...result.data.map((r) => r.target_user_id).filter(Boolean)])];
       const serviceIds = [...new Set([...idsOf("service"), ...result.data.filter((r) => r.listing_table === "services").map((r) => r.listing_id)])];
       const jobIds = [...new Set([...idsOf("job_post"), ...result.data.filter((r) => r.listing_table === "job_posts").map((r) => r.listing_id)])];
+      const projectIds = [...new Set([...idsOf("portfolio_item"), ...result.data.filter((r) => r.listing_table === "portfolio_items").map((r) => r.listing_id)])];
 
-      const [users, services, jobs] = await Promise.all([
+      const [users, services, jobs, projects] = await Promise.all([
         userIds.length ? supabase.from("profiles").select("id, full_name, username").in("id", userIds) : { data: [] },
         serviceIds.length ? supabase.from("services").select("id, title").in("id", serviceIds) : { data: [] },
-        jobIds.length ? supabase.from("job_posts").select("id, title").in("id", jobIds) : { data: [] }
+        jobIds.length ? supabase.from("job_posts").select("id, title").in("id", jobIds) : { data: [] },
+        projectIds.length ? supabase.from("portfolio_items").select("id, title").in("id", projectIds) : { data: [] }
       ]);
       if (!active) return;
 
@@ -67,6 +74,7 @@ export default function AdminApprovalsView() {
       (users.data || []).forEach((u) => { found[`user:${u.id}`] = `${u.full_name} (@${u.username})`; });
       (services.data || []).forEach((s) => { found[`service:${s.id}`] = s.title; });
       (jobs.data || []).forEach((j) => { found[`job_post:${j.id}`] = j.title; });
+      (projects.data || []).forEach((p) => { found[`portfolio_item:${p.id}`] = p.title; });
 
       setReports(reportMap);
       setNames(found);
@@ -81,7 +89,7 @@ export default function AdminApprovalsView() {
 
   const aboutText = (request) => {
     if (request.kind === "suspend" || request.kind === "ban") return nameOf("user", request.target_user_id);
-    if (request.kind === "remove_listing") return nameOf(request.listing_table === "services" ? "service" : "job_post", request.listing_id);
+    if (request.kind === "remove_listing") return nameOf(targetOfTable[request.listing_table], request.listing_id);
     const report = reports[request.report_id];
     return report ? `a report about ${nameOf(report.target_type, report.target_id)}` : "a report that no longer exists";
   };
@@ -122,12 +130,14 @@ export default function AdminApprovalsView() {
         await closeReport(request.report_id, "resolved", request.kind === "ban" ? `Banned: ${penalty.reason}` : `Suspended ${penalty.days} days: ${penalty.reason}`);
       }
     } else if (request.kind === "remove_listing") {
-      // Removing a service also removes its photos and videos, so load them first.
-      const select = request.listing_table === "services" ? `id, title, image_url, ${SLIDES_SELECT}` : "id, title";
+      // Removing a service or a portfolio project also removes its files, so load them first.
+      const isProject = request.listing_table === "portfolio_items";
+      const select = request.listing_table === "services" ? `id, title, image_url, ${SLIDES_SELECT}`
+        : isProject ? `id, title, ${SLIDES_SELECT}` : "id, title";
       const { data: item } = await supabase.from(request.listing_table).select(select).eq("id", request.listing_id).maybeSingle();
       // Already gone (the owner or another admin removed it): nothing left to do.
-      if (item && !(await removeListing(request.listing_table, item))) throw new Error("Couldn't remove the listing.");
-      await closeReport(request.report_id, "resolved", `Listing removed.${details.note ? ` ${details.note}` : ""}`);
+      if (item && !(await removeListing(request.listing_table, item))) throw new Error(`Couldn't remove the ${isProject ? "project" : "listing"}.`);
+      await closeReport(request.report_id, "resolved", `${isProject ? "Project" : "Listing"} removed.${details.note ? ` ${details.note}` : ""}`);
     } else {
       await closeReport(request.report_id, request.kind === "resolve" ? "resolved" : "dismissed", details.note);
     }
@@ -166,7 +176,9 @@ export default function AdminApprovalsView() {
   const approveText = (request) => {
     if (request.kind === "ban") return "They will be signed out and can't log in until an admin unbans them.";
     if (request.kind === "suspend") return "The suspension starts now, and the length and limits come from the violation.";
-    if (request.kind === "remove_listing") return "The listing (and its photos and videos) will be deleted, and the report marked resolved.";
+    if (request.kind === "remove_listing") {
+      return `The ${request.listing_table === "portfolio_items" ? "project" : "listing"} (and its files) will be deleted, and the report marked resolved.`;
+    }
     if (request.kind === "resolve") return "The report will be marked resolved.";
     return "The report will be marked dismissed.";
   };
@@ -209,14 +221,14 @@ export default function AdminApprovalsView() {
             <div key={request.id} className="admin-card rounded-4 p-3 p-md-4">
               <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
                 <span className={`badge ${request.kind === "ban" || request.kind === "remove_listing" ? "bg-danger" : request.kind === "suspend" ? "bg-warning text-dark" : "admin-badge-orange"} fw-normal`}>
-                  {requestKindText[request.kind]}
+                  {requestText(request)}
                 </span>
                 {report && <span className="badge bg-secondary fw-normal">{reportTargetLabels[report.target_type]} report · {reportReasonLabel(report.reason)}</span>}
                 {!request.report_id && <span className="badge bg-secondary fw-normal">From the Users page</span>}
                 <span className="text-white-50 fs-8 ms-auto">{new Date(request.created_at).toLocaleString()}</span>
               </div>
 
-              <h2 className="h6 fw-bold text-white mb-1 admin-title-cell">{requestKindText[request.kind]}: {aboutText(request)}</h2>
+              <h2 className="h6 fw-bold text-white mb-1 admin-title-cell">{requestText(request)}: {aboutText(request)}</h2>
               <p className="fs-7 text-white-50 mb-1">Asked by {request.requested_by_name || "an admin"}</p>
               {violation && (
                 <p className="fs-7 text-white mb-1">
@@ -253,7 +265,7 @@ export default function AdminApprovalsView() {
         <div className="admin-modal-backdrop" onClick={() => !busy && setDialog(null)}>
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmDialog}>
             <h2 className="h5 fw-bold text-white mb-1">
-              {dialog.mode === "approve" ? "Approve" : "Decline"}: {requestKindText[dialog.request.kind]}
+              {dialog.mode === "approve" ? "Approve" : "Decline"}: {requestText(dialog.request)}
             </h2>
             <p className="text-white fs-7 mb-1">{aboutText(dialog.request)}</p>
             <p className="text-secondary fs-7 mb-3">

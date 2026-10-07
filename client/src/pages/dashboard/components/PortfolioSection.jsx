@@ -7,6 +7,7 @@ import OriginalBadge from "../../../components/OriginalBadge";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import PortfolioUploadDialog from "./PortfolioUploadDialog";
 import PortfolioViewer from "./PortfolioViewer";
+import ReportDialog from "./ReportDialog";
 import "./portfolio.css";
 
 // Stops the browser's "Save image as..." menu on the cover pictures.
@@ -39,7 +40,7 @@ function DocumentCover({ url }) {
 // delete) and on the public portfolio page.
 // ownerName: the freelancer's @username, shown over the slides (see MediaCarousel).
 export default function PortfolioSection({ freelancerId, ownerName, isOwner = false }) {
-  const { showToast } = useOutletContext();
+  const { showToast, currentUserId } = useOutletContext();
   const [items, setItems] = useState(null);
   const [loadError, setLoadError] = useState("");
   // The project opened big, the "+ Add" popup, and the project being deleted.
@@ -47,6 +48,10 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
   const [adding, setAdding] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  // The project being reported (null = Report popup closed). Visitors can
+  // report a project, for example as stolen work; nobody reports their own.
+  const [reportTarget, setReportTarget] = useState(null);
+  const canReport = !isOwner && freelancerId !== currentUserId;
   // The category chip picked ("" = all).
   const [shownCategory, setShownCategory] = useState("");
 
@@ -175,8 +180,12 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
         item={viewing}
         ownerName={ownerName}
         onDelete={isOwner ? setToDelete : undefined}
-        onClose={() => setViewing(null)}
+        onReport={canReport ? (item) => setReportTarget({ type: "portfolio_item", id: item.id, name: item.title }) : undefined}
+        // While the Report popup is open on top, Escape closes only that popup.
+        onClose={() => !reportTarget && setViewing(null)}
       />
+
+      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
 
       {adding && <PortfolioUploadDialog userId={freelancerId} onSaved={handleSaved} onClose={() => setAdding(false)} />}
 

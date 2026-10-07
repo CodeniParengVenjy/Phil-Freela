@@ -299,6 +299,18 @@ No new endpoints. No change in the AI service.
 `PortfolioViewer.jsx`, `PortfolioSection.jsx` and `AdminFlaggedView.jsx`
 belong to the watermarking system; this plan is the request to change them.
 
+Step 3: built and pushed 2026-10-08. Beyond the list above:
+- `lib/reports.js` has `reasonsFor(targetType)` and `reportListingTables`;
+  `lib/adminRequests.js` has `requestText(request)` ("Remove project").
+- The admin report card shows up to 4 small pictures of the reported
+  project's or service's own files ("What was reported:"), so the admin can
+  compare them with the reporter's link and screenshots.
+- `admin/views/AdminApprovalsView.jsx` names the project and carries out
+  "Remove project".
+- In the Report popup the proof must be at least 10 characters.
+- In an opened project, Escape closes the Report popup first, then the
+  project.
+
 ## Step 4: "Keep this one, remove the other" (Easy)
 
 1. `admin/views/AdminFlaggedView.jsx`:
@@ -309,6 +321,27 @@ belong to the watermarking system; this plan is the request to change them.
      storage;
    - the top paragraph explains the three choices.
 2. `PLAN-watermarking.md`: the "LATER" reminder points here.
+
+Step 4: built and pushed 2026-10-08. Any admin can use the button, regular
+or super: PLAN-admin-roles.md leaves Flagged Content review out of super
+admin approval. After a keep, other held-back files that matched the same
+post show it as deleted and lose the button. Until the SQL file is run the
+button answers "This button isn't switched on yet".
+
+Steps 3 and 4 test results: 61 of 61 browser checks passed (the real
+components in Chromium against a fake backend that refuses columns the real
+tables don't have; laptop width, plus phone width for the project viewer
+and the Flagged Content buttons; the Report popup and viewer also in light
+mode with a light accent color). Covered: the reason list per target, the
+required proof, the saved report, the "not switched on yet" answers, the
+Report button for a visitor and not for the owner, the admin report card
+and Remove Project as a super admin (project, files, report note) and as a
+regular admin (a request, nothing deleted), the Approvals page carrying it
+out, and Flagged Content (which cards get the button, the confirm box, the
+function call, the files deleted, a PDF's pages next to the photo it
+matched). The new `portfolio_items` query was also sent to the live API
+with the public key and was accepted. Not tested: any of this against the
+live database, which doesn't have the SQL file yet.
 
 ## Tests
 
@@ -359,5 +392,10 @@ plan.
 - Step 1: done and pushed (2026-10-07), live on Vercel.
 - Step 2 (the database file): written, tested on a stand-in and pushed
   (2026-10-08). Waiting for the user to run it in the Supabase SQL Editor.
-- Step 3 (reporting on the website): next.
-- Step 4: not started.
+- Step 3 (reporting on the website): done and pushed (2026-10-08).
+- Step 4 ("Keep this one, remove the other"): done and pushed (2026-10-08).
+
+Left to do: the user runs the SQL file; then run the database test on the
+live project (`database/test_stolen_work.sql` in the SQL Editor, or its
+checks without DELETE statements through the connector) and try the four
+things on the live site.

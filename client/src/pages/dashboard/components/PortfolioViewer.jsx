@@ -8,10 +8,12 @@ import "./portfolio.css";
 
 // A portfolio project opened big: its slideshow (or, for older writing, its
 // text), title, category, tags, the "Original" badge (step 10) and description.
-// Owners also get a Delete button (pass onDelete). ownerName: see
-// MediaCarousel. Rendered straight into <body> so it covers the whole screen,
-// in the same look and animation as the other popups (role-confirm-* classes).
-export default function PortfolioViewer({ item, ownerName, onDelete, onClose }) {
+// Owners also get a Delete button (pass onDelete); visitors get a Report
+// button (pass onReport), for work that isn't the freelancer's own. ownerName:
+// see MediaCarousel. Rendered straight into <body> so it covers the whole
+// screen, in the same look and animation as the other popups (role-confirm-*
+// classes).
+export default function PortfolioViewer({ item, ownerName, onDelete, onReport, onClose }) {
   // Escape closes it.
   useEffect(() => {
     if (!item) return undefined;
@@ -61,9 +63,22 @@ export default function PortfolioViewer({ item, ownerName, onDelete, onClose }) 
         <div className="p-4">
           <div className="d-flex justify-content-between align-items-start gap-3 mb-1">
             <h5 id="portfolio-viewer-title" className="fw-bold mb-0 text-break">{item.title}</h5>
-            <button type="button" className="btn btn-sm btn-outline-light rounded-circle flex-shrink-0" aria-label="Close" onClick={onClose}>
-              <i className="bi bi-x-lg"></i>
-            </button>
+            <div className="d-flex gap-2 flex-shrink-0">
+              {onReport && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary text-white-50 rounded-circle"
+                  title="Report this project"
+                  aria-label="Report this project"
+                  onClick={() => onReport(item)}
+                >
+                  <i className="bi bi-flag-fill"></i>
+                </button>
+              )}
+              <button type="button" className="btn btn-sm btn-outline-light rounded-circle" aria-label="Close" onClick={onClose}>
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
           </div>
           <p className="text-secondary fs-8 mb-2">
             Added {new Date(item.created_at).toLocaleDateString()}

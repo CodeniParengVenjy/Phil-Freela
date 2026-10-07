@@ -37,6 +37,11 @@ export default function TermsOfService() {
         elsewhere. Work found to be copied from another freelancer on PhilFreela is flagged for review and can be
         removed.
       </p>
+      <p className="text-secondary">
+        Only post work that is yours. Posting someone else's work as your own, from PhilFreela or from anywhere else, is
+        not allowed and can get your account suspended. If you see work that isn't the poster's own, use the Report
+        button on the project, service, or profile, pick "Stolen work / plagiarism", and tell us where the original is.
+      </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Ratings</h5>
       <p className="text-secondary">

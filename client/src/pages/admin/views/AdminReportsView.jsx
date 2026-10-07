@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
-import { loadRequests, newestBy, requestKindText, sendRequest } from "../../../lib/adminRequests";
-import { SLIDES_SELECT } from "../../../lib/slides";
-import { getScreenshotLinks, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
+import { loadRequests, newestBy, requestText, sendRequest } from "../../../lib/adminRequests";
+import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
+import { getScreenshotLinks, reportListingTables, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields, getViolation } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
@@ -27,6 +27,17 @@ const actionText = {
 
 // Key for looking up what a report points at, e.g. "service:<id>".
 const targetKey = (type, id) => `${type}:${id}`;
+
+// "Project" for a reported portfolio project, "Listing" for a service or job
+// post, so the Remove button and its pop-up use the right word.
+const removeWord = (report) => (report.target_type === "portfolio_item" ? "Project" : "Listing");
+
+// Up to 4 small pictures of a reported service's or project's files (its
+// photos, and the first page of a PDF), so the admin can compare them with
+// the reporter's proof, for example in a "Stolen work" report.
+function listingPictures(item) {
+  return itemSlides(item).flatMap((slide) => (slide.mediaType === "image" ? [slide.url] : slide.pages.slice(0, 1))).slice(0, 4);
+}
 
 // "During a video call · Sep 29, 2026, 3:10 PM · 4 min" for a report sent
 // from a call. The length counts from when it was answered.
@@ -92,11 +103,13 @@ export default function AdminReportsView() {
       // report card can show the name/title and the owner.
       const idsOf = (type) => [...new Set(reportsResult.data.filter((r) => r.target_type === type).map((r) => r.target_id))];
       const callIds = [...new Set(reportsResult.data.map((r) => r.call_id).filter(Boolean))];
-      const [usersResult, servicesResult, jobsResult, callsResult, links] = await Promise.all([
+      const [usersResult, servicesResult, jobsResult, projectsResult, callsResult, links] = await Promise.all([
         supabase.from("profiles").select("id, full_name, username").in("id", idsOf("user")),
         // The slides are only needed so Remove can delete the service's files too.
         supabase.from("services").select(`id, title, image_url, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`).in("id", idsOf("service")),
         supabase.from("job_posts").select("id, title, client_id, owner:profiles!job_posts_client_id_fkey(full_name, username)").in("id", idsOf("job_post")),
+        // Reported portfolio projects, with their slides for the same reason as services.
+        supabase.from("portfolio_items").select(`id, title, freelancer_id, owner:profiles!portfolio_items_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`).in("id", idsOf("portfolio_item")),
         // Admins can't read the calls table, only this summary (no IP addresses).
         callIds.length ? supabase.rpc("admin_report_calls", { call_ids: callIds }) : { data: [] },
         getScreenshotLinks(reportsResult.data.flatMap((r) => r.evidence_paths || []))
@@ -115,6 +128,9 @@ export default function AdminReportsView() {
       });
       (jobsResult.data || []).forEach((j) => {
         found[targetKey("job_post", j.id)] = { name: j.title, ownerId: j.client_id, ownerName: j.owner?.full_name, item: j };
+      });
+      (projectsResult.data || []).forEach((p) => {
+        found[targetKey("portfolio_item", p.id)] = { name: p.title, ownerId: p.freelancer_id, ownerName: p.owner?.full_name, item: p };
       });
 
       setTargets(found);
@@ -177,7 +193,7 @@ export default function AdminReportsView() {
         kind: kind === "remove" ? "remove_listing" : kind,
         reportId: report.id,
         targetUserId: penalty ? target.ownerId : null,
-        listingTable: kind === "remove" ? (report.target_type === "service" ? "services" : "job_posts") : null,
+        listingTable: kind === "remove" ? reportListingTables[report.target_type] : null,
         listingId: kind === "remove" ? target.item.id : null,
         // For Suspend / Ban the pop-up choices are kept, and the penalty is
         // worked out again when a super admin approves.
@@ -197,16 +213,16 @@ export default function AdminReportsView() {
     setBusy(true);
     try {
       if (kind === "remove") {
-        // Same Remove as the Listings page (deletes the photo/video too).
-        const table = report.target_type === "service" ? "services" : "job_posts";
-        if (!(await removeListing(table, target.item))) throw new Error("Couldn't remove the listing.");
+        // Same Remove as the Listings page (deletes the files too).
+        const word = removeWord(report);
+        if (!(await removeListing(reportListingTables[report.target_type], target.item))) throw new Error(`Couldn't remove the ${word.toLowerCase()}.`);
         setTargets((prev) => {
           const next = { ...prev };
           delete next[targetKey(report.target_type, report.target_id)];
           return next;
         });
-        await markReviewed(report, "resolved", `Listing removed.${text ? ` ${text}` : ""}`);
-        setMessage({ text: "Listing removed and report resolved.", type: "success" });
+        await markReviewed(report, "resolved", `${word} removed.${text ? ` ${text}` : ""}`);
+        setMessage({ text: `${word} removed and report resolved.`, type: "success" });
       } else if (penalty) {
         // Same Suspend / Ban as the Users page.
         const done = kind === "ban" ? "banned" : "suspended";
@@ -301,6 +317,21 @@ export default function AdminReportsView() {
 
               {report.details && <p className="fs-7 text-white mb-2 admin-description">"{report.details}"</p>}
 
+              {/* The reported service's or project's own pictures; click one to open it full size. */}
+              {isListing && target && listingPictures(target.item).length > 0 && (
+                <div className="mb-2">
+                  <p className="fs-8 text-white-50 mb-1">What was reported:</p>
+                  <div className="d-flex flex-wrap gap-2">
+                    {listingPictures(target.item).map((url, index) => (
+                      <a key={url} href={url} target="_blank" rel="noreferrer" title={`Open file ${index + 1}`}>
+                        <img src={url} alt={`Reported file ${index + 1}`} className="rounded-3 border border-warning border-opacity-50" style={{ width: 88, height: 88, objectFit: "cover" }} />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {report.evidence_paths?.length > 0 && <p className="fs-8 text-white-50 mb-1">The reporter's screenshots:</p>}
+
               {/* The reporter's screenshots; click one to open it full size. */}
               {report.evidence_paths?.length > 0 && (
                 <div className="d-flex flex-wrap gap-2 mb-2">
@@ -329,14 +360,14 @@ export default function AdminReportsView() {
                 <p className="fs-8 text-warning mb-0 mt-2">
                   <i className="bi bi-hourglass-split me-1"></i>
                   {isSuperAdmin
-                    ? `${requests[report.id].requested_by_name || "An admin"} asked to ${requestKindText[requests[report.id].kind].toLowerCase()}. Decide on the Approvals page.`
-                    : `Waiting for a super admin: ${requestKindText[requests[report.id].kind]}`}
+                    ? `${requests[report.id].requested_by_name || "An admin"} asked to ${requestText(requests[report.id]).toLowerCase()}. Decide on the Approvals page.`
+                    : `Waiting for a super admin: ${requestText(requests[report.id])}`}
                 </p>
               )}
               {report.status === "pending" && requests[report.id]?.status === "declined" && (
                 <p className="fs-8 text-white-50 mb-0 mt-2">
                   <i className="bi bi-x-circle me-1"></i>
-                  {requestKindText[requests[report.id].kind]} request declined by {requests[report.id].decider?.full_name || "a super admin"}
+                  {requestText(requests[report.id])} request declined by {requests[report.id].decider?.full_name || "a super admin"}
                   {requests[report.id].decision_note && ` — ${requests[report.id].decision_note}`}
                 </p>
               )}
@@ -345,7 +376,7 @@ export default function AdminReportsView() {
                 <div className="d-flex flex-wrap gap-2 mt-3">
                   {isListing && target && (
                     <button className="btn btn-outline-danger btn-sm" onClick={() => openAction("remove", report)}>
-                      <i className="bi bi-trash"></i> Remove Listing
+                      <i className="bi bi-trash"></i> Remove {removeWord(report)}
                     </button>
                   )}
                   {target && !ownerStatus && (
@@ -377,11 +408,11 @@ export default function AdminReportsView() {
         <div className="admin-modal-backdrop" onClick={() => !busy && setAction(null)}>
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmAction}>
             <h2 className="h5 fw-bold text-white mb-1">
-              {actionText[action.kind].title}
+              {action.kind === "remove" ? `Remove ${removeWord(action.report).toLowerCase()}` : actionText[action.kind].title}
               {actionText[action.kind].penalty && action.target && ` — ${action.target.ownerName}`}
             </h2>
             <p className="text-secondary fs-7 mb-3">
-              {action.kind === "remove" && "The listing (and its photo/video) will be deleted, and this report marked resolved."}
+              {action.kind === "remove" && `The ${removeWord(action.report).toLowerCase()} (and its files) will be deleted, and this report marked resolved.`}
               {action.kind === "suspend" && "The violation decides how long it lasts and what they can't do. This report will be marked resolved."}
               {action.kind === "ban" && "They will be signed out and can't log in until an admin unbans them. This report will be marked resolved."}
               {action.kind === "resolve" && "Use this when the problem has been handled."}
@@ -420,7 +451,7 @@ export default function AdminReportsView() {
                 className={`btn ${actionText[action.kind].buttonClass} btn-sm rounded-pill px-3 fw-bold`}
                 disabled={busy || (actionText[action.kind].penalty && !buildPenalty(action.kind, fields))}
               >
-                {isSuperAdmin ? actionText[action.kind].button : "Send for approval"}
+                {!isSuperAdmin ? "Send for approval" : action.kind === "remove" ? `Remove ${removeWord(action.report)}` : actionText[action.kind].button}
               </button>
             </div>
           </form>

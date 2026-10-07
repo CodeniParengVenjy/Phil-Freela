@@ -22,7 +22,7 @@ export function checkScreenshot(file) {
 // file is left behind. The database checks the rest (you report as yourself,
 // can't report yourself, and a call report must be about the other person
 // in that call). Returns { error } like Supabase does.
-//   target: { type: "user" | "service" | "job_post", id, callId? }
+//   target: { type: "user" | "service" | "job_post" | "portfolio_item", id, callId? }
 export async function sendReport({ target, reason, details, screenshots = [] }) {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
@@ -79,8 +79,18 @@ export const reportReasons = [
   { value: "inappropriate", label: "Inappropriate content" },
   { value: "harassment", label: "Harassment" },
   { value: "fake_profile", label: "Fake profile" },
+  // Someone else's work posted as their own (PLAN-stolen-work.md). This is
+  // how work taken from outside PhilFreela gets caught: the copy check only
+  // knows what was posted here. needsDetails: the reporter must say where the
+  // original is. notFor: a job post has no work in it.
+  { value: "stolen_work", label: "Stolen work / plagiarism", needsDetails: true, notFor: ["job_post"] },
   { value: "other", label: "Other" }
 ];
+
+// The reasons offered for one kind of target ("user", "service", ...).
+export function reasonsFor(targetType) {
+  return reportReasons.filter((r) => !r.notFor?.includes(targetType));
+}
 
 export function reportReasonLabel(value) {
   return reportReasons.find((r) => r.value === value)?.label || value;
@@ -90,5 +100,14 @@ export function reportReasonLabel(value) {
 export const reportTargetLabels = {
   user: "User",
   service: "Service",
-  job_post: "Job Post"
+  job_post: "Job Post",
+  portfolio_item: "Portfolio Project"
+};
+
+// The database table behind each kind of reported listing (an admin can
+// remove these; a reported user is suspended or banned instead).
+export const reportListingTables = {
+  service: "services",
+  job_post: "job_posts",
+  portfolio_item: "portfolio_items"
 };
