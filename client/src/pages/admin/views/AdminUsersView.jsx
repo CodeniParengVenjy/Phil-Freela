@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { presenceStatus, usePresence } from "../../../lib/presence";
@@ -38,6 +38,12 @@ const sortOptions = {
 
 export default function AdminUsersView() {
   const { adminId, isSuperAdmin } = useOutletContext();
+  // The Overview's cards open this page with choices in the address, like
+  // /admin/users?role=freelancer or ?verified=unverified or ?sort=online&dir=desc.
+  // They only decide where the boxes below start; a value that isn't one of the
+  // allowed ones is ignored.
+  const [params] = useSearchParams();
+  const fromAddress = (name, allowed, fallback) => (allowed.includes(params.get(name)) ? params.get(name) : fallback);
   const [users, setUsers] = useState(null);
   const verifiedIds = useVerifiedIds((users || []).map((user) => user.id));
   // user id -> seconds since they were last seen (refreshed every 30 seconds).
@@ -50,12 +56,13 @@ export default function AdminUsersView() {
   const [requests, setRequests] = useState({});
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState(() => fromAddress("role", ["freelancer", "client"], "all"));
+  const [statusFilter, setStatusFilter] = useState(() => fromAddress("status", ["active", "suspended", "banned"], "all"));
   // "all", "verified" or "unverified" (the Verified badge, see lib/verification.js).
-  const [verifyFilter, setVerifyFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("joined");
-  const [sortDir, setSortDir] = useState("desc");
+  const [verifyFilter, setVerifyFilter] = useState(() => fromAddress("verified", ["verified", "unverified"], "all"));
+  const [sortBy, setSortBy] = useState(() => fromAddress("sort", Object.keys(sortOptions), "joined"));
+  // Each sort has its own usual direction unless the address names one.
+  const [sortDir, setSortDir] = useState(() => fromAddress("dir", ["asc", "desc"], sortOptions[fromAddress("sort", Object.keys(sortOptions), "joined")].start));
   const [message, setMessage] = useState({ text: "", type: "" });
   // The open Suspend / Ban pop-up: { kind: "suspend" | "ban", user } (null = closed).
   const [blockTarget, setBlockTarget] = useState(null);

@@ -95,6 +95,22 @@ body {
 .admin-stat-card {
   height: 100%;
 }
+/* A stat card that opens the page behind the number (Overview). */
+.admin-stat-link {
+  color: inherit;
+  text-decoration: none;
+}
+.admin-stat-link:hover,
+.admin-stat-link:focus-visible {
+  color: inherit;
+}
+.admin-stat-card.is-link {
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.admin-stat-card.is-link:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 138, 51, 0.5);
+}
 
 .admin-stat-icon {
   width: 48px;
