@@ -5,21 +5,11 @@
 -- A super admin gives one person a pass. For 12 hours that person may verify
 -- with a School ID instead of a government ID. They still do the face scan
 -- and an admin still approves or rejects the request.
+--
+-- Run this file first, then supabase_school_id_pass_rules.sql (it swaps three
+-- CHECK rules, which needs a confirm, so it is a separate small file).
 
--- 1. The new ID type. A School ID takes a front photo only, like a passport.
-alter table public.identity_verifications
-  drop constraint identity_verifications_id_type_check;
-alter table public.identity_verifications
-  add constraint identity_verifications_id_type_check
-  check (id_type in ('philsys', 'drivers_license', 'passport', 'umid', 'prc', 'school_id'));
-
-alter table public.identity_verifications
-  drop constraint identity_verifications_back_required;
-alter table public.identity_verifications
-  add constraint identity_verifications_back_required
-  check (id_type in ('passport', 'school_id') or id_back_path is not null);
-
--- 2. One pass per person at a time.
+-- 1. One pass per person at a time.
 create table public.verification_passes (
   user_id uuid primary key references public.profiles (id) on delete cascade,
   id_type text not null default 'school_id' check (id_type = 'school_id'),
@@ -36,9 +26,9 @@ create index verification_passes_granted_by_idx on public.verification_passes (g
 alter table public.verification_passes enable row level security;
 
 -- People see only their own pass (so the form can show the School ID option);
--- admins see all of them (for the Overview box and the label). Nobody writes
--- from the browser: passes are made and cancelled only by the two functions
--- below, and marked used by the trigger below.
+-- admins see all of them. Nobody writes from the browser: passes are made and
+-- cancelled only by the two functions below, and marked used by the trigger
+-- below.
 create policy "owners and admins can read passes"
   on public.verification_passes for select
   to authenticated
@@ -47,20 +37,7 @@ create policy "owners and admins can read passes"
 revoke all on public.verification_passes from anon, authenticated;
 grant select on public.verification_passes to authenticated;
 
--- 3. The "School ID pass" notification needs its own type.
-alter table public.user_notifications
-  drop constraint user_notifications_type_check;
-alter table public.user_notifications
-  add constraint user_notifications_type_check
-  check (type in (
-    'verification_approved', 'verification_rejected', 'suspension', 'suspension_lifted',
-    'appeal_accepted', 'appeal_rejected', 'report_resolved', 'report_dismissed',
-    'project_hired', 'project_submitted', 'project_done', 'project_changes', 'project_rated',
-    'booking_requested', 'booking_accepted', 'booking_declined', 'booking_cancelled',
-    'school_id_pass'
-  ));
-
--- 4. Give a pass. Super admin only. Giving it again replaces the old one.
+-- 2. Give a pass. Super admin only. Giving it again replaces the old one.
 create or replace function public.grant_school_id_pass(target_id uuid)
 returns timestamptz
 language plpgsql
@@ -112,7 +89,8 @@ begin
 end;
 $$;
 
--- 5. Take back a pass that hasn't been used. Super admin only.
+-- 3. Take back a pass that hasn't been used: it ends right now. Super admin
+--    only.
 create or replace function public.cancel_school_id_pass(target_id uuid)
 returns void
 language plpgsql
@@ -124,7 +102,9 @@ begin
     raise exception 'Only a super admin can cancel a School ID pass.';
   end if;
 
-  delete from public.verification_passes where user_id = target_id and used_at is null;
+  update public.verification_passes
+  set expires_at = now()
+  where user_id = target_id and used_at is null and expires_at > now();
 
   if not found then
     raise exception 'That person has no unused School ID pass.';
@@ -143,7 +123,7 @@ revoke execute on function public.cancel_school_id_pass(uuid) from public, anon;
 grant execute on function public.grant_school_id_pass(uuid) to authenticated;
 grant execute on function public.cancel_school_id_pass(uuid) to authenticated;
 
--- 6. The database itself refuses a School ID request without a valid pass, no
+-- 4. The database itself refuses a School ID request without a valid pass, no
 --    matter who sends it (the AI service also checks first, to say so early),
 --    and uses the pass up when the request is saved.
 create or replace function public.check_and_use_school_id_pass()

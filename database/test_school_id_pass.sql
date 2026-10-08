@@ -1,5 +1,6 @@
--- Test for supabase_school_id_pass_schema.sql. Paste this whole file into the
--- Supabase SQL Editor and run it AFTER the schema file. It makes made-up
+-- Test for supabase_school_id_pass_schema.sql and supabase_school_id_pass_rules.sql.
+-- Paste this whole file into the Supabase SQL Editor and run it AFTER both
+-- files. It makes made-up
 -- accounts, acts as each one, and ends with an error that carries the
 -- PASS/FAIL list; that error rolls everything back, so nothing is left behind.
 do $t$
@@ -99,8 +100,14 @@ begin
 
   perform public.grant_school_id_pass(v);
   perform public.cancel_school_id_pass(v);
-  reset role; select count(*) into n from public.verification_passes where user_id = v; set local role authenticated;
-  res := res || E'\n' || case when n = 0 then 'PASS  ' else 'FAIL  ' end || '5c. a super admin cancels an unused pass';
+  reset role; select count(*) into n from public.verification_passes where user_id = v and expires_at <= now(); set local role authenticated;
+  res := res || E'\n' || case when n = 1 then 'PASS  ' else 'FAIL  ' end || '5c. a super admin cancels an unused pass (it ends right away)';
+  reset role;
+  begin
+    insert into public.identity_verifications (user_id, id_type, id_photo_path, selfie_path, selfie_left_path, selfie_right_path, face_match, face_distance, liveness_passed)
+    values (v, 'school_id', 'x', 'x', 'x', 'x', true, 0.3, true);
+    res := res || E'\nFAIL  5d. a cancelled pass still worked';
+  exception when others then res := res || E'\nPASS  5d. a cancelled pass is refused'; end;
 
   raise exception E'SCHOOL ID PASS TESTS (rolled back)%', res;
 end
