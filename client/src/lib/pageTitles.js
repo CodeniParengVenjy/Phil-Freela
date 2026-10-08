@@ -48,6 +48,7 @@ const pageTitles = {
   "/admin/billboard": "Dashboard Billboard",
   "/admin/admins": "Monitor Accounts",
   "/admin/log": "Activity Log",
+  "/admin/profile": "My Profile",
   "/admin/browse-services": "Monitor Browse Services",
   "/admin/browse-jobs": "Monitor Browse Jobs"
 };

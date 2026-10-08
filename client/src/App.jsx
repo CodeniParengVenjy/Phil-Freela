@@ -39,6 +39,7 @@ import AdminOverviewView from "./pages/admin/views/AdminOverviewView";
 import AdminUsersView from "./pages/admin/views/AdminUsersView";
 import AdminAdminsView from "./pages/admin/views/AdminAdminsView";
 import AdminLogView from "./pages/admin/views/AdminLogView";
+import AdminProfileView from "./pages/admin/views/AdminProfileView";
 import AdminListingsView from "./pages/admin/views/AdminListingsView";
 import AdminReportsView from "./pages/admin/views/AdminReportsView";
 import AdminFlaggedView from "./pages/admin/views/AdminFlaggedView";
@@ -119,6 +120,7 @@ function App() {
         <Route path="browse-jobs" element={<FindJobsView />} />
         <Route path="admins" element={<AdminAdminsView />} />
         <Route path="log" element={<AdminLogView />} />
+        <Route path="profile" element={<AdminProfileView />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
       {/* Any other address: usually an open tab that's older than the site

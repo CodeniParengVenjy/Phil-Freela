@@ -21,6 +21,7 @@ const sidebarLinks = [
   { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard", superAdminOnly: true },
   { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins", superAdminOnly: true },
   { to: "/admin/log", icon: "bi-journal-text", label: "Activity Log" },
+  { to: "/admin/profile", icon: "bi-person-gear", label: "My Profile" },
   // The same Browse Services / Find Jobs pages users see, shown in admin mode.
   { to: "/admin/browse-services", icon: "bi-shop", label: "Browse Services" },
   { to: "/admin/browse-jobs", icon: "bi-briefcase-fill", label: "Browse Jobs" }
@@ -141,6 +142,14 @@ export default function AdminLayout() {
     navigate("/admin/login", { replace: true });
   };
 
+  // Called by My Profile after a name change, so the top bar shows the new name.
+  const adminRowId = admin?.id;
+  const reloadAdmin = useCallback(async () => {
+    if (!adminRowId) return;
+    const { data } = await supabase.from("admins").select(ADMIN_COLUMNS).eq("id", adminRowId).maybeSingle();
+    if (data) setAdmin(data);
+  }, [adminRowId]);
+
   // Called by the "Create your password" screen after it saves. The database
   // switches the flag off by itself when the password really changes, so this
   // only re-reads the row. True means the panel can open.
@@ -198,10 +207,10 @@ export default function AdminLayout() {
           <span className="fw-bold">Admin Panel</span>
         </Link>
         <div className="d-flex align-items-center gap-3">
-          <span className="text-white-50 fs-7 d-none d-sm-inline">
+          <Link to="/admin/profile" className="text-white-50 fs-7 d-none d-sm-inline text-decoration-none" title="My Profile">
             <i className="bi bi-person-circle me-1"></i> {adminName}
             {isSuperAdmin && <span className="badge admin-badge-orange ms-2 fw-normal">Super admin</span>}
-          </span>
+          </Link>
           <button className="btn btn-outline-light btn-sm rounded-pill" onClick={handleSignOut}>
             <i className="bi bi-box-arrow-right me-1"></i> Sign Out
           </button>
@@ -244,7 +253,7 @@ export default function AdminLayout() {
           <main className="col-12 col-md-9 col-xl-10">
             {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                 to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingApprovals }} />
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingApprovals }} />
           </main>
         </div>
       </div>
