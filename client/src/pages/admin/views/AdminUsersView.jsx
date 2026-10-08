@@ -36,12 +36,6 @@ const sortOptions = {
   name: { label: "Name A-Z", start: "asc", desc: "Z to A", asc: "A to Z" }
 };
 
-// TEMPORARY: the only person who gets the "School ID pass" button (see
-// PLAN-school-id-pass.md). She has no government ID, so a super admin lets her
-// verify with a School ID for 12 hours. This line and the pass code go away
-// once she is done.
-const SCHOOL_ID_PASS_USERNAME = "itsme_tine";
-
 export default function AdminUsersView() {
   const { adminId, isSuperAdmin } = useOutletContext();
   const [users, setUsers] = useState(null);
@@ -71,23 +65,7 @@ export default function AdminUsersView() {
   const [liftTarget, setLiftTarget] = useState(null);
   // The open Delete account pop-up (super admins only): the user, or null (closed).
   const [deleteTarget, setDeleteTarget] = useState(null);
-  // The open School ID pass pop-up: the user, or null (closed).
-  const [passTarget, setPassTarget] = useState(null);
-  // user id -> that person's School ID pass row (database/supabase_school_id_pass_schema.sql).
-  const [passes, setPasses] = useState({});
   const [busy, setBusy] = useState(false);
-
-  // Loaded on its own, so a problem with passes can never stop the user list.
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    let active = true;
-
-    supabase.from("verification_passes").select("user_id, expires_at, used_at").then(({ data }) => {
-      if (active && data) setPasses(Object.fromEntries(data.map((pass) => [pass.user_id, pass])));
-    });
-
-    return () => { active = false; };
-  }, [isSuperAdmin]);
 
   useEffect(() => {
     let active = true;
@@ -276,43 +254,6 @@ export default function AdminUsersView() {
     setMessage({ text: `${user.full_name}'s account was deleted.`, type: "success" });
   };
 
-  // grant_school_id_pass() is a database function that re-checks on the server
-  // that the caller is a super admin; it returns when the 12 hours end.
-  const confirmGrantPass = async () => {
-    const user = passTarget;
-
-    setBusy(true);
-    const { data, error } = await supabase.rpc("grant_school_id_pass", { target_id: user.id });
-    setBusy(false);
-    setPassTarget(null);
-
-    if (error) {
-      setMessage({ text: error.message || "Failed to give the pass.", type: "error" });
-      return;
-    }
-
-    setPasses((prev) => ({ ...prev, [user.id]: { user_id: user.id, expires_at: data, used_at: null } }));
-    setMessage({ text: `${user.full_name} can now verify with a School ID until ${formatEndDate(data)}.`, type: "success" });
-  };
-
-  const cancelPass = async (user) => {
-    setBusy(true);
-    const { error } = await supabase.rpc("cancel_school_id_pass", { target_id: user.id });
-    setBusy(false);
-
-    if (error) {
-      setMessage({ text: error.message || "Failed to cancel the pass.", type: "error" });
-      return;
-    }
-
-    setPasses((prev) => {
-      const next = { ...prev };
-      delete next[user.id];
-      return next;
-    });
-    setMessage({ text: `${user.full_name}'s School ID pass was cancelled.`, type: "success" });
-  };
-
   return (
     <section>
       <h1 className="h4 fw-bold mb-3">Users</h1>
@@ -409,11 +350,6 @@ export default function AdminUsersView() {
                 // A Suspend / Ban request waiting for a super admin, if any.
                 const waiting = requests[user.id];
                 const seen = presenceStatus(lastSeen.get(user.id));
-                // The temporary School ID pass: only on her row, only for super
-                // admins (the database refuses anyone else), and not once verified.
-                const showPass = isSuperAdmin && user.username === SCHOOL_ID_PASS_USERNAME && !verifiedIds.has(user.id);
-                const pass = passes[user.id];
-                const passActive = pass && !pass.used_at && new Date(pass.expires_at) > new Date();
                 return (
                   <tr key={user.id}>
                     <td>
@@ -461,24 +397,6 @@ export default function AdminUsersView() {
                     </td>
                     <td>{new Date(user.created_at).toLocaleDateString()}</td>
                     <td className="text-end text-nowrap">
-                      {showPass && (
-                        passActive ? (
-                          <>
-                            <span className="badge bg-info text-dark fw-normal me-2">
-                              <i className="bi bi-person-vcard me-1"></i>School ID pass until {formatEndDate(pass.expires_at)}
-                            </span>
-                            <button className="btn btn-outline-secondary btn-sm me-2" onClick={() => cancelPass(user)} disabled={busy}>
-                              Cancel pass
-                            </button>
-                          </>
-                        ) : pass?.used_at ? (
-                          <span className="badge bg-secondary fw-normal me-2">School ID pass used</span>
-                        ) : (
-                          <button className="btn btn-outline-info btn-sm me-2" onClick={() => { setPassTarget(user); setMessage({ text: "", type: "" }); }}>
-                            <i className="bi bi-person-vcard"></i> School ID pass
-                          </button>
-                        )
-                      )}
                       {status ? (
                         <button className="btn btn-outline-success btn-sm" onClick={() => { setLiftTarget({ user, status }); setMessage({ text: "", type: "" }); }}>
                           <i className="bi bi-unlock"></i> {status === "banned" ? "Unban" : "Unsuspend"}
@@ -542,36 +460,6 @@ export default function AdminUsersView() {
               </button>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* School ID pass pop-up (super admins only): says what the pass allows. */}
-      {isSuperAdmin && passTarget && (
-        <div className="admin-modal-backdrop" onClick={() => !busy && setPassTarget(null)}>
-          <div
-            className="admin-card admin-modal rounded-4 p-4 text-center"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="passTitle"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="admin-lift-icon mx-auto mb-3">
-              <i className="bi bi-person-vcard-fill"></i>
-            </div>
-            <h2 id="passTitle" className="h5 fw-bold text-white mb-2">Let {passTarget.full_name} verify with a School ID?</h2>
-            <p className="text-secondary fs-7 mb-4">
-              For the next 12 hours they can choose School ID on the Verify Identity page, instead of a government ID. They still do the face scan, and an admin still approves or rejects the request.
-            </p>
-            <div className="d-flex justify-content-center gap-2">
-              <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-4" onClick={() => setPassTarget(null)} disabled={busy}>
-                Cancel
-              </button>
-              <button type="button" className="btn btn-success btn-sm rounded-pill px-4 fw-bold" onClick={confirmGrantPass} disabled={busy}>
-                <i className="bi bi-person-vcard me-1"></i>
-                {busy ? "Working..." : "Give the pass"}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

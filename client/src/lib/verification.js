@@ -14,27 +14,8 @@ export const ID_TYPES = [
   { value: "prc", label: "PRC ID", hasBack: true }
 ];
 
-// The temporary School ID pass (database/supabase_school_id_pass_schema.sql):
-// a super admin lets one person use a School ID for 12 hours. It is only
-// offered to people who have a pass, and takes a front photo only.
-export const SCHOOL_ID_TYPE = { value: "school_id", label: "School ID", hasBack: false };
-
 export function idTypeHasBack(value) {
-  return [...ID_TYPES, SCHOOL_ID_TYPE].find((type) => type.value === value)?.hasBack ?? true;
-}
-
-// When the signed-in user's unused School ID pass ends, as a Date, or null
-// when they have none. Users can only read their own pass (database rule). If
-// the lookup fails the School ID option simply isn't shown.
-export async function fetchSchoolIdPass(userId) {
-  const { data } = await supabase
-    .from("verification_passes")
-    .select("expires_at")
-    .eq("user_id", userId)
-    .is("used_at", null)
-    .gt("expires_at", new Date().toISOString())
-    .maybeSingle();
-  return data ? new Date(data.expires_at) : null;
+  return ID_TYPES.find((type) => type.value === value)?.hasBack ?? true;
 }
 
 // SFace "distance" between the ID face and the face scan: the lower, the more

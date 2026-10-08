@@ -58,8 +58,6 @@ export const notificationIcons = {
   announcement: { icon: "bi-megaphone-fill", className: "bg-role text-white" },
   verification_approved: { icon: "bi-patch-check-fill", className: "bg-success text-white" },
   verification_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" },
-  // A super admin allowed a School ID for 12 hours (database/supabase_school_id_pass_schema.sql).
-  school_id_pass: { icon: "bi-person-vcard-fill", className: "bg-info text-dark" },
   suspension: { icon: "bi-exclamation-triangle-fill", className: "bg-warning text-dark" },
   suspension_lifted: { icon: "bi-unlock-fill", className: "bg-success text-white" },
   appeal_accepted: { icon: "bi-check-circle-fill", className: "bg-success text-white" },
@@ -84,7 +82,6 @@ export const notificationIcons = {
 export const notificationLinkLabels = {
   verification_approved: "Go to Verify Identity",
   verification_rejected: "Go to Verify Identity",
-  school_id_pass: "Go to Verify Identity",
   suspension: "Appeal this suspension",
   appeal_rejected: "View appeal",
   project_hired: "Open project",

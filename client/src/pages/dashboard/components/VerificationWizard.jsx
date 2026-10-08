@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { checkIdBack, checkIdFront } from "../../../lib/aiService";
 import { loadFaceTracker } from "../../../lib/faceTracker";
-import { ID_TYPES, SCHOOL_ID_TYPE, idTypeHasBack } from "../../../lib/verification";
+import { ID_TYPES, idTypeHasBack } from "../../../lib/verification";
 import FaceScan from "./FaceScan";
 import PhotoPreview from "./PhotoPreview";
 import WizardPhotoStep from "./WizardPhotoStep";
@@ -18,9 +18,7 @@ const EMPTY_SIDE = { file: null, status: "idle", message: "" };
 //   token:     the QR link's token on the phone page (instead of a login)
 //   onSubmit:  sends everything; throws an error with a readable message if it fails
 //   phoneOption: shown next to Step 1 on a computer (the QR code for doing it on a phone)
-//   schoolIdUntil: when this person's temporary School ID pass ends (a Date), or
-//                  null. Only people with a pass see the School ID choice.
-export default function VerificationWizard({ mode, token, onSubmit, phoneOption, schoolIdUntil }) {
+export default function VerificationWizard({ mode, token, onSubmit, phoneOption }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [idType, setIdType] = useState("");
   const [front, setFront] = useState(EMPTY_SIDE);
@@ -41,8 +39,6 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption,
 
   const needsBack = idTypeHasBack(idType);
   const isPassport = idType === "passport";
-  const idChoices = schoolIdUntil ? [...ID_TYPES, SCHOOL_ID_TYPE] : ID_TYPES;
-  const passEnds = schoolIdUntil?.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const steps = ["type", "front", ...(needsBack ? ["back"] : []), "scan", "review"];
   const current = steps[stepIndex];
   const goTo = (name) => setStepIndex(steps.indexOf(name));
@@ -66,9 +62,6 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption,
     setIdType(value);
     // Passports have no card back, so a back photo taken earlier is dropped.
     if (!idTypeHasBack(value)) setBack(EMPTY_SIDE);
-    // A School ID is checked more gently than a government ID, so a front
-    // photo taken earlier is checked again for the new type.
-    if (front.file && (value === "school_id") !== (idType === "school_id")) handleFront(front.file, value);
   };
 
   // Runs the instant check on the back (it needs the front, to make sure the
@@ -83,11 +76,11 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption,
     }
   };
 
-  const handleFront = async (file, type = idType) => {
+  const handleFront = async (file) => {
     if (!file) return setFront(EMPTY_SIDE);
     setFront({ file, status: "checking", message: "" });
     try {
-      await checkIdFront(file, token, type);
+      await checkIdFront(file, token);
       setFront({ file, status: "ok", message: "" });
       // A new front means the back's "not the same photo" check must run again.
       if (back.file) checkBack(file, back.file);
@@ -160,13 +153,8 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption,
               onChange={(e) => handleTypeChange(e.target.value)}
             >
               <option value="" disabled>Choose your ID</option>
-              {idChoices.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+              {ID_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
             </select>
-            {schoolIdUntil && (
-              <p className="text-info fs-8 mt-2 mb-0">
-                <i className="bi bi-info-circle-fill me-1"></i>An admin allowed you to use a School ID. This choice works until {passEnds}, so finish before then.
-              </p>
-            )}
           </div>
           {phoneOption && <div className="col-md-5">{phoneOption}</div>}
         </div>

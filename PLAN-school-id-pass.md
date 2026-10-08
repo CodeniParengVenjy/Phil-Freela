@@ -1,6 +1,14 @@
 # School ID pass: plan
 
-Status (2026-10-08): plan approved. Step 1 files written
+Status (2026-10-08, later): FINISHED AND REMOVED. Kristine's School ID
+verification was approved, so the temporary code is gone from the website and
+the AI service (reverted in one commit). Only a readable "School ID" label stays
+in the admin Verifications list for her record, and her old notification shows
+with the generic icon. The database objects are removed with
+database/supabase_school_id_pass_remove.sql; the three CHECK rules stay, because
+her approved record and notification still use them.
+
+Earlier status: plan approved. Step 1 files written
 (database/supabase_school_id_pass_schema.sql and database/test_school_id_pass.sql)
 but NOT yet applied to the live database: the Supabase tool declined the SQL
 because it replaces three CHECK rules (DROP CONSTRAINT then ADD). Run both files

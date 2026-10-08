@@ -22,7 +22,6 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from functools import partial
 
 import cv2
 from docx import Document as DocxDocument
@@ -41,7 +40,7 @@ from id_qr import check_philsys_qr
 from hidden_watermark import new_code, protect_photo, read_code, read_code_from_frames, read_uncropped_codes
 from listing_search import search_listings
 from moodboard import match_moodboard
-from photo_checks import SCHOOL_ID_MIN_TEXT_LINES, PhotoProblem, check_face_scan, check_id_back, check_id_front
+from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
 from recommendations import recommend
 from similarity import image_embedding
 from text_embedder import embed_texts
@@ -75,11 +74,7 @@ supabase = create_client(
 )
 
 BUCKET = "verification-docs"
-ID_TYPES = {"philsys", "drivers_license", "passport", "umid", "prc", "school_id"}
-# Types with no card back to photograph. "school_id" is the temporary School ID
-# pass (database/supabase_school_id_pass_schema.sql): only people a super admin
-# gave a pass to may use it, for 12 hours.
-NO_BACK_TYPES = {"passport", "school_id"}
+ID_TYPES = {"philsys", "drivers_license", "passport", "umid", "prc"}
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB, same limit as the storage bucket
 
@@ -148,30 +143,6 @@ def ensure_can_verify(user_id):
         raise HTTPException(409, "Your verification is already waiting for review.")
 
 
-def find_school_id_pass(user_id):
-    """When the person's unused School ID pass ends, or None if they have none."""
-    now = datetime.now(timezone.utc).isoformat()
-    rows = (
-        supabase.table("verification_passes")
-        .select("expires_at")
-        .eq("user_id", user_id)
-        .is_("used_at", "null")
-        .gt("expires_at", now)
-        .limit(1)
-        .execute()
-        .data
-    )
-    return rows[0]["expires_at"] if rows else None
-
-
-def ensure_school_id_pass(user_id):
-    """A School ID is only for people with an unused, unexpired pass. Checked
-    first so they hear it before the face check runs; the database refuses
-    the request without a pass too, so this can't be skipped."""
-    if find_school_id_pass(user_id) is None:
-        raise HTTPException(403, "You don't have a School ID pass, or it has expired.")
-
-
 def read_image(upload, photo_name):
     """Checks an uploaded file is a real JPG/PNG/WEBP under 5 MB and opens it."""
     data = upload.file.read(MAX_FILE_SIZE + 1)
@@ -201,13 +172,6 @@ def to_clean_jpeg(image, max_side=STORED_MAX_SIDE, quality=85):
     return buffer.getvalue()
 
 
-def front_check_for(id_type):
-    """The ID front check; a School ID needs fewer printed text lines."""
-    if id_type == "school_id":
-        return partial(check_id_front, min_text_lines=SCHOOL_ID_MIN_TEXT_LINES)
-    return check_id_front
-
-
 def run_photo_check(check, *images):
     """Runs one of the photo_checks and turns a problem into a "retake" reply."""
     try:
@@ -235,13 +199,10 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
     same-person check and aren't saved."""
     if id_type not in ID_TYPES:
         raise HTTPException(400, "Please choose a valid ID type.")
-    # Both sides of the card are required; passports and School IDs take the
-    # front only.
-    if id_type not in NO_BACK_TYPES and id_back is None:
+    # Both sides of the card are required; passports have no card back.
+    if id_type != "passport" and id_back is None:
         raise HTTPException(400, "Please add a photo of the back of your ID.")
     ensure_can_verify(user_id)
-    if id_type == "school_id":
-        ensure_school_id_pass(user_id)
 
     id_image = read_image(id_photo, "photo of the front of your ID")
     id_back_image = read_image(id_back, "photo of the back of your ID") if id_back is not None else None
@@ -252,7 +213,7 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
     left_half = read_image(selfie_left_half, "face scan") if has_halves else None
     right_half = read_image(selfie_right_half, "face scan") if has_halves else None
 
-    run_photo_check(front_check_for(id_type), id_image)
+    run_photo_check(check_id_front, id_image)
     if id_back_image is not None:
         run_photo_check(check_id_back, id_image, id_back_image)
     run_photo_check(check_face_scan, selfie_image, left_image, right_image, left_half, right_half)
@@ -361,10 +322,6 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
         # the user submitted from the computer and the phone at the same time.
         if error.code == "23505":
             raise HTTPException(409, "Your verification is already waiting for review.")
-        # P0001 = the database's own "no valid School ID pass" refusal (the
-        # pass ran out, or was cancelled, while the photos were uploading).
-        if error.code == "P0001":
-            raise HTTPException(403, "You don't have a School ID pass, or it has expired.")
         raise
 
     # The AI results stay out of the reply: only admins see them, so nobody
@@ -401,15 +358,12 @@ def find_valid_link(token):
 def check_front(
     photo: UploadFile = File(...),
     token: str | None = Form(default=None),
-    id_type: str | None = Form(default=None),
     authorization: str | None = Header(default=None),
 ):
     """Instant check of the front of the ID, before the user can go on.
-    Nothing is saved. Needs a login or a valid QR token, so strangers can't use it.
-    id_type only makes a School ID's check gentler; the final submit checks the
-    type and the pass again."""
+    Nothing is saved. Needs a login or a valid QR token, so strangers can't use it."""
     get_caller_user_id(authorization, token)
-    run_photo_check(front_check_for(id_type), read_image(photo, "photo of the front of your ID"))
+    run_photo_check(check_id_front, read_image(photo, "photo of the front of your ID"))
     return {"ok": True}
 
 
@@ -459,18 +413,8 @@ def create_phone_link(authorization: str | None = Header(default=None)):
 
 @app.get("/phone-links/{token}")
 def check_phone_link(token: str):
-    """The phone asks if its QR link still works. Only yes/no, no personal info,
-    plus when the link owner's School ID pass ends (if they have one), so the
-    phone's form can offer School ID."""
-    link = find_valid_link(token)
-    school_id_until = None
-    if link:
-        try:
-            school_id_until = find_school_id_pass(link["user_id"])
-        except Exception:
-            # Never let the pass lookup break a normal phone verification.
-            logger.exception("Looking up the School ID pass failed")
-    return {"valid": link is not None, "school_id_until": school_id_until}
+    """The phone asks if its QR link still works. Only yes/no, no personal info."""
+    return {"valid": find_valid_link(token) is not None}
 
 
 @app.post("/phone-links/{token}/submit")
