@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { submitVerification } from "../../../lib/aiService";
-import { fetchLatestVerification, isPhone } from "../../../lib/verification";
+import { fetchLatestVerification, fetchSchoolIdPass, isPhone } from "../../../lib/verification";
 import PhoneQrPanel from "./PhoneQrPanel";
 import VerificationWizard from "./VerificationWizard";
 
@@ -30,6 +30,8 @@ export default function IdentityVerification() {
   const [hasWebcam, setHasWebcam] = useState(() => (navigator.mediaDevices?.enumerateDevices ? null : false));
   const [onPhone] = useState(isPhone);
   const [tryingAgain, setTryingAgain] = useState(false);
+  // When a super admin's temporary School ID pass for this user ends, or null.
+  const [schoolIdUntil, setSchoolIdUntil] = useState(null);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -40,6 +42,7 @@ export default function IdentityVerification() {
       if (error) setLoadError(LOAD_ERROR);
       else setLatest(data);
     });
+    fetchSchoolIdPass(currentUserId).then((until) => active && setSchoolIdUntil(until));
 
     return () => {
       active = false;
@@ -110,7 +113,7 @@ export default function IdentityVerification() {
   }
 
   // Already on a phone: use its cameras directly, no QR code needed.
-  if (onPhone) return <VerificationWizard mode="phone" onSubmit={sendAsLoggedInUser} />;
+  if (onPhone) return <VerificationWizard mode="phone" onSubmit={sendAsLoggedInUser} schoolIdUntil={schoolIdUntil} />;
 
   if (hasWebcam === false) return <PhoneQrPanel userId={currentUserId} onDone={showSubmitted} />;
 
@@ -118,6 +121,7 @@ export default function IdentityVerification() {
     <VerificationWizard
       mode="computer"
       onSubmit={sendAsLoggedInUser}
+      schoolIdUntil={schoolIdUntil}
       phoneOption={<PhoneQrPanel compact userId={currentUserId} onDone={showSubmitted} />}
     />
   );

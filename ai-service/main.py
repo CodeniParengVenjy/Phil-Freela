@@ -147,14 +147,12 @@ def ensure_can_verify(user_id):
         raise HTTPException(409, "Your verification is already waiting for review.")
 
 
-def ensure_school_id_pass(user_id):
-    """A School ID is only for people with an unused, unexpired pass. Checked
-    first so they hear it before the face check runs; the database refuses
-    the request without a pass too, so this can't be skipped."""
+def find_school_id_pass(user_id):
+    """When the person's unused School ID pass ends, or None if they have none."""
     now = datetime.now(timezone.utc).isoformat()
     rows = (
         supabase.table("verification_passes")
-        .select("user_id")
+        .select("expires_at")
         .eq("user_id", user_id)
         .is_("used_at", "null")
         .gt("expires_at", now)
@@ -162,7 +160,14 @@ def ensure_school_id_pass(user_id):
         .execute()
         .data
     )
-    if not rows:
+    return rows[0]["expires_at"] if rows else None
+
+
+def ensure_school_id_pass(user_id):
+    """A School ID is only for people with an unused, unexpired pass. Checked
+    first so they hear it before the face check runs; the database refuses
+    the request without a pass too, so this can't be skipped."""
+    if find_school_id_pass(user_id) is None:
         raise HTTPException(403, "You don't have a School ID pass, or it has expired.")
 
 
@@ -443,8 +448,18 @@ def create_phone_link(authorization: str | None = Header(default=None)):
 
 @app.get("/phone-links/{token}")
 def check_phone_link(token: str):
-    """The phone asks if its QR link still works. Only yes/no, no personal info."""
-    return {"valid": find_valid_link(token) is not None}
+    """The phone asks if its QR link still works. Only yes/no, no personal info,
+    plus when the link owner's School ID pass ends (if they have one), so the
+    phone's form can offer School ID."""
+    link = find_valid_link(token)
+    school_id_until = None
+    if link:
+        try:
+            school_id_until = find_school_id_pass(link["user_id"])
+        except Exception:
+            # Never let the pass lookup break a normal phone verification.
+            logger.exception("Looking up the School ID pass failed")
+    return {"valid": link is not None, "school_id_until": school_id_until}
 
 
 @app.post("/phone-links/{token}/submit")

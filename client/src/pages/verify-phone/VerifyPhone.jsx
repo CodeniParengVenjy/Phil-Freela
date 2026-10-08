@@ -12,11 +12,18 @@ export default function VerifyPhone() {
   const { token } = useParams();
   // "checking" -> "ready" (form) -> "done"; or "invalid" / "offline".
   const [stage, setStage] = useState("checking");
+  // When the link owner's temporary School ID pass ends, or null (the AI
+  // service tells the phone, since the phone isn't logged in).
+  const [schoolIdUntil, setSchoolIdUntil] = useState(null);
 
   useEffect(() => {
     let active = true;
     checkPhoneLink(token)
-      .then(({ valid }) => active && setStage(valid ? "ready" : "invalid"))
+      .then(({ valid, school_id_until: until }) => {
+        if (!active) return;
+        if (until) setSchoolIdUntil(new Date(until));
+        setStage(valid ? "ready" : "invalid");
+      })
       .catch(() => active && setStage("offline"));
     return () => {
       active = false;
@@ -57,7 +64,7 @@ export default function VerifyPhone() {
             </div>
           )}
 
-          {stage === "ready" && <VerificationWizard mode="phone" token={token} onSubmit={handleSubmit} />}
+          {stage === "ready" && <VerificationWizard mode="phone" token={token} onSubmit={handleSubmit} schoolIdUntil={schoolIdUntil} />}
 
           {stage === "done" && (
             <div className="text-center">
