@@ -150,6 +150,13 @@ begin
   exception when insufficient_privilege then res := res || E'\nPASS  2j. you can''t report your own picture';
   when others then res := res || E'\nFAIL  2j. wrong error: ' || sqlerrm; end;
 
+  -- The owner can't read other people's reports, but the rule that keeps the
+  -- reported file still has to see them (Juan, the owner, is signed in here).
+  select count(*) into n from public.reports where target_id = own;
+  if n = 0 and public.is_reported_picture(av) and public.is_reported_picture(cv) and not public.is_reported_picture(own || '/1700000000077.jpg') then
+    res := res || E'\nPASS  2k. the owner can''t see the reports, yet a reported file counts as kept (and other files don''t)';
+  else res := res || E'\nFAIL  2k. owner sees ' || n || ' reports, or the kept-file answer is wrong'; end if;
+
   -- ===== 3. The request a regular admin sends =====
   perform set_config('request.jwt.claims', json_build_object('sub', a1, 'role', 'authenticated')::text, true);
 
@@ -238,6 +245,18 @@ begin
   if msg like 'An admin reviewed your report about a cover photo (sent %' then
     res := res || E'\nPASS  5c. a dismissed cover report tells the reporter "a cover photo"';
   else res := res || E'\nFAIL  5c. notification says: ' || coalesce(msg, '(nothing)'); end if;
+
+  -- ===== 6. The reported file is only kept while the report is waiting =====
+  if not public.is_reported_picture(av) and not public.is_reported_picture(cv) then
+    res := res || E'\nPASS  6a. once the reports are reviewed, their files can be deleted again';
+  else res := res || E'\nFAIL  6a. a reviewed report still keeps its file'; end if;
+
+  select count(*) into n from pg_policies
+  where schemaname = 'storage' and tablename = 'objects'
+    and policyname in ('avatars: users can delete their files', 'covers: users can delete their files')
+    and qual like '%is_reported_picture%';
+  if n = 2 then res := res || E'\nPASS  6b. both owner delete rules (pictures and covers) use the kept-file check';
+  else res := res || E'\nFAIL  6b. ' || n || ' of 2 delete rules use it'; end if;
 
   raise exception E'TEST RESULTS (everything is rolled back):%', res;
 end;

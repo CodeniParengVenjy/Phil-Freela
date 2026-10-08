@@ -12,7 +12,13 @@
 --      admin approves, like removing a listing).
 --   D. admin_remove_picture(): the super admin's way to clear someone's
 --      picture, plus the storage rules that let them delete the file.
---   E. The same words in the Activity Log and in notifications.
+--   E. A reported picture's file can't be deleted by its owner while the
+--      report is waiting (so swapping the picture doesn't hide the evidence).
+--   F. The same words in the Activity Log and in notifications.
+--
+-- Already on the live database (applied 2026-10-09 as migrations
+-- "cover_photo_and_picture_reports" and "reported_picture_is_kept"), so there
+-- is no need to run it again. For a fresh database, run the whole file.
 
 begin;
 
@@ -195,7 +201,39 @@ create policy "covers: super admins can delete files"
   using (bucket_id = 'covers' and public.is_super_admin());
 
 -- ===========================================================================
--- E. The same words in the Activity Log and in notifications
+-- E. A reported picture can't be deleted while its report is waiting
+-- ===========================================================================
+-- Changing your picture normally deletes the old file (lib/avatar.js). Without
+-- this, someone could get rid of the evidence by swapping the reported picture
+-- before an admin looks. "security definer": the owner can't read other
+-- people's reports, so the check has to run with more access than theirs.
+
+create index reports_reported_path_idx on public.reports (reported_path) where reported_path is not null;
+
+create or replace function public.is_reported_picture(p_path text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.reports r where r.status = 'pending' and r.reported_path = p_path);
+$$;
+
+revoke execute on function public.is_reported_picture(text) from public, anon;
+grant execute on function public.is_reported_picture(text) to authenticated;
+
+-- The owner's delete rules from the two earlier sections, plus "not reported".
+-- (If the delete is refused the file just stays; the page treats a failed
+-- delete of an old file as harmless.)
+alter policy "avatars: users can delete their files" on storage.objects
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text and not public.is_reported_picture(name));
+
+alter policy "covers: users can delete their files" on storage.objects
+  using (bucket_id = 'covers' and (storage.foldername(name))[1] = auth.uid()::text and not public.is_reported_picture(name));
+
+-- ===========================================================================
+-- F. The same words in the Activity Log and in notifications
 -- ===========================================================================
 -- (Each function is the one already there, with the new cases added.)
 
