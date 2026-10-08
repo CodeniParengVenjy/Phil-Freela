@@ -7,7 +7,10 @@ import { avatarUrl } from "../lib/avatar";
 // previewUrl is for Settings: a picked picture shown before it's saved.
 // to: when given, the picture is a link to that page (the person's public
 // profile), so clicking a picture works like clicking the name beside it.
-export default function Avatar({ path, previewUrl, name, size = 40, className = "", to }) {
+// onOpen: when given (profile pages), clicking a real picture calls it, to show
+// the picture bigger (components/PictureViewer.jsx). The first-letter circle
+// has nothing to show, so it isn't clickable.
+export default function Avatar({ path, previewUrl, name, size = 40, className = "", to, onOpen }) {
   const src = previewUrl || avatarUrl(path);
   // The link that failed to load, so a new picture gets tried again.
   const [failedSrc, setFailedSrc] = useState(null);
@@ -31,6 +34,21 @@ export default function Avatar({ path, previewUrl, name, size = 40, className = 
       {letter}
     </span>
   );
+
+  if (onOpen && src && src !== failedSrc) {
+    return (
+      <button
+        type="button"
+        className="d-inline-flex flex-shrink-0 rounded-circle border-0 bg-transparent p-0"
+        style={{ width: size, height: size, cursor: "zoom-in" }}
+        title="View picture"
+        aria-label={name ? `View ${name}'s profile picture` : "View profile picture"}
+        onClick={onOpen}
+      >
+        {picture}
+      </button>
+    );
+  }
 
   if (!to) return picture;
 

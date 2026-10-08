@@ -8,7 +8,8 @@ import CompletedProjects from "../components/CompletedProjects";
 import SkillsBox from "../components/SkillsBox";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
-import { fetchCoverPath } from "../../../lib/avatar";
+import PictureViewer from "../../../components/PictureViewer";
+import { avatarUrl, coverUrl, fetchCoverPath } from "../../../lib/avatar";
 
 export default function ProfileView() {
   const { displayName, avatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
@@ -18,6 +19,8 @@ export default function ProfileView() {
   const [description, setDescription] = useState(undefined);
   // Where the cover photo is ("" = none or still loading: either way the plain banner shows).
   const [coverPath, setCoverPath] = useState("");
+  // Which picture is open bigger: "picture", "cover", or null (none).
+  const [viewing, setViewing] = useState(null);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -39,12 +42,12 @@ export default function ProfileView() {
       <div className="row g-4">
         <div className="col-lg-8">
           <div className="profile-card-main glass-card rounded-4 border border-secondary border-opacity-25 text-center position-relative overflow-hidden">
-            <CoverPhoto path={coverPath} name={displayName} />
+            <CoverPhoto path={coverPath} name={displayName} onOpen={() => setViewing("cover")} />
 
             {/* The picture sits half over the banner (the negative top margin). */}
             <div className="position-relative z-2 px-4 px-md-5 pb-4 pb-md-5">
               <div className="profile-avatar-container mx-auto mb-3" style={{ marginTop: -60 }}>
-                <Avatar path={avatarPath} name={displayName} size={120} className="border border-4 border-dark shadow-2xl" />
+                <Avatar path={avatarPath} name={displayName} size={120} className="border border-4 border-dark shadow-2xl" onOpen={() => setViewing("picture")} />
               </div>
 
               <h2 className="fw-bold text-white mb-4">{displayName}</h2>
@@ -111,6 +114,17 @@ export default function ProfileView() {
           </div>
         </div>
       </div>
+
+      {/* Your own picture, bigger, with a way to change it. */}
+      <PictureViewer
+        picture={viewing && {
+          kind: viewing,
+          src: viewing === "cover" ? coverUrl(coverPath) : avatarUrl(avatarPath),
+          alt: viewing === "cover" ? "Your cover photo" : "Your profile picture"
+        }}
+        onClose={() => setViewing(null)}
+        changeTo="/dashboard/settings"
+      />
     </section>
   );
 }

@@ -9,6 +9,8 @@ import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import StarRating from "../../../components/StarRating";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
+import PictureViewer from "../../../components/PictureViewer";
+import { avatarUrl, coverUrl } from "../../../lib/avatar";
 import PortfolioSection from "../components/PortfolioSection";
 import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
@@ -46,6 +48,8 @@ function PublicProfile({ userId }) {
   const [reportTarget, setReportTarget] = useState(null);
   // The freelancer being booked (null = Book popup closed). Only clients book.
   const [bookTarget, setBookTarget] = useState(null);
+  // Which picture is open bigger: "picture", "cover", or null (none).
+  const [viewing, setViewing] = useState(null);
   const isOwnPage = userId === currentUserId;
 
   useEffect(() => {
@@ -90,9 +94,9 @@ function PublicProfile({ userId }) {
   return (
     <section className="dashboard-view active-view">
       <div className="glass-card rounded-4 border border-secondary border-opacity-25 mb-4 overflow-hidden">
-        <CoverPhoto path={person.cover_path} name={name} />
+        <CoverPhoto path={person.cover_path} name={name} onOpen={() => setViewing("cover")} />
         <div className="p-4 d-flex flex-column flex-sm-row align-items-sm-center gap-3">
-          <Avatar path={person.avatar_path} name={name} size={72} />
+          <Avatar path={person.avatar_path} name={name} size={72} onOpen={() => setViewing("picture")} />
           <div className="flex-grow-1 overflow-hidden">
             <h3 className="text-white fw-bold mb-1 text-break">
               {person.full_name}
@@ -165,6 +169,17 @@ function PublicProfile({ userId }) {
           <PortfolioSection freelancerId={person.id} ownerName={person.username} />
         </div>
       )}
+
+      {/* Their picture or cover, bigger. On your own page it has a Change link. */}
+      <PictureViewer
+        picture={viewing && {
+          kind: viewing,
+          src: viewing === "cover" ? coverUrl(person.cover_path) : avatarUrl(person.avatar_path),
+          alt: viewing === "cover" ? `${name}'s cover photo` : `${name}'s profile picture`
+        }}
+        onClose={() => setViewing(null)}
+        changeTo={isOwnPage ? "/dashboard/settings" : undefined}
+      />
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
       <BookDialog
