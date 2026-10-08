@@ -11,8 +11,8 @@ const MAX_USERNAME_LENGTH = 60;
 // Returns what's wrong with the form (the same rules as the sign-up form),
 // or "" when everything is fine.
 function findProblem(fullName, username, gender) {
-  if (!fullName) return "Please enter your full name.";
-  if (fullName.length > MAX_NAME_LENGTH) return `Full Name must not exceed ${MAX_NAME_LENGTH} characters.`;
+  if (!fullName) return "Please enter your name.";
+  if (fullName.length > MAX_NAME_LENGTH) return `Name must not exceed ${MAX_NAME_LENGTH} characters.`;
   if (!username) return "Please choose a username.";
   if (username.length > MAX_USERNAME_LENGTH) return `Username must not exceed ${MAX_USERNAME_LENGTH} characters.`;
   if (!["male", "female"].includes(gender)) return "Please choose Male or Female.";
@@ -149,7 +149,7 @@ export default function CompleteProfile() {
               </div>
 
               <div className="field">
-                <label htmlFor="fullName" className="form-label text-white-50 fw-semibold fs-7 mb-1">Full Name</label>
+                <label htmlFor="fullName" className="form-label text-white-50 fw-semibold fs-7 mb-1">Name</label>
                 <div className="input-group">
                   <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50"><i className="bi bi-person"></i></span>
                   <input

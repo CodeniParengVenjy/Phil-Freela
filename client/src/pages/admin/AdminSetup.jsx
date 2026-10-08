@@ -81,7 +81,7 @@ export default function AdminSetup() {
 
           <form className="d-flex flex-column gap-3" noValidate onSubmit={handleSubmit}>
             <div className="field">
-              <label htmlFor="fullName" className="form-label text-white-50 fw-semibold fs-7 mb-1">Full Name</label>
+              <label htmlFor="fullName" className="form-label text-white-50 fw-semibold fs-7 mb-1">Name</label>
               <input id="fullName" type="text" className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" value={form.fullName} onChange={updateField("fullName")} required />
             </div>
             <div className="field">

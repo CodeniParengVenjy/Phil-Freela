@@ -383,7 +383,7 @@ export default function AdminUsersView() {
           <table className="table table-dark table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th>Full Name</th>
+                <th>Name</th>
                 <th>Username</th>
                 <th>Email</th>
                 <th>Role</th>

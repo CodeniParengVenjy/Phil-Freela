@@ -189,7 +189,7 @@ export default function AdminAdminsView() {
           <h2 className="h6 fw-bold text-white mb-3">New Admin Account</h2>
           <div className="row g-3">
             <div className="col-12 col-md-6">
-              <label htmlFor="newAdminName" className="form-label text-white-50 fs-7 mb-1">Full Name</label>
+              <label htmlFor="newAdminName" className="form-label text-white-50 fs-7 mb-1">Name</label>
               <input id="newAdminName" type="text" className="form-control admin-input" value={form.fullName} onChange={updateField("fullName")} required />
             </div>
             <div className="col-12 col-md-6">
@@ -225,7 +225,7 @@ export default function AdminAdminsView() {
           <table className="table table-dark table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th>Full Name</th>
+                <th>Name</th>
                 <th>Username</th>
                 <th>Role</th>
                 <th>Admin Since</th>

@@ -191,7 +191,7 @@ export default function Login() {
     }
 
     if (isSignup && form.fullName.trim().length > 100) {
-      setMessage({ text: "Full Name must not exceed 100 characters.", type: "error", field: "fullName" });
+      setMessage({ text: "Name must not exceed 100 characters.", type: "error", field: "fullName" });
       return;
     }
 
@@ -418,7 +418,7 @@ export default function Login() {
               <div className="row g-3">
                 <div className="col-md-6">
                   <div className="field">
-                    <label htmlFor="fullName" className="form-label text-white-50 fw-semibold fs-7 mb-1">Full Name</label>
+                    <label htmlFor="fullName" className="form-label text-white-50 fw-semibold fs-7 mb-1">Name</label>
                     <div className="input-group">
                       <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50"><i className="bi bi-person"></i></span>
                       <input
