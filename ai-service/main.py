@@ -74,7 +74,11 @@ supabase = create_client(
 )
 
 BUCKET = "verification-docs"
-ID_TYPES = {"philsys", "drivers_license", "passport", "umid", "prc"}
+ID_TYPES = {"philsys", "drivers_license", "passport", "umid", "prc", "school_id"}
+# Types with no card back to photograph. "school_id" is the temporary School ID
+# pass (database/supabase_school_id_pass_schema.sql): only people a super admin
+# gave a pass to may use it, for 12 hours.
+NO_BACK_TYPES = {"passport", "school_id"}
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB, same limit as the storage bucket
 
@@ -143,6 +147,25 @@ def ensure_can_verify(user_id):
         raise HTTPException(409, "Your verification is already waiting for review.")
 
 
+def ensure_school_id_pass(user_id):
+    """A School ID is only for people with an unused, unexpired pass. Checked
+    first so they hear it before the face check runs; the database refuses
+    the request without a pass too, so this can't be skipped."""
+    now = datetime.now(timezone.utc).isoformat()
+    rows = (
+        supabase.table("verification_passes")
+        .select("user_id")
+        .eq("user_id", user_id)
+        .is_("used_at", "null")
+        .gt("expires_at", now)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not rows:
+        raise HTTPException(403, "You don't have a School ID pass, or it has expired.")
+
+
 def read_image(upload, photo_name):
     """Checks an uploaded file is a real JPG/PNG/WEBP under 5 MB and opens it."""
     data = upload.file.read(MAX_FILE_SIZE + 1)
@@ -199,10 +222,13 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
     same-person check and aren't saved."""
     if id_type not in ID_TYPES:
         raise HTTPException(400, "Please choose a valid ID type.")
-    # Both sides of the card are required; passports have no card back.
-    if id_type != "passport" and id_back is None:
+    # Both sides of the card are required; passports and School IDs take the
+    # front only.
+    if id_type not in NO_BACK_TYPES and id_back is None:
         raise HTTPException(400, "Please add a photo of the back of your ID.")
     ensure_can_verify(user_id)
+    if id_type == "school_id":
+        ensure_school_id_pass(user_id)
 
     id_image = read_image(id_photo, "photo of the front of your ID")
     id_back_image = read_image(id_back, "photo of the back of your ID") if id_back is not None else None
@@ -322,6 +348,10 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
         # the user submitted from the computer and the phone at the same time.
         if error.code == "23505":
             raise HTTPException(409, "Your verification is already waiting for review.")
+        # P0001 = the database's own "no valid School ID pass" refusal (the
+        # pass ran out, or was cancelled, while the photos were uploading).
+        if error.code == "P0001":
+            raise HTTPException(403, "You don't have a School ID pass, or it has expired.")
         raise
 
     # The AI results stay out of the reply: only admins see them, so nobody
