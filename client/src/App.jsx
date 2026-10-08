@@ -34,6 +34,7 @@ import ProjectDetailsView from "./pages/dashboard/views/ProjectDetailsView";
 import SubmitProjectView from "./pages/dashboard/views/SubmitProjectView";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminSetup from "./pages/admin/AdminSetup";
+import AdminForgotPassword from "./pages/admin/AdminForgotPassword";
 import AdminLayout from "./pages/admin/layout/AdminLayout";
 import AdminOverviewView from "./pages/admin/views/AdminOverviewView";
 import AdminUsersView from "./pages/admin/views/AdminUsersView";
@@ -105,6 +106,7 @@ function App() {
       </Route>
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin/setup" element={<AdminSetup />} />
+      <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminOverviewView />} />
         <Route path="users" element={<AdminUsersView />} />

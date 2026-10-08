@@ -73,8 +73,18 @@ export default function ResetPassword() {
       return;
     }
 
+    // An admin who reset their password goes back to the admin sign-in, a
+    // user to the normal one. (Checked before signing out, while the reset
+    // link's session is still open.)
+    const { data: { session } } = await supabase.auth.getSession();
+    let isAdmin = false;
+    if (session) {
+      const { data: adminRow } = await supabase.from("admins").select("id").eq("id", session.user.id).maybeSingle();
+      isAdmin = Boolean(adminRow);
+    }
+
     await supabase.auth.signOut();
-    navigate("/login", { replace: true, state: { justReset: true } });
+    navigate(isAdmin ? "/admin/login" : "/login", { replace: true, state: { justReset: true } });
   };
 
   return (

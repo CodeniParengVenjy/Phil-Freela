@@ -37,6 +37,7 @@ const pageTitles = {
 
   "/admin/login": "Admin Sign In",
   "/admin/setup": "Admin Setup",
+  "/admin/forgot-password": "Admin Forgot Password",
   "/admin": "Admin Overview",
   "/admin/users": "Monitor Users",
   "/admin/listings": "Monitor Listings",

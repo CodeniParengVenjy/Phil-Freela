@@ -299,6 +299,13 @@ export default function Login() {
             if (wasDeleted) {
               throw new Error("This account was deleted after a ban and can no longer be used. You can create a new account with this email.");
             }
+            // An admin typed the wrong password here: send them to the admin
+            // sign-in, where "Forgot password?" resets an admin's password.
+            const { data: isAdminEmail } = await supabase.rpc("is_admin_email", { email: normalizedEmail });
+            if (isAdminEmail === true) {
+              navigate("/admin/login", { state: { email: normalizedEmail } });
+              return;
+            }
             // A wrong email or password shows under the Password box.
             throw fieldError("password", "Incorrect email or password.");
           }

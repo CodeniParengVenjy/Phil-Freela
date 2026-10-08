@@ -1,19 +1,28 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import "../../styles/auth.css";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  // The normal sign-in sends an admin's email here after a wrong password
+  // (state.email), and the reset page sends them here after a new password
+  // (state.justReset).
+  const location = useLocation();
+  const [email, setEmail] = useState(location.state?.email || "");
   const [password, setPassword] = useState("");
   // True when this page was opened by a confirmation link that no longer
   // works: the reason comes back after the # in the address.
   const [deadLink] = useState(() => Boolean(new URLSearchParams(window.location.hash.slice(1)).get("error_description")));
-  const [message, setMessage] = useState(() => (deadLink
-    ? { text: "That confirmation link no longer works. A new email cancels the links in older ones, and links also expire. Type your admin email below and send a new one, then use the link in the newest email.", type: "error" }
-    : { text: "", type: "" }));
+  const [message, setMessage] = useState(() => {
+    if (deadLink) {
+      return { text: "That confirmation link no longer works. A new email cancels the links in older ones, and links also expire. Type your admin email below and send a new one, then use the link in the newest email.", type: "error" };
+    }
+    if (location.state?.justReset) return { text: "Your password was changed. Sign in with the new one.", type: "success" };
+    if (location.state?.email) return { text: "That email belongs to an admin account, so sign in here. Forgot your password? Use the link under the password box.", type: "" };
+    return { text: "", type: "" };
+  });
   // Shows the "Resend confirmation email" button: after a dead link, or when
   // signing in fails because the email isn't confirmed yet.
   const [canResend, setCanResend] = useState(deadLink);
@@ -116,6 +125,9 @@ export default function AdminLogin() {
               <div className="input-group">
                 <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50"><i className="bi bi-lock"></i></span>
                 <input id="password" type="password" className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              </div>
+              <div className="text-end mt-1">
+                <Link to="/admin/forgot-password" state={{ email }} className="text-orange fs-8 fw-semibold text-decoration-none hover-orange">Forgot password?</Link>
               </div>
             </div>
             <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting}>
