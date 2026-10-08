@@ -15,10 +15,35 @@ export async function getActiveSuspension(userId) {
 // Longest display name allowed -- the same limit as the sign-up form.
 export const MAX_NAME_LENGTH = 100;
 
-// Saves a new display name (Settings > Display Name). It goes into
+// How long someone must wait between changes (supabase_name_cooldown_schema.sql
+// enforces the same numbers in the database).
+export const NAME_COOLDOWN_DAYS = 7;
+export const USERNAME_COOLDOWN_DAYS = 30;
+
+// When a change is allowed again, as a Date, or null if it already is.
+// changedAt is the saved time of the last change (null = never changed).
+export function cooldownEnds(changedAt, days) {
+  if (!changedAt) return null;
+  const ends = new Date(new Date(changedAt).getTime() + days * 24 * 60 * 60 * 1000);
+  return ends > new Date() ? ends : null;
+}
+
+// When this user last changed their name and username (null = never). Users
+// can read their own profile, so this only ever shows their own dates.
+export async function fetchNameChangeDates(userId) {
+  const { data } = await supabase.from("profiles").select("name_changed_at, username_changed_at").eq("id", userId).maybeSingle();
+  return { nameChangedAt: data?.name_changed_at ?? null, usernameChangedAt: data?.username_changed_at ?? null };
+}
+
+// The database's own "You can change your name again on ..." message, if
+// that is what stopped the save.
+const cooldownMessage = (error) => (error?.message?.startsWith("You can change your") ? error.message : "");
+
+// Saves a new name (Settings > Name). It goes into
 // profiles.full_name, the name other people see in chat, jobs and services,
 // and into the login's user_metadata, the copy the emails use ("Reset your
 // password, Venj"). Returns "" when saved, or a message to show the user.
+// The database allows a change every 7 days.
 export async function saveDisplayName(userId, name) {
   const fullName = name.trim();
   if (!fullName) return "Please enter a name.";
@@ -26,11 +51,33 @@ export async function saveDisplayName(userId, name) {
 
   // .select("id") returns the updated row, so an empty result means nothing was saved.
   const { data, error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId).select("id");
+  if (cooldownMessage(error)) return cooldownMessage(error);
   if (error || !data?.length) return "Couldn't save your name. Please try again.";
 
   // The dashboard reads the name from profiles, so if only this second copy
   // fails, the new name still shows everywhere; it isn't treated as an error.
   await supabase.auth.updateUser({ data: { full_name: fullName } });
+  return "";
+}
+
+// Longest username allowed (profiles.username is varchar(60)).
+export const MAX_USERNAME_LENGTH = 60;
+
+// Saves a new username (Settings > Username), here and in the login's saved
+// copy. The database allows a change every 30 days and keeps usernames unique.
+// Returns "" when saved, or a message to show the user.
+export async function saveUsername(userId, name) {
+  const username = name.trim();
+  if (!username) return "Please choose a username.";
+  if (username.length > MAX_USERNAME_LENGTH) return `Your username can't be longer than ${MAX_USERNAME_LENGTH} characters.`;
+
+  const { data, error } = await supabase.from("profiles").update({ username }).eq("id", userId).select("id");
+  // 23505 = the database's "username is unique" rule.
+  if (error?.code === "23505") return "That username is already taken.";
+  if (cooldownMessage(error)) return cooldownMessage(error);
+  if (error || !data?.length) return "Couldn't save your username. Please try again.";
+
+  await supabase.auth.updateUser({ data: { username } });
   return "";
 }
 

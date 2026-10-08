@@ -408,7 +408,7 @@ export function useDashboardShell() {
   }, []);
 
   return {
-    displayName, setDisplayName, accountType, currentUserId, username,
+    displayName, setDisplayName, accountType, currentUserId, username, setUsername,
     avatarPath, setAvatarPath,
     unreadCount, refreshUnreadCount,
     unreadNotifications, refreshUnreadNotifications,

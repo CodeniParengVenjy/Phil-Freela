@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline } from "../../../lib/profile";
+import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline, saveUsername } from "../../../lib/profile";
+import { formatEndDate } from "../../../lib/suspensions";
 import { checkAvatarFile, uploadAvatar } from "../../../lib/avatar";
 import { deleteMyAccount, downloadAsFile, exportMyData } from "../../../lib/privacy";
 import Avatar from "../../../components/Avatar";
@@ -12,7 +13,7 @@ import AccountSecurityForm from "../components/AccountSecurityForm";
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
 
 export default function SettingsView() {
-  const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
+  const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, setUsername, showToast } = useOutletContext();
   const navigate = useNavigate();
   const [activeSubNav, setActiveSubNav] = useState("Profile Settings");
   // "Download your data" (feature 6): null = idle, so the button shows its
@@ -28,6 +29,13 @@ export default function SettingsView() {
   // dashboard is still loading.)
   const [nameInput, setNameInput] = useState(null);
   const shownName = nameInput ?? displayName;
+  // The username box works the same way. A name can change every 7 days and a
+  // username every 30; nameDates holds when each last changed (null = loading).
+  const [usernameInput, setUsernameInput] = useState(null);
+  const shownUsername = usernameInput ?? username;
+  const [nameDates, setNameDates] = useState(null);
+  const nameLockedUntil = nameDates && cooldownEnds(nameDates.nameChangedAt, NAME_COOLDOWN_DAYS);
+  const usernameLockedUntil = nameDates && cooldownEnds(nameDates.usernameChangedAt, USERNAME_COOLDOWN_DAYS);
   // The description saved in the database (null while loading), and the
   // box's text once it's edited (null = not edited, same idea as the name).
   const [savedDescription, setSavedDescription] = useState(null);
@@ -55,6 +63,9 @@ export default function SettingsView() {
     let active = true;
     fetchDescription(currentUserId).then((text) => {
       if (active) setSavedDescription(text);
+    });
+    fetchNameChangeDates(currentUserId).then((dates) => {
+      if (active) setNameDates(dates);
     });
     fetchEmailWhenOffline(currentUserId).then((on) => {
       if (active) setEmailWhenOffline(on);
@@ -179,6 +190,20 @@ export default function SettingsView() {
     setDisplayName(shownName.trim());
     setNameInput(null);
 
+    // The username is only sent when it was changed.
+    if (shownUsername.trim() !== username) {
+      const usernameProblem = await saveUsername(currentUserId, shownUsername);
+      if (usernameProblem) {
+        setSaving(false);
+        showToast(usernameProblem);
+        return;
+      }
+      setUsername(shownUsername.trim());
+      setUsernameInput(null);
+    }
+    // A change starts a new waiting time, so ask the database for the dates again.
+    setNameDates(await fetchNameChangeDates(currentUserId));
+
     const descriptionProblem = await saveDescription(currentUserId, shownDescription);
     if (descriptionProblem) {
       setSaving(false);
@@ -256,14 +281,39 @@ export default function SettingsView() {
                   </div>
 
                   <div>
-                    <label className="form-label text-white-50 fw-semibold fs-7">Display Name:</label>
+                    <label className="form-label text-white-50 fw-semibold fs-7" htmlFor="settingsName">Name:</label>
                     <input
+                      id="settingsName"
                       type="text"
                       className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                       value={shownName}
                       onChange={(e) => setNameInput(e.target.value)}
                       maxLength={MAX_NAME_LENGTH}
+                      disabled={Boolean(nameLockedUntil)}
                     />
+                    <small className={`fs-8 ${nameLockedUntil ? "text-warning" : "text-secondary"}`}>
+                      {nameLockedUntil
+                        ? `You can change your name again on ${formatEndDate(nameLockedUntil)}.`
+                        : `You can change your name once every ${NAME_COOLDOWN_DAYS} days.`}
+                    </small>
+                  </div>
+
+                  <div>
+                    <label className="form-label text-white-50 fw-semibold fs-7" htmlFor="settingsUsername">Username:</label>
+                    <input
+                      id="settingsUsername"
+                      type="text"
+                      className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                      value={shownUsername}
+                      onChange={(e) => setUsernameInput(e.target.value)}
+                      maxLength={MAX_USERNAME_LENGTH}
+                      disabled={Boolean(usernameLockedUntil)}
+                    />
+                    <small className={`fs-8 ${usernameLockedUntil ? "text-warning" : "text-secondary"}`}>
+                      {usernameLockedUntil
+                        ? `You can change your username again on ${formatEndDate(usernameLockedUntil)}.`
+                        : `You can change your username once every ${USERNAME_COOLDOWN_DAYS} days.`}
+                    </small>
                   </div>
 
                   <div>
