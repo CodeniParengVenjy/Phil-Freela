@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatDay, getMyProjects, personName, projectStatuses, todayInManila } from "../../../lib/projects";
 import Avatar from "../../../components/Avatar";
+import DueDateCalendar from "./DueDateCalendar";
 
 // The "My Projects" box on the Projects page. Each card opens its project
 // page (the Project Details screen). Freelancers see the jobs they were hired
 // for; clients see the freelancers they hired. reloadKey changes after a hire
-// so the new project shows right away.
+// so the new project shows right away. A month calendar above the list marks
+// the days the projects are due on.
 export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }) {
   // null while loading, then the list.
   const [projects, setProjects] = useState(null);
@@ -38,6 +40,8 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
 
       {failed && <p className="text-danger fs-7 mb-0">Couldn't load your projects right now.</p>}
       {!failed && projects === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+      {/* The due dates of the same projects, on a calendar. */}
+      {!failed && projects !== null && <DueDateCalendar projects={projects} today={today} />}
       {!failed && projects?.length === 0 && (
         <p className="text-secondary fs-7 mb-0">
           {isFreelancer ? "No projects yet. When a client hires you, it shows here." : "No projects yet. Hire someone who applied to your job to start one."}
