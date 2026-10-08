@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import {
   deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getProject, getRatingOfMe, isBlenderFile, markProjectDone,
-  openDeliverable, personName, projectStatuses, ratingDeadline, requestProjectChanges, todayInManila
+  openDeliverable, personName, projectStatuses, ratingDeadline, ratingStep, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
 import { profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
@@ -134,6 +134,9 @@ export default function ProjectDetailsView() {
   const mediaBroken = mediaLink === null || failedPath === submissionPath;
   // When rating closes for a Done project (null until it's Done).
   const deadline = project.status === "done" ? ratingDeadline(project) : null;
+  // The rating step shown beside "Done" in the Status box (null until it's
+  // Done, and while the ratings are still loading).
+  const rating = myRating === undefined ? null : ratingStep(project, Boolean(myRating), Boolean(theirRating));
 
   // The "Project" box: short status of the work, or where to attach it.
   const renderWorkBox = () => {
@@ -191,7 +194,16 @@ export default function ProjectDetailsView() {
           <div className="col-md-6">
             <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 h-100">
               <span className="text-secondary fs-8 d-block mb-2">Status</span>
-              <span className={`badge px-3 py-2 rounded-pill fw-bold fs-7 ${status.className}`}>{status.label}</span>
+              {/* Once it's Done the rating step shows next to it: ratings
+                  are blind, and this says where the two of you are in it. */}
+              <div className="d-flex flex-wrap align-items-center gap-2">
+                <span className={`badge px-3 py-2 rounded-pill fw-bold fs-7 ${status.className}`}>{status.label}</span>
+                {rating && (
+                  <span className={`badge px-3 py-2 rounded-pill fw-semibold text-wrap text-start ${rating.badgeClass}`}>
+                    <i className={`bi ${rating.icon} me-1`}></i>{rating.label}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

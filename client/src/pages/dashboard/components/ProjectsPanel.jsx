@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { formatDay, getMyProjects, personName, projectStatuses, todayInManila } from "../../../lib/projects";
+import { formatDay, getMyProjects, personName, projectStatuses, ratingStep, todayInManila } from "../../../lib/projects";
 import Avatar from "../../../components/Avatar";
 import DueDateCalendar from "./DueDateCalendar";
 
@@ -55,6 +55,11 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
           const otherName = personName(other, isFreelancer ? "Client" : "Freelancer");
           const status = projectStatuses[p.status];
           const overdue = p.status !== "done" && p.due_date < today;
+          // The rating step of a Done project (null until it's Done). The
+          // list only holds the ratings this user may see: their own, and the
+          // other person's once it is no longer hidden.
+          const ratings = p.ratings || [];
+          const rating = ratingStep(p, ratings.some((r) => r.rater_id === currentUserId), ratings.some((r) => r.rater_id !== currentUserId));
           return (
             <Link
               key={p.id}
@@ -68,6 +73,11 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
                   {isFreelancer ? "Client" : "Freelancer"}: {otherName} •{" "}
                   <span className={overdue ? "text-danger" : ""}>Due {formatDay(p.due_date)}{overdue && " (overdue)"}</span>
                 </p>
+                {rating && (
+                  <p className={`fs-8 fw-semibold mb-0 mt-1 ${rating.textClass}`}>
+                    <i className={`bi ${rating.icon} me-1`}></i>{rating.label}
+                  </p>
+                )}
               </div>
               <span className={`badge rounded-pill px-3 py-2 flex-shrink-0 ${status.className}`}>{status.label}</span>
             </Link>

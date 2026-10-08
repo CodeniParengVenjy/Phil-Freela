@@ -215,3 +215,29 @@ Step 2 files: `lib/projects.js` (`RATING_WINDOW_DAYS`, `ratingDeadline`,
 Both steps in this plan are built. This plan is done. Still needs the user
 to test it on the live site: mark a project Done as the client, rate, then
 sign in as the freelancer and rate back.
+
+## Added 2026-10-08: the rating step beside the project's status
+
+The user's note: the blind system was not indicated in the project status
+(it only said "Done"). Now a Done project also says where its ratings are,
+on the project page's Status box (a second badge beside "Done") and on each
+card in My Projects (a small line under the due date):
+
+- "Blind rating: waiting for your rating" (you haven't rated; it reads the
+  same whether or not the other person already has, so it gives nothing away)
+- "Blind rating: yours is hidden for now" (you rated, they haven't)
+- "Both rated: ratings are shown"
+- "Rating closed" (the 14 days are over)
+
+The words come from one function, `ratingStep` in `lib/projects.js`. No SQL:
+the My Projects list now also asks for `completed_at` and who rated
+(`ratings:project_ratings(rater_id)`), and the database's blind rule already
+decides which ratings that list holds. Files: `lib/projects.js`,
+`components/ProjectsPanel.jsx`, `views/ProjectDetailsView.jsx`.
+
+Tested in a real browser with a fake backend that applies the blind rule
+(28/28: all four steps on the page and in the list, a client's view of a
+project only the freelancer rated, dark and light mode, a 390 px phone). The
+real API accepts the new list query shape (checked with the public key). The
+database rule itself was run again on the live database the same day with
+made-up accounts that were rolled back (29/29).

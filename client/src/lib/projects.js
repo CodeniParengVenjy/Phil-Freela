@@ -140,10 +140,13 @@ export async function hireApplicant(applicationId, note, dueDate) {
 
 // The signed-in user's projects on their current side: the jobs they were
 // hired for (freelancer) or the freelancers they hired (client). Newest first.
+// "ratings" is who rated each project, for the rating step beside a Done
+// project's status (ratingStep below). Ratings are blind, so the database
+// only lists the user's own rating, and the other person's once it is visible.
 export function getMyProjects(userId, asFreelancer) {
   return supabase
     .from("projects")
-    .select(`id, title, status, started_at, due_date, ${PEOPLE_FIELDS}`)
+    .select(`id, title, status, started_at, due_date, completed_at, ratings:project_ratings(rater_id), ${PEOPLE_FIELDS}`)
     .eq(asFreelancer ? "freelancer_id" : "client_id", userId)
     .order("started_at", { ascending: false });
 }
@@ -269,6 +272,30 @@ export function ratingDeadline(project) {
     day: closesAt.toLocaleDateString(undefined, { month: "long", day: "numeric" }),
     ended: closesAt <= new Date()
   };
+}
+
+// The rating step of a Done project in a few words, shown beside its status
+// (the Status box on the project page, and each card in My Projects). It is
+// worked out only from what the signed-in user is allowed to know, so it
+// never gives away whether the other person has rated yet:
+//   iRated     they sent their own rating
+//   seeTheirs  the database handed over the other person's rating (it only
+//              does once both have rated, or the time for rating is over)
+// Returns { label, icon, badgeClass, textClass }, or null when the project
+// isn't Done.
+export function ratingStep(project, iRated, seeTheirs) {
+  const deadline = project?.status === "done" ? ratingDeadline(project) : null;
+  if (!deadline) return null;
+  if (iRated && seeTheirs) {
+    return { label: "Both rated: ratings are shown", icon: "bi-eye-fill", badgeClass: "bg-success text-white", textClass: "text-success" };
+  }
+  if (deadline.ended) {
+    return { label: "Rating closed", icon: "bi-lock-fill", badgeClass: "bg-secondary text-white", textClass: "text-secondary" };
+  }
+  if (iRated) {
+    return { label: "Blind rating: yours is hidden for now", icon: "bi-eye-slash-fill", badgeClass: "bg-info text-dark", textClass: "text-info" };
+  }
+  return { label: "Blind rating: waiting for your rating", icon: "bi-eye-slash-fill", badgeClass: "bg-warning text-dark", textClass: "text-warning" };
 }
 
 // Sends a rating. Returns {} when sent, or { error } with a message.
