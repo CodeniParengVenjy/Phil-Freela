@@ -1,6 +1,6 @@
 # Admin accounts, names and switching: plan
 
-Status (2026-10-08): PLAN ONLY, waiting for approval. No code written yet.
+Status (2026-10-08): all five parts are built, tested and pushed (part 5, switching, was the last).
 
 Asked for by the user, in five parts. Each part is built, tested, committed and
 pushed on its own, in the order below.

@@ -1,12 +1,14 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { dashboardRouteFor } from "../../../lib/profile";
+import { fetchMyLink, switchToOtherAccount } from "../../../lib/accountSwitch";
 import { PICTURE_TYPES, checkPicture } from "../../../lib/pictureSearch";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import AccentLogo from "./AccentLogo";
 import PictureSearchDialog from "./PictureSearchDialog";
+import SwitchToAdminDialog from "./SwitchToAdminDialog";
 
 // Identical between the freelancer and client dashboards -- brand, search,
 // the three quick links, and the account dropdown -- so both layouts share
@@ -19,6 +21,27 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
   const homeHref = dashboardRouteFor(accountType);
   const { pathname } = useLocation();
   const navigate = useNavigate();
+
+  // Only an account that is linked to an admin (an admin's own user account)
+  // gets "Switch to admin" in the menu; everyone else gets null here and sees
+  // nothing (lib/accountSwitch.js). askAdminLogin opens the one-time password popup.
+  const [adminLink, setAdminLink] = useState(null);
+  const [askAdminLogin, setAskAdminLogin] = useState(false);
+  useEffect(() => {
+    if (!currentUserId) return undefined;
+    let active = true;
+    fetchMyLink().then((link) => {
+      if (active) setAdminLink(link?.side === "user" ? link : null);
+    });
+    return () => { active = false; };
+  }, [currentUserId]);
+
+  const handleSwitchToAdmin = async (event) => {
+    event.preventDefault();
+    const result = await switchToOtherAccount(adminLink);
+    if (result.needsPassword) setAskAdminLogin(true);
+    else if (result.error) showToast(result.error);
+  };
 
   // The AI search box (Hybrid recommendation system, content-based
   // filtering): Enter opens the Search page with the typed words. That page
@@ -155,6 +178,9 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
               <li><NavLink className="dropdown-item rounded-2 text-white" to="/dashboard/profile"><i className="bi bi-person me-2 text-orange"></i> My Profile</NavLink></li>
               <li><NavLink className="dropdown-item rounded-2 text-white" to="/dashboard/settings"><i className="bi bi-gear me-2 text-info"></i> Account Settings</NavLink></li>
               <li><a className="dropdown-item rounded-2 text-white" href={switchHref} onClick={onSwitchRole}><i className="bi bi-arrow-left-right me-2 text-warning"></i> {switchLabel}</a></li>
+              {adminLink && (
+                <li><a className="dropdown-item rounded-2 text-white" href="/admin" onClick={handleSwitchToAdmin}><i className="bi bi-shield-lock me-2 text-orange"></i> Switch to admin</a></li>
+              )}
               <li><hr className="dropdown-divider border-secondary border-opacity-25" /></li>
               <li><a className="dropdown-item rounded-2 text-danger" href="/login" onClick={onSignOut}><i className="bi bi-box-arrow-right me-2"></i> Sign out</a></li>
             </ul>
@@ -172,6 +198,8 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
         openChat={openChat}
         showToast={showToast}
       />
+
+      <SwitchToAdminDialog open={askAdminLogin} link={adminLink} onClose={() => setAskAdminLogin(false)} />
     </nav>
   );
 }

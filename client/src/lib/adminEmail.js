@@ -9,6 +9,14 @@
 // as typed. So does a Gmail address that already has a "+" in it.
 const GMAIL_DOMAINS = ["gmail.com", "googlemail.com"];
 
+// The reverse, as a suggestion: the person's own account email for a Gmail admin
+// login (name+admin@gmail.com gives name@gmail.com). Anything else comes back
+// empty, because there is no way to guess it.
+export function userEmailSuggestionFor(adminEmail) {
+  const match = /^(.+)\+admin@(gmail\.com|googlemail\.com)$/i.exec(adminEmail.trim());
+  return match ? `${match[1]}@${match[2]}`.toLowerCase() : "";
+}
+
 export function adminEmailFor(email) {
   const typed = email.trim().toLowerCase();
   const at = typed.lastIndexOf("@");

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { fetchMyLink, switchToOtherAccount } from "../../../lib/accountSwitch";
 import AdminCreatePassword from "../components/AdminCreatePassword";
 import "../admin.css";
 
@@ -142,12 +143,37 @@ export default function AdminLayout() {
     navigate("/admin/login", { replace: true });
   };
 
+  // This admin's own freelancer or client account, if they linked one (see
+  // lib/accountSwitch.js): { other_name, ... }, or null. It decides whether the
+  // top bar shows "Switch to my user account". My Profile links and unlinks it.
+  const [userLink, setUserLink] = useState(null);
+  const loadUserLink = useCallback(async () => {
+    const link = await fetchMyLink();
+    setUserLink(link?.side === "admin" ? link : null);
+  }, []);
+
+  // Swaps to the user account. If this browser has no saved sign-in for it,
+  // My Profile asks for that account's password once.
+  const handleSwitchToUser = async () => {
+    const result = await switchToOtherAccount(userLink);
+    if (result.needsPassword || result.error) navigate("/admin/profile", { state: { switchProblem: result.error || "" } });
+  };
+
   // Called by My Profile after a name change, so the top bar shows the new name.
   const adminRowId = admin?.id;
   const reloadAdmin = useCallback(async () => {
     if (!adminRowId) return;
     const { data } = await supabase.from("admins").select(ADMIN_COLUMNS).eq("id", adminRowId).maybeSingle();
     if (data) setAdmin(data);
+  }, [adminRowId]);
+
+  useEffect(() => {
+    if (!adminRowId) return undefined;
+    let active = true;
+    fetchMyLink().then((link) => {
+      if (active) setUserLink(link?.side === "admin" ? link : null);
+    });
+    return () => { active = false; };
   }, [adminRowId]);
 
   // Called by the "Create your password" screen after it saves. The database
@@ -211,6 +237,11 @@ export default function AdminLayout() {
             <i className="bi bi-person-circle me-1"></i> {adminName}
             {isSuperAdmin && <span className="badge admin-badge-orange ms-2 fw-normal">Super admin</span>}
           </Link>
+          {userLink && (
+            <button className="btn btn-outline-warning btn-sm rounded-pill" onClick={handleSwitchToUser} title={`Open ${userLink.other_name}'s account`}>
+              <i className="bi bi-arrow-left-right me-1"></i> <span className="d-none d-md-inline">Switch to my user account</span><span className="d-md-none">User account</span>
+            </button>
+          )}
           <button className="btn btn-outline-light btn-sm rounded-pill" onClick={handleSignOut}>
             <i className="bi bi-box-arrow-right me-1"></i> Sign Out
           </button>
@@ -253,7 +284,7 @@ export default function AdminLayout() {
           <main className="col-12 col-md-9 col-xl-10">
             {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                 to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingApprovals }} />
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingApprovals }} />
           </main>
         </div>
       </div>
