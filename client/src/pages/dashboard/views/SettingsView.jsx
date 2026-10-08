@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, fetchAvailableForWork, fetchDescription, fetchEmailWhenOffline, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailWhenOffline } from "../../../lib/profile";
+import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline } from "../../../lib/profile";
 import { checkAvatarFile, uploadAvatar } from "../../../lib/avatar";
 import { deleteMyAccount, downloadAsFile, exportMyData } from "../../../lib/privacy";
 import Avatar from "../../../components/Avatar";
@@ -37,6 +37,9 @@ export default function SettingsView() {
   // saved over the real one.
   // "Email me when I'm offline": null while loading, then true/false.
   const [emailWhenOffline, setEmailWhenOffline] = useState(null);
+  // The kinds of offline email turned off: null while loading, then a list
+  // (empty = every kind is on).
+  const [emailMuted, setEmailMuted] = useState(null);
   // "Available for work" (freelancers): null while loading, then true/false.
   const [availableForWork, setAvailableForWork] = useState(null);
   const [savingAvailability, setSavingAvailability] = useState(false);
@@ -59,6 +62,9 @@ export default function SettingsView() {
     fetchAvailableForWork(currentUserId).then((on) => {
       if (active) setAvailableForWork(on);
     });
+    fetchEmailMuted(currentUserId).then((muted) => {
+      if (active) setEmailMuted(muted);
+    });
     return () => { active = false; };
   }, [currentUserId]);
 
@@ -74,6 +80,20 @@ export default function SettingsView() {
     }
     setEmailWhenOffline(on);
     showToast(on ? "You'll get emails while you're offline." : "Offline emails turned off.");
+  };
+
+  // One kind of email ticked or unticked. Saved as soon as it's clicked.
+  const handleEmailKindChange = async (kind, wanted) => {
+    const next = wanted ? emailMuted.filter((value) => value !== kind.value) : [...emailMuted, kind.value];
+    setSavingEmailSetting(true);
+    const problem = await saveEmailMuted(currentUserId, next);
+    setSavingEmailSetting(false);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+    setEmailMuted(next);
+    showToast(wanted ? `You'll get emails about: ${kind.label.toLowerCase()}.` : `No more emails about: ${kind.label.toLowerCase()}.`);
   };
 
   // Saved as soon as it's clicked, like the email switch.
@@ -298,8 +318,28 @@ export default function SettingsView() {
                   <p className="text-secondary fs-8 mb-0 mt-1">
                     {emailWhenOffline === null
                       ? "Loading..."
-                      : "When you're not on PhilFreela, we'll email you about new messages (at most one per chat every 30 minutes), missed calls, job applications, and news about your account. Messages themselves are never put in the email."}
+                      : "When you're not on PhilFreela, we'll email you about the things ticked below (new messages at most once per chat every 30 minutes). Messages themselves are never put in the email."}
                   </p>
+
+                  {/* Which kinds of email. They only matter while the switch
+                      above is on, so they are greyed out when it is off. */}
+                  {emailMuted !== null && (
+                    <fieldset className="mt-3" disabled={emailWhenOffline !== true || savingEmailSetting}>
+                      <legend className="text-white-50 fw-semibold fs-8 mb-2">Email me about:</legend>
+                      {EMAIL_KINDS.filter((kind) => !kind.clientsOnly || accountType === "client").map((kind) => (
+                        <div className="form-check mb-1" key={kind.value}>
+                          <input
+                            id={`emailKind-${kind.value}`}
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={!emailMuted.includes(kind.value)}
+                            onChange={(event) => handleEmailKindChange(kind, event.target.checked)}
+                          />
+                          <label htmlFor={`emailKind-${kind.value}`} className="form-check-label text-white fs-7">{kind.label}</label>
+                        </div>
+                      ))}
+                    </fieldset>
+                  )}
                 </div>
 
                 {/* Feature 6, Data Privacy Compliance (RA 10173): "review" and

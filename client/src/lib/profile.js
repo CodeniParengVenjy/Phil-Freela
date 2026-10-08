@@ -122,6 +122,36 @@ export async function saveEmailWhenOffline(userId, on) {
   return "";
 }
 
+// The kinds of offline email a user can turn off one by one (Settings >
+// Privacy & Notifications). The values are the ones the database checks
+// (database/supabase_email_choices_schema.sql), so do not rename them.
+// clientsOnly: only clients get this kind (a job application goes to the
+// client who posted the job), so freelancers aren't shown the choice.
+export const EMAIL_KINDS = [
+  { value: "chat", label: "New messages" },
+  { value: "call", label: "Missed calls" },
+  { value: "job", label: "Job applications", clientsOnly: true },
+  { value: "account", label: "Account notifications (bookings, identity verification, suspensions)" }
+];
+
+// The kinds this user turned OFF ([] = every kind is on), or null when it
+// couldn't be loaded.
+export async function fetchEmailMuted(userId) {
+  const { data, error } = await supabase.from("profiles").select("email_muted").eq("id", userId).maybeSingle();
+  if (error || !data) return null;
+  return data.email_muted || [];
+}
+
+// Saves the kinds that are off. Anything that isn't one of EMAIL_KINDS is left
+// out (the database would refuse it). Returns "" when saved, or a message to
+// show the user.
+export async function saveEmailMuted(userId, muted) {
+  const known = EMAIL_KINDS.map((kind) => kind.value).filter((value) => muted.includes(value));
+  const { data, error } = await supabase.from("profiles").update({ email_muted: known }).eq("id", userId).select("id");
+  if (error || !data?.length) return "Couldn't save that setting. Please try again.";
+  return "";
+}
+
 // Settings > Profile Settings > "Available for work" (freelancers). While it
 // is off, the freelancer's profile and service cards say "Not available right
 // now" and the database refuses new bookings for them
