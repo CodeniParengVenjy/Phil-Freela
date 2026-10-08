@@ -23,6 +23,10 @@ export function checkScreenshot(file) {
 // can't report yourself, and a call report must be about the other person
 // in that call). Returns { error } like Supabase does.
 //   target: { type: "user" | "service" | "job_post" | "portfolio_item", id, callId? }
+//           or { type: "profile_picture" | "cover_photo", id: the owner's user id,
+//           reportedPath: the picture's file, as it is now on their profile }.
+//           The report keeps the file, so a later change of picture can't make
+//           an admin remove the wrong one (database/supabase_cover_photo_schema.sql).
 export async function sendReport({ target, reason, details, screenshots = [] }) {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
@@ -57,6 +61,7 @@ export async function sendReport({ target, reason, details, screenshots = [] }) 
     reason,
     details: details || null,
     call_id: target.callId || null,
+    reported_path: target.reportedPath || null,
     evidence_paths: paths
   });
   if (error) await removeUploaded();
@@ -101,7 +106,18 @@ export const reportTargetLabels = {
   user: "User",
   service: "Service",
   job_post: "Job Post",
-  portfolio_item: "Portfolio Project"
+  portfolio_item: "Portfolio Project",
+  profile_picture: "Profile Picture",
+  cover_photo: "Cover Photo"
+};
+
+// A reported profile picture or cover photo: the column on the owner's profile
+// that holds it, and the storage bucket its file is in. An admin can remove the
+// picture (the person goes back to the first-letter circle or the plain
+// banner); they can also suspend or ban the owner, like for a reported user.
+export const reportPictureKinds = {
+  profile_picture: { column: "avatar_path", bucket: "avatars", label: "profile picture" },
+  cover_photo: { column: "cover_path", bucket: "covers", label: "cover photo" }
 };
 
 // The database table behind each kind of reported listing (an admin can

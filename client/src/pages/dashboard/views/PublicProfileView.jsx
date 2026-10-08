@@ -91,6 +91,19 @@ function PublicProfile({ userId }) {
   // False when a freelancer switched "Available for work" off in Settings.
   const takingBookings = person.available_for_work !== false;
 
+  // The Report button in the picture popup: closes it and opens the Report
+  // form for that picture. The report keeps which file it was (reportedPath).
+  const reportViewedPicture = () => {
+    const isCover = viewing === "cover";
+    setReportTarget({
+      type: isCover ? "cover_photo" : "profile_picture",
+      id: person.id,
+      name: `${name}'s ${isCover ? "cover photo" : "profile picture"}`,
+      reportedPath: isCover ? person.cover_path : person.avatar_path
+    });
+    setViewing(null);
+  };
+
   return (
     <section className="dashboard-view active-view">
       <div className="glass-card rounded-4 border border-secondary border-opacity-25 mb-4 overflow-hidden">
@@ -179,6 +192,7 @@ function PublicProfile({ userId }) {
         }}
         onClose={() => setViewing(null)}
         changeTo={isOwnPage ? "/dashboard/settings" : undefined}
+        onReport={isOwnPage ? undefined : reportViewedPicture}
       />
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />

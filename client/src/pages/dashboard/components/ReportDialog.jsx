@@ -6,11 +6,12 @@ import { MAX_SCREENSHOTS, checkScreenshot, reasonsFor, reportReasons, sendReport
 // least this many characters (so "x" or "idk" isn't enough for an admin).
 const MIN_PROOF_LENGTH = 10;
 
-// "Report" popup for a user, service, job post, or portfolio project. The
-// report is saved to the reports table, where admins review it on the admin
-// Reports page.
-//   target: { type: "user" | "service" | "job_post" | "portfolio_item", id, name } or null (closed)
+// "Report" popup for a user, service, job post, portfolio project, profile
+// picture or cover photo. The report is saved to the reports table, where
+// admins review it on the admin Reports page.
+//   target: { type: "user" | "service" | "job_post" | "portfolio_item" | "profile_picture" | "cover_photo", id, name } or null (closed)
 //           From a call it also has callId and callKind ("voice" / "video").
+//           A picture also has reportedPath (see sendReport in lib/reports.js).
 //   onDone(message): called after sending, e.g. to show a toast
 export default function ReportDialog({ target, onClose, onDone }) {
   const [reason, setReason] = useState("");
@@ -93,12 +94,15 @@ export default function ReportDialog({ target, onClose, onDone }) {
       // 23505 = the "one pending report per target" rule. 23514 = the
       // database doesn't know this reason or kind of target yet (the stolen
       // work update, database/supabase_stolen_work_schema.sql, hasn't been
-      // run). Other database errors get a general message; upload problems
-      // explain themselves.
+      // run). 42501 on a picture = the database refused it because the person
+      // has changed that picture since it was opened. Other database errors
+      // get a general message; upload problems explain themselves.
+      const isPicture = target.type === "profile_picture" || target.type === "cover_photo";
       setError(sendError.code === "23505"
         ? "You already reported this. An admin will review it soon."
         : sendError.code === "23514" ? "This kind of report isn't switched on yet. Please try again later."
-          : sendError.code ? "Couldn't send the report. Please try again." : sendError.message);
+          : sendError.code === "42501" && isPicture ? "This picture has changed since you opened it. Please reload the page and report it again."
+            : sendError.code ? "Couldn't send the report. Please try again." : sendError.message);
       return;
     }
 
