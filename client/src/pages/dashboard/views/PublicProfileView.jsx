@@ -8,6 +8,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import StarRating from "../../../components/StarRating";
 import Avatar from "../../../components/Avatar";
+import CoverPhoto from "../../../components/CoverPhoto";
 import PortfolioSection from "../components/PortfolioSection";
 import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
@@ -50,7 +51,7 @@ function PublicProfile({ userId }) {
   useEffect(() => {
     let active = true;
     Promise.all([
-      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, description, skills, available_for_work").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, cover_path, description, skills, available_for_work").eq("id", userId).maybeSingle(),
       fetchIsVerified(userId),
       countPortfolio(userId)
     ]).then(([{ data }, isVerified, count]) => {
@@ -88,50 +89,53 @@ function PublicProfile({ userId }) {
 
   return (
     <section className="dashboard-view active-view">
-      <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4 d-flex flex-column flex-sm-row align-items-sm-center gap-3">
-        <Avatar path={person.avatar_path} name={name} size={72} />
-        <div className="flex-grow-1 overflow-hidden">
-          <h3 className="text-white fw-bold mb-1 text-break">
-            {person.full_name}
-            <VerifiedBadge verified={verified} showUnverified />
-          </h3>
-          <p className="text-secondary fs-7 mb-0 d-flex flex-wrap align-items-center gap-2">
-            <span>@{person.username} • {ROLE_LABELS[roleToday]}</span>
-            {/* Their average rating from completed projects (Feature 5, transparency). */}
-            <StarRating userId={person.id} />
-            {/* Whether they are taking new work (freelancers only). */}
-            {isFreelancer && <AvailabilityBadge available={person.available_for_work} showAvailable className="fs-8" />}
-          </p>
-        </div>
-        {isOwnPage ? (
-          <span className="text-secondary fs-8">This is how others see your profile.</span>
-        ) : (
-          <div className="d-flex flex-wrap gap-2 flex-shrink-0">
-            {/* A client can book a freelancer's service from here, unless the
-                freelancer isn't taking new work (the database refuses it too). */}
-            {accountType === "client" && isFreelancer && takingBookings && (
+      <div className="glass-card rounded-4 border border-secondary border-opacity-25 mb-4 overflow-hidden">
+        <CoverPhoto path={person.cover_path} name={name} />
+        <div className="p-4 d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+          <Avatar path={person.avatar_path} name={name} size={72} />
+          <div className="flex-grow-1 overflow-hidden">
+            <h3 className="text-white fw-bold mb-1 text-break">
+              {person.full_name}
+              <VerifiedBadge verified={verified} showUnverified />
+            </h3>
+            <p className="text-secondary fs-7 mb-0 d-flex flex-wrap align-items-center gap-2">
+              <span>@{person.username} • {ROLE_LABELS[roleToday]}</span>
+              {/* Their average rating from completed projects (Feature 5, transparency). */}
+              <StarRating userId={person.id} />
+              {/* Whether they are taking new work (freelancers only). */}
+              {isFreelancer && <AvailabilityBadge available={person.available_for_work} showAvailable className="fs-8" />}
+            </p>
+          </div>
+          {isOwnPage ? (
+            <span className="text-secondary fs-8">This is how others see your profile.</span>
+          ) : (
+            <div className="d-flex flex-wrap gap-2 flex-shrink-0">
+              {/* A client can book a freelancer's service from here, unless the
+                  freelancer isn't taking new work (the database refuses it too). */}
+              {accountType === "client" && isFreelancer && takingBookings && (
+                <button
+                  type="button"
+                  className="btn btn-outline-role rounded-pill px-4 fw-bold"
+                  onClick={() => setBookTarget({ freelancerId: person.id, freelancerName: name, service: null })}
+                >
+                  <i className="bi bi-calendar-check me-1"></i> Book
+                </button>
+              )}
+              <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={() => openChat(person.id)}>
+                <i className="bi bi-chat-dots-fill me-1"></i> Message
+              </button>
               <button
                 type="button"
-                className="btn btn-outline-role rounded-pill px-4 fw-bold"
-                onClick={() => setBookTarget({ freelancerId: person.id, freelancerName: name, service: null })}
+                className="btn btn-outline-secondary text-white-50 rounded-pill px-3"
+                title={`Report this ${roleToday}`}
+                aria-label={`Report this ${roleToday}`}
+                onClick={() => setReportTarget({ type: "user", id: person.id, name })}
               >
-                <i className="bi bi-calendar-check me-1"></i> Book
+                <i className="bi bi-flag-fill"></i>
               </button>
-            )}
-            <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={() => openChat(person.id)}>
-              <i className="bi bi-chat-dots-fill me-1"></i> Message
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline-secondary text-white-50 rounded-pill px-3"
-              title={`Report this ${roleToday}`}
-              aria-label={`Report this ${roleToday}`}
-              onClick={() => setReportTarget({ type: "user", id: person.id, name })}
-            >
-              <i className="bi bi-flag-fill"></i>
-            </button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Their own words about themselves (hidden until they write some). */}

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline, saveUsername } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
-import { checkAvatarFile, uploadAvatar } from "../../../lib/avatar";
+import { checkAvatarFile, fetchCoverPath, removeCover, uploadAvatar, uploadCover } from "../../../lib/avatar";
 import { deleteMyAccount, downloadAsFile, exportMyData } from "../../../lib/privacy";
 import Avatar from "../../../components/Avatar";
+import CoverPhoto from "../../../components/CoverPhoto";
 import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
@@ -57,10 +58,20 @@ export default function SettingsView() {
   // The picked picture, shown while it uploads.
   const [previewUrl, setPreviewUrl] = useState(null);
   const pictureInputRef = useRef(null);
+  // The cover photo works the same way: where it is in the covers bucket
+  // (null while loading, "" = none), the picked file while it uploads, and
+  // whether an upload or a removal is going on.
+  const [coverPath, setCoverPath] = useState(null);
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState(null);
+  const [savingCover, setSavingCover] = useState(false);
+  const coverInputRef = useRef(null);
 
   useEffect(() => {
     if (!currentUserId) return;
     let active = true;
+    fetchCoverPath(currentUserId).then((path) => {
+      if (active) setCoverPath(path);
+    });
     fetchDescription(currentUserId).then((text) => {
       if (active) setSavedDescription(text);
     });
@@ -148,6 +159,45 @@ export default function SettingsView() {
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
+  useEffect(() => () => {
+    if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
+  }, [coverPreviewUrl]);
+
+  // The cover photo is saved as soon as it's picked, like the profile picture.
+  const handleCoverPick = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // lets the same file be picked again later
+    if (!file || !currentUserId || coverPath === null) return;
+    const problem = checkAvatarFile(file);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+
+    setCoverPreviewUrl(URL.createObjectURL(file));
+    setSavingCover(true);
+    const { path, error } = await uploadCover(currentUserId, file, coverPath);
+    setSavingCover(false);
+    setCoverPreviewUrl(null);
+    if (error) {
+      showToast(error);
+      return;
+    }
+    setCoverPath(path);
+    showToast("Cover photo updated!");
+  };
+
+  const handleCoverRemove = async () => {
+    setSavingCover(true);
+    const problem = await removeCover(currentUserId, coverPath);
+    setSavingCover(false);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+    setCoverPath("");
+    showToast("Cover photo removed.");
+  };
 
   // The picture is saved as soon as it's picked. (It used to wait for Save
   // Changes, so leaving the page first quietly dropped the new picture.)
@@ -278,6 +328,23 @@ export default function SettingsView() {
                         <small className="text-secondary fs-8">JPG, PNG, WebP or GIF. Max 5 MB.</small>
                       </div>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="form-label text-white-50 fw-semibold fs-7 mb-2">Upload Cover Photo:</label>
+                    <CoverPhoto path={coverPath} previewUrl={coverPreviewUrl} name={displayName} className="rounded-3 mb-2" />
+                    <div className="d-flex flex-wrap align-items-center gap-2">
+                      <input type="file" className="d-none" ref={coverInputRef} accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleCoverPick} />
+                      <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => coverInputRef.current?.click()} disabled={savingCover || coverPath === null}>
+                        {savingCover ? "Saving..." : "Upload Cover Photo"}
+                      </button>
+                      {coverPath && (
+                        <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 py-2 fs-7" onClick={handleCoverRemove} disabled={savingCover}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <small className="text-secondary fs-8">The wide banner at the top of your profile. JPG, PNG, WebP or GIF. Max 5 MB.</small>
                   </div>
 
                   <div>

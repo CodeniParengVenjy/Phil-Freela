@@ -7,6 +7,8 @@ import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import SkillsBox from "../components/SkillsBox";
 import Avatar from "../../../components/Avatar";
+import CoverPhoto from "../../../components/CoverPhoto";
+import { fetchCoverPath } from "../../../lib/avatar";
 
 export default function ProfileView() {
   const { displayName, avatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
@@ -14,10 +16,15 @@ export default function ProfileView() {
   const [verified, setVerified] = useState(null);
   // undefined while loading, null if it couldn't load, "" if not written yet.
   const [description, setDescription] = useState(undefined);
+  // Where the cover photo is ("" = none or still loading: either way the plain banner shows).
+  const [coverPath, setCoverPath] = useState("");
 
   useEffect(() => {
     if (!currentUserId) return;
     let active = true;
+    fetchCoverPath(currentUserId).then((path) => {
+      if (active) setCoverPath(path || "");
+    });
     fetchIsVerified(currentUserId).then((result) => {
       if (active) setVerified(result);
     });
@@ -31,11 +38,12 @@ export default function ProfileView() {
     <section className="dashboard-view active-view">
       <div className="row g-4">
         <div className="col-lg-8">
-          <div className="profile-card-main glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25 text-center position-relative overflow-hidden">
-            <div className="profile-banner-bg"></div>
+          <div className="profile-card-main glass-card rounded-4 border border-secondary border-opacity-25 text-center position-relative overflow-hidden">
+            <CoverPhoto path={coverPath} name={displayName} />
 
-            <div className="position-relative z-2">
-              <div className="profile-avatar-container mx-auto mb-3">
+            {/* The picture sits half over the banner (the negative top margin). */}
+            <div className="position-relative z-2 px-4 px-md-5 pb-4 pb-md-5">
+              <div className="profile-avatar-container mx-auto mb-3" style={{ marginTop: -60 }}>
                 <Avatar path={avatarPath} name={displayName} size={120} className="border border-4 border-dark shadow-2xl" />
               </div>
 
