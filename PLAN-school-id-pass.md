@@ -6,6 +6,11 @@ but NOT yet applied to the live database: the Supabase tool declined the SQL
 because it replaces three CHECK rules (DROP CONSTRAINT then ADD). Run both files
 in the Supabase SQL Editor (schema first, then the test), or approve the call.
 
+Database (2026-10-08): applied to the live project in two parts (the table,
+functions and trigger, then the three rule swaps), and test_school_id_pass.sql
+passed all 19 checks on live (rolled back, nothing left behind). The only thing
+still needed is restarting the AI service.
+
 Progress (2026-10-08): steps 2, 3 and 4 are built and pushed (the button is on
 Kristine's row only, username itsme_tine). Step 5 was cut down on request: no
 "granted by Super Admin" label and no Overview box. Her request is just
