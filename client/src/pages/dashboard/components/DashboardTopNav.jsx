@@ -166,6 +166,15 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           )}
           <NavLink to="/dashboard/services" className="nav-link text-white-50 hover-orange d-none d-lg-block fw-semibold fs-7">Services</NavLink>
 
+          {/* Only for an admin's own user account (linked in the admin's My Profile):
+              a button in plain sight on big screens, and an item in the menu below
+              for phones. Everyone else has no adminLink and sees neither. */}
+          {adminLink && (
+            <button type="button" className="btn btn-outline-warning btn-sm rounded-pill fw-semibold d-none d-md-inline-flex align-items-center gap-1" onClick={handleSwitchToAdmin}>
+              <i className="bi bi-shield-lock"></i> Switch to admin
+            </button>
+          )}
+
           <div className="dropdown">
             <button className="btn btn-dark border border-secondary border-opacity-50 rounded-pill d-flex align-items-center gap-2 px-3 py-1 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
               <Avatar path={avatarPath} name={displayName} size={32} />
