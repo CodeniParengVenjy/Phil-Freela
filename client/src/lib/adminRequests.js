@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 
-// A regular admin can't suspend, ban, resolve, dismiss or remove a listing on
-// their own: they send a request, and a super admin approves or declines it
+// A regular admin can't suspend, ban, resolve, dismiss or remove a listing or
+// a reported picture on their own: they send a request, and a super admin approves or declines it
 // on the Approvals page. The admin_requests table and its database rules
 // (database/supabase_admin_roles_schema.sql) enforce this.
 
@@ -11,7 +11,8 @@ export const requestKindText = {
   ban: "Ban",
   resolve: "Resolve",
   dismiss: "Dismiss",
-  remove_listing: "Remove listing"
+  remove_listing: "Remove listing",
+  remove_picture: "Remove picture"
 };
 
 // What one request is called on screen. A reported portfolio project is

@@ -120,6 +120,24 @@ export const reportPictureKinds = {
   cover_photo: { column: "cover_path", bucket: "covers", label: "cover photo" }
 };
 
+// A super admin removes a reported picture. The database clears it from the
+// person's profile, but only if it is still the file that was reported (and
+// only for a super admin), then its file is deleted. Returns { removed: true },
+// { removed: false } when the person had already changed or removed it, or
+// { error }. report: a row of the reports table (target_type, target_id, reported_path).
+export async function removeReportedPicture(report) {
+  const kind = reportPictureKinds[report.target_type];
+  const { data: clearedPath, error } = await supabase.rpc("admin_remove_picture", {
+    p_user: report.target_id,
+    p_kind: report.target_type,
+    p_path: report.reported_path
+  });
+  if (error) return { error };
+  // If deleting the file fails it only leaves an unused file behind, so it isn't an error.
+  if (clearedPath) await supabase.storage.from(kind.bucket).remove([clearedPath]);
+  return { removed: Boolean(clearedPath) };
+}
+
 // The database table behind each kind of reported listing (an admin can
 // remove these; a reported user is suspended or banned instead).
 export const reportListingTables = {

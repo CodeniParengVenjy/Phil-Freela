@@ -4,7 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { REQUEST_COLUMNS, loadRequests, requestText } from "../../../lib/adminRequests";
 import { SLIDES_SELECT } from "../../../lib/slides";
-import { reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
+import { removeReportedPicture, reportPictureKinds, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { saveSuspension } from "../../../lib/suspensions";
 import { buildPenalty, getViolation } from "../../../lib/violations";
 
@@ -18,8 +18,8 @@ const tabs = [
 const targetOfTable = { services: "service", job_posts: "job_post", portfolio_items: "portfolio_item" };
 
 // Super admins only (the menu hides it, and the database refuses everyone
-// else). A regular admin's Suspend, Ban, Resolve, Dismiss and Remove listing
-// arrive here as requests. Approving does the action as the super admin, the
+// else). A regular admin's Suspend, Ban, Resolve, Dismiss, Remove listing and
+// Remove picture arrive here as requests. Approving does the action as the super admin, the
 // same way the Reports and Users pages do it for a super admin; declining
 // does nothing and leaves the report pending.
 export default function AdminApprovalsView() {
@@ -51,13 +51,14 @@ export default function AdminApprovalsView() {
       // Look up what each request is about, so a card can say who and what.
       const reportIds = [...new Set(result.data.map((r) => r.report_id).filter(Boolean))];
       const reportsResult = reportIds.length
-        ? await supabase.from("reports").select("id, target_type, target_id, reason, status").in("id", reportIds)
+        ? await supabase.from("reports").select("id, target_type, target_id, reason, status, reported_path").in("id", reportIds)
         : { data: [] };
       if (!active) return;
 
       const reportMap = Object.fromEntries((reportsResult.data || []).map((r) => [r.id, r]));
       const idsOf = (type) => (reportsResult.data || []).filter((r) => r.target_type === type).map((r) => r.target_id);
-      const userIds = [...new Set([...idsOf("user"), ...result.data.map((r) => r.target_user_id).filter(Boolean)])];
+      // A reported picture points at its owner, so the owner's name is looked up too.
+      const userIds = [...new Set([...idsOf("user"), ...idsOf("profile_picture"), ...idsOf("cover_photo"), ...result.data.map((r) => r.target_user_id).filter(Boolean)])];
       const serviceIds = [...new Set([...idsOf("service"), ...result.data.filter((r) => r.listing_table === "services").map((r) => r.listing_id)])];
       const jobIds = [...new Set([...idsOf("job_post"), ...result.data.filter((r) => r.listing_table === "job_posts").map((r) => r.listing_id)])];
       const projectIds = [...new Set([...idsOf("portfolio_item"), ...result.data.filter((r) => r.listing_table === "portfolio_items").map((r) => r.listing_id)])];
@@ -71,7 +72,11 @@ export default function AdminApprovalsView() {
       if (!active) return;
 
       const found = {};
-      (users.data || []).forEach((u) => { found[`user:${u.id}`] = `${u.full_name} (@${u.username})`; });
+      (users.data || []).forEach((u) => {
+        found[`user:${u.id}`] = `${u.full_name} (@${u.username})`;
+        found[`profile_picture:${u.id}`] = `${u.full_name}'s profile picture`;
+        found[`cover_photo:${u.id}`] = `${u.full_name}'s cover photo`;
+      });
       (services.data || []).forEach((s) => { found[`service:${s.id}`] = s.title; });
       (jobs.data || []).forEach((j) => { found[`job_post:${j.id}`] = j.title; });
       (projects.data || []).forEach((p) => { found[`portfolio_item:${p.id}`] = p.title; });
@@ -91,6 +96,7 @@ export default function AdminApprovalsView() {
     if (request.kind === "suspend" || request.kind === "ban") return nameOf("user", request.target_user_id);
     if (request.kind === "remove_listing") return nameOf(targetOfTable[request.listing_table], request.listing_id);
     const report = reports[request.report_id];
+    if (request.kind === "remove_picture") return report ? nameOf(report.target_type, report.target_id) : "a picture from a report that no longer exists";
     return report ? `a report about ${nameOf(report.target_type, report.target_id)}` : "a report that no longer exists";
   };
 
@@ -138,6 +144,16 @@ export default function AdminApprovalsView() {
       // Already gone (the owner or another admin removed it): nothing left to do.
       if (item && !(await removeListing(request.listing_table, item))) throw new Error(`Couldn't remove the ${isProject ? "project" : "listing"}.`);
       await closeReport(request.report_id, "resolved", `${isProject ? "Project" : "Listing"} removed.${details.note ? ` ${details.note}` : ""}`);
+    } else if (request.kind === "remove_picture") {
+      // The report says which picture file; the database clears it only if it is
+      // still the reported one, then the file is deleted. Already changed or
+      // removed: nothing is left to do, and the report is closed all the same.
+      const report = reports[request.report_id];
+      if (!report || !reportPictureKinds[report.target_type]) throw new Error("This request is incomplete. Decline it and ask for a new one.");
+      const label = reportPictureKinds[report.target_type].label;
+      const { removed, error } = await removeReportedPicture(report);
+      if (error) throw new Error(`Couldn't remove the ${label}.`);
+      await closeReport(request.report_id, "resolved", removed ? `Removed the ${label}.${details.note ? ` ${details.note}` : ""}` : "The picture had already been changed or removed.");
     } else {
       await closeReport(request.report_id, request.kind === "resolve" ? "resolved" : "dismissed", details.note);
     }
@@ -179,6 +195,7 @@ export default function AdminApprovalsView() {
     if (request.kind === "remove_listing") {
       return `The ${request.listing_table === "portfolio_items" ? "project" : "listing"} (and its files) will be deleted, and the report marked resolved.`;
     }
+    if (request.kind === "remove_picture") return "The picture will be taken off their profile (back to the first-letter circle or the plain banner) and its file deleted, and the report marked resolved.";
     if (request.kind === "resolve") return "The report will be marked resolved.";
     return "The report will be marked dismissed.";
   };
@@ -220,7 +237,7 @@ export default function AdminApprovalsView() {
           return (
             <div key={request.id} className="admin-card rounded-4 p-3 p-md-4">
               <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-                <span className={`badge ${request.kind === "ban" || request.kind === "remove_listing" ? "bg-danger" : request.kind === "suspend" ? "bg-warning text-dark" : "admin-badge-orange"} fw-normal`}>
+                <span className={`badge ${request.kind === "ban" || request.kind === "remove_listing" || request.kind === "remove_picture" ? "bg-danger" : request.kind === "suspend" ? "bg-warning text-dark" : "admin-badge-orange"} fw-normal`}>
                   {requestText(request)}
                 </span>
                 {report && <span className="badge bg-secondary fw-normal">{reportTargetLabels[report.target_type]} report · {reportReasonLabel(report.reason)}</span>}

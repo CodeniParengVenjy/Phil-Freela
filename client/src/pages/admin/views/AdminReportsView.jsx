@@ -4,7 +4,8 @@ import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { loadRequests, newestBy, requestText, sendRequest } from "../../../lib/adminRequests";
 import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
-import { getScreenshotLinks, reportListingTables, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
+import { avatarUrl, coverUrl } from "../../../lib/avatar";
+import { getScreenshotLinks, removeReportedPicture, reportListingTables, reportPictureKinds, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields, getViolation } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
@@ -21,6 +22,7 @@ const actionText = {
   resolve: { title: "Resolve report", button: "Resolve", noteLabel: "Note (optional)", buttonClass: "btn-success" },
   dismiss: { title: "Dismiss report", button: "Dismiss", noteLabel: "Why is it being dismissed? (optional)", buttonClass: "btn-secondary" },
   remove: { title: "Remove listing", button: "Remove Listing", noteLabel: "Note (optional)", buttonClass: "btn-danger" },
+  remove_picture: { title: "Remove picture", button: "Remove Picture", noteLabel: "Note (optional)", buttonClass: "btn-danger" },
   suspend: { title: "Suspend user", button: "Suspend User", buttonClass: "btn-warning", penalty: true },
   ban: { title: "Ban user", button: "Ban User", buttonClass: "btn-danger", penalty: true }
 };
@@ -31,6 +33,32 @@ const targetKey = (type, id) => `${type}:${id}`;
 // "Project" for a reported portfolio project, "Listing" for a service or job
 // post, so the Remove button and its pop-up use the right word.
 const removeWord = (report) => (report.target_type === "portfolio_item" ? "Project" : "Listing");
+
+// The picture that was reported, shown from its own saved file (not from the
+// person's profile as it is now, which may have changed). Click it to open it
+// full size. A reported file is kept while its report is waiting, so it is
+// only gone for an old report.
+function ReportedPicture({ report }) {
+  const [failed, setFailed] = useState(false);
+  const isCover = report.target_type === "cover_photo";
+  const url = isCover ? coverUrl(report.reported_path) : avatarUrl(report.reported_path);
+  if (!url || failed) return <p className="fs-8 text-white-50 fst-italic mb-2">(the reported picture's file is gone)</p>;
+
+  return (
+    <div className="mb-2">
+      <p className="fs-8 text-white-50 mb-1">What was reported:</p>
+      <a href={url} target="_blank" rel="noreferrer" title="Open full size">
+        <img
+          src={url}
+          alt={isCover ? "Reported cover photo" : "Reported profile picture"}
+          className="d-block rounded-3 border border-warning border-opacity-50"
+          style={{ maxWidth: isCover ? 420 : 140, maxHeight: 200, width: "100%", objectFit: "contain" }}
+          onError={() => setFailed(true)}
+        />
+      </a>
+    </div>
+  );
+}
 
 // Up to 4 small pictures of a reported service's or project's files (its
 // photos, and the first page of a PDF), so the admin can compare them with
@@ -86,7 +114,7 @@ export default function AdminReportsView() {
       const [reportsResult, suspensionsResult, requestsResult] = await Promise.all([
         supabase
           .from("reports")
-          .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
+          .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
           .order("created_at", { ascending: false }),
         supabase.from("user_suspensions").select("user_id, ends_at"),
         loadRequests(["pending", "declined"])
@@ -104,7 +132,9 @@ export default function AdminReportsView() {
       const idsOf = (type) => [...new Set(reportsResult.data.filter((r) => r.target_type === type).map((r) => r.target_id))];
       const callIds = [...new Set(reportsResult.data.map((r) => r.call_id).filter(Boolean))];
       const [usersResult, servicesResult, jobsResult, projectsResult, callsResult, links] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, username").in("id", idsOf("user")),
+        // A reported picture points at its owner, so their profile is looked up
+        // too (with where their picture and cover are now).
+        supabase.from("profiles").select("id, full_name, username, avatar_path, cover_path").in("id", [...new Set([...idsOf("user"), ...idsOf("profile_picture"), ...idsOf("cover_photo")])]),
         // The slides are only needed so Remove can delete the service's files too.
         supabase.from("services").select(`id, title, image_url, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`).in("id", idsOf("service")),
         supabase.from("job_posts").select("id, title, client_id, owner:profiles!job_posts_client_id_fkey(full_name, username)").in("id", idsOf("job_post")),
@@ -122,6 +152,10 @@ export default function AdminReportsView() {
       const found = {};
       (usersResult.data || []).forEach((u) => {
         found[targetKey("user", u.id)] = { name: `${u.full_name} (@${u.username})`, ownerId: u.id, ownerName: u.full_name };
+        // currentPath: the file they have now, so Remove only shows while it
+        // is still the reported one.
+        found[targetKey("profile_picture", u.id)] = { name: `${u.full_name}'s profile picture`, ownerId: u.id, ownerName: u.full_name, currentPath: u.avatar_path };
+        found[targetKey("cover_photo", u.id)] = { name: `${u.full_name}'s cover photo`, ownerId: u.id, ownerName: u.full_name, currentPath: u.cover_path };
       });
       (servicesResult.data || []).forEach((s) => {
         found[targetKey("service", s.id)] = { name: s.title, ownerId: s.freelancer_id, ownerName: s.owner?.full_name, item: s };
@@ -192,7 +226,7 @@ export default function AdminReportsView() {
         adminId,
         kind: kind === "remove" ? "remove_listing" : kind,
         reportId: report.id,
-        targetUserId: penalty ? target.ownerId : null,
+        targetUserId: penalty || kind === "remove_picture" ? target.ownerId : null,
         listingTable: kind === "remove" ? reportListingTables[report.target_type] : null,
         listingId: kind === "remove" ? target.item.id : null,
         // For Suspend / Ban the pop-up choices are kept, and the penalty is
@@ -223,6 +257,18 @@ export default function AdminReportsView() {
         });
         await markReviewed(report, "resolved", `${word} removed.${text ? ` ${text}` : ""}`);
         setMessage({ text: `${word} removed and report resolved.`, type: "success" });
+      } else if (kind === "remove_picture") {
+        // The database clears it only if it is still the reported file; then the file is deleted.
+        const label = reportPictureKinds[report.target_type].label;
+        const { removed, error } = await removeReportedPicture(report);
+        if (error) throw new Error(`Couldn't remove the ${label}.`);
+        const key = targetKey(report.target_type, report.target_id);
+        setTargets((prev) => ({ ...prev, [key]: { ...prev[key], currentPath: removed ? null : prev[key].currentPath } }));
+        await markReviewed(report, "resolved", removed ? `Removed the ${label}.${text ? ` ${text}` : ""}` : "The picture had already been changed or removed.");
+        setMessage({
+          text: removed ? `The ${label} was removed and the report resolved.` : "That picture had already been changed or removed, so nothing was removed. The report is resolved.",
+          type: "success"
+        });
       } else if (penalty) {
         // Same Suspend / Ban as the Users page.
         const done = kind === "ban" ? "banned" : "suspended";
@@ -276,7 +322,12 @@ export default function AdminReportsView() {
       <div className="d-flex flex-column gap-3">
         {visibleReports.map((report) => {
           const target = targets[targetKey(report.target_type, report.target_id)];
-          const isListing = report.target_type !== "user";
+          // A reported picture is about a person, but, like a listing, it has an owner.
+          const isPicture = Boolean(reportPictureKinds[report.target_type]);
+          const isListing = !isPicture && report.target_type !== "user";
+          const hasOwnerLine = isListing || isPicture;
+          // True while the person still has the picture that was reported.
+          const stillThere = isPicture && target && target.currentPath === report.reported_path;
           // "banned", "suspended", or undefined for the reported user / listing owner.
           const ownerStatus = target && blockedStatus[target.ownerId];
           const ownerBadge = ownerStatus && (
@@ -295,13 +346,13 @@ export default function AdminReportsView() {
                 {target ? target.name : <span className="text-white-50 fst-italic">(deleted)</span>}
               </h2>
 
-              {isListing && target && (
+              {hasOwnerLine && target && (
                 <p className="fs-7 text-white-50 mb-1">
-                  Posted by {target.ownerName || "Unknown"}
+                  {isPicture ? "Belongs to" : "Posted by"} {target.ownerName || "Unknown"}
                   {ownerBadge && <span className="ms-2">{ownerBadge}</span>}
                 </p>
               )}
-              {!isListing && ownerBadge && <div className="mb-1">{ownerBadge}</div>}
+              {!hasOwnerLine && ownerBadge && <div className="mb-1">{ownerBadge}</div>}
 
               <p className="fs-7 text-white-50 mb-2">
                 Reported by {report.reporter?.full_name || "a deleted user"}
@@ -316,6 +367,15 @@ export default function AdminReportsView() {
               )}
 
               {report.details && <p className="fs-7 text-white mb-2 admin-description">"{report.details}"</p>}
+
+              {/* The reported picture or cover, as it was when it was reported. */}
+              {isPicture && <ReportedPicture report={report} />}
+              {isPicture && target && !stillThere && report.status === "pending" && (
+                <p className="fs-8 text-warning mb-2">
+                  <i className="bi bi-info-circle me-1"></i>
+                  They have changed or removed this picture since it was reported.
+                </p>
+              )}
 
               {/* The reported service's or project's own pictures; click one to open it full size. */}
               {isListing && target && listingPictures(target.item).length > 0 && (
@@ -379,15 +439,20 @@ export default function AdminReportsView() {
                       <i className="bi bi-trash"></i> Remove {removeWord(report)}
                     </button>
                   )}
+                  {stillThere && (
+                    <button className="btn btn-outline-danger btn-sm" onClick={() => openAction("remove_picture", report)}>
+                      <i className="bi bi-trash"></i> Remove Picture
+                    </button>
+                  )}
                   {target && !ownerStatus && (
                     <button className="btn btn-outline-warning btn-sm" onClick={() => openAction("suspend", report)}>
-                      <i className="bi bi-slash-circle"></i> Suspend {isListing ? "Owner" : "User"}
+                      <i className="bi bi-slash-circle"></i> Suspend {hasOwnerLine ? "Owner" : "User"}
                     </button>
                   )}
                   {/* A suspended user can still be banned; that replaces the suspension. */}
                   {target && ownerStatus !== "banned" && (
                     <button className="btn btn-outline-danger btn-sm" onClick={() => openAction("ban", report)}>
-                      <i className="bi bi-ban"></i> Ban {isListing ? "Owner" : "User"}
+                      <i className="bi bi-ban"></i> Ban {hasOwnerLine ? "Owner" : "User"}
                     </button>
                   )}
                   <button className="btn btn-outline-success btn-sm" onClick={() => openAction("resolve", report)}>
@@ -413,6 +478,7 @@ export default function AdminReportsView() {
             </h2>
             <p className="text-secondary fs-7 mb-3">
               {action.kind === "remove" && `The ${removeWord(action.report).toLowerCase()} (and its files) will be deleted, and this report marked resolved.`}
+              {action.kind === "remove_picture" && "The picture is taken off their profile (they go back to the first-letter circle or the plain banner) and its file is deleted. This report will be marked resolved."}
               {action.kind === "suspend" && "The violation decides how long it lasts and what they can't do. This report will be marked resolved."}
               {action.kind === "ban" && "They will be signed out and can't log in until an admin unbans them. This report will be marked resolved."}
               {action.kind === "resolve" && "Use this when the problem has been handled."}
