@@ -22,6 +22,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from functools import partial
 
 import cv2
 from docx import Document as DocxDocument
@@ -40,7 +41,7 @@ from id_qr import check_philsys_qr
 from hidden_watermark import new_code, protect_photo, read_code, read_code_from_frames, read_uncropped_codes
 from listing_search import search_listings
 from moodboard import match_moodboard
-from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
+from photo_checks import SCHOOL_ID_MIN_TEXT_LINES, PhotoProblem, check_face_scan, check_id_back, check_id_front
 from recommendations import recommend
 from similarity import image_embedding
 from text_embedder import embed_texts
@@ -200,6 +201,13 @@ def to_clean_jpeg(image, max_side=STORED_MAX_SIDE, quality=85):
     return buffer.getvalue()
 
 
+def front_check_for(id_type):
+    """The ID front check; a School ID needs fewer printed text lines."""
+    if id_type == "school_id":
+        return partial(check_id_front, min_text_lines=SCHOOL_ID_MIN_TEXT_LINES)
+    return check_id_front
+
+
 def run_photo_check(check, *images):
     """Runs one of the photo_checks and turns a problem into a "retake" reply."""
     try:
@@ -244,7 +252,7 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
     left_half = read_image(selfie_left_half, "face scan") if has_halves else None
     right_half = read_image(selfie_right_half, "face scan") if has_halves else None
 
-    run_photo_check(check_id_front, id_image)
+    run_photo_check(front_check_for(id_type), id_image)
     if id_back_image is not None:
         run_photo_check(check_id_back, id_image, id_back_image)
     run_photo_check(check_face_scan, selfie_image, left_image, right_image, left_half, right_half)
@@ -393,12 +401,15 @@ def find_valid_link(token):
 def check_front(
     photo: UploadFile = File(...),
     token: str | None = Form(default=None),
+    id_type: str | None = Form(default=None),
     authorization: str | None = Header(default=None),
 ):
     """Instant check of the front of the ID, before the user can go on.
-    Nothing is saved. Needs a login or a valid QR token, so strangers can't use it."""
+    Nothing is saved. Needs a login or a valid QR token, so strangers can't use it.
+    id_type only makes a School ID's check gentler; the final submit checks the
+    type and the pass again."""
     get_caller_user_id(authorization, token)
-    run_photo_check(check_id_front, read_image(photo, "photo of the front of your ID"))
+    run_photo_check(front_check_for(id_type), read_image(photo, "photo of the front of your ID"))
     return {"ok": True}
 
 

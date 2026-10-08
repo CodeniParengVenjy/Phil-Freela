@@ -44,6 +44,10 @@ SAME_PHOTO_DIFFERENCE = 12
 # The back needs fewer because some ID backs are mostly a barcode or QR code.
 MIN_FRONT_TEXT_LINES = 8
 MIN_BACK_TEXT_LINES = 5
+# A School ID (the temporary pass, see PLAN-school-id-pass.md) has only a name
+# and a school line or two, so it needs far fewer lines. A real one measured 3;
+# selfies and portraits mostly had 0, so 2 still turns those away.
+SCHOOL_ID_MIN_TEXT_LINES = 2
 
 _text_finder = cv2.dnn_TextDetectionModel_DB(cv2.dnn.readNet(os.path.join(MODELS, "text_detection_en_ppocrv3_2023may.onnx")))
 _text_finder.setBinaryThreshold(0.3)
@@ -108,10 +112,11 @@ def _text_lines(image):
     return lines
 
 
-def check_id_front(image):
+def check_id_front(image, min_text_lines=MIN_FRONT_TEXT_LINES):
     """Front of the ID: a face is found, big enough, sharp, and it looks like
     an ID (has printed text). The text check comes last: blur and distance
-    also hide text, and those get their own clearer messages first."""
+    also hide text, and those get their own clearer messages first. A School
+    ID passes fewer text lines (min_text_lines)."""
     face = _biggest_face(image)
     if face is None:
         raise PhotoProblem("We couldn't find the photo on your ID. Make sure the whole front of the ID is visible, then retake it.")
@@ -124,8 +129,8 @@ def check_id_front(image):
     if _sharpness(face_crop, 200) < MIN_FACE_SHARPNESS:
         raise PhotoProblem("The photo is blurry. Hold the ID still and make sure it's in focus, then retake it.")
 
-    if _text_lines(image) < MIN_FRONT_TEXT_LINES:
-        raise PhotoProblem("This doesn't look like the front of an ID. Take a photo of your government ID, with your photo and name on it.")
+    if _text_lines(image) < min_text_lines:
+        raise PhotoProblem("This doesn't look like the front of an ID. Take a photo of your ID, with your photo and name on it.")
 
 
 def check_id_back(front, back):

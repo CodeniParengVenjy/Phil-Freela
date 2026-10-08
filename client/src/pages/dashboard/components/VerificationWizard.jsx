@@ -66,6 +66,9 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption,
     setIdType(value);
     // Passports have no card back, so a back photo taken earlier is dropped.
     if (!idTypeHasBack(value)) setBack(EMPTY_SIDE);
+    // A School ID is checked more gently than a government ID, so a front
+    // photo taken earlier is checked again for the new type.
+    if (front.file && (value === "school_id") !== (idType === "school_id")) handleFront(front.file, value);
   };
 
   // Runs the instant check on the back (it needs the front, to make sure the
@@ -80,11 +83,11 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption,
     }
   };
 
-  const handleFront = async (file) => {
+  const handleFront = async (file, type = idType) => {
     if (!file) return setFront(EMPTY_SIDE);
     setFront({ file, status: "checking", message: "" });
     try {
-      await checkIdFront(file, token);
+      await checkIdFront(file, token, type);
       setFront({ file, status: "ok", message: "" });
       // A new front means the back's "not the same photo" check must run again.
       if (back.file) checkBack(file, back.file);

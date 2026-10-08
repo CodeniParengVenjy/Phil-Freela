@@ -73,9 +73,11 @@ function photoForm({ idType, idPhoto, idBack, selfie, selfieLeft, selfieRight, s
 
 // Instant check of the front of the ID (face found, big enough, sharp).
 // Resolves when it's fine; throws with a "retake" message when it isn't.
-export async function checkIdFront(photo, token) {
+export async function checkIdFront(photo, token, idType) {
   const form = new FormData();
   form.append("photo", photo, "id-front.jpg");
+  // A School ID (temporary pass) is checked more gently than a government ID.
+  if (idType) form.append("id_type", idType);
   const headers = await callerOptions(form, token);
   return request("/checks/id-front", { method: "POST", headers, body: form });
 }
