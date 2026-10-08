@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import { presenceStatus, usePresence } from "../../../lib/presence";
 import { loadRequests, newestBy, requestKindText, sendRequest } from "../../../lib/adminRequests";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { BAN_DELETE_DAYS, SUSPENSION_COLUMNS, banDeletionDay, blockedBadges, formatEndDate, restrictionText, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
@@ -26,6 +27,15 @@ const blockText = {
   }
 };
 
+// The "Sort by" choices. Each has a direction: "desc" shows the first-named end
+// first (newest, online, Z), "asc" the other end. The words on the direction
+// button come from here, and a sort starts in its usual direction.
+const sortOptions = {
+  joined: { label: "Joined", start: "desc", desc: "Newest first", asc: "Oldest first" },
+  online: { label: "Online", start: "desc", desc: "Online first", asc: "Offline first" },
+  name: { label: "Name", start: "asc", desc: "Z to A", asc: "A to Z" }
+};
+
 // TEMPORARY: the only person who gets the "School ID pass" button (see
 // PLAN-school-id-pass.md). She has no government ID, so a super admin lets her
 // verify with a School ID for 12 hours. This line and the pass code go away
@@ -36,6 +46,8 @@ export default function AdminUsersView() {
   const { adminId, isSuperAdmin } = useOutletContext();
   const [users, setUsers] = useState(null);
   const verifiedIds = useVerifiedIds((users || []).map((user) => user.id));
+  // user id -> seconds since they were last seen (refreshed every 30 seconds).
+  const lastSeen = usePresence((users || []).map((user) => user.id));
   // user_id -> suspension row, so each table row can look up its status fast.
   // A row with no end date is a ban (see lib/suspensions.js).
   const [suspensions, setSuspensions] = useState({});
@@ -46,6 +58,10 @@ export default function AdminUsersView() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  // "all", "verified" or "unverified" (the Verified badge, see lib/verification.js).
+  const [verifyFilter, setVerifyFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("joined");
+  const [sortDir, setSortDir] = useState("desc");
   const [message, setMessage] = useState({ text: "", type: "" });
   // The open Suspend / Ban pop-up: { kind: "suspend" | "ban", user } (null = closed).
   const [blockTarget, setBlockTarget] = useState(null);
@@ -115,8 +131,29 @@ export default function AdminUsersView() {
     // "active" when there's no suspension, or it already ended.
     const status = suspensionStatus(suspensions[user.id]) || "active";
     const matchesStatus = statusFilter === "all" || statusFilter === status;
-    return matchesSearch && matchesRole && matchesStatus;
+    const isVerified = verifiedIds.has(user.id);
+    const matchesVerify = verifyFilter === "all" || (verifyFilter === "verified") === isVerified;
+    return matchesSearch && matchesRole && matchesStatus && matchesVerify;
   });
+
+  // Sort a copy of the filtered list. For "Online", the most recently seen comes
+  // first in "desc"; people never seen always go last, either way.
+  const sign = sortDir === "desc" ? 1 : -1;
+  visibleUsers.sort((a, b) => {
+    if (sortBy === "name") return -sign * (a.full_name || "").localeCompare(b.full_name || "");
+    if (sortBy === "online") {
+      const seenA = lastSeen.get(a.id);
+      const seenB = lastSeen.get(b.id);
+      if (seenA === undefined || seenB === undefined) return (seenA === undefined) - (seenB === undefined);
+      return sign * (seenA - seenB);
+    }
+    return sign * (new Date(b.created_at) - new Date(a.created_at));
+  });
+
+  const changeSort = (value) => {
+    setSortBy(value);
+    setSortDir(sortOptions[value].start);
+  };
 
   const openBlockDialog = (kind, user) => {
     setBlockTarget({ kind, user });
@@ -306,6 +343,34 @@ export default function AdminUsersView() {
               <option value="banned">Banned</option>
             </select>
           </div>
+          <div className="col-6 col-lg-3">
+            <select className="form-select admin-input" value={verifyFilter} onChange={(e) => setVerifyFilter(e.target.value)} aria-label="Filter by verification">
+              <option value="all">All users (verified or not)</option>
+              <option value="verified">Verified</option>
+              <option value="unverified">Not verified</option>
+            </select>
+          </div>
+          <div className="col-6 col-lg-3">
+            <select className="form-select admin-input" value={sortBy} onChange={(e) => changeSort(e.target.value)} aria-label="Sort by">
+              {Object.entries(sortOptions).map(([value, option]) => (
+                <option key={value} value={value}>Sort by: {option.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-6 col-lg-3">
+            <button
+              type="button"
+              className="btn btn-outline-light w-100"
+              onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
+              aria-label="Change the sort direction"
+            >
+              <i className={`bi ${sortDir === "desc" ? "bi-sort-down" : "bi-sort-up"} me-1`}></i>
+              {sortOptions[sortBy][sortDir]}
+            </button>
+          </div>
+          <div className="col-6 col-lg-3 d-flex align-items-center justify-content-lg-end text-white-50 fs-7">
+            {users !== null && `${visibleUsers.length} of ${users.length} users shown`}
+          </div>
         </div>
       </div>
 
@@ -343,6 +408,7 @@ export default function AdminUsersView() {
                 const status = suspensionStatus(suspension);
                 // A Suspend / Ban request waiting for a super admin, if any.
                 const waiting = requests[user.id];
+                const seen = presenceStatus(lastSeen.get(user.id));
                 // The temporary School ID pass: only on her row, only for super
                 // admins (the database refuses anyone else), and not once verified.
                 const showPass = isSuperAdmin && user.username === SCHOOL_ID_PASS_USERNAME && !verifiedIds.has(user.id);
@@ -385,6 +451,12 @@ export default function AdminUsersView() {
                         </>
                       ) : (
                         <span className="badge bg-success fw-normal">Active</span>
+                      )}
+                      {/* "Online" or "Offline 5m ago", left out for people never seen. */}
+                      {seen && (
+                        <div className={`fs-8 mt-1 ${seen.online ? "text-success fw-semibold" : "text-white-50"}`}>
+                          <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>{seen.label}
+                        </div>
                       )}
                     </td>
                     <td>{new Date(user.created_at).toLocaleDateString()}</td>
