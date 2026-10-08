@@ -33,7 +33,7 @@ const blockText = {
 const sortOptions = {
   joined: { label: "Joined", start: "desc", desc: "Newest first", asc: "Oldest first" },
   online: { label: "Online", start: "desc", desc: "Online first", asc: "Offline first" },
-  name: { label: "Name", start: "asc", desc: "Z to A", asc: "A to Z" }
+  name: { label: "Name A-Z", start: "asc", desc: "Z to A", asc: "A to Z" }
 };
 
 // TEMPORARY: the only person who gets the "School ID pass" button (see
@@ -345,7 +345,7 @@ export default function AdminUsersView() {
           </div>
           <div className="col-6 col-lg-3">
             <select className="form-select admin-input" value={verifyFilter} onChange={(e) => setVerifyFilter(e.target.value)} aria-label="Filter by verification">
-              <option value="all">All users (verified or not)</option>
+              <option value="all">All users</option>
               <option value="verified">Verified</option>
               <option value="unverified">Not verified</option>
             </select>
@@ -365,7 +365,7 @@ export default function AdminUsersView() {
               aria-label="Change the sort direction"
             >
               <i className={`bi ${sortDir === "desc" ? "bi-sort-down" : "bi-sort-up"} me-1`}></i>
-              {sortOptions[sortBy][sortDir]}
+              {sortDir === "asc" ? "Ascending" : "Descending"} · {sortOptions[sortBy][sortDir]}
             </button>
           </div>
           <div className="col-6 col-lg-3 d-flex align-items-center justify-content-lg-end text-white-50 fs-7">
