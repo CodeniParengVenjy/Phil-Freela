@@ -17,7 +17,7 @@ export const ID_TYPES = [
 // The temporary School ID pass (database/supabase_school_id_pass_schema.sql):
 // a super admin lets one person use a School ID for 12 hours. It is only
 // offered to people who have a pass, and takes a front photo only.
-export const SCHOOL_ID_TYPE = { value: "school_id", label: "School ID (temporary pass)", hasBack: false };
+export const SCHOOL_ID_TYPE = { value: "school_id", label: "School ID", hasBack: false };
 
 export function idTypeHasBack(value) {
   return [...ID_TYPES, SCHOOL_ID_TYPE].find((type) => type.value === value)?.hasBack ?? true;

@@ -6,6 +6,13 @@ but NOT yet applied to the live database: the Supabase tool declined the SQL
 because it replaces three CHECK rules (DROP CONSTRAINT then ADD). Run both files
 in the Supabase SQL Editor (schema first, then the test), or approve the call.
 
+Progress (2026-10-08): steps 2, 3 and 4 are built and pushed (the button is on
+Kristine's row only, username itsme_tine). Step 5 was cut down on request: no
+"granted by Super Admin" label and no Overview box. Her request is just
+labelled "School ID" on the Verifications page, like any other ID type.
+Still to do: apply the database file, restart the AI service, run the whole
+flow, then remove the School ID code once she is done.
+
 Change from the plan below: a database trigger, not the AI service, marks the
 pass used and refuses a School ID request without a valid pass. The AI service
 only checks first, so she gets the message before the face check runs.

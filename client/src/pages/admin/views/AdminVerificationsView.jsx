@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { AUTO_REJECT_HOURS, ID_TYPES, aiSuggestion, autoRejectTime, suggestionBadgeClass, suggestionLabels } from "../../../lib/verification";
+import { AUTO_REJECT_HOURS, ID_TYPES, SCHOOL_ID_TYPE, aiSuggestion, autoRejectTime, suggestionBadgeClass, suggestionLabels } from "../../../lib/verification";
 import AiSummaryCard from "../components/AiSummaryCard";
 
 const statusTabs = [
@@ -22,7 +22,8 @@ const rejectReasons = [
 // Private links to the photos stop working after 5 minutes.
 const PHOTO_LINK_SECONDS = 300;
 
-const idTypeLabel = (value) => ID_TYPES.find((t) => t.value === value)?.label || value;
+// School ID is the temporary pass type, so it isn't in the normal ID list.
+const idTypeLabel = (value) => [...ID_TYPES, SCHOOL_ID_TYPE].find((t) => t.value === value)?.label || value;
 
 // "in 2h 10m" / "in 45m" / "any minute now" (the job runs every 15 minutes).
 function timeUntil(date) {
