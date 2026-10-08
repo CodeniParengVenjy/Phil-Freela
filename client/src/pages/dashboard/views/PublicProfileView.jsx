@@ -5,6 +5,7 @@ import { fetchIsVerified } from "../../../lib/verification";
 import { countPortfolio } from "../../../lib/portfolio";
 import { fetchProfileStats } from "../../../lib/profileStats";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import StarRating from "../../../components/StarRating";
 import Avatar from "../../../components/Avatar";
 import PortfolioSection from "../components/PortfolioSection";
@@ -49,7 +50,7 @@ function PublicProfile({ userId }) {
   useEffect(() => {
     let active = true;
     Promise.all([
-      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, description, skills").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, description, skills, available_for_work").eq("id", userId).maybeSingle(),
       fetchIsVerified(userId),
       countPortfolio(userId)
     ]).then(([{ data }, isVerified, count]) => {
@@ -82,6 +83,8 @@ function PublicProfile({ userId }) {
   // The role they have today (they can switch in the menu).
   const roleToday = person.account_type === "client" ? "client" : "freelancer";
   const isFreelancer = roleToday === "freelancer";
+  // False when a freelancer switched "Available for work" off in Settings.
+  const takingBookings = person.available_for_work !== false;
 
   return (
     <section className="dashboard-view active-view">
@@ -92,18 +95,21 @@ function PublicProfile({ userId }) {
             {person.full_name}
             <VerifiedBadge verified={verified} showUnverified />
           </h3>
-          <p className="text-secondary fs-7 mb-0 d-flex align-items-center gap-2">
+          <p className="text-secondary fs-7 mb-0 d-flex flex-wrap align-items-center gap-2">
             <span>@{person.username} • {ROLE_LABELS[roleToday]}</span>
             {/* Their average rating from completed projects (Feature 5, transparency). */}
             <StarRating userId={person.id} />
+            {/* Whether they are taking new work (freelancers only). */}
+            {isFreelancer && <AvailabilityBadge available={person.available_for_work} showAvailable className="fs-8" />}
           </p>
         </div>
         {isOwnPage ? (
           <span className="text-secondary fs-8">This is how others see your profile.</span>
         ) : (
           <div className="d-flex flex-wrap gap-2 flex-shrink-0">
-            {/* A client can book a freelancer's service from here. */}
-            {accountType === "client" && isFreelancer && (
+            {/* A client can book a freelancer's service from here, unless the
+                freelancer isn't taking new work (the database refuses it too). */}
+            {accountType === "client" && isFreelancer && takingBookings && (
               <button
                 type="button"
                 className="btn btn-outline-role rounded-pill px-4 fw-bold"

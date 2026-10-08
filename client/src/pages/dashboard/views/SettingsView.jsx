@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, fetchDescription, fetchEmailWhenOffline, saveDescription, saveDisplayName, saveEmailWhenOffline } from "../../../lib/profile";
+import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, fetchAvailableForWork, fetchDescription, fetchEmailWhenOffline, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailWhenOffline } from "../../../lib/profile";
 import { checkAvatarFile, uploadAvatar } from "../../../lib/avatar";
 import { deleteMyAccount, downloadAsFile, exportMyData } from "../../../lib/privacy";
 import Avatar from "../../../components/Avatar";
@@ -37,6 +37,9 @@ export default function SettingsView() {
   // saved over the real one.
   // "Email me when I'm offline": null while loading, then true/false.
   const [emailWhenOffline, setEmailWhenOffline] = useState(null);
+  // "Available for work" (freelancers): null while loading, then true/false.
+  const [availableForWork, setAvailableForWork] = useState(null);
+  const [savingAvailability, setSavingAvailability] = useState(false);
   const [savingEmailSetting, setSavingEmailSetting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
@@ -53,6 +56,9 @@ export default function SettingsView() {
     fetchEmailWhenOffline(currentUserId).then((on) => {
       if (active) setEmailWhenOffline(on);
     });
+    fetchAvailableForWork(currentUserId).then((on) => {
+      if (active) setAvailableForWork(on);
+    });
     return () => { active = false; };
   }, [currentUserId]);
 
@@ -68,6 +74,20 @@ export default function SettingsView() {
     }
     setEmailWhenOffline(on);
     showToast(on ? "You'll get emails while you're offline." : "Offline emails turned off.");
+  };
+
+  // Saved as soon as it's clicked, like the email switch.
+  const handleAvailabilityChange = async (event) => {
+    const on = event.target.checked;
+    setSavingAvailability(true);
+    const problem = await saveAvailableForWork(currentUserId, on);
+    setSavingAvailability(false);
+    if (problem) {
+      showToast(problem);
+      return;
+    }
+    setAvailableForWork(on);
+    showToast(on ? "You're available for work again." : "You're marked as not available. Clients can't send new bookings.");
   };
 
   const handleExportData = async () => {
@@ -178,6 +198,28 @@ export default function SettingsView() {
             {activeSubNav === "Profile Settings" ? (
               <>
                 <VerificationStatusCard userId={currentUserId} />
+                {/* Only freelancers take bookings, so only they have this switch. */}
+                {accountType === "freelancer" && (
+                  <div className="form-check form-switch mb-4">
+                    <input
+                      id="availableForWork"
+                      type="checkbox"
+                      role="switch"
+                      className="form-check-input"
+                      checked={availableForWork === true}
+                      onChange={handleAvailabilityChange}
+                      disabled={availableForWork === null || savingAvailability}
+                    />
+                    <label htmlFor="availableForWork" className="form-check-label text-white fw-semibold fs-7">Available for work</label>
+                    <p className="text-secondary fs-8 mb-0 mt-1">
+                      {availableForWork === null
+                        ? "Loading..."
+                        : availableForWork
+                          ? "Clients can book your services. Switch this off when you have enough work or are away."
+                          : "Your profile and services say \"Not available right now\" and clients can't send you new bookings. They can still message you, and the bookings and projects you already have go on as usual."}
+                    </p>
+                  </div>
+                )}
                 <form className="d-flex flex-column gap-4" onSubmit={handleSubmit}>
                   <div>
                     <label className="form-label text-white-50 fw-semibold fs-7 mb-2">Upload Profile Picture:</label>

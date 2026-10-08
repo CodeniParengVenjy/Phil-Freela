@@ -122,6 +122,24 @@ export async function saveEmailWhenOffline(userId, on) {
   return "";
 }
 
+// Settings > Profile Settings > "Available for work" (freelancers). While it
+// is off, the freelancer's profile and service cards say "Not available right
+// now" and the database refuses new bookings for them
+// (database/supabase_availability_schema.sql). Returns true/false, or null
+// when it couldn't be loaded.
+export async function fetchAvailableForWork(userId) {
+  const { data, error } = await supabase.from("profiles").select("available_for_work").eq("id", userId).maybeSingle();
+  if (error || !data) return null;
+  return data.available_for_work;
+}
+
+// Returns "" when saved, or a message to show the user.
+export async function saveAvailableForWork(userId, available) {
+  const { data, error } = await supabase.from("profiles").update({ available_for_work: available }).eq("id", userId).select("id");
+  if (error || !data?.length) return "Couldn't save that setting. Please try again.";
+  return "";
+}
+
 // Ensures a `profiles` row exists for an authenticated user, returning the
 // route to send them to next.
 //

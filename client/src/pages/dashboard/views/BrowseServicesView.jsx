@@ -7,6 +7,7 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { SLIDES_SELECT, isOriginalWork, itemSlides } from "../../../lib/slides";
 import OriginalBadge from "../../../components/OriginalBadge";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import ReportDialog from "../components/ReportDialog";
 import BookDialog from "../components/BookDialog";
 import MediaCarousel from "../components/MediaCarousel";
@@ -29,7 +30,7 @@ export default function BrowseServicesView() {
 
     supabase
       .from("services")
-      .select(`id, title, category, price, image_url, media_type, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username), ${SLIDES_SELECT}`)
+      .select(`id, title, category, price, image_url, media_type, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, available_for_work), ${SLIDES_SELECT}`)
       .order("created_at", { ascending: false })
       .then(({ data, error: fetchError }) => {
         if (!active) return;
@@ -141,6 +142,8 @@ export default function BrowseServicesView() {
                       <span className="badge bg-black text-light-50 fs-8">{meta.label}</span>
                       {/* Every file passed the AI copy check and carries the hidden watermark (step 10). */}
                       {isOriginalWork(s) && <OriginalBadge className="fs-8" />}
+                      {/* The freelancer switched "Available for work" off in Settings. */}
+                      <AvailabilityBadge available={s.freelancer?.available_for_work} className="fs-8" />
                     </div>
                     <h6 className="text-white fw-bold mb-1">{s.title}</h6>
                     <p className="fs-8 text-secondary mb-3 flex-grow-1">
@@ -183,7 +186,9 @@ export default function BrowseServicesView() {
                               <i className="bi bi-flag"></i>
                             </button>
                           )}
-                          {accountType === "client" && s.freelancer?.id && s.freelancer.id !== currentUserId && (
+                          {/* No Book button while the freelancer isn't taking new
+                              work (the database refuses the booking too). */}
+                          {accountType === "client" && s.freelancer?.id && s.freelancer.id !== currentUserId && s.freelancer.available_for_work !== false && (
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold flex-grow-1"
