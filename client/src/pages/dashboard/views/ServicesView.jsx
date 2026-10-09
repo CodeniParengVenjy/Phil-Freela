@@ -7,6 +7,7 @@ import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, 
 import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
 import BlockedNotice from "../components/BlockedNotice";
+import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
 import { isPostingBlocked } from "../../../lib/suspensions";
 
 const skillOptions = [
@@ -37,6 +38,8 @@ export default function ServicesView() {
   // Only freelancers with a verified identity can offer services (the
   // database enforces this too). null while checking.
   const [isVerified, setIsVerified] = useState(null);
+  // The "Check a file I found" popup (Check Ownership).
+  const [checkingOwnership, setCheckingOwnership] = useState(false);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -145,7 +148,12 @@ export default function ServicesView() {
       <div className="row g-4">
         <div className="col-lg-8">
           <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
-            <h3 className="text-white fw-bold mb-4"><i className="bi bi-plus-circle text-orange me-2"></i> Post a Service Offered</h3>
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+              <h3 className="text-white fw-bold mb-0"><i className="bi bi-plus-circle text-orange me-2"></i> Post a Service Offered</h3>
+              <button type="button" className="btn btn-sm btn-outline-info rounded-pill px-3 fs-8 fw-bold" onClick={() => setCheckingOwnership(true)}>
+                <i className="bi bi-shield-check me-1"></i> Check a file I found
+              </button>
+            </div>
 
             {isVerified === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
 
@@ -269,6 +277,8 @@ export default function ServicesView() {
           </div>
         </div>
       </div>
+
+      {checkingOwnership && <OwnershipCheckDialog onClose={() => setCheckingOwnership(false)} />}
     </section>
   );
 }

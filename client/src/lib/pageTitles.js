@@ -27,7 +27,6 @@ const pageTitles = {
   "/dashboard/projects": "Projects & Resumes",
   "/dashboard/bookings": "Bookings",
   "/dashboard/settings": "Settings",
-  "/dashboard/check-ownership": "Check Ownership",
   "/dashboard/search": "Search",
   "/dashboard/verify-identity": "Verify Identity",
   "/dashboard/feedback": "Ratings and Feedback",

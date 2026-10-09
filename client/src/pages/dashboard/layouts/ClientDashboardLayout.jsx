@@ -17,7 +17,6 @@ const sidebarLinks = [
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes" },
   // (AI Moodboard Matching has no link here: it is the camera button in the
   // search box, see DashboardTopNav.jsx.)
-  { to: "/dashboard/check-ownership", icon: "bi-shield-check", label: "Check Ownership" },
   { to: "/dashboard/settings", icon: "bi-gear-fill", label: "Settings" }
 ];
 

@@ -5,6 +5,7 @@ import { deletePortfolioItem, fetchPortfolio, withoutHiddenCharacters } from "..
 import { fetchSlideText, isOriginalWork, itemSlides, ownershipPassedMessage, underReviewMessage } from "../../../lib/slides";
 import OriginalBadge from "../../../components/OriginalBadge";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
+import OwnershipCheckDialog from "./OwnershipCheckDialog";
 import PortfolioUploadDialog from "./PortfolioUploadDialog";
 import PortfolioViewer from "./PortfolioViewer";
 import ReportDialog from "./ReportDialog";
@@ -46,6 +47,8 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
   // The project opened big, the "+ Add" popup, and the project being deleted.
   const [viewing, setViewing] = useState(null);
   const [adding, setAdding] = useState(false);
+  // The "Check a file I found" popup (Check Ownership).
+  const [checkingOwnership, setCheckingOwnership] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   // The project being reported (null = Report popup closed). Visitors can
@@ -103,12 +106,17 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center gap-2 mb-3">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h5 className="text-white fw-bold mb-0"><i className="bi bi-grid-3x3-gap-fill text-orange me-2"></i> Portfolio</h5>
         {isOwner && (
-          <button type="button" className="btn btn-sm btn-outline-warning rounded-pill fs-8 fw-bold" onClick={() => setAdding(true)}>
-            + Add to Portfolio
-          </button>
+          <div className="d-flex flex-wrap gap-2">
+            <button type="button" className="btn btn-sm btn-outline-info rounded-pill fs-8 fw-bold" onClick={() => setCheckingOwnership(true)}>
+              <i className="bi bi-shield-check me-1"></i> Check a file I found
+            </button>
+            <button type="button" className="btn btn-sm btn-outline-warning rounded-pill fs-8 fw-bold" onClick={() => setAdding(true)}>
+              + Add to Portfolio
+            </button>
+          </div>
         )}
       </div>
 
@@ -188,6 +196,7 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
 
       {adding && <PortfolioUploadDialog userId={freelancerId} onSaved={handleSaved} onClose={() => setAdding(false)} />}
+      {checkingOwnership && <OwnershipCheckDialog onClose={() => setCheckingOwnership(false)} />}
 
       <DeleteConfirmDialog
         open={Boolean(toDelete)}
