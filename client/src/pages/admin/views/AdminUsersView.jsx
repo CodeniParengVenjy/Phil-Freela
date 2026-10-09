@@ -73,6 +73,20 @@ export default function AdminUsersView() {
   // The open Delete account pop-up (super admins only): the user, or null (closed).
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [busy, setBusy] = useState(false);
+  // The user whose ID was just copied (shows "Copied" for a moment).
+  const [copiedId, setCopiedId] = useState(null);
+
+  // The ID column shows the first 8 characters; a click copies the whole ID.
+  const copyId = async (user) => {
+    try {
+      await navigator.clipboard.writeText(user.id);
+    } catch {
+      setMessage({ text: "Couldn't copy the ID. Hover over it to read the whole ID.", type: "error" });
+      return;
+    }
+    setCopiedId(user.id);
+    setTimeout(() => setCopiedId((current) => (current === user.id ? null : current)), 1500);
+  };
 
   useEffect(() => {
     let active = true;
@@ -111,7 +125,10 @@ export default function AdminUsersView() {
     const matchesSearch = !searchText
       || (user.full_name || "").toLowerCase().includes(searchText)
       || (user.username || "").toLowerCase().includes(searchText)
-      || (user.email || "").toLowerCase().includes(searchText);
+      || (user.email || "").toLowerCase().includes(searchText)
+      // An ID (or the start of one) pasted from the ID column; short searches
+      // are names, so they aren't compared with IDs.
+      || (searchText.length >= 6 && user.id.includes(searchText));
     const matchesRole = roleFilter === "all" || user.account_type === roleFilter;
     // "active" when there's no suspension, or it already ended.
     const status = suspensionStatus(suspensions[user.id]) || "active";
@@ -271,7 +288,7 @@ export default function AdminUsersView() {
             <input
               type="search"
               className="form-control admin-input"
-              placeholder="Search by name, username, or email..."
+              placeholder="Search by name, username, email, or ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -331,6 +348,7 @@ export default function AdminUsersView() {
           <table className="table table-dark table-hover align-middle mb-0">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Name</th>
                 <th>Username</th>
                 <th>Email</th>
@@ -342,13 +360,13 @@ export default function AdminUsersView() {
             </thead>
             <tbody>
               {loadError && (
-                <tr><td colSpan={7} className="text-center text-white-50 py-4">{loadError}</td></tr>
+                <tr><td colSpan={8} className="text-center text-white-50 py-4">{loadError}</td></tr>
               )}
               {!loadError && users === null && (
-                <tr><td colSpan={7} className="text-center text-white-50 py-4">Loading users...</td></tr>
+                <tr><td colSpan={8} className="text-center text-white-50 py-4">Loading users...</td></tr>
               )}
               {!loadError && users !== null && visibleUsers.length === 0 && (
-                <tr><td colSpan={7} className="text-center text-white-50 py-4">No users found.</td></tr>
+                <tr><td colSpan={8} className="text-center text-white-50 py-4">No users found.</td></tr>
               )}
               {!loadError && visibleUsers.map((user) => {
                 const suspension = suspensions[user.id];
@@ -359,6 +377,17 @@ export default function AdminUsersView() {
                 const seen = presenceStatus(lastSeen.get(user.id));
                 return (
                   <tr key={user.id}>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 border-0 font-monospace fs-7 text-decoration-none text-white-50 text-nowrap"
+                        title={`${user.id} (click to copy)`}
+                        aria-label={`Copy ${user.full_name || user.username}'s ID`}
+                        onClick={() => copyId(user)}
+                      >
+                        {copiedId === user.id ? <><i className="bi bi-check2 text-success me-1"></i>Copied</> : user.id.slice(0, 8)}
+                      </button>
+                    </td>
                     <td>
                       {user.full_name}
                       <VerifiedBadge verified={verifiedIds.has(user.id)} />
