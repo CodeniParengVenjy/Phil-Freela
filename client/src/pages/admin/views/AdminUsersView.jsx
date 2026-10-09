@@ -3,6 +3,7 @@ import { useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { presenceStatus, usePresence } from "../../../lib/presence";
+import { formatUserNumber } from "../../../lib/userNumber";
 import { loadRequests, newestBy, requestKindText, sendRequest } from "../../../lib/adminRequests";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { BAN_DELETE_DAYS, SUSPENSION_COLUMNS, banDeletionDay, blockedBadges, formatEndDate, restrictionText, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
@@ -73,13 +74,18 @@ export default function AdminUsersView() {
   // The open Delete account pop-up (super admins only): the user, or null (closed).
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [busy, setBusy] = useState(false);
+  // user id -> user number (the "7" in PF-0007), loaded next to the users.
+  const [numbers, setNumbers] = useState({});
   // The user whose ID was just copied (shows "Copied" for a moment).
   const [copiedId, setCopiedId] = useState(null);
 
-  // The ID column shows the first 8 characters; a click copies the whole ID.
+  // The ID column shows PF-0007. If the numbers couldn't be loaded it shows the
+  // first 8 characters of the system ID instead, so the column is never empty.
+  const idLabel = (user) => (numbers[user.id] ? formatUserNumber(numbers[user.id]) : user.id.slice(0, 8));
+  // A click copies the PF number, or the whole system ID when there is no number.
   const copyId = async (user) => {
     try {
-      await navigator.clipboard.writeText(user.id);
+      await navigator.clipboard.writeText(numbers[user.id] ? formatUserNumber(numbers[user.id]) : user.id);
     } catch {
       setMessage({ text: "Couldn't copy the ID. Hover over it to read the whole ID.", type: "error" });
       return;
@@ -94,10 +100,13 @@ export default function AdminUsersView() {
     (async () => {
       // Load users and suspensions at the same time. admin_list_users() is a
       // database function that adds each user's email (only admins can call it).
-      const [profilesResult, suspensionsResult, requestsResult] = await Promise.all([
+      // The user numbers come from the profiles table (admin_list_users doesn't
+      // have them); if that fails the page still works, just without them.
+      const [profilesResult, suspensionsResult, requestsResult, numbersResult] = await Promise.all([
         supabase.rpc("admin_list_users"),
         supabase.from("user_suspensions").select(SUSPENSION_COLUMNS),
-        loadRequests(["pending"])
+        loadRequests(["pending"]),
+        supabase.from("profiles").select("id, user_number")
       ]);
 
       if (!active) return;
@@ -113,6 +122,7 @@ export default function AdminUsersView() {
       ));
 
       setUsers(profilesResult.data);
+      if (!numbersResult.error) setNumbers(Object.fromEntries(numbersResult.data.map((row) => [row.id, row.user_number])));
       setSuspensions(Object.fromEntries(suspensionsResult.data.map((s) => [s.user_id, s])));
     })();
 
@@ -126,8 +136,10 @@ export default function AdminUsersView() {
       || (user.full_name || "").toLowerCase().includes(searchText)
       || (user.username || "").toLowerCase().includes(searchText)
       || (user.email || "").toLowerCase().includes(searchText)
-      // An ID (or the start of one) pasted from the ID column; short searches
-      // are names, so they aren't compared with IDs.
+      // A user number like PF-0007 (3 or more characters), or a system ID (or
+      // the start of one, 6 or more); shorter searches are names, so they
+      // aren't compared with IDs.
+      || (searchText.length >= 3 && numbers[user.id] && formatUserNumber(numbers[user.id]).toLowerCase().includes(searchText))
       || (searchText.length >= 6 && user.id.includes(searchText));
     const matchesRole = roleFilter === "all" || user.account_type === roleFilter;
     // "active" when there's no suspension, or it already ended.
@@ -288,7 +300,7 @@ export default function AdminUsersView() {
             <input
               type="search"
               className="form-control admin-input"
-              placeholder="Search by name, username, email, or ID..."
+              placeholder="Search by name, username, email, or ID (like PF-0007)..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -381,11 +393,11 @@ export default function AdminUsersView() {
                       <button
                         type="button"
                         className="btn btn-link p-0 border-0 font-monospace fs-7 text-decoration-none text-white-50 text-nowrap"
-                        title={`${user.id} (click to copy)`}
+                        title={`${numbers[user.id] ? `${formatUserNumber(numbers[user.id])} · ` : ""}System ID ${user.id} (click to copy)`}
                         aria-label={`Copy ${user.full_name || user.username}'s ID`}
                         onClick={() => copyId(user)}
                       >
-                        {copiedId === user.id ? <><i className="bi bi-check2 text-success me-1"></i>Copied</> : user.id.slice(0, 8)}
+                        {copiedId === user.id ? <><i className="bi bi-check2 text-success me-1"></i>Copied</> : idLabel(user)}
                       </button>
                     </td>
                     <td>
