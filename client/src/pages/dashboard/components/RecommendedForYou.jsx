@@ -3,6 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getRecommendations } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
+import { REASONS } from "../../../lib/recommendationReasons";
 import { profilePath } from "../../../lib/profileStats";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
@@ -13,27 +14,12 @@ const SHOW = 9;
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
 const JOB_COLUMNS = "id, title, category, budget, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
 
-// The reasons the AI service gives, in words (freelancers see jobs, clients
-// see services).
-const REASONS = {
-  match: { icon: "bi-stars", jobs: "Matches your work", services: "Matches what you need" },
-  similar_users: { icon: "bi-people-fill", jobs: "Freelancers like you applied", services: "Clients like you contacted them" },
-  // The owner's record from completed projects (Feature 5), used by the ranking.
-  rated: { icon: "bi-star-fill", text: "Highly rated" },
-  experienced: { icon: "bi-trophy-fill", text: "5+ projects done" },
-  verified: { icon: "bi-patch-check-fill", text: "Verified" },
-  fast_reply: { icon: "bi-lightning-charge-fill", text: "Replies within an hour" },
-  new: { icon: "bi-clock-fill", text: "New" }
-};
-
 // "Recommended for you" on the dashboard home: PhilFreela's Hybrid
 // recommendation system (content-based filtering + collaborative filtering +
 // ranking, see ai-service/recommendations.py). The AI service picks and
 // orders the posts; this loads them under the normal database rules (hidden
-// posts are left out) and keeps the AI's order. showEmpty: when there is
-// nothing to recommend, say so (the freelancer dashboard has nothing else on
-// it); otherwise nothing is drawn and the page shows only its usual list.
-export default function RecommendedForYou({ showEmpty = false }) {
+// posts are left out) and keeps the AI's order.
+export default function RecommendedForYou() {
   const { accountType, currentUserId, openChat, showToast } = useOutletContext();
   const want = accountType === "freelancer" ? "jobs" : "services";
   const [state, setState] = useState({ loading: true, personalized: false, items: [], error: false });
@@ -74,8 +60,8 @@ export default function RecommendedForYou({ showEmpty = false }) {
   const ownerOf = (item) => (want === "jobs" ? item.client : item.freelancer);
   const verifiedIds = useVerifiedIds(state.items.map((item) => ownerOf(item)?.id));
 
-  const nothingToShow = !state.loading && !state.error && state.items.length === 0;
-  if (nothingToShow && !showEmpty) return null;
+  // Nothing to recommend yet: the home page shows only its usual list.
+  if (!state.loading && !state.error && state.items.length === 0) return null;
 
   const title = state.loading || state.personalized ? "Recommended for you" : "New and trusted on PhilFreela";
   const subtitle = state.personalized
@@ -98,7 +84,6 @@ export default function RecommendedForYou({ showEmpty = false }) {
           </p>
         )}
         {state.error && <p className="text-secondary fs-7 mb-0">Recommendations aren't available right now.</p>}
-        {nothingToShow && <p className="text-secondary fs-7 mb-0">Nothing to recommend yet. Check back soon, or use Find Jobs above.</p>}
 
         <div className="row g-3">
           {state.items.map((item) => (
