@@ -3,6 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
+import { byPick, useRecommendations } from "../../../lib/useRecommendations";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { SLIDES_SELECT, isOriginalWork, itemSlides } from "../../../lib/slides";
 import OriginalBadge from "../../../components/OriginalBadge";
@@ -11,11 +12,20 @@ import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import ReportDialog from "../components/ReportDialog";
 import BookDialog from "../components/BookDialog";
 import MediaCarousel from "../components/MediaCarousel";
+import RecommendationMarks from "../components/RecommendationMarks";
 
-export default function BrowseServicesView() {
+// withRecommendations (the client dashboard): the services the Hybrid
+// recommendation system picked ("Recommended for you", see lib/aiService.js)
+// are merged into this one list, first and in the AI's order, each marked with
+// why it was picked; everything else follows, newest first. If the AI service
+// can't be reached the list is simply the plain newest-first one.
+export default function BrowseServicesView({ withRecommendations = false }) {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Services): admins get a Remove button instead of Message.
   const { openChat, isAdmin, currentUserId, accountType, showToast } = useOutletContext();
+  // The AI's picks (lib/useRecommendations.js): service id -> { position, reasons }.
+  const recs = useRecommendations(withRecommendations);
+  const picked = recs.picked;
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
   const [services, setServices] = useState(null);
@@ -59,13 +69,15 @@ export default function BrowseServicesView() {
   const filtered = useMemo(() => {
     if (!services) return [];
     const q = query.toLowerCase();
-    return services.filter((s) => {
+    const matching = services.filter((s) => {
       if (category && s.category !== category) return false;
       if (!q) return true;
       const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "";
       return `${s.title} ${freelancerName}`.toLowerCase().includes(q);
     });
-  }, [services, category, query]);
+    // The AI's picks first, in its order; the rest stay newest first.
+    return matching.sort(byPick(picked));
+  }, [services, category, query, picked]);
 
   return (
     <section className="dashboard-view active-view">
@@ -73,7 +85,18 @@ export default function BrowseServicesView() {
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
           <div>
             <h3 className="text-white fw-bold mb-1"><i className="bi bi-grid-fill text-role me-2"></i> Browse Freelancer Services</h3>
-            <p className="text-secondary fs-7 mb-0">Find a freelancer for your next project and message them directly.</p>
+            <p className="text-secondary fs-7 mb-0">
+              {withRecommendations && picked.size > 0
+                ? (recs.personalized
+                  ? "Freelancers picked for you by PhilFreela's AI come first, then the newest services."
+                  : "New and trusted freelancers come first, then the newest services. Write a profile description in Settings or post a project to get freelancers that match what you need.")
+                : "Find a freelancer for your next project and message them directly."}
+            </p>
+            {recs.loading && (
+              <p className="text-secondary fs-8 mb-0 mt-1">
+                <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Finding recommendations...
+              </p>
+            )}
           </div>
         </div>
 
@@ -111,10 +134,9 @@ export default function BrowseServicesView() {
             const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "Freelancer";
             const slides = itemSlides(s);
             return (
-              // Three cards per row on laptops and big screens (the same as
-              // "Recommended for you" above it), two on tablets and small
-              // windows, one on phones. The expand button on each picture
-              // still shows it full screen.
+              // Three cards per row on laptops and big screens, two on tablets
+              // and small windows, one on phones. The expand button on each
+              // picture still shows it full screen.
               <div className="col-sm-6 col-lg-4" key={s.id}>
                 <div className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
                   {/* The picture grows with the card (16:10) and shows the
@@ -139,6 +161,8 @@ export default function BrowseServicesView() {
                     </div>
                   )}
                   <div className="p-3 d-flex flex-column flex-grow-1">
+                    {/* Picked by the AI: marked, with why. */}
+                    {picked.has(s.id) && <RecommendationMarks pick={picked.get(s.id)} personalized={recs.personalized} want="services" className="mb-2 mt-0" />}
                     <div className="d-flex flex-wrap align-items-center gap-1 mb-2">
                       <span className="badge bg-black text-light-50 fs-8">{meta.label}</span>
                       {/* Every file passed the AI copy check and carries the hidden watermark (step 10). */}
