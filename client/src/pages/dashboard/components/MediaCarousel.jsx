@@ -132,6 +132,41 @@ function DocumentSlide({ url, pages = [], fit }) {
 // True when the user asked their device for less motion (no auto-play then).
 const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+// A video with no controls (no play button, time bar or sound): it just plays,
+// muted as browsers require, while it is on screen and stops when it isn't, so
+// a page full of cards doesn't play every video at once. It repeats when it is
+// the only slide; otherwise it plays once and the slideshow moves on.
+function PlainVideo({ src, fit, loop, onPlay, onEnded }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const video = ref.current;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) video.play().catch(() => {});
+      else video.pause();
+    });
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={ref}
+      src={src}
+      muted
+      loop={loop}
+      playsInline
+      disablePictureInPicture
+      preload="metadata"
+      onContextMenu={blockSaveMenu}
+      onPlay={onPlay}
+      onEnded={onEnded}
+      className="media-carousel-item"
+      style={{ objectFit: fit }}
+    />
+  );
+}
+
 // The same slideshow, big, over the whole screen (opened from a card, see
 // `expandable`). Escape, the X or a click beside it closes it.
 function FullScreenSlides({ slides, startIndex, alt, ownerName, onClose }) {
@@ -169,7 +204,10 @@ function FullScreenSlides({ slides, startIndex, alt, ownerName, onClose }) {
 // and ownerName (the uploader's @username) is shown faintly across the slide,
 // so a screenshot still shows whose work it is. Only the current slide is on
 // the page, so a playing video stops when you move on.
-export default function MediaCarousel({ slides, height = 140, aspectRatio, fit = "cover", alt = "", ownerName, autoPlayMs = 0, expandable = false, startIndex = 0 }) {
+// videoControls: false = a video has no controls and just plays by itself
+// (cards; the big view from the expand button still has them). Someone whose
+// device asks for less motion gets the controls instead, so nothing plays alone.
+export default function MediaCarousel({ slides, height = 140, aspectRatio, fit = "cover", alt = "", ownerName, autoPlayMs = 0, expandable = false, startIndex = 0, videoControls = true }) {
   const [index, setIndex] = useState(startIndex);
   const [fullScreen, setFullScreen] = useState(false);
   // "next" or "prev": the side the new slide slides in from (null before the
@@ -229,6 +267,14 @@ export default function MediaCarousel({ slides, height = 140, aspectRatio, fit =
         <div key={current.id} className={`media-carousel-slide${direction ? ` is-from-${direction}` : ""}`}>
           {current.mediaType === "document" ? (
             <DocumentSlide url={current.url} pages={current.pages} fit={fit} />
+          ) : current.mediaType === "video" && !videoControls && !prefersReducedMotion() ? (
+            <PlainVideo
+              src={current.url}
+              fit={fit}
+              loop={count === 1}
+              onPlay={() => setVideoPlaying(true)}
+              onEnded={() => setVideoPlaying(false)}
+            />
           ) : current.mediaType === "video" ? (
             <video
               src={current.url}

@@ -30,8 +30,10 @@ const REASONS = {
 // recommendation system (content-based filtering + collaborative filtering +
 // ranking, see ai-service/recommendations.py). The AI service picks and
 // orders the posts; this loads them under the normal database rules (hidden
-// posts are left out) and keeps the AI's order.
-export default function RecommendedForYou() {
+// posts are left out) and keeps the AI's order. showEmpty: when there is
+// nothing to recommend, say so (the freelancer dashboard has nothing else on
+// it); otherwise nothing is drawn and the page shows only its usual list.
+export default function RecommendedForYou({ showEmpty = false }) {
   const { accountType, currentUserId, openChat, showToast } = useOutletContext();
   const want = accountType === "freelancer" ? "jobs" : "services";
   const [state, setState] = useState({ loading: true, personalized: false, items: [], error: false });
@@ -72,8 +74,8 @@ export default function RecommendedForYou() {
   const ownerOf = (item) => (want === "jobs" ? item.client : item.freelancer);
   const verifiedIds = useVerifiedIds(state.items.map((item) => ownerOf(item)?.id));
 
-  // Nothing to recommend yet: the home page shows only its usual list.
-  if (!state.loading && !state.error && state.items.length === 0) return null;
+  const nothingToShow = !state.loading && !state.error && state.items.length === 0;
+  if (nothingToShow && !showEmpty) return null;
 
   const title = state.loading || state.personalized ? "Recommended for you" : "New and trusted on PhilFreela";
   const subtitle = state.personalized
@@ -96,6 +98,7 @@ export default function RecommendedForYou() {
           </p>
         )}
         {state.error && <p className="text-secondary fs-7 mb-0">Recommendations aren't available right now.</p>}
+        {nothingToShow && <p className="text-secondary fs-7 mb-0">Nothing to recommend yet. Check back soon, or use Find Jobs above.</p>}
 
         <div className="row g-3">
           {state.items.map((item) => (

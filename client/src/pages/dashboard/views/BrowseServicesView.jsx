@@ -129,6 +129,7 @@ export default function BrowseServicesView() {
                       fit="contain"
                       autoPlayMs={4000}
                       expandable
+                      videoControls={false}
                       alt={s.title}
                       ownerName={s.freelancer?.username}
                     />
