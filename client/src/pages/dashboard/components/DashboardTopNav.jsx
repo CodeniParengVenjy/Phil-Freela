@@ -205,7 +205,6 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
         onClose={() => setScan(null)}
         currentUserId={currentUserId}
         openChat={openChat}
-        showToast={showToast}
       />
 
       <SwitchToAdminDialog open={askAdminLogin} link={adminLink} onClose={() => setAskAdminLogin(false)} />

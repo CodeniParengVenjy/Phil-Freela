@@ -29,6 +29,7 @@ import VerifyIdentityView from "./pages/dashboard/views/VerifyIdentityView";
 import SearchResultsView from "./pages/dashboard/views/SearchResultsView";
 import FeedbackView from "./pages/dashboard/views/FeedbackView";
 import JobDetailsView from "./pages/dashboard/views/JobDetailsView";
+import ServiceDetailsView from "./pages/dashboard/views/ServiceDetailsView";
 import ProjectDetailsView from "./pages/dashboard/views/ProjectDetailsView";
 import SubmitProjectView from "./pages/dashboard/views/SubmitProjectView";
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -98,6 +99,7 @@ function App() {
         <Route path="moodboard-match" element={<Navigate to="/dashboard/search" replace />} />
         <Route path="feedback/:projectId" element={<FeedbackView />} />
         <Route path="job-details/:jobId" element={<JobDetailsView />} />
+        <Route path="service-details/:serviceId" element={<ServiceDetailsView />} />
         <Route path="project-details/:projectId" element={<ProjectDetailsView />} />
         <Route path="submit-project/:projectId" element={<SubmitProjectView />} />
         <Route path="*" element={<PageNotFound />} />

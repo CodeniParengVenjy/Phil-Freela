@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
+import { skillOptions } from "../../../lib/serviceSkills";
 import { fetchIsVerified } from "../../../lib/verification";
 import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, addPickedFiles, ownershipPassedMessage, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
@@ -9,13 +10,6 @@ import ServiceCard from "../components/ServiceCard";
 import BlockedNotice from "../components/BlockedNotice";
 import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
 import { isPostingBlocked } from "../../../lib/suspensions";
-
-const skillOptions = [
-  { value: "critical-thinker", label: "Critical Thinker" },
-  { value: "web-developer", label: "Web Developer" },
-  { value: "creativity", label: "Creativity" },
-  { value: "video-editor", label: "Video Editor" }
-];
 
 const SERVICE_COLUMNS = "id, title, category, price, image_url, media_type, created_at";
 

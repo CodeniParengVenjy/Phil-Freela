@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { getCategory } from "../../../lib/categories";
 import { itemSlides } from "../../../lib/slides";
 
@@ -6,8 +7,8 @@ const mediaBox = { width: 64, height: 64 };
 // One posted service as a row: its first photo or video (a PDF's first page,
 // a document icon for another document, or the category icon when it has
 // none), title, category, price and date. Pass onDelete to show a
-// Delete button.
-export default function ServiceCard({ service, onDelete }) {
+// Delete button, or `to` to make the whole row a link (to the offer's page).
+export default function ServiceCard({ service, onDelete, to }) {
   const category = getCategory(service.category);
   const cover = itemSlides(service)[0];
   // The picture to show: the photo itself, or a PDF's first page (step 11),
@@ -16,7 +17,7 @@ export default function ServiceCard({ service, onDelete }) {
   const coverPicture = isDocument ? cover.pages?.[0] : cover?.url;
 
   return (
-    <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 d-flex gap-3 align-items-center">
+    <div className={`p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 d-flex gap-3 align-items-center position-relative${to ? " hover-lift" : ""}`}>
       {cover?.mediaType === "video" ? (
         <video src={`${cover.url}#t=0.1`} muted preload="metadata" className="rounded-3 flex-shrink-0" style={{ ...mediaBox, objectFit: "cover" }} />
       ) : coverPicture ? (
@@ -32,7 +33,9 @@ export default function ServiceCard({ service, onDelete }) {
       )}
 
       <div className="flex-grow-1 overflow-hidden">
-        <h6 className="text-white fw-bold mb-1 text-truncate">{service.title}</h6>
+        <h6 className="text-white fw-bold mb-1 text-truncate">
+          {to ? <Link to={to} className="text-white text-decoration-none stretched-link">{service.title}</Link> : service.title}
+        </h6>
         <span className="badge bg-role text-white fs-8 mb-2 d-inline-block text-truncate mw-100">{category.label}</span>
         <p className="text-secondary fs-8 mb-0">
           {service.price ? `Starting at ₱${Number(service.price).toLocaleString()}` : "Price on request"} • {new Date(service.created_at).toLocaleDateString()}

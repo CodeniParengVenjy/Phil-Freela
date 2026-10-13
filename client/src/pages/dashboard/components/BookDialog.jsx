@@ -1,46 +1,20 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { supabase } from "../../../lib/supabaseClient";
 import { MAX_BOOKING_NOTE_LENGTH, createBooking } from "../../../lib/bookings";
 import { todayInManila } from "../../../lib/projects";
 
 // The Book popup. A client says what they need and the date they need it by;
 // "Send booking" asks the freelancer (see lib/bookings.js). It uses the same
 // look as the Hire popup (the role-confirm-* CSS classes).
-// target: { freelancerId, freelancerName, service: { id, title } or null }, or
-// null when closed. From a service card the service is already known; from the
-// freelancer's page or a chat it is null, so the popup lists that freelancer's
-// services to pick from. The parent gives it a key, so it starts empty each time.
+// target: { freelancerId, freelancerName, service: { id, title } }, or null
+// when closed. It only opens from the offer's own page (Service Details), after
+// the client has seen the description, so the service is always known. The
+// parent gives it a key, so it starts empty each time.
 export default function BookDialog({ target, onClose, onBooked }) {
-  // The freelancer's services, for the pick list (null while loading).
-  const [services, setServices] = useState(null);
-  const [serviceId, setServiceId] = useState("");
   const [note, setNote] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
-
-  // No service given: load this freelancer's services. The database only
-  // shows services that can be booked (verified freelancer, not blocked).
-  useEffect(() => {
-    if (!target || target.service) return undefined;
-    let active = true;
-
-    supabase
-      .from("services")
-      .select("id, title")
-      .eq("freelancer_id", target.freelancerId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (!active) return;
-        setServices(data || []);
-        if (data?.length === 1) setServiceId(data[0].id);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [target]);
 
   // Escape closes the popup, unless sending is in progress.
   useEffect(() => {
@@ -54,14 +28,12 @@ export default function BookDialog({ target, onClose, onBooked }) {
 
   if (!target) return null;
 
-  const hasNoServices = !target.service && services !== null && services.length === 0;
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (sending) return;
     setSending(true);
     setError("");
-    const { error: problem } = await createBooking(target.service?.id || serviceId, note, dueDate);
+    const { error: problem } = await createBooking(target.service.id, note, dueDate);
     setSending(false);
     if (problem) {
       setError(problem);
@@ -94,32 +66,8 @@ export default function BookDialog({ target, onClose, onBooked }) {
             <i className="bi bi-calendar-check-fill fs-4"></i>
           </div>
           <h5 id="book-dialog-title" className="fw-bold mb-1 text-break">Book {target.freelancerName}</h5>
-          {target.service && <p className="text-secondary fs-7 mb-4 text-break">for "{target.service.title}"</p>}
-          {!target.service && <p className="text-secondary fs-7 mb-4">Pick a service and tell them what you need.</p>}
+          <p className="text-secondary fs-7 mb-4 text-break">for "{target.service.title}"</p>
         </div>
-
-        {/* Opened without a service (freelancer page, chat): pick one of theirs. */}
-        {!target.service && services === null && <p className="text-secondary fs-7 mb-3">Loading services...</p>}
-        {hasNoServices && (
-          <p className="text-secondary fs-7 mb-3">
-            {target.freelancerName} hasn't posted a service you can book yet. You can send them a message instead.
-          </p>
-        )}
-        {!target.service && services?.length > 0 && (
-          <>
-            <label htmlFor="bookService" className="form-label text-white-50 fw-semibold fs-7">Service</label>
-            <select
-              id="bookService"
-              className="form-select bg-secondary bg-opacity-25 border-secondary text-white mb-3"
-              value={serviceId}
-              onChange={(event) => setServiceId(event.target.value)}
-              required
-            >
-              <option value="">Choose a service</option>
-              {services.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
-            </select>
-          </>
-        )}
 
         <label htmlFor="bookNote" className="form-label text-white-50 fw-semibold fs-7">What do you need? (optional)</label>
         <textarea
@@ -154,7 +102,7 @@ export default function BookDialog({ target, onClose, onBooked }) {
           <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 py-2 fw-bold" onClick={onClose} disabled={sending}>
             Cancel
           </button>
-          <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending || hasNoServices}>
+          <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending}>
             {sending ? "Sending..." : "Send booking"}
           </button>
         </div>

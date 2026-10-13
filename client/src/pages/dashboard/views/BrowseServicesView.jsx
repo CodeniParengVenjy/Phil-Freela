@@ -10,7 +10,6 @@ import OriginalBadge from "../../../components/OriginalBadge";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import ReportDialog from "../components/ReportDialog";
-import BookDialog from "../components/BookDialog";
 import MediaCarousel from "../components/MediaCarousel";
 import RecommendationMarks from "../components/RecommendationMarks";
 
@@ -22,7 +21,7 @@ import RecommendationMarks from "../components/RecommendationMarks";
 export default function BrowseServicesView({ withRecommendations = false }) {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Services): admins get a Remove button instead of Message.
-  const { openChat, isAdmin, currentUserId, accountType, showToast } = useOutletContext();
+  const { openChat, isAdmin, currentUserId, showToast } = useOutletContext();
   // The AI's picks (lib/useRecommendations.js): service id -> { position, reasons }.
   const recs = useRecommendations(withRecommendations);
   const picked = recs.picked;
@@ -32,8 +31,6 @@ export default function BrowseServicesView({ withRecommendations = false }) {
   const [error, setError] = useState("");
   // The service being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
-  // The service being booked (null = Book popup closed). Only clients book.
-  const [bookTarget, setBookTarget] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -170,7 +167,13 @@ export default function BrowseServicesView({ withRecommendations = false }) {
                       {/* The freelancer switched "Available for work" off in Settings. */}
                       <AvailabilityBadge available={s.freelancer?.available_for_work} className="fs-8" />
                     </div>
-                    <h6 className="text-white fw-bold mb-1">{s.title}</h6>
+                    <h6 className="text-white fw-bold mb-1">
+                      {/* Opens the offer's own page: its description and, for
+                          clients, the Book button (admins stay in the panel). */}
+                      {isAdmin
+                        ? s.title
+                        : <Link to={`/dashboard/service-details/${s.id}`} className="text-white text-decoration-none hover-role">{s.title}</Link>}
+                    </h6>
                     <p className="fs-8 text-secondary mb-3 flex-grow-1">
                       by{" "}
                       {/* Opens their public portfolio page (admins stay in the admin panel). */}
@@ -195,9 +198,9 @@ export default function BrowseServicesView({ withRecommendations = false }) {
                         </button>
                       ) : (
                         // In a narrow card (three per row with the menu open) the
-                        // buttons may not fit on one line. flex-grow-1 on Book and
-                        // Message makes each line fill the card's width then,
-                        // instead of leaving ragged gaps; in a wide card it
+                        // buttons may not fit on one line. flex-grow-1 on View
+                        // offer and Message makes each line fill the card's width
+                        // then, instead of leaving ragged gaps; in a wide card it
                         // changes nothing.
                         <div className="d-flex flex-wrap gap-1 ms-auto">
                           {s.freelancer?.id !== currentUserId && (
@@ -211,17 +214,11 @@ export default function BrowseServicesView({ withRecommendations = false }) {
                               <i className="bi bi-flag"></i>
                             </button>
                           )}
-                          {/* No Book button while the freelancer isn't taking new
-                              work (the database refuses the booking too). */}
-                          {accountType === "client" && s.freelancer?.id && s.freelancer.id !== currentUserId && s.freelancer.available_for_work !== false && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold flex-grow-1"
-                              onClick={() => setBookTarget({ freelancerId: s.freelancer.id, freelancerName, service: { id: s.id, title: s.title } })}
-                            >
-                              <i className="bi bi-calendar-check me-1"></i> Book
-                            </button>
-                          )}
+                          {/* There is no Book button here: a client books from the
+                              offer's page, after reading its description. */}
+                          <Link to={`/dashboard/service-details/${s.id}`} className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold flex-grow-1">
+                            <i className="bi bi-eye me-1"></i> View offer
+                          </Link>
                           <button
                             type="button"
                             className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white flex-grow-1"
@@ -241,15 +238,6 @@ export default function BrowseServicesView({ withRecommendations = false }) {
       </div>
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
-      <BookDialog
-        key={bookTarget?.service?.id}
-        target={bookTarget}
-        onClose={() => setBookTarget(null)}
-        onBooked={() => {
-          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
-          setBookTarget(null);
-        }}
-      />
     </section>
   );
 }

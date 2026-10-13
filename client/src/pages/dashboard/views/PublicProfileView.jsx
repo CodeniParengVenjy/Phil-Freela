@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { fetchIsVerified } from "../../../lib/verification";
 import { countPortfolio } from "../../../lib/portfolio";
 import { fetchProfileStats } from "../../../lib/profileStats";
+import { SLIDES_SELECT } from "../../../lib/slides";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import StarRating from "../../../components/StarRating";
@@ -15,7 +16,7 @@ import PortfolioSection from "../components/PortfolioSection";
 import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import ReportDialog from "../components/ReportDialog";
-import BookDialog from "../components/BookDialog";
+import ServiceCard from "../components/ServiceCard";
 
 const ROLE_LABELS = { freelancer: "Freelancer", client: "Client" };
 
@@ -30,13 +31,13 @@ export default function PublicProfileView() {
 }
 
 // The page itself: name, Verified check (or "Not verified"), the role they
-// have today and their stars; Message and Report buttons (and Book, for a
-// client looking at a freelancer); their description and skills; their track
-// record (Feature 5, Profile transparency); and their portfolio. The person's
-// @username is shown faintly over their slides, so a screenshot still shows
-// whose work it is.
+// have today and their stars; Message and Report buttons; their description
+// and skills; a freelancer's services (each opens its own page, where a client
+// reads the description and books); their track record (Feature 5, Profile
+// transparency); and their portfolio. The person's @username is shown faintly
+// over their slides, so a screenshot still shows whose work it is.
 function PublicProfile({ userId }) {
-  const { currentUserId, accountType, openChat, showToast } = useOutletContext();
+  const { currentUserId, openChat, showToast } = useOutletContext();
   // undefined while loading, null when there's no such person.
   const [person, setPerson] = useState(undefined);
   const [verified, setVerified] = useState(false);
@@ -46,8 +47,6 @@ function PublicProfile({ userId }) {
   const [portfolioCount, setPortfolioCount] = useState(0);
   // The person being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
-  // The freelancer being booked (null = Book popup closed). Only clients book.
-  const [bookTarget, setBookTarget] = useState(null);
   // Which picture is open bigger: "picture", "cover", or null (none).
   const [viewing, setViewing] = useState(null);
   const isOwnPage = userId === currentUserId;
@@ -88,8 +87,6 @@ function PublicProfile({ userId }) {
   // The role they have today (they can switch in the menu).
   const roleToday = person.account_type === "client" ? "client" : "freelancer";
   const isFreelancer = roleToday === "freelancer";
-  // False when a freelancer switched "Available for work" off in Settings.
-  const takingBookings = person.available_for_work !== false;
 
   // The Report button in the picture popup: closes it and opens the Report
   // form for that picture. The report keeps which file it was (reportedPath).
@@ -127,17 +124,6 @@ function PublicProfile({ userId }) {
             <span className="text-secondary fs-8">This is how others see your profile.</span>
           ) : (
             <div className="d-flex flex-wrap gap-2 flex-shrink-0">
-              {/* A client can book a freelancer's service from here, unless the
-                  freelancer isn't taking new work (the database refuses it too). */}
-              {accountType === "client" && isFreelancer && takingBookings && (
-                <button
-                  type="button"
-                  className="btn btn-outline-role rounded-pill px-4 fw-bold"
-                  onClick={() => setBookTarget({ freelancerId: person.id, freelancerName: name, service: null })}
-                >
-                  <i className="bi bi-calendar-check me-1"></i> Book
-                </button>
-              )}
               <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={() => openChat(person.id)}>
                 <i className="bi bi-chat-dots-fill me-1"></i> Message
               </button>
@@ -175,6 +161,9 @@ function PublicProfile({ userId }) {
         </div>
       )}
 
+      {/* A freelancer's services: the way to a booking is through one of them. */}
+      {isFreelancer && <ServicesOffered freelancerId={person.id} />}
+
       <TrackRecord userId={person.id} roleToday={roleToday} />
 
       {(isFreelancer || portfolioCount > 0) && (
@@ -196,16 +185,48 @@ function PublicProfile({ userId }) {
       />
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
-      <BookDialog
-        key={bookTarget?.freelancerId}
-        target={bookTarget}
-        onClose={() => setBookTarget(null)}
-        onBooked={() => {
-          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
-          setBookTarget(null);
-        }}
-      />
     </section>
+  );
+}
+
+// The freelancer's services, each opening its own page (Service Details): the
+// description is there, and so is the Book button, so a client reads it before
+// booking. The database only lists the services a visitor may see (a verified
+// freelancer's, not blocked). Hidden when there are none.
+function ServicesOffered({ freelancerId }) {
+  // null while loading.
+  const [services, setServices] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    supabase
+      .from("services")
+      .select(`id, title, category, price, image_url, media_type, created_at, ${SLIDES_SELECT}`)
+      .eq("freelancer_id", freelancerId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (active) setServices(data || []);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [freelancerId]);
+
+  if (!services?.length) return null;
+
+  return (
+    <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
+      <h5 className="text-white fw-bold mb-3"><i className="bi bi-grid-fill text-orange me-2"></i> Services offered</h5>
+      <div className="row g-3">
+        {services.map((service) => (
+          <div className="col-md-6" key={service.id}>
+            <ServiceCard service={service} to={`/dashboard/service-details/${service.id}`} />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

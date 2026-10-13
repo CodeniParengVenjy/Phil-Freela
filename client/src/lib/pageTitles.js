@@ -31,6 +31,7 @@ const pageTitles = {
   "/dashboard/verify-identity": "Verify Identity",
   "/dashboard/feedback": "Ratings and Feedback",
   "/dashboard/job-details": "Job Details",
+  "/dashboard/service-details": "Service Details",
   "/dashboard/project-details": "Project Details",
   "/dashboard/submit-project": "Submit Project",
 
@@ -61,6 +62,7 @@ function getPageTitle(pathname) {
   if (path.startsWith("/dashboard/freelancers/")) return pageTitles["/dashboard/freelancers"];
   if (path.startsWith("/dashboard/clients/")) return pageTitles["/dashboard/clients"];
   if (path.startsWith("/dashboard/job-details/")) return pageTitles["/dashboard/job-details"];
+  if (path.startsWith("/dashboard/service-details/")) return pageTitles["/dashboard/service-details"];
   if (path.startsWith("/dashboard/project-details/")) return pageTitles["/dashboard/project-details"];
   if (path.startsWith("/dashboard/submit-project/")) return pageTitles["/dashboard/submit-project"];
   if (path.startsWith("/dashboard/feedback/")) return pageTitles["/dashboard/feedback"];

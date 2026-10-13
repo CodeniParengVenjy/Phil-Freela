@@ -8,7 +8,6 @@ import { slideUrl } from "../../../lib/slides";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
-import BookDialog from "./BookDialog";
 import PhotoPreview from "./PhotoPreview";
 
 // Scans one picture: asks the AI service who matches, then loads each
@@ -46,13 +45,10 @@ async function findMatches(picture) {
 //
 // picture: the File to scan, or null when closed. The parent gives the popup
 // a new key for each picture, so it starts fresh every time.
-export default function PictureSearchDialog({ picture, onClose, currentUserId, openChat, showToast }) {
+export default function PictureSearchDialog({ picture, onClose, currentUserId, openChat }) {
   // null = still scanning; [] = scanned, nothing close enough.
   const [matches, setMatches] = useState(null);
   const [error, setError] = useState("");
-  // The freelancer being booked (null = Book popup closed). The match is a
-  // freelancer, not one service, so the Book popup lists their services.
-  const [bookTarget, setBookTarget] = useState(null);
 
   // Scans the picture as soon as the popup opens.
   useEffect(() => {
@@ -68,15 +64,15 @@ export default function PictureSearchDialog({ picture, onClose, currentUserId, o
     return () => { active = false; };
   }, [picture]);
 
-  // Escape closes the popup (the Book popup on top of it closes first).
+  // Escape closes the popup.
   useEffect(() => {
     if (!picture) return undefined;
     const handleKeyDown = (event) => {
-      if (event.key === "Escape" && !bookTarget) onClose();
+      if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [picture, bookTarget, onClose]);
+  }, [picture, onClose]);
 
   const verifiedIds = useVerifiedIds((matches || []).map((m) => m.freelancer.id));
 
@@ -97,88 +93,72 @@ export default function PictureSearchDialog({ picture, onClose, currentUserId, o
     if (event.target.closest("a")) onClose();
   };
 
-  // The Book popup is kept outside the backdrop, so a click in it doesn't
-  // count as a click on this popup's backdrop.
-  return (
-    <>
-      {createPortal(
-        <div
-          className="role-confirm-backdrop"
-          style={{
-            position: "fixed", inset: 0, zIndex: 1300,
-            background: "rgba(0,0,0,0.65)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
-          }}
-          onClick={onClose}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="picture-search-title"
-            className="role-confirm-card bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4"
-            style={{ maxWidth: 920, width: "100%", maxHeight: "92vh", overflowY: "auto" }}
-            onClick={handleCardClick}
-          >
-            <div className="d-flex align-items-start gap-3 mb-3">
-              <PhotoPreview photo={picture} alt="The picture you chose" />
-              <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                <h5 id="picture-search-title" className="fw-bold mb-1"><i className="bi bi-camera text-role me-2"></i>Search by picture</h5>
-                <p className="text-secondary fs-7 mb-0">
-                  Freelancers whose portfolio looks closest to your picture in color, composition and mood.
-                </p>
-              </div>
-              <button type="button" className="btn-close btn-close-white flex-shrink-0" aria-label="Close" onClick={onClose}></button>
-            </div>
-
-            {scanning && (
-              <p className="text-secondary fs-7 text-center py-4 mb-0" role="status">
-                <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                Scanning the picture and comparing it with every verified freelancer's portfolio. This can take a few seconds, longer the first time.
-              </p>
-            )}
-            {error && <p className="text-danger fs-7 text-center py-4 mb-0">{error}</p>}
-            {matches?.length === 0 && (
-              <p className="text-secondary fs-7 text-center py-4 mb-0">
-                No close matches yet. Try a different picture, or check back once more freelancers post their portfolios.
-              </p>
-            )}
-
-            {matches?.length > 0 && (
-              <div className="row g-3">
-                {matches.map((match) => (
-                  <div className="col-sm-6 col-lg-4" key={match.slide_id}>
-                    <MatchCard
-                      match={match}
-                      verified={verifiedIds.has(match.freelancer.id)}
-                      isMine={match.freelancer.id === currentUserId}
-                      onMessage={handleMessage}
-                      onBook={setBookTarget}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+  return createPortal(
+    <div
+      className="role-confirm-backdrop"
+      style={{
+        position: "fixed", inset: 0, zIndex: 1300,
+        background: "rgba(0,0,0,0.65)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
+      }}
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="picture-search-title"
+        className="role-confirm-card bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4"
+        style={{ maxWidth: 920, width: "100%", maxHeight: "92vh", overflowY: "auto" }}
+        onClick={handleCardClick}
+      >
+        <div className="d-flex align-items-start gap-3 mb-3">
+          <PhotoPreview photo={picture} alt="The picture you chose" />
+          <div className="flex-grow-1" style={{ minWidth: 0 }}>
+            <h5 id="picture-search-title" className="fw-bold mb-1"><i className="bi bi-camera text-role me-2"></i>Search by picture</h5>
+            <p className="text-secondary fs-7 mb-0">
+              Freelancers whose portfolio looks closest to your picture in color, composition and mood.
+            </p>
           </div>
-        </div>,
-        document.body
-      )}
+          <button type="button" className="btn-close btn-close-white flex-shrink-0" aria-label="Close" onClick={onClose}></button>
+        </div>
 
-      <BookDialog
-        key={bookTarget?.freelancerId}
-        target={bookTarget}
-        onClose={() => setBookTarget(null)}
-        onBooked={() => {
-          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
-          setBookTarget(null);
-        }}
-      />
-    </>
+        {scanning && (
+          <p className="text-secondary fs-7 text-center py-4 mb-0" role="status">
+            <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            Scanning the picture and comparing it with every verified freelancer's portfolio. This can take a few seconds, longer the first time.
+          </p>
+        )}
+        {error && <p className="text-danger fs-7 text-center py-4 mb-0">{error}</p>}
+        {matches?.length === 0 && (
+          <p className="text-secondary fs-7 text-center py-4 mb-0">
+            No close matches yet. Try a different picture, or check back once more freelancers post their portfolios.
+          </p>
+        )}
+
+        {matches?.length > 0 && (
+          <div className="row g-3">
+            {matches.map((match) => (
+              <div className="col-sm-6 col-lg-4" key={match.slide_id}>
+                <MatchCard
+                  match={match}
+                  verified={verifiedIds.has(match.freelancer.id)}
+                  isMine={match.freelancer.id === currentUserId}
+                  onMessage={handleMessage}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
   );
 }
 
 // One matching freelancer: their closest-styled portfolio picture, name, and
-// Book and Message buttons (searching by picture is for clients).
-function MatchCard({ match, verified, isMine, onMessage, onBook }) {
+// View portfolio and Message buttons (searching by picture is for clients). The
+// portfolio page lists their services, where a client can open an offer and book.
+function MatchCard({ match, verified, isMine, onMessage }) {
   const { freelancer, slide, strong } = match;
   const name = freelancer.full_name || freelancer.username || "Freelancer";
 
@@ -202,24 +182,15 @@ function MatchCard({ match, verified, isMine, onMessage, onBook }) {
           </div>
         </div>
 
-        {/* "View portfolio" takes the first line; Book and Message share the second. */}
+        {/* "View portfolio" takes the first line; Message is the second. */}
         <div className="mt-auto d-flex flex-wrap gap-2">
           <Link to={`/dashboard/freelancers/${freelancer.id}`} className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold w-100 text-center">
             View portfolio
           </Link>
           {!isMine && (
-            <>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold flex-grow-1"
-                onClick={() => onBook({ freelancerId: freelancer.id, freelancerName: name, service: null })}
-              >
-                <i className="bi bi-calendar-check me-1"></i> Book
-              </button>
-              <button type="button" className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white flex-grow-1" aria-label={`Message ${name}`} onClick={() => onMessage(freelancer.id)}>
-                <i className="bi bi-chat-dots me-1"></i> Message
-              </button>
-            </>
+            <button type="button" className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white flex-grow-1" aria-label={`Message ${name}`} onClick={() => onMessage(freelancer.id)}>
+              <i className="bi bi-chat-dots me-1"></i> Message
+            </button>
           )}
         </div>
       </div>

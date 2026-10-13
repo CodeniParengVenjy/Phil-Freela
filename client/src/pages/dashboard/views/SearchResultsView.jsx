@@ -9,7 +9,6 @@ import { profilePath } from "../../../lib/profileStats";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
-import BookDialog from "../components/BookDialog";
 import PictureSearchDialog from "../components/PictureSearchDialog";
 
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
@@ -32,8 +31,6 @@ export default function SearchResultsView() {
   const [result, setResult] = useState({ query: null, services: [], jobs: [], error: "" });
   // The people found, and the search they belong to (same idea as `result`).
   const [people, setPeople] = useState({ query: null, rows: [] });
-  // The service being booked (null = Book popup closed). Only clients book.
-  const [bookTarget, setBookTarget] = useState(null);
   // Search by picture (AI Moodboard Matching, clients only): the same camera
   // button as the top bar's search box, which phones don't have room for.
   // scan = the picture being scanned (null = popup closed); its ticket is the
@@ -205,8 +202,6 @@ export default function SearchResultsView() {
                   verifiedIds={verifiedIds}
                   currentUserId={currentUserId}
                   onMessage={openChat}
-                  canBook={accountType === "client"}
-                  onBook={setBookTarget}
                 />
               ))}
             </div>
@@ -214,22 +209,12 @@ export default function SearchResultsView() {
         ))}
       </div>
 
-      <BookDialog
-        key={bookTarget?.service?.id}
-        target={bookTarget}
-        onClose={() => setBookTarget(null)}
-        onBooked={() => {
-          showToast(`Booking sent to ${bookTarget.freelancerName}. You can follow it in Bookings.`);
-          setBookTarget(null);
-        }}
-      />
       <PictureSearchDialog
         key={scan?.ticket}
         picture={scan?.file || null}
         onClose={() => setScan(null)}
         currentUserId={currentUserId}
         openChat={openChat}
-        showToast={showToast}
       />
     </section>
   );
@@ -268,9 +253,9 @@ function PersonCard({ person, verified, onMessage }) {
   );
 }
 
-// One matching service or job post. A client can book a service right here
-// (canBook); the popup opens with that service already chosen.
-function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage, canBook, onBook }) {
+// One matching service or job post. A service has a View offer button: its own
+// page shows the description and is where a client books.
+function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage }) {
   const owner = isService ? item.freelancer : item.client;
   const ownerName = owner?.full_name || owner?.username || (isService ? "Freelancer" : "Client");
   const category = getCategory(item.category);
@@ -309,14 +294,10 @@ function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage, ca
         <span className="badge bg-secondary bg-opacity-25 text-secondary flex-shrink-0">Your post</span>
       ) : owner?.id && (
         <div className="d-flex gap-2 flex-shrink-0 ms-auto">
-          {isService && canBook && (
-            <button
-              type="button"
-              className="btn btn-outline-role rounded-pill px-3 py-2 fw-bold text-nowrap fs-7"
-              onClick={() => onBook({ freelancerId: owner.id, freelancerName: ownerName, service: { id: item.id, title: item.title } })}
-            >
-              <i className="bi bi-calendar-check me-1"></i> Book
-            </button>
+          {isService && (
+            <Link to={`/dashboard/service-details/${item.id}`} className="btn btn-outline-role rounded-pill px-3 py-2 fw-bold text-nowrap fs-7">
+              <i className="bi bi-eye me-1"></i> View offer
+            </Link>
           )}
           <button
             type="button"

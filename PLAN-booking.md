@@ -318,3 +318,17 @@ freelancer-started bookings. Later, for Feature 1 (Hybrid recommendation
 system): use `responded_at` (how fast a freelancer answers a booking) in the
 ranking's response time, and "clients like you booked them" in collaborative
 filtering.
+
+## Change on 2026-10-13: booking starts only on the offer page
+
+The user didn't want clients to book before reading the description. Every
+Book button above (Browse Services card, AI search results, picture search,
+the freelancer's page, the chat header) is gone. A card now has **View offer**,
+which opens a new page, Service Details (`/dashboard/service-details/:id`,
+`views/ServiceDetailsView.jsx`): title, the freelancer with stars and record,
+the project offer (pictures, videos, documents, category, price), the
+description, skills, and the **Book this offer** box at the bottom. That box is
+the only way to open the Book popup, so the popup always knows its service (its
+pick-a-service list was deleted). The freelancer's page got a "Services
+offered" list that opens each offer. No SQL: `services.description` already
+existed (it was just never shown to clients).
