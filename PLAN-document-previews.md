@@ -129,14 +129,28 @@ Checked on the live site and AI service after the push (2026-10-13): the
 website's bundle has the offer page and the preview note, and the AI service's
 API description mentions document previews, so both deploys picked it up.
 
-Step B4 (the one existing PDF): the script `ai-service/split_old_documents.py`
-is written and tested (11 checks against a fake database: a trial changes
-nothing; applying saves the whole text in `slide_texts` and reads it back
-BEFORE the public file is replaced; running it twice is safe; a failure half
-way leaves the public file untouched and the next run finishes it). It has NOT
-been run on the live project yet: it changes live storage, so the user is asked
-first. Read-only look on 2026-10-13: the one document ("I will create your
-activity", a PDF) has 2,329 visible characters in its public file, which anyone
-with the link can read today; the preview would keep 688 and hide 1,641.
-To run it (from the ai-service folder): `python split_old_documents.py` is the
-trial, `python split_old_documents.py --apply` does it.
+Step B4 (the one existing PDF): done on 2026-10-13, after the user said yes.
+The script `ai-service/split_old_documents.py` was tested first (11 checks
+against a fake database: a trial changes nothing; applying saves the whole
+text in `slide_texts` and reads it back BEFORE the public file is replaced;
+running it twice is safe; a failure half way leaves the public file untouched
+and the next run finishes it). Then on the live project: the trial, then
+`--apply`, then a second trial that said "already done". Checked afterwards:
+the one document ("I will create your activity", a PDF) has its whole text
+(5,129 characters with the footer and the invisible code) in `slide_texts`,
+`hidden_chars` is 1,641, its public file serves only the preview (688 visible
+characters, the code still in it, no footer), and its two page pictures are
+untouched. Seen on the way: right after the overwrite the public link still
+served the OLD whole text for a few minutes (a stale copy at the storage's
+cache; a request with `?fresh=...` showed the new file at once, and the plain
+link updated by itself). So after replacing a public file, check it with a
+cache-busting parameter.
+To run it again some day (from the ai-service folder, with its own Python):
+`python split_old_documents.py` is the trial, `python split_old_documents.py --apply` does it.
+
+All steps of this plan are built, pushed and live. Not included (see above):
+blurring parts of a PDF's page pictures, and a way for a writer to share the
+whole text with one client. Still to do by the user: try an upload of a DOCX
+or TXT in Post a Service on the live site and open it (the upload route has
+only been tested with a fake database, and Admin > Flagged Content has never
+seen a real row with the new code).
