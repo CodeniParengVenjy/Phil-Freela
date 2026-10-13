@@ -1,13 +1,15 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { getCategory } from "../../../lib/categories";
+import { cutPreview } from "../../../lib/documentPreview";
 import { isOriginalWork, itemSlides } from "../../../lib/slides";
 import OriginalBadge, { ORIGINAL_EXPLANATION } from "../../../components/OriginalBadge";
 import MediaCarousel from "./MediaCarousel";
+import ProtectedText from "./ProtectedText";
 import "./portfolio.css";
 
-// A portfolio project opened big: its slideshow (or, for older writing, its
-// text), title, category, tags, the "Original" badge (step 10) and description.
+// A portfolio project opened big: its slideshow (or, for older writing, a
+// preview of its text), title, category, tags, the "Original" badge (step 10) and description.
 // Owners also get a Delete button (pass onDelete); visitors get a Report
 // button (pass onReport), for work that isn't the freelancer's own. ownerName:
 // see MediaCarousel. Rendered straight into <body> so it covers the whole
@@ -26,6 +28,9 @@ export default function PortfolioViewer({ item, ownerName, onDelete, onReport, o
 
   if (!item) return null;
   const slides = itemSlides(item);
+  // Old pasted writing is still whole in the database (none exist now, and the
+  // site no longer creates it), so its preview is cut here (lib/documentPreview.js).
+  const writing = item.kind === "document" ? cutPreview(item.body) : null;
 
   return createPortal(
     <div
@@ -45,12 +50,12 @@ export default function PortfolioViewer({ item, ownerName, onDelete, onReport, o
         style={{ maxWidth: 760, width: "100%", maxHeight: "92vh", overflowY: "auto" }}
         onClick={(event) => event.stopPropagation()}
       >
-        {item.kind === "document" ? (
-          // Writing: shown as text. It can be selected and copied on purpose,
-          // because the invisible code in every sentence goes along with any copy.
+        {writing ? (
+          // Writing: a preview of the text (the first part, then blurred
+          // filler), with nothing to select or copy.
           <div className="p-4 pb-0">
             {item.status === "flagged" && <span className="badge bg-warning text-dark mb-2"><i className="bi bi-hourglass-split me-1"></i>Under review</span>}
-            <div className="portfolio-document-text">{item.body}</div>
+            <ProtectedText text={writing.shown} hiddenChars={writing.hiddenChars} ownerName={ownerName} seed={item.id} />
           </div>
         ) : slides.length > 0 ? (
           <MediaCarousel slides={slides} height="min(60vh, 460px)" fit="contain" alt={item.title} ownerName={ownerName} />

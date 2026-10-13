@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { fetchSlideText } from "../../../lib/slides";
+import ProtectedText from "./ProtectedText";
 import "./slides.css";
 
 // Stops the browser's "Save image/video as..." menu.
@@ -13,14 +14,12 @@ const stopTouch = { onTouchStart: (event) => event.stopPropagation(), onTouchEnd
 
 // A document opened from its slide, over the whole screen. A PDF (step 11)
 // opens on its pages: pictures with the freelancer's name across them and
-// the hidden code inside, so the PDF file itself is never handed out. The
-// Text view is the whole text. It can be selected and copied on purpose,
-// like portfolio writing: the invisible code in every sentence goes along
-// with any copy.
-function DocumentReader({ text, pages = [], onClose }) {
-  // "pages" or "text" (a DOCX or TXT has only its text).
-  const [view, setView] = useState(pages.length ? "pages" : "text");
-
+// the hidden code inside, so the PDF file itself is never handed out. Any
+// other document opens on a PREVIEW of its text (document previews): the first
+// part, then blurred filler, and nothing to select or copy. There is no way to
+// read the whole text here (it stays with its writer and the admins), so
+// there is no "Text" view any more.
+function DocumentReader({ text, hiddenChars, pages = [], ownerName, seed, onClose }) {
   // Escape closes it.
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -51,31 +50,23 @@ function DocumentReader({ text, pages = [], onClose }) {
       >
         <div className="d-flex justify-content-between align-items-center gap-2 mb-3">
           <h5 className="fw-bold mb-0"><i className="bi bi-file-earmark-text me-2"></i>Document</h5>
-          {pages.length > 0 && (
-            <div className="btn-group btn-group-sm ms-auto" role="group" aria-label="How to show the document">
-              <button type="button" className={`btn ${view === "pages" ? "btn-light" : "btn-outline-light"}`} aria-pressed={view === "pages"} onClick={() => setView("pages")}>
-                <i className="bi bi-file-earmark-richtext me-1"></i>Pages
-              </button>
-              <button type="button" className={`btn ${view === "text" ? "btn-light" : "btn-outline-light"}`} aria-pressed={view === "text"} onClick={() => setView("text")}>
-                <i className="bi bi-text-paragraph me-1"></i>Text
-              </button>
-            </div>
-          )}
           <button type="button" className="btn btn-sm btn-outline-light rounded-circle flex-shrink-0" aria-label="Close" onClick={onClose}>
             <i className="bi bi-x-lg"></i>
           </button>
         </div>
-        {view === "pages" ? (
+        {pages.length > 0 ? (
           <div className="document-reader-pages" onContextMenu={blockSaveMenu}>
             {pages.map((page, i) => (
               <img key={page} src={page} alt={`Page ${i + 1}`} draggable={false} loading={i ? "lazy" : undefined} />
             ))}
             <p className="document-reader-note">
-              The first {pages.length === 1 ? "page is" : `${pages.length} pages are`} shown as {pages.length === 1 ? "a picture" : "pictures"}. Switch to Text for the whole document.
+              The first {pages.length === 1 ? "page is" : `${pages.length} pages are`} shown as {pages.length === 1 ? "a picture" : "pictures"}, with the writer's name across {pages.length === 1 ? "it" : "them"}.
+              {/* 5 is the most pictures a PDF keeps, so there may be more pages. */}
+              {pages.length >= 5 && " Message the writer to ask for the full file."}
             </p>
           </div>
         ) : (
-          <div className="document-reader-text">{text}</div>
+          <ProtectedText text={text} hiddenChars={hiddenChars} ownerName={ownerName} seed={seed} />
         )}
       </div>
     </div>,
@@ -84,16 +75,20 @@ function DocumentReader({ text, pages = [], onClose }) {
 }
 
 // A document slide (step 8): the start of its text and a Read button. The
-// text is a small .txt file, loaded when the slide is shown. A PDF (step 11)
-// shows its first page instead (pages: the links of its page pictures); a
-// click on the page opens the reader too.
-function DocumentSlide({ url, pages = [], fit }) {
+// text is a small .txt file, loaded when the slide is shown; it only holds a
+// PREVIEW of the document (document previews: hiddenChars is how much was left
+// out), shown with blurred filler under it and nothing to copy. A PDF (step 11)
+// shows its first page instead (pages: the links of its page pictures; no
+// text is needed for it); a click on the page opens the reader too.
+// seed: makes the blurred filler the same every time (see ProtectedText).
+function DocumentSlide({ url, pages = [], fit, hiddenChars = 0, ownerName, seed }) {
   // null = loading; otherwise the text, or an error message.
   const [loaded, setLoaded] = useState(null);
   const [reading, setReading] = useState(false);
   const hasPages = pages.length > 0;
 
   useEffect(() => {
+    if (hasPages) return undefined;
     let active = true;
     fetchSlideText(url)
       .then((text) => active && setLoaded({ text }))
@@ -101,10 +96,7 @@ function DocumentSlide({ url, pages = [], fit }) {
     return () => {
       active = false;
     };
-  }, [url]);
-
-  // What the slide and the reader's Text view say while the text loads.
-  const shownText = loaded === null ? "Loading document..." : loaded.error || loaded.text;
+  }, [url, hasPages]);
 
   return (
     <div className={`media-carousel-document${hasPages ? " has-pages" : ""}`}>
@@ -118,13 +110,15 @@ function DocumentSlide({ url, pages = [], fit }) {
           className="media-carousel-page"
           style={{ objectFit: fit }}
         />
-      ) : shownText.slice(0, 1200)}
+      ) : loaded === null ? "Loading document..." : loaded.error || (
+        <ProtectedText framed={false} text={loaded.text} hiddenChars={hiddenChars} seed={seed} />
+      )}
       {(hasPages || loaded?.text) && (
         <button type="button" className="btn btn-sm btn-light rounded-pill px-3 fw-semibold media-carousel-read" onClick={() => setReading(true)}>
           <i className="bi bi-book me-1"></i> Read document
         </button>
       )}
-      {reading && <DocumentReader text={shownText} pages={pages} onClose={() => setReading(false)} />}
+      {reading && <DocumentReader text={loaded?.text || ""} hiddenChars={hiddenChars} pages={pages} ownerName={ownerName} seed={seed} onClose={() => setReading(false)} />}
     </div>
   );
 }
@@ -202,7 +196,9 @@ function FullScreenSlides({ slides, startIndex, alt, ownerName, onClose }) {
 // To make copying others' work harder there
 // is no Download button, right-click menu, dragging, or picture-in-picture,
 // and ownerName (the uploader's @username) is shown faintly across the slide,
-// so a screenshot still shows whose work it is. Only the current slide is on
+// so a screenshot still shows whose work it is. A document shows only a
+// preview of its text, blurred beyond it, with nothing to select or copy
+// (see DocumentSlide). Only the current slide is on
 // the page, so a playing video stops when you move on.
 // videoControls: false = a video has no controls and just plays by itself
 // (cards; the big view from the expand button still has them). Someone whose
@@ -266,7 +262,7 @@ export default function MediaCarousel({ slides, height = 140, aspectRatio, fit =
             (slides.css) plays every time the slide changes. */}
         <div key={current.id} className={`media-carousel-slide${direction ? ` is-from-${direction}` : ""}`}>
           {current.mediaType === "document" ? (
-            <DocumentSlide url={current.url} pages={current.pages} fit={fit} />
+            <DocumentSlide url={current.url} pages={current.pages} fit={fit} hiddenChars={current.hiddenChars} ownerName={ownerName} seed={current.id} />
           ) : current.mediaType === "video" && !videoControls && !prefersReducedMotion() ? (
             <PlainVideo
               src={current.url}

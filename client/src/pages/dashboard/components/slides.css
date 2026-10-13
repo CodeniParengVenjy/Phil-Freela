@@ -341,19 +341,50 @@
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
 }
 
-/* The whole document, opened from a slide. */
-.document-reader-text {
-  max-height: min(70vh, 640px);
-  overflow-y: auto;
-  padding: 1rem 1.25rem;
+/* A document's text as a preview (ProtectedText.jsx, document previews): the
+   start of it, clear, then blurred filler. Nothing in it can be selected (the
+   component also stops copy, cut, drag and the right-click menu), and it is
+   left out when printing. The filler is not the hidden text, only random
+   letters: the page never receives the hidden part. */
+.protected-text {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.protected-text-hidden {
+  margin-top: 0.75rem;
+  filter: blur(6px);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* Its own box in the document reader, with the writer's @name drawn across it
+   (the .media-carousel-owner overlay used on photos). */
+.protected-text-frame {
+  position: relative;
+  overflow: hidden;
   border-radius: 0.75rem;
   background: #0d1017;
   border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.protected-text-frame .protected-text {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
   color: #e2e8f0;
   font-size: 0.92rem;
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+@media print {
+  .protected-text-frame,
+  .media-carousel-document {
+    display: none !important;
+  }
 }
 
 /* A PDF's pages in the reader (step 11): one under the other, to scroll. */

@@ -59,18 +59,22 @@ function TextBox({ text }) {
   );
 }
 
-// A document slide's text, loaded from its .txt file.
-function SlideText({ filePath }) {
+// A document slide's WHOLE text, for comparing. The public .txt file only holds
+// a preview (document previews), so admins read it from the private slide_texts
+// table. A document saved before previews existed has no row there, and its
+// public file is still the whole text, so that is the fallback.
+function SlideText({ slideId, filePath }) {
   const [text, setText] = useState("Loading document...");
   useEffect(() => {
     let active = true;
-    fetchSlideText(slideUrl(filePath))
+    supabase.from("slide_texts").select("body").eq("slide_id", slideId).maybeSingle()
+      .then(({ data }) => data?.body || fetchSlideText(slideUrl(filePath)))
       .then((loaded) => active && setText(loaded))
       .catch((err) => active && setText(err.message));
     return () => {
       active = false;
     };
-  }, [filePath]);
+  }, [slideId, filePath]);
   return <TextBox text={text} />;
 }
 
@@ -92,7 +96,7 @@ function SlideCard({ label, slide, showPages = false }) {
               {pages.map((path, index) => <img key={path} src={slideUrl(path)} alt={`${label}, page ${index + 1}`} className="h-100" />)}
             </div>
           ) : pages.length === 1 ? <img src={slideUrl(pages[0])} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />
-            : slide.media_type === "document" ? <SlideText filePath={slide.file_path} />
+            : slide.media_type === "document" ? <SlideText slideId={slide.id} filePath={slide.file_path} />
             : slide.media_type === "video" ? <video src={slideUrl(slide.file_path)} controls preload="metadata" className="w-100 rounded-3 bg-black" style={mediaStyle} />
               : <img src={slideUrl(slide.file_path)} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />}
           <Owner item={slide} where={where} />

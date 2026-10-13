@@ -28,7 +28,7 @@ export const SLIDE_ACCEPT = [...IMAGE_TYPES, ...VIDEO_TYPES, ".mov"].join(",");
 export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, MOV, WebM) up to 50 MB and 30 seconds; each video takes up to 2 minutes to watermark.";
 // Services (step 8) and portfolio projects (step 10) also take documents.
 export const SLIDE_ACCEPT_WITH_DOCUMENTS = `${SLIDE_ACCEPT},.pdf,.docx,.txt`;
-export const SLIDE_HINT_WITH_DOCUMENTS = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: the text is kept, with your invisible code and footer. A PDF also shows its first 5 pages as pictures with your name across them (about a minute to watermark).`;
+export const SLIDE_HINT_WITH_DOCUMENTS = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: the text is kept, with your invisible code and footer, but visitors only see a preview of it (the first part, the rest blurred, and no copying). A PDF also shows its first 5 pages as pictures with your name across them (about a minute to watermark).`;
 
 // Add this to a services select to get each service's slides with it.
 // watermarked: the file carries the watermark itself (photos from step 3 on).
@@ -36,7 +36,9 @@ export const SLIDE_HINT_WITH_DOCUMENTS = `${SLIDE_HINT} Documents (PDF, DOCX, TX
 // status: "flagged" = nearly the same as another freelancer's photo, so only
 // its uploader and the admins see it until an admin reviews it (step 5).
 // page_count: how many page pictures a document has (a PDF, step 11).
-export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file_path, page_count, watermarked, promo, status)";
+// hidden_chars: how many characters of a document's text are NOT in the public
+// file, which only holds a preview (document previews); 0 for other files.
+export const SLIDES_SELECT = "slides:media_slides(id, position, media_type, file_path, page_count, hidden_chars, watermarked, promo, status)";
 
 // (Some browsers give .mov files no type at all, so the name counts too.)
 export const isVideoFile = (file) => VIDEO_TYPES.includes(file.type) || /\.mov$/i.test(file.name);
@@ -230,7 +232,9 @@ export function slidePagePaths(slide) {
   return Array.from({ length: slide.page_count || 0 }, (_, i) => `${stem}-p${i + 1}.jpg`);
 }
 
-// The text of a document slide (step 8), fetched once per page load.
+// The text of a document slide (step 8), fetched once per page load. This is
+// the public file, which only holds a PREVIEW of the text (document previews);
+// the whole text is in the private slide_texts table.
 const documentTexts = new Map();
 export function fetchSlideText(url) {
   if (!documentTexts.has(url)) {
@@ -246,9 +250,10 @@ export function fetchSlideText(url) {
 }
 
 // A service's or project's slides in slideshow order, as
-// [{ id, mediaType, url, pages, showOwnerName, underReview }]. mediaType:
-// "image", "video" or "document" (a .txt file, step 8). pages: the links of a
-// document's page pictures (a PDF, step 11; [] otherwise). showOwnerName: the
+// [{ id, mediaType, url, pages, hiddenChars, showOwnerName, underReview }]. mediaType:
+// "image", "video" or "document" (a .txt file, step 8: only a preview of the
+// text). pages: the links of a document's page pictures (a PDF, step 11; []
+// otherwise). hiddenChars: how much of a document's text is not in that file. showOwnerName: the
 // page draws the uploader's name faintly over it, because the file itself has
 // no watermark (older photos, videos until step 7) and it isn't a promo.
 // underReview: flagged by the copy check, waiting for an admin.
@@ -263,6 +268,7 @@ export function itemSlides(item) {
         mediaType: slide.media_type,
         url: slideUrl(slide.file_path),
         pages: slidePagePaths(slide).map(slideUrl),
+        hiddenChars: slide.hidden_chars || 0,
         // (Photos from step 3 and videos from step 7 on carry their own watermark.)
         showOwnerName: !slide.watermarked && !slide.promo,
         underReview: slide.status === "flagged"

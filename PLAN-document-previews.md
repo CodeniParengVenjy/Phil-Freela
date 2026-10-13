@@ -106,4 +106,24 @@ text), a short pasted text, a PDF, a photo, and a failed save is undone with no
 leftovers. Not tested: a real upload on the live service (it needs the Vercel
 deploy of this push first).
 
-Next: Step B3 (website), then B4 (the one existing PDF).
+Step B3 (website): built and pushed (2026-10-13). New `components/ProtectedText.jsx`
+(preview, blurred filler of random letters, no select / copy / cut / drag /
+right-click / print, the writer's @name across it) and `lib/documentPreview.js`
+(the same rule in JavaScript, for old pasted writing only; checked against the
+Python rule on 50 texts: identical). `MediaCarousel.jsx`: no Text/Pages tabs;
+a PDF's slide no longer fetches its text; other documents show the preview in
+the slide and the reader. `lib/slides.js` asks for `hidden_chars`;
+`PortfolioViewer.jsx` (old writing) and `AdminFlaggedView.jsx` (whole text from
+`slide_texts`, falling back to the public file for older documents) changed;
+`slides.css`/`portfolio.css` lost the two full-text boxes; Post a Service and
+the portfolio form tell the freelancer visitors only see a preview. Tested in
+the browser against a fake backend, desktop and phone, dark and light (65
+checks; plus the offer page test again, 84 checks): the hidden sentence is not
+anywhere on the page, selecting (triple-click, select-all) gets none of the
+text, copy / cut / right-click / drag are stopped, the reader is left out of
+printing, a visitor never asks for `slide_texts`, a PDF's text file is not
+fetched, and the admin sees the whole text. Not tested: a real upload and a
+real page on the live site (needs the Vercel deploy of step B2 and the user).
+
+Next: Step B4 (the one existing PDF's public text file still holds all of its
+text: split it, after asking the user, because it changes live storage).
