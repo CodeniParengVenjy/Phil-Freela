@@ -1,0 +1,96 @@
+# Document previews: plan and progress
+
+Status (2026-10-13): approved ("ok") together with the offer page (see the end
+of PLAN-booking.md). To continue in a new Claude session, say:
+"Read PLAN-document-previews.md and continue from the current step."
+
+## Why
+
+A document in a service or a portfolio project (PDF, DOCX or TXT) was saved as
+one public .txt file with ALL of its text, and the document reader had a
+"Text" view that showed it all, ready to select and copy. The user was worried
+about plagiarism: "remove that text mode, prevent copy-paste, and what if the
+text is blurred and only part of it shows?"
+
+Blur by itself is only styling: the full text would still be in the page and in
+a public file link. So the hidden part is kept off the page, too.
+
+## What visitors will see
+
+1. No "Text" tab. A PDF still shows its first pages as pictures (name across
+   them), now without the "Switch to Text" sentence.
+2. A DOCX or TXT shows a **preview**: the first part of the text, then blurred
+   filler, and a note: "Preview only. The rest is hidden to protect the
+   writer's work. Message the writer to ask for the full file."
+3. The text can't be selected, copied, cut, dragged, right-clicked or printed,
+   and the writer's @name is drawn faintly across it (like on photos), because
+   a screenshot can't be blocked.
+4. The same preview box on the card's slide, in the reader and for old
+   portfolio writing. The writer sees the same preview as everyone.
+
+## How it works (defaults I chose)
+
+1. Preview = the first 30% of the text (counting only visible characters), at
+   most 1,500 characters, cut at a word. A very short text still shows a
+   little: at least 200 characters, or half of it if it is shorter than 400.
+2. The public file `<user id>/<slide id>.txt` in `slide-media` holds ONLY the
+   preview (with the invisible watermark code in it). The whole text goes in a
+   new private table, `slide_texts`, that only its writer and the admins can
+   read. Admin > Flagged Content reads the whole text from there.
+3. The blurred filler is random letters made by the page (it is not the hidden
+   text: the page never receives that). It is sized from `media_slides.hidden_chars`
+   (how many characters were left out), capped so the box stays small.
+4. Photos, videos, the copy check and the Original badge don't change.
+
+## Database (file `database/supabase_document_privacy_schema.sql`)
+
+Nothing in it uses DROP or DELETE. Must be applied BEFORE the website and the
+AI service that use it go live (the website's slide query asks for
+`hidden_chars`).
+
+1. `media_slides.hidden_chars` (whole number, 0 or more, default 0).
+2. New table `slide_texts (slide_id, body)`: removed with its slide; row level
+   security on; signed-in people can only SELECT, and only their own slides'
+   rows (admins: all); nobody can insert, update or delete from the browser
+   (the AI service does, with its own key).
+
+Test: `database/test_document_privacy.sql` (rolled back).
+
+## AI service (`ai-service/main.py`, new `document_preview.py`)
+
+No new endpoint. `POST /slides` for a document: builds the preview, saves it as
+the public .txt, saves the whole text in `slide_texts`, and saves
+`hidden_chars` (only for documents, so photos and videos keep working even if
+the SQL is applied late). If saving the whole text fails the slide is undone.
+A one-time script splits the documents that already exist (1 PDF on 2026-10-13);
+it changes live storage, so the user is asked first.
+
+## Website
+
+`lib/slides.js` (select `hidden_chars`, upload hint), new
+`components/ProtectedText.jsx`, `components/MediaCarousel.jsx` (no Text tab),
+`components/slides.css`, `components/PortfolioViewer.jsx` (old writing),
+`views/AdminFlaggedView` (whole text from `slide_texts`).
+
+## Not included
+
+- Blurring parts of a PDF's page pictures.
+- A way for the writer to share the full text with one client (they use chat).
+- Removing the old pasted-writing code (`portfolio_items.kind = 'document'`):
+  none exist and the site can't create them any more.
+
+## Current step
+
+Step B1 (database): built, applied to the live project (migration
+"document_privacy", 2026-10-13) and pushed. Its SQL has been run, so don't run
+it again. Tested before applying: the schema and `database/test_document_privacy.sql`
+(13 checks) were sent together in one call that rolled back, all passed, and
+nothing was left behind (checked afterwards: no table, no column, no test rows,
+the user number counter still at 17 so the next sign-up is still PF-0018). The
+test borrows real accounts only to act as them, so it burns no user numbers.
+Checked after applying: `media_slides.hidden_chars` is there, `slide_texts` has
+row level security with one read rule, signed-in people can only SELECT, anon
+gets "permission denied", and the website's slide query with `hidden_chars`
+resolves against the live API.
+
+Next: Step B2 (AI service), then B3 (website), then B4 (the one existing PDF).
