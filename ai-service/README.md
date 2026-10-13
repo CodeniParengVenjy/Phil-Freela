@@ -38,6 +38,12 @@ portfolio projects (`POST /slides`):
   **PDFium** (the PDF reader inside Google Chrome, through the `pypdfium2`
   package, Apache 2.0 / BSD), each with the freelancer's name repeated
   faintly across the page and the same code hidden in it with HiDDeN.
+  Visitors only get a **preview** of a document's text (`document_preview.py`:
+  the first 30%, at most 1,500 characters, cut at a word): the public `.txt`
+  file holds only that, and the whole text is saved in the private
+  `slide_texts` table (only its writer and the admins can read it), so the
+  website can blur the rest without the hidden part ever reaching the page.
+  `python test_document_preview.py` checks the rule.
 
 The same upload (`POST /slides`, for services and portfolio projects alike)
 also runs the ownership check on every file before it is shown. A file that

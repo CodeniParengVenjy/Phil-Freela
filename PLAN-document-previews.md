@@ -93,4 +93,17 @@ row level security with one read rule, signed-in people can only SELECT, anon
 gets "permission denied", and the website's slide query with `hidden_chars`
 resolves against the live API.
 
-Next: Step B2 (AI service), then B3 (website), then B4 (the one existing PDF).
+Step B2 (AI service): built and pushed (2026-10-13). New `ai-service/document_preview.py`
+(the rule) and `ai-service/test_document_preview.py` (30 checks, run with
+`python test_document_preview.py`); `main.py` `POST /slides` now saves only the
+preview as the public file, the whole text in `slide_texts`, `hidden_chars` on
+the slide (documents only: a photo or video doesn't send the column, so those
+keep working even if the SQL were missing), and undoes the slide if the whole
+text can't be saved. The reply also has `hidden_chars`. Tested with the real
+text model, real PDF code and a fake database in memory (22 checks): long TXT,
+a copy of it is still held by the text check (its numbers come from the whole
+text), a short pasted text, a PDF, a photo, and a failed save is undone with no
+leftovers. Not tested: a real upload on the live service (it needs the Vercel
+deploy of this push first).
+
+Next: Step B3 (website), then B4 (the one existing PDF).

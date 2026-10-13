@@ -35,6 +35,7 @@ from pypdf import PdfReader
 from supabase import ClientOptions, create_client
 
 from document_pages import render_pages, watermark_page
+from document_preview import make_preview
 from face_check import NoFaceError, check_faces, find_duplicate, prepare_image
 from id_qr import check_philsys_qr
 from hidden_watermark import new_code, protect_photo, read_code, read_code_from_frames, read_uncropped_codes
@@ -774,7 +775,10 @@ def add_slide(
     (Vercel allows 4.5 MB per request), so the browser uploads them to
     slide-uploads first and sends where it put them.
     A document is saved as its text; a PDF also as pictures of its first
-    pages (step 11, page_count in the reply)."""
+    pages (step 11, page_count in the reply). Visitors only get a PREVIEW of a
+    document's text (document previews): the public .txt file holds the start
+    of it, and the whole text goes in slide_texts, which only its writer and
+    the admins can read (hidden_chars in the reply: how much was left out)."""
     user_id = get_user_id(authorization)
     if (service_id is None) == (portfolio_item_id is None):
         raise HTTPException(400, "Send one service or one project.")
@@ -788,6 +792,7 @@ def add_slide(
     position = next_slide_position(user_id, owner, item_id, media_type)
 
     code, embeddings, text_embeddings, pages = None, {}, [], []
+    full_text, hidden_chars = None, 0
     status, matched_slide_id, matched_item_id, match_score = "active", None, None, None
     if image is not None:
         # Same checks as ID photos (a real JPG/PNG/WEBP under 5 MB), then the
@@ -828,7 +833,12 @@ def add_slide(
         text_embeddings = embed_texts(paragraphs_for_check(clean))
         status, matched_item_id, matched_slide_id, match_score = check_copied_writing(user_id, raw, text_embeddings)
         body, code = watermark_writing(user_id, clean)
-        data, extension, content_type = body.encode("utf-8"), "txt", "text/plain"
+        # Only a preview is saved as the public file. The whole text is kept
+        # apart (saved in slide_texts below), so nobody can read the hidden
+        # part from the page or from the file's link.
+        full_text = body
+        shown, hidden_chars = make_preview(body)
+        data, extension, content_type = shown.encode("utf-8"), "txt", "text/plain"
         # Step 11: a PDF's first pages are also kept as watermarked pictures,
         # so viewers see its real layout. They carry the same code as the text.
         document.file.seek(0)
@@ -859,22 +869,26 @@ def add_slide(
         remove_saved_files()
         raise
 
+    slide_row = {
+        "id": slide_id,
+        "freelancer_id": user_id,
+        column: item_id,
+        "position": position,
+        "media_type": media_type,
+        "file_path": file_path,
+        "page_count": len(pages),
+        "watermarked": code is not None,
+        "promo": promo,
+        "status": status,
+        "matched_slide_id": matched_slide_id,
+        "matched_item_id": matched_item_id,
+        "match_score": match_score,
+    }
+    # Only documents have a preview, so photos and videos don't need the new column.
+    if full_text is not None:
+        slide_row["hidden_chars"] = hidden_chars
     try:
-        supabase.table("media_slides").insert({
-            "id": slide_id,
-            "freelancer_id": user_id,
-            column: item_id,
-            "position": position,
-            "media_type": media_type,
-            "file_path": file_path,
-            "page_count": len(pages),
-            "watermarked": code is not None,
-            "promo": promo,
-            "status": status,
-            "matched_slide_id": matched_slide_id,
-            "matched_item_id": matched_item_id,
-            "match_score": match_score,
-        }).execute()
+        supabase.table("media_slides").insert(slide_row).execute()
     except APIError as error:
         remove_saved_files()
         if error.code == "23505":  # another upload took the same spot at the same moment
@@ -882,6 +896,18 @@ def add_slide(
         if error.code == "23503":  # the service or project was deleted meanwhile
             raise HTTPException(404, f"That {name} no longer exists.")
         raise
+
+    # A document's whole text goes in its own private table (slide_texts: only
+    # its writer and the admins can read it). The public file only has the preview.
+    if full_text is not None:
+        try:
+            supabase.table("slide_texts").insert({"slide_id": slide_id, "body": full_text}).execute()
+        except APIError:
+            # Without it the whole text would be lost, so undo the slide.
+            logger.exception("Saving the whole text of slide %s failed", slide_id)
+            supabase.table("media_slides").delete().eq("id", slide_id).execute()
+            remove_saved_files()
+            raise HTTPException(500, "Something went wrong while saving that document. Please try again.")
 
     # The invisible code goes in its own private table (only this service can read it).
     if code is not None:
@@ -919,7 +945,7 @@ def add_slide(
         held_because = "watermark" if match_score == 1.0 else "similar"
     return {
         "id": slide_id, "position": position, "media_type": media_type, "file_path": file_path,
-        "page_count": len(pages),
+        "page_count": len(pages), "hidden_chars": hidden_chars,
         "watermarked": code is not None, "promo": promo, "status": status, "held_because": held_because,
     }
 
