@@ -125,5 +125,18 @@ printing, a visitor never asks for `slide_texts`, a PDF's text file is not
 fetched, and the admin sees the whole text. Not tested: a real upload and a
 real page on the live site (needs the Vercel deploy of step B2 and the user).
 
-Next: Step B4 (the one existing PDF's public text file still holds all of its
-text: split it, after asking the user, because it changes live storage).
+Checked on the live site and AI service after the push (2026-10-13): the
+website's bundle has the offer page and the preview note, and the AI service's
+API description mentions document previews, so both deploys picked it up.
+
+Step B4 (the one existing PDF): the script `ai-service/split_old_documents.py`
+is written and tested (11 checks against a fake database: a trial changes
+nothing; applying saves the whole text in `slide_texts` and reads it back
+BEFORE the public file is replaced; running it twice is safe; a failure half
+way leaves the public file untouched and the next run finishes it). It has NOT
+been run on the live project yet: it changes live storage, so the user is asked
+first. Read-only look on 2026-10-13: the one document ("I will create your
+activity", a PDF) has 2,329 visible characters in its public file, which anyone
+with the link can read today; the preview would keep 688 and hide 1,641.
+To run it (from the ai-service folder): `python split_old_documents.py` is the
+trial, `python split_old_documents.py --apply` does it.
