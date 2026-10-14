@@ -792,7 +792,10 @@ def add_slide(
     pages (step 11, page_count in the reply). Visitors only get a PREVIEW of a
     document's text (document previews): the public .txt file holds the start
     of it, and the whole text goes in slide_texts, which only its writer and
-    the admins can read (hidden_chars in the reply: how much was left out)."""
+    the admins can read (hidden_chars in the reply: how much was left out).
+    A PDF's page pictures are blurred below the top of the document (only the
+    top stays clear, page_blur.py), and the whole pages are kept in the private
+    slide-private bucket for the writer and the admins."""
     user_id = get_user_id(authorization)
     if (service_id is None) == (portfolio_item_id is None):
         raise HTTPException(400, "Send one service or one project.")
