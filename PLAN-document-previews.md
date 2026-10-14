@@ -185,10 +185,18 @@ How it works:
    whole pages to the private bucket (reading them back first) and blurs the
    public ones (9 checks against a fake database: a trial changes nothing, a
    second run is safe, a run stopped half way finishes the job, a failure
-   leaves the public pages untouched). A read-only trial on the live project
-   (2026-10-14) says it would do that for the 1 PDF, and the hidden code would
-   still read from its blurred page 1 (4 wrong bits of 48). NOT run yet: it
-   changes live storage, so the user is asked first.
+   leaves the public pages untouched). Run on the live project on 2026-10-14,
+   after the user said yes: `python split_old_documents.py --apply`. Checked
+   afterwards: the 1 PDF ("I will create your activity", 2 pages) has both
+   whole pages in `slide-private` (read back before the public ones changed),
+   its public pages are blurred (page 1: the top is as sharp as the whole page,
+   the lower part has about a tenth of the detail; page 2 is blurred all the
+   way), and the hidden code still reads from the public page 1 (4 wrong bits
+   of 48). A trial run right after `--apply` still said "WOULD ..." because the
+   storage kept serving the old public picture for a few minutes (the same
+   stale copy as with the text file); a few minutes later it said "pages
+   already done". Running it twice is harmless: the blur is always made from
+   the private whole page, which is never replaced.
 
 Tested: the rule and the blur, the upload route with a real PDF and the real
 watermark models against a fake database (12 checks: the public page is blurred
@@ -197,7 +205,8 @@ back, a failed private save is undone with no leftovers), and the website in the
 browser against a fake backend (18 checks, desktop and phone: signed links, the
 public fallback, removal; plus the document preview test again, 65 checks).
 Not included: the Reports page still shows a reported service's first PDF page
-from the public (blurred) pictures; Check Ownership shows the public page 1. Still to do by the user: try an upload of a DOCX
-or TXT in Post a Service on the live site and open it (the upload route has
-only been tested with a fake database, and Admin > Flagged Content has never
-seen a real row with the new code).
+from the public (blurred) pictures; Check Ownership shows the public page 1.
+Still to do by the user: try an upload of a PDF, a DOCX or a TXT in Post a
+Service on the live site and open it (the upload route has only been tested
+with a fake database, and Admin > Flagged Content has never seen a real row
+with the new code).

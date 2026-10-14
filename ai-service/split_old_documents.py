@@ -139,7 +139,11 @@ def blur_pdf_pages(client, apply, check_code=True):
             report.append(f"{label}: SKIPPED, a page can't be read")
             continue
         # Done when every page has its private copy and the public one is no
-        # longer the same picture (it is blurred).
+        # longer the same picture (it is blurred). Right after an --apply the
+        # storage can still hand back the OLD public file for a few minutes,
+        # so a trial then may say WOULD again; doing it twice is harmless: the
+        # blur is always made from the private whole page, which is never
+        # replaced.
         if all(has_copy and now != whole for _, whole, now, has_copy in pages):
             report.append(f"{label}: pages already done")
             continue
