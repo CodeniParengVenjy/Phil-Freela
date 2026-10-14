@@ -109,6 +109,7 @@ function ServiceDetails({ serviceId }) {
   const freelancerPath = freelancer?.id ? `/dashboard/freelancers/${freelancer.id}` : undefined;
   const isOwnOffer = freelancer?.id === currentUserId;
   const category = getCategory(service.category);
+  const postedOn = new Date(service.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   const slides = itemSlides(service);
   // The offer's own skill and the skills on the freelancer's profile.
   const skills = [...new Set([skillLabel(service.skill), ...(freelancer?.skills || [])].filter(Boolean))];
@@ -176,6 +177,8 @@ function ServiceDetails({ serviceId }) {
               <StarRating userId={freelancer?.id} />
               <AvailabilityBadge available={freelancer?.available_for_work} className="fs-8" />
             </p>
+            {/* The day the freelancer uploaded this offer. */}
+            <p className="text-secondary fs-8 mb-1"><i className="bi bi-calendar3 me-1"></i>Posted {postedOn}</p>
             {record.length > 0 && <p className="text-secondary fs-8 mb-0">{record.join(" • ")}</p>}
             {stats && record.length === 0 && <p className="text-secondary fs-8 mb-0">New here: no finished projects yet.</p>}
           </div>
