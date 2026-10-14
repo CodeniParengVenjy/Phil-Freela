@@ -13,9 +13,10 @@ const MIN_PROOF_LENGTH = 10;
 //   target: { type: "user" | "service" | "job_post" | "portfolio_item" | "profile_picture" | "cover_photo" | "service_review", id, name } or null (closed)
 //           From a call it also has callId and callKind ("voice" / "video").
 //           A picture also has reportedPath (see sendReport in lib/reports.js).
-//           From a chat it also has chat: { messages, ticked, meId } (see
-//           lib/reportMessages.js): the messages to list, the ids ticked to
-//           start with, and the signed-in person's id (to tell "You" apart).
+//           From a chat it also has chat: { messages, ticked, meId, focusId }
+//           (see lib/reportMessages.js): the messages to list, the ids ticked
+//           to start with, the signed-in person's id (to tell "You" apart) and,
+//           when one message was right-clicked, its id.
 //   onDone(message): called after sending, e.g. to show a toast
 export default function ReportDialog({ target, onClose, onDone }) {
   const [reason, setReason] = useState("");
@@ -116,8 +117,9 @@ export default function ReportDialog({ target, onClose, onDone }) {
       reason,
       details: details.trim(),
       screenshots: screenshots.map((s) => s.file),
-      // The ticked chat messages, in chat order.
-      messageIds: chat ? chat.messages.filter((m) => picks.has(m.id)).map((m) => m.id) : []
+      // The ticked chat messages, in chat order, and the right-clicked one if it is still ticked.
+      messageIds: chat ? chat.messages.filter((m) => picks.has(m.id)).map((m) => m.id) : [],
+      flaggedMessageId: chat?.focusId && picks.has(chat.focusId) ? chat.focusId : null
     });
     setSending(false);
 

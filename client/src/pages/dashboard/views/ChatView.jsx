@@ -435,13 +435,14 @@ export default function ChatView() {
 
   // Opens the Report popup with this chat's messages to tick, so admins (who
   // can't read chats) see what happened. From the header flag: the last 10 are
-  // ticked. From one message (aroundId): that one and 2 either side.
+  // ticked. From one message (aroundId): that one and 2 either side, and the
+  // report remembers which one it was (focusId) so the admin sees it marked.
   const openReport = (aroundId = null) => {
     setReportTarget({
       type: "user",
       id: otherProfile.id,
       name: recipientName,
-      chat: { ...pickReportMessages(messages || [], aroundId), meId: currentUserId }
+      chat: { ...pickReportMessages(messages || [], aroundId), meId: currentUserId, focusId: aroundId }
     });
   };
 

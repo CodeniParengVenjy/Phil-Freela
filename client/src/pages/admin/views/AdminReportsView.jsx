@@ -113,7 +113,8 @@ function ReportedFiles({ item }) {
 // oldest first like in the chat. Admins can't read chats, so this is all they
 // see of it: copies made when the report was sent, so they stay even if the
 // message is unsent later (database/supabase_report_messages_schema.sql). A
-// photo, video, voice message or file shows only as a label.
+// photo, video, voice message or file shows only as a label. When the reporter
+// right-clicked one message ("Report Message"), that one is marked (flagged).
 function ReportedChat({ messages, reporterName, reportedName }) {
   return (
     <div className="mb-2">
@@ -131,13 +132,14 @@ function ReportedChat({ messages, reporterName, reportedName }) {
         {messages.map((m) => {
           const { icon, label, text } = messageSummary(m);
           return (
-            <div key={m.id} className="fs-7">
+            <div key={m.id} className={`fs-7${m.flagged ? " border-start border-3 border-warning ps-2" : ""}`}>
               <div className="fs-8">
                 <strong className={m.from_reporter ? "text-white-50" : "text-warning"}>{m.from_reporter ? reporterName : reportedName}</strong>
                 <span className="text-white-50">
                   {" · "}{new Date(m.sent_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
                   {m.edited && " · edited"}
                 </span>
+                {m.flagged && <span className="badge bg-warning text-dark ms-2 align-middle">Reported message</span>}
               </div>
               {label && <div className="text-white-50"><i className={`bi ${icon} me-1`}></i>{label}</div>}
               {text && (
@@ -201,7 +203,7 @@ export default function AdminReportsView() {
         supabase
           .from("reports")
           // report_messages: the chat messages the reporter ticked (empty for most reports).
-          .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, report_messages(id, from_reporter, body, attachment_type, attachment_name, is_call, edited, sent_at), reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
+          .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, report_messages(id, from_reporter, body, attachment_type, attachment_name, is_call, edited, flagged, sent_at), reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
           .order("created_at", { ascending: false })
           .order("sent_at", { referencedTable: "report_messages", ascending: true }),
         supabase.from("user_suspensions").select("user_id, ends_at"),

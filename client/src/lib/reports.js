@@ -33,7 +33,9 @@ export function checkScreenshot(file) {
 //           in the same step, and refuses ids that aren't from the chat between
 //           the two people (database/supabase_report_messages_schema.sql). They
 //           are only sent when there are some, so other reports don't depend on it.
-export async function sendReport({ target, reason, details, screenshots = [], messageIds = [] }) {
+//   flaggedMessageId: the one message that was right-clicked ("Report Message"),
+//           one of messageIds; the admin's transcript marks it.
+export async function sendReport({ target, reason, details, screenshots = [], messageIds = [], flaggedMessageId = null }) {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
   if (!userId) return { error: { message: "Please log in again." } };
@@ -69,7 +71,8 @@ export async function sendReport({ target, reason, details, screenshots = [], me
     call_id: target.callId || null,
     reported_path: target.reportedPath || null,
     evidence_paths: paths,
-    ...(messageIds.length ? { chat_message_ids: messageIds } : {})
+    ...(messageIds.length ? { chat_message_ids: messageIds } : {}),
+    ...(messageIds.length && flaggedMessageId ? { flagged_message_id: flaggedMessageId } : {})
   });
   if (error) await removeUploaded();
   return { error };

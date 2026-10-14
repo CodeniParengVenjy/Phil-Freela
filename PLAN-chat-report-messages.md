@@ -91,7 +91,8 @@ right-click menu), `views/AdminReportsView.jsx` (the transcript),
 - Opening a message's photo or file for the admin (only its label is kept).
 - Reporting a message while a call is going (the call's own Report button is
   unchanged and carries the call, not messages).
-- A "this is the message I'm reporting" marker in the admin transcript.
+- (The "this is the message I'm reporting" marker in the admin transcript was
+  left out first and added afterwards, see step 4c.)
 
 ## Current step
 
@@ -142,3 +143,19 @@ tested in SQL, the website against a fake that follows it), and the Reports page
 with a real row that has copies.
 
 All of step 4 is built, pushed and live. This was the last step of the plan.
+
+Step 4c (the marker, 2026-10-14, asked for as a small leftover): when the
+reporter uses "Report Message" on one message, the report says which one
+(`reports.flagged_message_id`, which must be one of the messages sent; a rule on
+the table), the copy is marked (`report_messages.flagged`), and the admin's
+transcript shows it with a yellow side bar and a "Reported message" tag among the
+messages around it. If the reporter unticks that message before sending, nothing
+is flagged; a report from the header flag flags nothing. Part 2 of
+`database/supabase_report_messages_schema.sql`, applied as migration
+"report_message_flag" after a rolled-back trial of 37 checks (4 new: a flagged id
+that isn't among the messages, or with no messages, is refused; only the flagged
+copy is marked; a report with messages but no flagged one marks none; nothing left
+behind, the user number counter still 17). Website: `lib/reports.js`,
+`ChatView.jsx` (passes `focusId`), `ReportDialog.jsx` (sends it only if still
+ticked), `AdminReportsView.jsx` (the marker). Browser check against a fake
+backend, desktop and phone (95 checks in all; 10 new).

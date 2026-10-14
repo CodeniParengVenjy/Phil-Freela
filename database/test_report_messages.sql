@@ -26,6 +26,7 @@ declare
   sa uuid; adm uuid;           -- a super admin and a regular admin
   m1 uuid; m2 uuid; m3 uuid; m4 uuid; m5 uuid; m6 uuid;
   far_msg uuid;                -- a message of the other chat
+  ra2 uuid; rb2 uuid;          -- the two people of that other chat (for the check that no message is flagged)
   rep uuid;
 begin
   select c.id, c.user_a, c.user_b into conv, ra, rb
@@ -39,6 +40,10 @@ begin
                     and ((r.reporter_id = ra and r.target_id = p.id) or (r.reporter_id = p.id and r.target_id = rb)))
   order by p.created_at limit 1;
   select id into conv2 from public.conversations where id <> conv order by (user_a = ra or user_b = ra) desc, created_at limit 1;
+  -- Whoever started that other chat can report the other person (unless they are suspended, or already have a waiting report about them).
+  select user_a, user_b into ra2, rb2 from public.conversations
+  where id = conv2 and not public.is_suspended(user_a) and not (user_a = rc and user_b = rb)
+    and not exists (select 1 from public.reports r where r.reporter_id = user_a and r.target_type = 'user' and r.target_id = user_b and r.status = 'pending');
   select id into sa from public.admins where role = 'super_admin' and not must_change_password limit 1;
   select id into adm from public.admins where role = 'admin' and not must_change_password limit 1;
   if conv is null or rc is null or conv2 is null or sa is null or adm is null then
@@ -111,6 +116,18 @@ begin
   exception when others then
     res := res || E'\n' || case when sqlerrm like 'Some of those messages aren''t in your chat with this person any more%' then 'PASS  ' else 'FAIL  ' end || '2e. messages of your chat with one person can''t go with a report about another';
   end;
+  begin
+    insert into public.reports (reporter_id, target_type, target_id, reason, chat_message_ids, flagged_message_id) values (ra, 'user', rb, 'harassment', array[m1, m2], m3);
+    res := res || E'\nFAIL  2h. a flagged message that is not among the messages sent was accepted';
+  exception when check_violation then
+    res := res || E'\nPASS  2h. the flagged message must be one of the messages sent';
+  end;
+  begin
+    insert into public.reports (reporter_id, target_type, target_id, reason, flagged_message_id) values (ra, 'user', rb, 'harassment', m2);
+    res := res || E'\nFAIL  2i. a flagged message with no messages sent was accepted';
+  exception when check_violation then
+    res := res || E'\nPASS  2i. a flagged message with no messages sent is refused';
+  end;
 
   perform set_config('request.jwt.claim.sub', rc::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', rc, 'role', 'authenticated')::text, true);
@@ -131,10 +148,10 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', ra, 'role', 'authenticated')::text, true);
   rep := gen_random_uuid();
   begin
-    -- m1 is listed twice on purpose.
-    insert into public.reports (id, reporter_id, target_type, target_id, reason, details, chat_message_ids)
-    values (rep, ra, 'user', rb, 'scam', 'test', array[m6, m1, m2, m3, m4, m5, m1]);
-    res := res || E'\nPASS  3a. a report with 7 ids (one repeated) is saved';
+    -- m1 is listed twice on purpose; m2 is the message that was right-clicked.
+    insert into public.reports (id, reporter_id, target_type, target_id, reason, details, chat_message_ids, flagged_message_id)
+    values (rep, ra, 'user', rb, 'scam', 'test', array[m6, m1, m2, m3, m4, m5, m1], m2);
+    res := res || E'\nPASS  3a. a report with 7 ids (one repeated) and a flagged message is saved';
   exception when others then
     res := res || E'\nFAIL  3a. the report with its messages was refused (' || sqlerrm || ')';
   end;
@@ -161,6 +178,8 @@ begin
   select bool_and(r.sent_at = m.created_at) and count(*) = 6 into ok
   from public.report_messages r join public.messages m on m.id = r.message_id where r.report_id = rep;
   res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '3i. each copy keeps the time it was sent';
+  select count(*) filter (where flagged) = 1 and bool_and(flagged = (message_id = m2)) into ok from public.report_messages where report_id = rep;
+  res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '3j. only the flagged message (m2) is marked flagged, none of the others';
 
   -- ===== Who can read the copies =====
   set local role authenticated;
@@ -232,6 +251,24 @@ begin
   perform set_config('request.jwt.claims', '', true);
   select count(*) = 6 into ok from public.report_messages;
   res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '5c. in all, only the one saved report made copies';
+
+  -- A report with messages but no flagged one (from the other chat's first person).
+  if ra2 is null then
+    res := res || E'\nSKIP  5d. no one in the other chat could report just now (suspended, or a report already waiting)';
+  else
+    set local role authenticated;
+    perform set_config('request.jwt.claim.sub', ra2::text, true);
+    perform set_config('request.jwt.claims', json_build_object('sub', ra2, 'role', 'authenticated')::text, true);
+    begin
+      insert into public.reports (reporter_id, target_type, target_id, reason, chat_message_ids) values (ra2, 'user', rb2, 'spam', array[far_msg]);
+      reset role;
+      select count(*) = 1 and not bool_or(flagged) into ok from public.report_messages where message_id = far_msg;
+      res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '5d. a report with messages but no flagged one marks none of them';
+    exception when others then
+      reset role;
+      res := res || E'\nFAIL  5d. a report from the other chat was refused (' || sqlerrm || ')';
+    end;
+  end if;
 
   raise exception E'REPORT MESSAGE TESTS (rolled back)%', res;
 end
