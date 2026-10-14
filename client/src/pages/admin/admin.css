@@ -384,6 +384,173 @@ body {
   }
 }
 
+/* Activity Log timeline (AdminLogView.jsx): one block for each day, and in it a
+   line down the left with a round icon for each thing an admin did. */
+.admin-timeline-card {
+  /* So scrolling to the top of the timeline stops below the sticky top bar. */
+  scroll-margin-top: 80px;
+}
+
+.admin-timeline {
+  transition: opacity 0.15s ease;
+}
+
+.admin-timeline.is-loading {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.admin-timeline-day + .admin-timeline-day {
+  margin-top: 0.5rem;
+}
+
+.admin-timeline-heading {
+  display: inline-block;
+  margin: 0 0 0.75rem;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+.admin-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-timeline-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding-bottom: 1.1rem;
+  --tone: rgba(255, 255, 255, 0.55);
+  --tone-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* The line joining one dot to the next one below it. */
+.admin-timeline-item::before {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 38px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-timeline-item:last-child {
+  padding-bottom: 0.4rem;
+}
+
+.admin-timeline-item:last-child::before {
+  display: none;
+}
+
+.admin-timeline-dot {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--tone);
+  background: var(--tone-bg);
+  box-shadow: 0 0 0 4px #161a26;
+}
+
+.admin-timeline-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: 0.15rem;
+}
+
+.admin-timeline-item.tone-danger { --tone: #f87171; --tone-bg: rgba(239, 68, 68, 0.16); }
+.admin-timeline-item.tone-success { --tone: #4ade80; --tone-bg: rgba(40, 200, 120, 0.15); }
+.admin-timeline-item.tone-warning { --tone: #fbbf24; --tone-bg: rgba(251, 191, 36, 0.15); }
+.admin-timeline-item.tone-info { --tone: #33d6ff; --tone-bg: rgba(0, 200, 255, 0.13); }
+.admin-timeline-item.tone-orange { --tone: #ff8a33; --tone-bg: rgba(255, 107, 0, 0.17); }
+
+/* Page numbers under a long list (AdminPagination.jsx). */
+.admin-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-page-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-page-btn:hover:not(:disabled):not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 138, 51, 0.5);
+  color: #fff;
+}
+
+.admin-page-btn:focus-visible {
+  outline: 2px solid #ff8a33;
+  outline-offset: 2px;
+}
+
+.admin-page-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b00 0%, #ff8800 100%);
+  border-color: transparent;
+  cursor: default;
+}
+
+.admin-page-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.admin-page-gap {
+  min-width: 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+@media (max-width: 575.98px) {
+  .admin-page-btn { min-width: 34px; height: 34px; padding: 0 0.4rem; }
+  .admin-pagination { gap: 0.3rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-timeline,
+  .admin-page-btn {
+    transition: none;
+  }
+}
+
 /* Listing "View" pop-up: wider, and scrolls if the listing is long. */
 .admin-modal-wide {
   max-width: 640px;

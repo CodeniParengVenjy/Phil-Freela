@@ -41,8 +41,11 @@ the date and time:
     admin" / "demoted ..."
 11. "Elena permanently deleted Keanne's account."
 
-The page has a search box, a filter by admin and a filter by kind of action,
-and "Load more" (50 at a time).
+The page has a search box, a filter by admin and a filter by kind of action.
+It is a timeline (a line down the side, a round icon for each action, the
+lines grouped under Today / Yesterday / the date), 10 lines to a page, with
+page numbers [1] [2] [3] under it (changed 2026-10-14; it was "Load more", 50
+at a time).
 
 ## How the log is written (so it can't be skipped or faked)
 
@@ -167,6 +170,8 @@ pass; the browser check is step 4. A new "Activity Log" link in the admin
 sidebar opens `/admin/log`: the sentences newest first with the date and time
 and the kind of action, a search box, a filter by admin, a filter by action,
 and "Load more" (50 at a time). The database applies the filters.
+Changed 2026-10-14: the same page is now a timeline with page numbers, 10
+lines to a page (`components/AdminPagination.jsx`), instead of "Load more".
 
 Step 3 files: `pages/admin/views/AdminLogView.jsx` (new), `App.jsx` (the
 route), `pages/admin/layout/AdminLayout.jsx` (the sidebar link),
