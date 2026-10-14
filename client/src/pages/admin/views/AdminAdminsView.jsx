@@ -5,6 +5,7 @@ import { EMAIL_PATTERN } from "../../../lib/validators";
 import { getFriendlyErrorMessage } from "../../../lib/errors";
 import { DEFAULT_ADMIN_PASSWORD } from "../../../lib/adminPassword";
 import { adminEmailFor } from "../../../lib/adminEmail";
+import AdminRoleDialog from "../components/AdminRoleDialog";
 
 const emptyForm = { fullName: "", username: "", email: "" };
 
@@ -16,6 +17,11 @@ export default function AdminAdminsView() {
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [submitting, setSubmitting] = useState(false);
+  // The admin being promoted or demoted while the pop-up is open:
+  // { admin, newRole }, or null when it is closed.
+  const [roleChange, setRoleChange] = useState(null);
+  const [roleBusy, setRoleBusy] = useState(false);
+  const [roleError, setRoleError] = useState("");
   // Bumping this number re-runs the effect below, which reloads the list.
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -142,22 +148,33 @@ export default function AdminAdminsView() {
     setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
   };
 
+  // The Promote / Demote buttons only open the pop-up (AdminRoleDialog);
+  // confirmRoleChange below does the work once the super admin confirms.
+  const askRoleChange = (admin, newRole) => {
+    setRoleError("");
+    setRoleChange({ admin, newRole });
+  };
+
+  const closeRoleDialog = () => setRoleChange(null);
+
   // Promote an admin to super admin, or demote one back. set_admin_role() is
   // the only way to change a role; it re-checks that the caller is a super
-  // admin and isn't changing their own role.
-  const changeRole = async (admin, newRole) => {
+  // admin and isn't changing their own role. If it refuses, the pop-up stays
+  // open and shows the reason.
+  const confirmRoleChange = async () => {
+    const { admin, newRole } = roleChange;
     const promoting = newRole === "super_admin";
-    const question = promoting
-      ? `Promote ${admin.full_name} to super admin? They will be able to add and remove admins and delete users.`
-      : `Demote ${admin.full_name} to a regular admin? They will lose those powers.`;
-    if (!window.confirm(question)) return;
 
+    setRoleBusy(true);
+    setRoleError("");
     const { error } = await supabase.rpc("set_admin_role", { target_id: admin.id, new_role: newRole });
+    setRoleBusy(false);
     if (error) {
-      setMessage({ text: error.message || "Failed to change the role.", type: "error" });
+      setRoleError(error.message || "Failed to change the role.");
       return;
     }
 
+    setRoleChange(null);
     setMessage({ text: `${admin.full_name} is now ${promoting ? "a super admin" : "a regular admin"}.`, type: "success" });
     setAdmins((prev) => prev.map((a) => (a.id === admin.id ? { ...a, role: newRole } : a)));
   };
@@ -260,11 +277,11 @@ export default function AdminAdminsView() {
                       {admin.id !== adminId && (
                         <div className="d-inline-flex flex-wrap justify-content-end gap-2">
                           {admin.role === "super_admin" ? (
-                            <button className="btn btn-outline-light btn-sm" onClick={() => changeRole(admin, "admin")}>
+                            <button className="btn btn-outline-light btn-sm" onClick={() => askRoleChange(admin, "admin")}>
                               <i className="bi bi-arrow-down-circle"></i> Demote
                             </button>
                           ) : (
-                            <button className="btn btn-outline-warning btn-sm" onClick={() => changeRole(admin, "super_admin")}>
+                            <button className="btn btn-outline-warning btn-sm" onClick={() => askRoleChange(admin, "super_admin")}>
                               <i className="bi bi-arrow-up-circle"></i> Promote
                             </button>
                           )}
@@ -281,6 +298,17 @@ export default function AdminAdminsView() {
           </table>
         </div>
       </div>
+
+      {isSuperAdmin && roleChange && (
+        <AdminRoleDialog
+          admin={roleChange.admin}
+          newRole={roleChange.newRole}
+          busy={roleBusy}
+          error={roleError}
+          onConfirm={confirmRoleChange}
+          onCancel={closeRoleDialog}
+        />
+      )}
     </section>
   );
 }
