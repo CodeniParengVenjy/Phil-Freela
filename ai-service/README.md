@@ -43,7 +43,15 @@ portfolio projects (`POST /slides`):
   file holds only that, and the whole text is saved in the private
   `slide_texts` table (only its writer and the admins can read it), so the
   website can blur the rest without the hidden part ever reaching the page.
-  `python test_document_preview.py` checks the rule.
+  `python test_document_preview.py` checks the rule. A PDF's page pictures
+  get the same treatment in the pixels (`page_blur.py`): only the top of the
+  document stays clear (30% of the pages, at least a third of page 1, at most
+  the whole of page 1) and the rest is blurred in the picture itself
+  (shrunk into 10-pixel blocks, then smoothed, so small print can't be read
+  back), before the name and the hidden code go on. The whole pages are kept
+  in the private `slide-private` bucket for the writer and the admins.
+  `python test_page_blur.py` checks it. Documents saved before this are fixed
+  once by `python split_old_documents.py --apply`.
 
 The same upload (`POST /slides`, for services and portfolio projects alike)
 also runs the ownership check on every file before it is shown. A file that

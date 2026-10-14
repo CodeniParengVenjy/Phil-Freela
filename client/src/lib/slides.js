@@ -28,7 +28,7 @@ export const SLIDE_ACCEPT = [...IMAGE_TYPES, ...VIDEO_TYPES, ".mov"].join(",");
 export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, MOV, WebM) up to 50 MB and 30 seconds; each video takes up to 2 minutes to watermark.";
 // Services (step 8) and portfolio projects (step 10) also take documents.
 export const SLIDE_ACCEPT_WITH_DOCUMENTS = `${SLIDE_ACCEPT},.pdf,.docx,.txt`;
-export const SLIDE_HINT_WITH_DOCUMENTS = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: the text is kept, with your invisible code and footer, but visitors only see a preview of it (the first part, the rest blurred, and no copying). A PDF also shows its first 5 pages as pictures with your name across them (about a minute to watermark).`;
+export const SLIDE_HINT_WITH_DOCUMENTS = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: the text is kept, with your invisible code and footer, but visitors only see a preview of it (the first part, the rest blurred, and no copying). A PDF also shows its first 5 pages as pictures with your name across them, but only the top of the document is clear and the rest is blurred (about a minute to watermark).`;
 
 // Add this to a services select to get each service's slides with it.
 // watermarked: the file carries the watermark itself (photos from step 3 on).
@@ -227,6 +227,10 @@ export function slideUrl(filePath) {
 // file, "<user id>/<slide id>.txt" -> "<user id>/<slide id>-p1.jpg",
 // "-p2.jpg" and so on. The AI service saves them under these names
 // (page_path in ai-service/main.py). [] for a slide without page pictures.
+// These are the PUBLIC pages, which are blurred below the top of the document
+// (document previews, step B5). The whole pages are in the private
+// "slide-private" bucket under the same names: only the writer and the admins
+// can open them (Admin > Flagged Content does).
 export function slidePagePaths(slide) {
   const stem = slide.file_path.replace(/\.[^./]+$/, "");
   return Array.from({ length: slide.page_count || 0 }, (_, i) => `${stem}-p${i + 1}.jpg`);
@@ -284,6 +288,9 @@ export function itemSlides(item) {
 export async function removeItemFiles(item) {
   const slidePaths = (item.slides || []).flatMap((slide) => [slide.file_path, ...slidePagePaths(slide)]);
   if (slidePaths.length) await supabase.storage.from("slide-media").remove(slidePaths);
+  // A PDF's whole pages (the private copies) go too.
+  const privatePaths = (item.slides || []).flatMap((slide) => slidePagePaths(slide));
+  if (privatePaths.length) await supabase.storage.from("slide-private").remove(privatePaths);
 
   const oldPath = storagePathFromUrl(item.image_url);
   if (oldPath) await supabase.storage.from("marketplace-images").remove([oldPath]);

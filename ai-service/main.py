@@ -34,13 +34,14 @@ from pydantic import BaseModel
 from pypdf import PdfReader
 from supabase import ClientOptions, create_client
 
-from document_pages import render_pages, watermark_page
+from document_pages import clear_page, render_pages, watermark_page
 from document_preview import make_preview
 from face_check import NoFaceError, check_faces, find_duplicate, prepare_image
 from id_qr import check_philsys_qr
 from hidden_watermark import new_code, protect_photo, read_code, read_code_from_frames, read_uncropped_codes
 from listing_search import search_listings
 from moodboard import match_moodboard
+from page_blur import blur_pages
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
 from recommendations import recommend
 from similarity import image_embedding
@@ -451,6 +452,9 @@ def submit_from_phone(
 
 SLIDE_BUCKET = "slide-media"
 SLIDE_UPLOADS_BUCKET = "slide-uploads"
+# The whole, unblurred pages of a PDF (document previews, step B5): only the
+# writer and the admins can open them (database/supabase_private_pages_schema.sql).
+SLIDE_PRIVATE_BUCKET = "slide-private"
 # What a slide can belong to: its table, the media_slides column pointing at
 # it, and what to call it in messages.
 SLIDE_OWNERS = {
@@ -585,9 +589,10 @@ def read_slide_video(user_id, video_path, max_seconds=MAX_VIDEO_SECONDS):
     return data, extension
 
 
-def upload_slide_file(path, data, content_type):
-    """Saves a slide to slide-media, with up to 3 tries on a bad connection."""
-    storage = supabase.storage.from_(SLIDE_BUCKET)
+def upload_slide_file(path, data, content_type, bucket=SLIDE_BUCKET):
+    """Saves a slide to slide-media (or another bucket), with up to 3 tries on
+    a bad connection."""
+    storage = supabase.storage.from_(bucket)
     for attempt in range(UPLOAD_TRIES):
         try:
             storage.upload(path, data, {"content-type": content_type, "upsert": "true"})
@@ -657,13 +662,22 @@ def page_pictures(data):
         return []
 
 
-def watermarked_pages(user_id, pictures, code):
-    """Step 11: the page pictures as JPEGs, each with the freelancer's name
-    across it and the document's hidden code inside."""
+def preview_pages(user_id, pictures, code):
+    """Step 11 and document previews (step B5): returns (public, private), two
+    lists of JPEG bytes, one per page.
+    public: what visitors get. All but the top of the document is blurred in
+    the picture itself (see page_blur.py), and then each page gets the
+    freelancer's name across it and the document's hidden code inside. The
+    code is hidden AFTER the blur, so it is checked on the exact picture that
+    is saved.
+    private: the whole pages with only the name across them, for the writer and
+    the admins (the slide-private bucket)."""
     if not pictures:
-        return []
+        return [], []
     style = watermark_style(user_id)
-    return [watermark_page(picture, code, *style)[0] for picture in pictures]
+    public = [watermark_page(picture, code, *style)[0] for picture in blur_pages(pictures)]
+    private = [clear_page(picture, *style) for picture in pictures]
+    return public, private
 
 
 # Step 7: 5 frames of each video go through the ViT for the copy check.
@@ -792,6 +806,8 @@ def add_slide(
     position = next_slide_position(user_id, owner, item_id, media_type)
 
     code, embeddings, text_embeddings, pages = None, {}, [], []
+    # A PDF's whole pages (pages, above, are the blurred ones visitors get).
+    clear_pages = []
     full_text, hidden_chars = None, 0
     status, matched_slide_id, matched_item_id, match_score = "active", None, None, None
     if image is not None:
@@ -841,6 +857,8 @@ def add_slide(
         data, extension, content_type = shown.encode("utf-8"), "txt", "text/plain"
         # Step 11: a PDF's first pages are also kept as watermarked pictures,
         # so viewers see its real layout. They carry the same code as the text.
+        # Document previews (step B5): visitors get them blurred below the top
+        # of the document; the whole pages go to a private bucket.
         document.file.seek(0)
         pictures = page_pictures(document.file.read())
         # Step 12: a page that already carries another freelancer's hidden
@@ -849,22 +867,28 @@ def add_slide(
         earlier = someone_elses_code(user_id, saved_code([read_code(page) for page in pictures])) if pictures else None
         if earlier and match_score != 1.0:
             status, matched_item_id, matched_slide_id, match_score = "flagged", None, earlier["slide_id"], 1.0
-        pages = watermarked_pages(user_id, pictures, code)
+        pages, clear_pages = preview_pages(user_id, pictures, code)
 
     slide_id = str(uuid.uuid4())
     file_path = f"{user_id}/{slide_id}.{extension}"
     # Every file of this slide: the slide itself, then a document's page pictures.
     saved_paths = [file_path] + [page_path(file_path, number) for number in range(1, len(pages) + 1)]
+    # The same names in the private bucket hold the whole, unblurred pages.
+    private_paths = saved_paths[1:]
 
     def remove_saved_files():
         """Don't leave files behind for a slide that wasn't saved."""
         for path in saved_paths:
             remove_quietly(SLIDE_BUCKET, path)
+        for path in private_paths:
+            remove_quietly(SLIDE_PRIVATE_BUCKET, path)
 
     try:
         upload_slide_file(file_path, data, content_type)
         for path, page in zip(saved_paths[1:], pages):
             upload_slide_file(path, page, "image/jpeg")
+        for path, page in zip(private_paths, clear_pages):
+            upload_slide_file(path, page, "image/jpeg", SLIDE_PRIVATE_BUCKET)
     except HTTPException:
         remove_saved_files()
         raise

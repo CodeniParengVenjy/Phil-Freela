@@ -148,9 +148,56 @@ cache-busting parameter.
 To run it again some day (from the ai-service folder, with its own Python):
 `python split_old_documents.py` is the trial, `python split_old_documents.py --apply` does it.
 
-All steps of this plan are built, pushed and live. Not included (see above):
-blurring parts of a PDF's page pictures, and a way for a writer to share the
-whole text with one client. Still to do by the user: try an upload of a DOCX
+All steps of this plan up to here are built, pushed and live. Not included
+(see above): a way for a writer to share the whole text with one client.
+
+## Step B5: blur a PDF's pages too (2026-10-14)
+
+Added after the user said "yes, but not only pdf, all of text files": the PDF
+page pictures were public and whole, so a PDF showed no blur at all.
+
+What visitors see: only the top of the document is clear (30% of all the pages'
+height, but at least a third of page 1 and at most the whole of page 1: a
+1-page PDF keeps the top 35%, a 2-page one the top 60% of page 1, 4 or 5 pages
+the whole of page 1). The rest is blurred inside the picture itself (shrunk
+into 10-pixel blocks so small print can't be read back, then smoothed, with a
+soft edge under the clear part). The reader's note says so and to message the
+writer. Text documents are unchanged (preview plus blurred filler).
+
+How it works:
+1. `ai-service/page_blur.py`: the rule and the blur (19 checks in
+   `test_page_blur.py`). In `main.py`, `preview_pages` blurs first and THEN puts
+   the name and the hidden code on, so the code is verified on the picture that
+   is saved (it reads back with 2 wrong bits of 48 in the test; 6 is the limit).
+2. The whole pages (only the name across them) are saved in a new PRIVATE bucket
+   `slide-private`, with the same names (`<user id>/<slide id>-p1.jpg`). Only the
+   writer and the admins can open or remove them
+   (`database/supabase_private_pages_schema.sql`, applied as migration
+   "private_pages" on 2026-10-14 after a rolled-back trial of 11 checks in
+   `database/test_private_pages.sql`). If a private copy can't be saved the
+   upload is refused and undone.
+3. Website: Admin > Flagged Content shows the WHOLE pages through links that
+   last an hour (and the public pages for an older PDF with no private copy);
+   removing a copy or an offer also removes the private pages
+   (`lib/slides.js` `removeItemFiles`, `AdminFlaggedView.jsx`); the reader's
+   note and the upload hint say what is blurred.
+4. The existing PDF: `ai-service/split_old_documents.py` now also copies its
+   whole pages to the private bucket (reading them back first) and blurs the
+   public ones (9 checks against a fake database: a trial changes nothing, a
+   second run is safe, a run stopped half way finishes the job, a failure
+   leaves the public pages untouched). A read-only trial on the live project
+   (2026-10-14) says it would do that for the 1 PDF, and the hidden code would
+   still read from its blurred page 1 (4 wrong bits of 48). NOT run yet: it
+   changes live storage, so the user is asked first.
+
+Tested: the rule and the blur, the upload route with a real PDF and the real
+watermark models against a fake database (12 checks: the public page is blurred
+below the top and the private one is sharp all the way, the hidden code reads
+back, a failed private save is undone with no leftovers), and the website in the
+browser against a fake backend (18 checks, desktop and phone: signed links, the
+public fallback, removal; plus the document preview test again, 65 checks).
+Not included: the Reports page still shows a reported service's first PDF page
+from the public (blurred) pictures; Check Ownership shows the public page 1. Still to do by the user: try an upload of a DOCX
 or TXT in Post a Service on the live site and open it (the upload route has
 only been tested with a fake database, and Admin > Flagged Content has never
 seen a real row with the new code).

@@ -60,9 +60,9 @@ function DocumentReader({ text, hiddenChars, pages = [], ownerName, seed, onClos
               <img key={page} src={page} alt={`Page ${i + 1}`} draggable={false} loading={i ? "lazy" : undefined} />
             ))}
             <p className="document-reader-note">
+              <i className="bi bi-eye-slash me-1"></i>
               The first {pages.length === 1 ? "page is" : `${pages.length} pages are`} shown as {pages.length === 1 ? "a picture" : "pictures"}, with the writer's name across {pages.length === 1 ? "it" : "them"}.
-              {/* 5 is the most pictures a PDF keeps, so there may be more pages. */}
-              {pages.length >= 5 && " Message the writer to ask for the full file."}
+              Only the top of the document is clear: the rest is blurred to protect the writer's work. Message the writer to ask for the full file.
             </p>
           </div>
         ) : (

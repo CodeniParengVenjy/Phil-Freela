@@ -13,6 +13,7 @@ The pages are drawn by PDFium, the PDF reader inside Google Chrome, through
 the pypdfium2 package.
 """
 
+import io
 import threading
 
 import pypdfium2 as pdfium
@@ -80,3 +81,14 @@ def watermark_page(picture, code, settings, username, full_name):
     hold the code (a nearly empty page), which is then saved without it."""
     shown = draw_visible_watermark(picture, page_style(settings, picture), username, full_name)
     return protect_photo(shown, code, PAGE_STRENGTHS)
+
+
+def clear_page(picture, settings, username, full_name):
+    """The whole page, with only the name across it (no hidden code), as JPEG
+    bytes. Visitors get the blurred pages (page_blur.py); this clear copy is
+    kept in a private bucket for the writer and the admins (Flagged Content
+    needs to see the real page)."""
+    shown = draw_visible_watermark(picture, page_style(settings, picture), username, full_name)
+    out = io.BytesIO()
+    shown.convert("RGB").save(out, format="JPEG", quality=90)
+    return out.getvalue()

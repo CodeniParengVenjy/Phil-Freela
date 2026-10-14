@@ -78,6 +78,28 @@ function SlideText({ slideId, filePath }) {
   return <TextBox text={text} />;
 }
 
+// A PDF's pages as an admin should see them: the WHOLE pages from the private
+// bucket (links that last an hour), because the public pages are blurred below
+// the top of the document (document previews, step B5). A PDF saved before that
+// has no private copy, and its public pages are whole, so they are the fallback.
+// Returns the link of a page path, or null while the links are being made.
+function useWholePages(paths) {
+  const key = paths.join("|");
+  const [links, setLinks] = useState(null);
+  useEffect(() => {
+    if (!key) return undefined;
+    let active = true;
+    supabase.storage.from("slide-private").createSignedUrls(key.split("|"), 60 * 60).then(({ data }) => {
+      if (active) setLinks(Object.fromEntries((data || []).filter((item) => item.signedUrl).map((item) => [item.path, item.signedUrl])));
+    });
+    return () => {
+      active = false;
+    };
+  }, [key]);
+  if (!key) return () => null;
+  return (path) => (links === null ? null : links[path] || slideUrl(path));
+}
+
 // One side of a comparison: a slide (the photo, the video, or a document's
 // text) and whose it is. showPages: show a PDF's page pictures instead of its
 // text, for when the other side is a picture (a screenshot of one of its
@@ -86,6 +108,7 @@ function SlideCard({ label, slide, showPages = false }) {
   const where = slide?.service ? `Service "${slide.service.title}"` : slide?.project ? `Portfolio project "${slide.project.title}"` : "";
   const mediaStyle = { height: 260, objectFit: "contain" };
   const pages = showPages && slide?.media_type === "document" ? slidePagePaths(slide) : [];
+  const pageLink = useWholePages(pages);
   return (
     <div className="col-md-6">
       <p className="text-white-50 fs-8 mb-1">{label}</p>
@@ -93,9 +116,13 @@ function SlideCard({ label, slide, showPages = false }) {
         <>
           {pages.length > 1 ? (
             <div className="d-flex gap-2 overflow-auto rounded-3 bg-black" style={{ height: 260 }}>
-              {pages.map((path, index) => <img key={path} src={slideUrl(path)} alt={`${label}, page ${index + 1}`} className="h-100" />)}
+              {pages.map((path, index) => (pageLink(path)
+                ? <img key={path} src={pageLink(path)} alt={`${label}, page ${index + 1}`} className="h-100" />
+                : <span key={path} className="text-white-50 fs-8 p-3">Loading page {index + 1}...</span>))}
             </div>
-          ) : pages.length === 1 ? <img src={slideUrl(pages[0])} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />
+          ) : pages.length === 1 ? (pageLink(pages[0])
+            ? <img src={pageLink(pages[0])} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />
+            : <div className="rounded-3 bg-black d-flex align-items-center justify-content-center text-white-50 fs-8" style={{ height: 260 }}>Loading page...</div>)
             : slide.media_type === "document" ? <SlideText slideId={slide.id} filePath={slide.file_path} />
             : slide.media_type === "video" ? <video src={slideUrl(slide.file_path)} controls preload="metadata" className="w-100 rounded-3 bg-black" style={mediaStyle} />
               : <img src={slideUrl(slide.file_path)} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />}
@@ -209,7 +236,11 @@ export default function AdminFlaggedView() {
     }
     // The row is gone; if deleting the files (a PDF also has page pictures)
     // fails it only leaves unused files.
-    if (item.type === "slide") await supabase.storage.from("slide-media").remove([item.file_path, ...slidePagePaths(item)]);
+    if (item.type === "slide") {
+      await supabase.storage.from("slide-media").remove([item.file_path, ...slidePagePaths(item)]);
+      // A PDF's whole pages (the private copies) go too.
+      if (item.page_count) await supabase.storage.from("slide-private").remove(slidePagePaths(item));
+    }
     setBusyId(null);
     done(item, "Removed: the copy was deleted.");
   };
@@ -253,7 +284,10 @@ export default function AdminFlaggedView() {
     // pictures). If that fails it only leaves unused files.
     const removed = data?.[0];
     if (removed?.removed_path) {
-      await supabase.storage.from("slide-media").remove([removed.removed_path, ...slidePagePaths({ file_path: removed.removed_path, page_count: removed.removed_pages })]);
+      const removedPages = slidePagePaths({ file_path: removed.removed_path, page_count: removed.removed_pages });
+      await supabase.storage.from("slide-media").remove([removed.removed_path, ...removedPages]);
+      // The PDF's whole pages (the private copies) go too.
+      if (removedPages.length) await supabase.storage.from("slide-private").remove(removedPages);
     }
     setBusyId(null);
     // Other held-back files that matched the same post now show it as deleted.
