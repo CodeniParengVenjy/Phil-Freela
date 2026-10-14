@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { loadRequests, newestBy, requestText, sendRequest } from "../../../lib/adminRequests";
 import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
+import { useWholePages } from "../../../lib/wholePages";
 import { avatarUrl, coverUrl } from "../../../lib/avatar";
 import { getScreenshotLinks, removeReportedPicture, reportListingTables, reportPictureKinds, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { messageSummary } from "../../../lib/reportMessages";
@@ -68,10 +69,44 @@ function ReportedPicture({ report }) {
 }
 
 // Up to 4 small pictures of a reported service's or project's files (its
-// photos, and the first page of a PDF), so the admin can compare them with
-// the reporter's proof, for example in a "Stolen work" report.
-function listingPictures(item) {
-  return itemSlides(item).flatMap((slide) => (slide.mediaType === "image" ? [slide.url] : slide.pages.slice(0, 1))).slice(0, 4);
+// photos, and the first page of each PDF), so the admin can compare them with
+// the reporter's proof, for example in a "Stolen work" report. A PDF's page is
+// the WHOLE page from the private bucket, because the public one is blurred
+// below the top (document previews); like in Flagged Content, an older PDF with
+// no private copy shows its public page. Click one to open it full size.
+function ReportedFiles({ item }) {
+  const pictures = itemSlides(item)
+    .flatMap((slide) => (slide.mediaType === "image"
+      ? [{ key: slide.url, url: slide.url }]
+      : (slide.pagePaths || []).slice(0, 1).map((path) => ({ key: path, path }))))
+    .slice(0, 4);
+  const wholePage = useWholePages(pictures.filter((picture) => picture.path).map((picture) => picture.path));
+  if (!pictures.length) return null;
+
+  return (
+    <div className="mb-2">
+      <p className="fs-8 text-white-50 mb-1">What was reported:</p>
+      <div className="d-flex flex-wrap gap-2">
+        {pictures.map((picture, index) => {
+          const url = picture.url || wholePage(picture.path);
+          return url ? (
+            <a key={picture.key} href={url} target="_blank" rel="noreferrer" title={`Open file ${index + 1}`}>
+              <img
+                src={url}
+                alt={`Reported file ${index + 1}`}
+                className="rounded-3 border border-warning border-opacity-50"
+                style={{ width: 88, height: 88, objectFit: "cover", objectPosition: picture.path ? "top" : undefined }}
+              />
+            </a>
+          ) : (
+            <span key={picture.key} className="rounded-3 border border-warning border-opacity-50 d-flex align-items-center justify-content-center text-center text-white-50 fs-9" style={{ width: 88, height: 88 }}>
+              Loading page
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // The chat messages the reporter ticked to send with a report about a person,
@@ -465,18 +500,7 @@ export default function AdminReportsView() {
               )}
 
               {/* The reported service's or project's own pictures; click one to open it full size. */}
-              {isListing && target && listingPictures(target.item).length > 0 && (
-                <div className="mb-2">
-                  <p className="fs-8 text-white-50 mb-1">What was reported:</p>
-                  <div className="d-flex flex-wrap gap-2">
-                    {listingPictures(target.item).map((url, index) => (
-                      <a key={url} href={url} target="_blank" rel="noreferrer" title={`Open file ${index + 1}`}>
-                        <img src={url} alt={`Reported file ${index + 1}`} className="rounded-3 border border-warning border-opacity-50" style={{ width: 88, height: 88, objectFit: "cover" }} />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {isListing && target && <ReportedFiles item={target.item} />}
               {report.evidence_paths?.length > 0 && <p className="fs-8 text-white-50 mb-1">The reporter's screenshots:</p>}
 
               {/* The reporter's screenshots; click one to open it full size. */}

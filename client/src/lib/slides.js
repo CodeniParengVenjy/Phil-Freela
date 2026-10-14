@@ -254,10 +254,12 @@ export function fetchSlideText(url) {
 }
 
 // A service's or project's slides in slideshow order, as
-// [{ id, mediaType, url, pages, hiddenChars, showOwnerName, underReview }]. mediaType:
+// [{ id, mediaType, url, pages, pagePaths, hiddenChars, showOwnerName, underReview }]. mediaType:
 // "image", "video" or "document" (a .txt file, step 8: only a preview of the
 // text). pages: the links of a document's page pictures (a PDF, step 11; []
-// otherwise). hiddenChars: how much of a document's text is not in that file. showOwnerName: the
+// otherwise), and pagePaths the same pages as storage paths (an admin opens the
+// whole pages under these names in the private bucket, see lib/wholePages.js).
+// hiddenChars: how much of a document's text is not in that file. showOwnerName: the
 // page draws the uploader's name faintly over it, because the file itself has
 // no watermark (older photos, videos until step 7) and it isn't a promo.
 // underReview: flagged by the copy check, waiting for an admin.
@@ -272,6 +274,7 @@ export function itemSlides(item) {
         mediaType: slide.media_type,
         url: slideUrl(slide.file_path),
         pages: slidePagePaths(slide).map(slideUrl),
+        pagePaths: slidePagePaths(slide),
         hiddenChars: slide.hidden_chars || 0,
         // (Photos from step 3 and videos from step 7 on carry their own watermark.)
         showOwnerName: !slide.watermarked && !slide.promo,

@@ -204,8 +204,14 @@ below the top and the private one is sharp all the way, the hidden code reads
 back, a failed private save is undone with no leftovers), and the website in the
 browser against a fake backend (18 checks, desktop and phone: signed links, the
 public fallback, removal; plus the document preview test again, 65 checks).
-Not included: the Reports page still shows a reported service's first PDF page
-from the public (blurred) pictures; Check Ownership shows the public page 1.
+Admin > Reports now shows a reported service's or project's PDF the same way
+(2026-10-14, "step B6"): page 1 of each PDF as the WHOLE page from the private
+bucket (the public page if there is no private copy), through the same hook as
+Flagged Content (`lib/wholePages.js`); photos stay public. Checked in the
+browser against a fake backend, desktop and phone (22 checks, and Flagged
+Content again, 18). Check Ownership keeps showing the PUBLIC page 1 on purpose:
+anyone can run it on a file they found, and only the writer and the admins may
+see a whole page.
 Still to do by the user: try an upload of a PDF, a DOCX or a TXT in Post a
 Service on the live site and open it (the upload route has only been tested
 with a fake database, and Admin > Flagged Content has never seen a real row
