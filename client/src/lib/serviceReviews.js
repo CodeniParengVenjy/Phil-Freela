@@ -32,7 +32,7 @@ export async function fetchServiceRatings(serviceIds) {
   if (!serviceIds.length) return ratings;
   const { data, error } = await supabase.rpc("service_rating_summaries", { ids: serviceIds });
   if (error) return ratings;
-  data.forEach((row) => ratings.set(row.service_id, { count: row.rating_count, average: Number(row.avg_stars) }));
+  (data || []).forEach((row) => ratings.set(row.service_id, { count: row.rating_count, average: Number(row.avg_stars) }));
   return ratings;
 }
 
