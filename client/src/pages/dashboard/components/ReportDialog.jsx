@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MAX_SCREENSHOTS, checkScreenshot, reasonsFor, reportReasons, sendReport } from "../../../lib/reports";
+import { messageSummary } from "../../../lib/reportMessages";
 
 // For "Stolen work", the reporter must say where the original is, in at
 // least this many characters (so "x" or "idk" isn't enough for an admin).
@@ -12,6 +13,9 @@ const MIN_PROOF_LENGTH = 10;
 //   target: { type: "user" | "service" | "job_post" | "portfolio_item" | "profile_picture" | "cover_photo" | "service_review", id, name } or null (closed)
 //           From a call it also has callId and callKind ("voice" / "video").
 //           A picture also has reportedPath (see sendReport in lib/reports.js).
+//           From a chat it also has chat: { messages, ticked, meId } (see
+//           lib/reportMessages.js): the messages to list, the ids ticked to
+//           start with, and the signed-in person's id (to tell "You" apart).
 //   onDone(message): called after sending, e.g. to show a toast
 export default function ReportDialog({ target, onClose, onDone }) {
   const [reason, setReason] = useState("");
@@ -19,8 +23,12 @@ export default function ReportDialog({ target, onClose, onDone }) {
   // The picked screenshots: [{ file, preview }] (preview = a temporary link
   // for the thumbnail, freed when it's removed or the popup closes).
   const [screenshots, setScreenshots] = useState([]);
+  // The chat messages the person changed the ticks of (a Set of ids); null =
+  // untouched, so the ticks the popup opened with are used.
+  const [changedPicks, setChangedPicks] = useState(null);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const messageListRef = useRef(null);
 
   // Closing starts the next report fresh (and frees the thumbnails).
   const close = () => {
@@ -28,6 +36,7 @@ export default function ReportDialog({ target, onClose, onDone }) {
     setReason("");
     setDetails("");
     setScreenshots([]);
+    setChangedPicks(null);
     setError("");
     onClose();
   };
@@ -43,10 +52,30 @@ export default function ReportDialog({ target, onClose, onDone }) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   });
 
+  // When the popup opens from a chat, scroll the message list so the last
+  // ticked message is at the bottom (the newest ones, or the one that was
+  // right-clicked with the messages before it).
+  useEffect(() => {
+    const list = messageListRef.current;
+    const ticked = list?.querySelectorAll("[data-ticked='true']");
+    if (!list || !ticked?.length) return;
+    const last = ticked[ticked.length - 1].getBoundingClientRect();
+    list.scrollTop += last.bottom - list.getBoundingClientRect().bottom + 8;
+  }, [target]);
+
   if (!target) return null;
 
   // "Stolen work" needs proof: where the original is (see lib/reports.js).
   const needsDetails = Boolean(reportReasons.find((r) => r.value === reason)?.needsDetails);
+
+  // The chat messages listed (only when reporting from a chat) and which are ticked.
+  const chat = target.chat?.messages.length ? target.chat : null;
+  const picks = changedPicks ?? new Set(chat?.ticked);
+  const togglePick = (id) => {
+    const next = new Set(picks);
+    if (!next.delete(id)) next.add(id);
+    setChangedPicks(next);
+  };
 
   const addScreenshots = (event) => {
     const picked = [...event.target.files];
@@ -86,7 +115,9 @@ export default function ReportDialog({ target, onClose, onDone }) {
       target,
       reason,
       details: details.trim(),
-      screenshots: screenshots.map((s) => s.file)
+      screenshots: screenshots.map((s) => s.file),
+      // The ticked chat messages, in chat order.
+      messageIds: chat ? chat.messages.filter((m) => picks.has(m.id)).map((m) => m.id) : []
     });
     setSending(false);
 
@@ -95,14 +126,17 @@ export default function ReportDialog({ target, onClose, onDone }) {
       // database doesn't know this reason or kind of target yet (the stolen
       // work update, database/supabase_stolen_work_schema.sql, hasn't been
       // run). 42501 on a picture = the database refused it because the person
-      // has changed that picture since it was opened. Other database errors
-      // get a general message; upload problems explain themselves.
+      // has changed that picture since it was opened. P0001 = the database
+      // refused the chat messages and says why in plain words (for example one
+      // was unsent while the popup was open). Other database errors get a
+      // general message; upload problems explain themselves.
       const isPicture = target.type === "profile_picture" || target.type === "cover_photo";
       setError(sendError.code === "23505"
         ? "You already reported this. An admin will review it soon."
         : sendError.code === "23514" ? "This kind of report isn't switched on yet. Please try again later."
           : sendError.code === "42501" && isPicture ? "This picture has changed since you opened it. Please reload the page and report it again."
-            : sendError.code ? "Couldn't send the report. Please try again." : sendError.message);
+            : sendError.code === "P0001" ? sendError.message
+              : sendError.code ? "Couldn't send the report. Please try again." : sendError.message);
       return;
     }
 
@@ -170,6 +204,74 @@ export default function ReportDialog({ target, onClose, onDone }) {
           value={details}
           onChange={(e) => setDetails(e.target.value)}
         />
+
+        {/* From a chat: the messages to send with the report. Admins can't read
+            chats, so only the ticked ones are copied for them (lib/reportMessages.js). */}
+        {chat && (
+          <div className="mb-3">
+            <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
+              <span id="report-messages-label" className="form-label text-white-50 fs-7 mb-0">Messages to send with your report</span>
+              <span className="fs-8 text-white-50 flex-shrink-0">{picks.size} of {chat.messages.length} selected</span>
+            </div>
+            <p className="text-secondary fs-8 mb-2">
+              Admins can't read your chats, so tick the messages that show the problem. Only admins will see the ones you tick, not {target.name || "the other person"}.
+              A photo, voice message or file is sent as a label only: add a screenshot below to show it.
+            </p>
+            <div
+              ref={messageListRef}
+              role="group"
+              aria-labelledby="report-messages-label"
+              className="border border-secondary border-opacity-25 rounded-3"
+              style={{ maxHeight: 220, overflowY: "auto" }}
+            >
+              {chat.messages.map((m) => {
+                const mine = m.sender_id === chat.meId;
+                const { icon, label, text } = messageSummary(m);
+                return (
+                  <label
+                    key={m.id}
+                    data-ticked={picks.has(m.id)}
+                    className={`d-flex align-items-start gap-2 px-2 py-2 fs-7 cursor-pointer border-bottom border-secondary border-opacity-25 ${picks.has(m.id) ? "bg-secondary bg-opacity-25" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="form-check-input m-0 mt-1 flex-shrink-0"
+                      checked={picks.has(m.id)}
+                      disabled={sending}
+                      onChange={() => togglePick(m.id)}
+                    />
+                    <span className="min-w-0">
+                      <span className="d-block fs-8 text-white-50">
+                        <strong className={mine ? "" : "text-role"}>{mine ? "You" : target.name || "Them"}</strong>
+                        {" · "}
+                        {new Date(m.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      {label && (
+                        <span className="d-block"><i className={`bi ${icon} me-1`}></i>{label}</span>
+                      )}
+                      {text && (
+                        <span
+                          className="text-break"
+                          style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+                        >
+                          {!label && icon && <i className={`bi ${icon} me-1`}></i>}{text}
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="d-flex gap-3 mt-1">
+              <button type="button" className="btn btn-link btn-sm p-0 fs-8 text-decoration-none text-role" disabled={sending} onClick={() => setChangedPicks(new Set(chat.messages.map((m) => m.id)))}>
+                Select all
+              </button>
+              <button type="button" className="btn btn-link btn-sm p-0 fs-8 text-decoration-none text-role" disabled={sending} onClick={() => setChangedPicks(new Set())}>
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Screenshots as proof (optional). Only admins can open them. */}
         <label className="form-label text-white-50 fs-7 mb-1">Screenshots (optional, up to {MAX_SCREENSHOTS})</label>

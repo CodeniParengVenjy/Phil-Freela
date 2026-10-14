@@ -109,3 +109,36 @@ against the live API, and the copy trigger is on.
 Not tested: the line a call leaves in a chat (`is_call`; one `call_id is not
 null`), and a copy surviving its message being unsent (the copy has no link to
 the message, checked, and editing it later changes nothing, checked).
+
+Step 4b (website): built and pushed (2026-10-14). New `lib/reportMessages.js`
+(which messages the popup lists and ticks: the last 30 with the last 10 ticked,
+or 30 around one message with it and 2 either side ticked; the words for one
+message). `lib/reports.js` `sendReport` sends the ticked ids as
+`chat_message_ids` (only when there are some, so every other report is sent as
+before). `components/ReportDialog.jsx`: the list "Messages to send with your
+report" (a tick box, who wrote it, the time, the words or a label; "10 of 30
+selected", Select all, Clear; scrolled to the newest ticked message), the
+privacy line, and the database's own words for a refusal (code P0001).
+`views/ChatView.jsx`: the header flag passes the chat; right-click on a message
+from the other person has "Report Message" (also on a photo with no text).
+`views/AdminReportsView.jsx`: the report loads its copies in the same query
+(`report_messages(...)`, oldest first) and shows them as a transcript box that
+scrolls (the reported person's name highlighted, "edited", labels for photo /
+video / voice message / file, a call keeps its words). `pages/legal/PrivacyPolicy.jsx`:
+a line under "What we collect" and one under "How long we keep it".
+Tested in the browser against a fake backend, desktop and phone, dark and
+light (85 checks, plus 19 for the helper functions in Node): the popup lists and
+ticks as planned, ticking/unticking, Select all / Clear, the sent ids in chat
+order, nothing ticked sends no ids, a refusal from the database shows in its own
+words and keeps the ticks, "one waiting report" message, right-click on his
+message vs mine, 30 messages around the right-clicked one, an empty chat and a
+report from the profile page have no list, the admin transcript (names, order,
+labels, line breaks, "edited", scrolls inside a box, none for a report without
+messages), no sideways scroll on a phone; and the earlier offer-page (86) and
+ratings (73) tests again. The admin page's `report_messages(...)` embed was
+checked against the live API (it resolves; a wrong name gives PGRST200).
+Not tested: a real report sent from the live site (the database function was
+tested in SQL, the website against a fake that follows it), and the Reports page
+with a real row that has copies.
+
+All of step 4 is built, pushed and live. This was the last step of the plan.

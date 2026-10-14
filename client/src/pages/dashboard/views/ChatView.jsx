@@ -12,6 +12,7 @@ import { startCall, useCall } from "../../../lib/calls";
 import { presenceStatus, usePresence } from "../../../lib/presence";
 import { profilePath } from "../../../lib/profileStats";
 import { needsTimeDivider, timeDividerLabel } from "../../../lib/chatTime";
+import { pickReportMessages } from "../../../lib/reportMessages";
 import { FILE_ACCEPT, checkChatFile, deleteChatFile, fileIcon, formatSize, sendChatFile, sendVoiceMessage } from "../../../lib/chatFiles";
 import ChatAttachment from "../components/ChatAttachment";
 import VoiceRecorder from "../components/VoiceRecorder";
@@ -432,6 +433,18 @@ export default function ChatView() {
   // Call lines don't get the Sent / Delivered / Seen label.
   const lastMineId = [...(messages || [])].reverse().find((m) => m.sender_id === currentUserId && !m.call_id)?.id;
 
+  // Opens the Report popup with this chat's messages to tick, so admins (who
+  // can't read chats) see what happened. From the header flag: the last 10 are
+  // ticked. From one message (aroundId): that one and 2 either side.
+  const openReport = (aroundId = null) => {
+    setReportTarget({
+      type: "user",
+      id: otherProfile.id,
+      name: recipientName,
+      chat: { ...pickReportMessages(messages || [], aroundId), meId: currentUserId }
+    });
+  };
+
   return (
     <section className="dashboard-view active-view">
       <div className="chat-card glass-card rounded-4 border border-secondary border-opacity-25 overflow-hidden d-flex flex-column">
@@ -487,7 +500,7 @@ export default function ChatView() {
                 className="btn btn-sm btn-outline-secondary text-white border-0"
                 title="Report this user"
                 aria-label="Report this user"
-                onClick={() => setReportTarget({ type: "user", id: otherProfile.id, name: recipientName })}
+                onClick={() => openReport()}
               >
                 <i className="bi bi-flag-fill fs-5"></i>
               </button>
@@ -667,6 +680,17 @@ export default function ChatView() {
                 <i className="bi bi-trash3 me-2"></i> Unsend
               </button>
             </>
+          )}
+          {/* A message from the other person can be reported: the popup opens
+              with it and the messages around it ticked. */}
+          {contextMenu.message.sender_id !== currentUserId && (
+            <button
+              type="button"
+              className="dropdown-item rounded-2 text-danger d-flex align-items-center"
+              onClick={() => { setContextMenu(null); openReport(contextMenu.message.id); }}
+            >
+              <i className="bi bi-flag me-2"></i> Report Message
+            </button>
           )}
         </div>
       )}

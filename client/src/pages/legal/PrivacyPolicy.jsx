@@ -22,6 +22,11 @@ export default function PrivacyPolicy() {
           our review system can open, and never shown to other users -- they only see whether you're verified.
         </li>
         <li>Messages you send to other users, and files or portfolio work you upload (which carry an invisible, automatic ownership mark -- see our Terms of Service).</li>
+        <li>
+          Messages you choose to send with a report. Admins can't read anyone's chats, so if you report someone from a
+          chat, you tick the messages that show the problem. Only the ones you tick are copied, and only our admins can
+          read them: the person you report can't, and neither can anyone else.
+        </li>
         <li>Basic usage information needed to run features like search and "Recommended for you" (for example, which posts you've viewed or messaged about).</li>
         <li>
           Your track record on PhilFreela: the projects you complete (title, finish date, who it was with, and the ratings),
@@ -65,7 +70,8 @@ export default function PrivacyPolicy() {
       <h5 className="text-white fw-bold mt-4 mb-2">How long we keep it</h5>
       <p className="text-secondary">
         Your data stays while your account is active. If an account is banned, it's automatically and permanently
-        deleted 100 days later (sooner if you successfully appeal), unless an appeal is still pending.
+        deleted 100 days later (sooner if you successfully appeal), unless an appeal is still pending. A report you
+        sent, with any chat messages you sent along with it, is removed if you delete your account.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your rights</h5>

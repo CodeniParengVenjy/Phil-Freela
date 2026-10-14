@@ -6,6 +6,7 @@ import { loadRequests, newestBy, requestText, sendRequest } from "../../../lib/a
 import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
 import { avatarUrl, coverUrl } from "../../../lib/avatar";
 import { getScreenshotLinks, removeReportedPicture, reportListingTables, reportPictureKinds, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
+import { messageSummary } from "../../../lib/reportMessages";
 import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields, getViolation } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
@@ -73,6 +74,50 @@ function listingPictures(item) {
   return itemSlides(item).flatMap((slide) => (slide.mediaType === "image" ? [slide.url] : slide.pages.slice(0, 1))).slice(0, 4);
 }
 
+// The chat messages the reporter ticked to send with a report about a person,
+// oldest first like in the chat. Admins can't read chats, so this is all they
+// see of it: copies made when the report was sent, so they stay even if the
+// message is unsent later (database/supabase_report_messages_schema.sql). A
+// photo, video, voice message or file shows only as a label.
+function ReportedChat({ messages, reporterName, reportedName }) {
+  return (
+    <div className="mb-2">
+      <p className="fs-8 text-white-50 mb-1">
+        <i className="bi bi-chat-left-text me-1"></i>
+        Chat messages the reporter picked ({messages.length}):
+      </p>
+      <div
+        className="rounded-3 border border-secondary border-opacity-50 p-2 d-flex flex-column gap-2"
+        style={{ maxHeight: 300, overflowY: "auto" }}
+        role="log"
+        aria-label="Chat messages sent with this report"
+        tabIndex={0}
+      >
+        {messages.map((m) => {
+          const { icon, label, text } = messageSummary(m);
+          return (
+            <div key={m.id} className="fs-7">
+              <div className="fs-8">
+                <strong className={m.from_reporter ? "text-white-50" : "text-warning"}>{m.from_reporter ? reporterName : reportedName}</strong>
+                <span className="text-white-50">
+                  {" · "}{new Date(m.sent_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+                  {m.edited && " · edited"}
+                </span>
+              </div>
+              {label && <div className="text-white-50"><i className={`bi ${icon} me-1`}></i>{label}</div>}
+              {text && (
+                <div className="text-white admin-description" style={{ whiteSpace: "pre-wrap" }}>
+                  {!label && icon && <i className={`bi ${icon} me-1 text-white-50`}></i>}{text}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // "During a video call · Sep 29, 2026, 3:10 PM · 4 min" for a report sent
 // from a call. The length counts from when it was answered.
 function callSummary(call) {
@@ -120,8 +165,10 @@ export default function AdminReportsView() {
       const [reportsResult, suspensionsResult, requestsResult] = await Promise.all([
         supabase
           .from("reports")
-          .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
-          .order("created_at", { ascending: false }),
+          // report_messages: the chat messages the reporter ticked (empty for most reports).
+          .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, report_messages(id, from_reporter, body, attachment_type, attachment_name, is_call, edited, sent_at), reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
+          .order("created_at", { ascending: false })
+          .order("sent_at", { referencedTable: "report_messages", ascending: true }),
         supabase.from("user_suspensions").select("user_id, ends_at"),
         loadRequests(["pending", "declined"])
       ]);
@@ -382,6 +429,15 @@ export default function AdminReportsView() {
               )}
 
               {report.details && <p className="fs-7 text-white mb-2 admin-description">"{report.details}"</p>}
+
+              {/* A report from a chat: the messages the reporter picked. */}
+              {report.report_messages?.length > 0 && (
+                <ReportedChat
+                  messages={report.report_messages}
+                  reporterName={report.reporter?.full_name || "The reporter"}
+                  reportedName={target?.ownerName || "The reported person"}
+                />
+              )}
 
               {/* The reported picture or cover, as it was when it was reported. */}
               {isPicture && <ReportedPicture report={report} />}

@@ -28,7 +28,12 @@ export function checkScreenshot(file) {
 //           reportedPath: the picture's file, as it is now on their profile }.
 //           The report keeps the file, so a later change of picture can't make
 //           an admin remove the wrong one (database/supabase_cover_photo_schema.sql).
-export async function sendReport({ target, reason, details, screenshots = [] }) {
+//   messageIds: chat messages ticked to go with a report about a person
+//           (lib/reportMessages.js). The database copies them next to the report
+//           in the same step, and refuses ids that aren't from the chat between
+//           the two people (database/supabase_report_messages_schema.sql). They
+//           are only sent when there are some, so other reports don't depend on it.
+export async function sendReport({ target, reason, details, screenshots = [], messageIds = [] }) {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
   if (!userId) return { error: { message: "Please log in again." } };
@@ -63,7 +68,8 @@ export async function sendReport({ target, reason, details, screenshots = [] }) 
     details: details || null,
     call_id: target.callId || null,
     reported_path: target.reportedPath || null,
-    evidence_paths: paths
+    evidence_paths: paths,
+    ...(messageIds.length ? { chat_message_ids: messageIds } : {})
   });
   if (error) await removeUploaded();
   return { error };
