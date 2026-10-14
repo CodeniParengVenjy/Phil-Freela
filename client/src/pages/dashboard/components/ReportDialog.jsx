@@ -7,9 +7,9 @@ import { MAX_SCREENSHOTS, checkScreenshot, reasonsFor, reportReasons, sendReport
 const MIN_PROOF_LENGTH = 10;
 
 // "Report" popup for a user, service, job post, portfolio project, profile
-// picture or cover photo. The report is saved to the reports table, where
-// admins review it on the admin Reports page.
-//   target: { type: "user" | "service" | "job_post" | "portfolio_item" | "profile_picture" | "cover_photo", id, name } or null (closed)
+// picture, cover photo or a comment on an offer. The report is saved to the
+// reports table, where admins review it on the admin Reports page.
+//   target: { type: "user" | "service" | "job_post" | "portfolio_item" | "profile_picture" | "cover_photo" | "service_review", id, name } or null (closed)
 //           From a call it also has callId and callKind ("voice" / "video").
 //           A picture also has reportedPath (see sendReport in lib/reports.js).
 //   onDone(message): called after sending, e.g. to show a toast

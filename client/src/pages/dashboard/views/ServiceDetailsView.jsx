@@ -5,6 +5,7 @@ import { getCategory } from "../../../lib/categories";
 import { skillLabel } from "../../../lib/serviceSkills";
 import { SLIDES_SELECT, isOriginalWork, itemSlides } from "../../../lib/slides";
 import { fetchProfileStats, formatReplyTime } from "../../../lib/profileStats";
+import { fetchServiceReviews, summarizeReviews } from "../../../lib/serviceReviews";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
@@ -14,6 +15,7 @@ import StarRating from "../../../components/StarRating";
 import BookDialog from "../components/BookDialog";
 import MediaCarousel from "../components/MediaCarousel";
 import ReportDialog from "../components/ReportDialog";
+import ServiceReviews from "../components/ServiceReviews";
 
 // One service offer (a "project offer"), opened from a card on Browse Services
 // or the AI search results, or from a freelancer's page. This is the only place
@@ -36,6 +38,9 @@ function ServiceDetails({ serviceId }) {
   const [service, setService] = useState(undefined);
   // The freelancer's real numbers from finished projects (null = not loaded).
   const [stats, setStats] = useState(null);
+  // The ratings and comments clients wrote on this offer (null = loading).
+  const [reviews, setReviews] = useState(null);
+  const [reviewsError, setReviewsError] = useState("");
   // The offer being reported, and the offer being booked (null = popup closed).
   const [reportTarget, setReportTarget] = useState(null);
   const [bookTarget, setBookTarget] = useState(null);
@@ -71,6 +76,23 @@ function ServiceDetails({ serviceId }) {
       active = false;
     };
   }, [freelancerId]);
+
+  const serviceKey = service?.id;
+
+  useEffect(() => {
+    if (!serviceKey) return undefined;
+    let active = true;
+
+    fetchServiceReviews(serviceKey).then((result) => {
+      if (!active) return;
+      if (result.error) setReviewsError(result.error);
+      else setReviews(result.reviews);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [serviceKey]);
 
   const verifiedIds = useVerifiedIds([freelancerId]);
 
@@ -109,6 +131,7 @@ function ServiceDetails({ serviceId }) {
   const freelancerPath = freelancer?.id ? `/dashboard/freelancers/${freelancer.id}` : undefined;
   const isOwnOffer = freelancer?.id === currentUserId;
   const category = getCategory(service.category);
+  const reviewSummary = summarizeReviews(reviews || []);
   const postedOn = new Date(service.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   const slides = itemSlides(service);
   // The offer's own skill and the skills on the freelancer's profile.
@@ -225,6 +248,12 @@ function ServiceDetails({ serviceId }) {
               {service.price ? `Starting at ₱${Number(service.price).toLocaleString()}` : "Price on request"}
             </span>
             {isOriginalWork(service) && <OriginalBadge className="px-3 py-2" />}
+            {/* What clients rated this offer (from the box further down). */}
+            {reviewSummary.count > 0 && (
+              <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill" title="Average rating clients gave this offer">
+                <i className="bi bi-star-fill me-1"></i>{reviewSummary.average.toFixed(1)} ({reviewSummary.count})
+              </span>
+            )}
           </div>
           {isOriginalWork(service) && <p className="text-secondary fs-9 mt-2 mb-0">{ORIGINAL_EXPLANATION}</p>}
         </div>
@@ -245,6 +274,25 @@ function ServiceDetails({ serviceId }) {
             </div>
           </>
         )}
+
+        {/* Ratings and comments from clients, read before booking. */}
+        <div className="mb-4">
+          <ServiceReviews
+            serviceId={service.id}
+            reviews={reviews}
+            loadError={reviewsError}
+            onReviewsChange={setReviews}
+            currentUserId={currentUserId}
+            accountType={accountType}
+            isOwnOffer={isOwnOffer}
+            showToast={showToast}
+            onReport={(review) => setReportTarget({
+              type: "service_review",
+              id: review.id,
+              name: `${review.author?.full_name || review.author?.username || "A client"}'s comment`
+            })}
+          />
+        </div>
 
         <h4 className="text-white fw-bold mb-3"><i className="bi bi-calendar-check text-role me-2"></i> Book this offer</h4>
         <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-25">

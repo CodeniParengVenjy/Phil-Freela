@@ -22,7 +22,8 @@ export function checkScreenshot(file) {
 // file is left behind. The database checks the rest (you report as yourself,
 // can't report yourself, and a call report must be about the other person
 // in that call). Returns { error } like Supabase does.
-//   target: { type: "user" | "service" | "job_post" | "portfolio_item", id, callId? }
+//   target: { type: "user" | "service" | "job_post" | "portfolio_item" | "service_review", id, callId? }
+//           (service_review = a comment on an offer, see lib/serviceReviews.js)
 //           or { type: "profile_picture" | "cover_photo", id: the owner's user id,
 //           reportedPath: the picture's file, as it is now on their profile }.
 //           The report keeps the file, so a later change of picture can't make
@@ -83,12 +84,13 @@ export const reportReasons = [
   { value: "scam", label: "Scam / Fraud" },
   { value: "inappropriate", label: "Inappropriate content" },
   { value: "harassment", label: "Harassment" },
-  { value: "fake_profile", label: "Fake profile" },
+  // notFor: a comment on an offer isn't a profile.
+  { value: "fake_profile", label: "Fake profile", notFor: ["service_review"] },
   // Someone else's work posted as their own (PLAN-stolen-work.md). This is
   // how work taken from outside PhilFreela gets caught: the copy check only
   // knows what was posted here. needsDetails: the reporter must say where the
-  // original is. notFor: a job post has no work in it.
-  { value: "stolen_work", label: "Stolen work / plagiarism", needsDetails: true, notFor: ["job_post"] },
+  // original is. notFor: a job post and a comment have no work in them.
+  { value: "stolen_work", label: "Stolen work / plagiarism", needsDetails: true, notFor: ["job_post", "service_review"] },
   { value: "other", label: "Other" }
 ];
 
@@ -108,7 +110,8 @@ export const reportTargetLabels = {
   job_post: "Job Post",
   portfolio_item: "Portfolio Project",
   profile_picture: "Profile Picture",
-  cover_photo: "Cover Photo"
+  cover_photo: "Cover Photo",
+  service_review: "Comment"
 };
 
 // A reported profile picture or cover photo: the column on the owner's profile
@@ -143,5 +146,7 @@ export async function removeReportedPicture(report) {
 export const reportListingTables = {
   service: "services",
   job_post: "job_posts",
-  portfolio_item: "portfolio_items"
+  portfolio_item: "portfolio_items",
+  // A reported comment on an offer (a super admin removes it; a regular admin asks).
+  service_review: "service_reviews"
 };

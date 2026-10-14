@@ -15,7 +15,7 @@ const tabs = [
 
 // What a "remove" request points at, by its table: the same words reports
 // use for their targets ("service:<id>" and so on in the names list below).
-const targetOfTable = { services: "service", job_posts: "job_post", portfolio_items: "portfolio_item" };
+const targetOfTable = { services: "service", job_posts: "job_post", portfolio_items: "portfolio_item", service_reviews: "service_review" };
 
 // Super admins only (the menu hides it, and the database refuses everyone
 // else). A regular admin's Suspend, Ban, Resolve, Dismiss, Remove listing and
@@ -62,12 +62,14 @@ export default function AdminApprovalsView() {
       const serviceIds = [...new Set([...idsOf("service"), ...result.data.filter((r) => r.listing_table === "services").map((r) => r.listing_id)])];
       const jobIds = [...new Set([...idsOf("job_post"), ...result.data.filter((r) => r.listing_table === "job_posts").map((r) => r.listing_id)])];
       const projectIds = [...new Set([...idsOf("portfolio_item"), ...result.data.filter((r) => r.listing_table === "portfolio_items").map((r) => r.listing_id)])];
+      const reviewIds = [...new Set([...idsOf("service_review"), ...result.data.filter((r) => r.listing_table === "service_reviews").map((r) => r.listing_id)])];
 
-      const [users, services, jobs, projects] = await Promise.all([
+      const [users, services, jobs, projects, reviews] = await Promise.all([
         userIds.length ? supabase.from("profiles").select("id, full_name, username").in("id", userIds) : { data: [] },
         serviceIds.length ? supabase.from("services").select("id, title").in("id", serviceIds) : { data: [] },
         jobIds.length ? supabase.from("job_posts").select("id, title").in("id", jobIds) : { data: [] },
-        projectIds.length ? supabase.from("portfolio_items").select("id, title").in("id", projectIds) : { data: [] }
+        projectIds.length ? supabase.from("portfolio_items").select("id, title").in("id", projectIds) : { data: [] },
+        reviewIds.length ? supabase.from("service_reviews").select("id, author:profiles!service_reviews_author_id_fkey(full_name), service:services(title)").in("id", reviewIds) : { data: [] }
       ]);
       if (!active) return;
 
@@ -80,6 +82,7 @@ export default function AdminApprovalsView() {
       (services.data || []).forEach((s) => { found[`service:${s.id}`] = s.title; });
       (jobs.data || []).forEach((j) => { found[`job_post:${j.id}`] = j.title; });
       (projects.data || []).forEach((p) => { found[`portfolio_item:${p.id}`] = p.title; });
+      (reviews.data || []).forEach((r) => { found[`service_review:${r.id}`] = `the comment by ${r.author?.full_name || "a client"} on "${r.service?.title || "a deleted offer"}"`; });
 
       setReports(reportMap);
       setNames(found);
@@ -137,13 +140,16 @@ export default function AdminApprovalsView() {
       }
     } else if (request.kind === "remove_listing") {
       // Removing a service or a portfolio project also removes its files, so load them first.
+      // (A comment has no files.)
       const isProject = request.listing_table === "portfolio_items";
+      const isComment = request.listing_table === "service_reviews";
       const select = request.listing_table === "services" ? `id, title, image_url, ${SLIDES_SELECT}`
-        : isProject ? `id, title, ${SLIDES_SELECT}` : "id, title";
+        : isProject ? `id, title, ${SLIDES_SELECT}` : isComment ? "id" : "id, title";
       const { data: item } = await supabase.from(request.listing_table).select(select).eq("id", request.listing_id).maybeSingle();
+      const word = isComment ? "Comment" : isProject ? "Project" : "Listing";
       // Already gone (the owner or another admin removed it): nothing left to do.
-      if (item && !(await removeListing(request.listing_table, item))) throw new Error(`Couldn't remove the ${isProject ? "project" : "listing"}.`);
-      await closeReport(request.report_id, "resolved", `${isProject ? "Project" : "Listing"} removed.${details.note ? ` ${details.note}` : ""}`);
+      if (item && !(await removeListing(request.listing_table, item))) throw new Error(`Couldn't remove the ${word.toLowerCase()}.`);
+      await closeReport(request.report_id, "resolved", `${word} removed.${details.note ? ` ${details.note}` : ""}`);
     } else if (request.kind === "remove_picture") {
       // The report says which picture file; the database clears it only if it is
       // still the reported one, then the file is deleted. Already changed or
@@ -193,6 +199,7 @@ export default function AdminApprovalsView() {
     if (request.kind === "ban") return "They will be signed out and can't log in until an admin unbans them.";
     if (request.kind === "suspend") return "The suspension starts now, and the length and limits come from the violation.";
     if (request.kind === "remove_listing") {
+      if (request.listing_table === "service_reviews") return "The comment will be deleted, and the report marked resolved.";
       return `The ${request.listing_table === "portfolio_items" ? "project" : "listing"} (and its files) will be deleted, and the report marked resolved.`;
     }
     if (request.kind === "remove_picture") return "The picture will be taken off their profile (back to the first-letter circle or the plain banner) and its file deleted, and the report marked resolved.";

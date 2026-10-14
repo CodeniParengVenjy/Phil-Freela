@@ -15,10 +15,12 @@ export const requestKindText = {
   remove_picture: "Remove picture"
 };
 
-// What one request is called on screen. A reported portfolio project is
-// removed with the same kind of request as a listing, under its own name.
+// What one request is called on screen. A reported portfolio project or a
+// reported comment is removed with the same kind of request as a listing,
+// under its own name.
 export function requestText(request) {
   if (request.kind === "remove_listing" && request.listing_table === "portfolio_items") return "Remove project";
+  if (request.kind === "remove_listing" && request.listing_table === "service_reviews") return "Remove comment";
   return requestKindText[request.kind];
 }
 

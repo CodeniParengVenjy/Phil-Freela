@@ -30,9 +30,15 @@ const actionText = {
 // Key for looking up what a report points at, e.g. "service:<id>".
 const targetKey = (type, id) => `${type}:${id}`;
 
-// "Project" for a reported portfolio project, "Listing" for a service or job
-// post, so the Remove button and its pop-up use the right word.
-const removeWord = (report) => (report.target_type === "portfolio_item" ? "Project" : "Listing");
+// "Project" for a reported portfolio project, "Comment" for a comment on an
+// offer, "Listing" for a service or job post, so the Remove button and its
+// pop-up use the right word.
+const removeWord = (report) => (report.target_type === "portfolio_item" ? "Project" : report.target_type === "service_review" ? "Comment" : "Listing");
+
+// What the Remove pop-up says will happen (a comment has no files).
+const removeText = (report) => (report.target_type === "service_review"
+  ? "The comment will be deleted, and this report marked resolved."
+  : `The ${removeWord(report).toLowerCase()} (and its files) will be deleted, and this report marked resolved.`);
 
 // The picture that was reported, shown from its own saved file (not from the
 // person's profile as it is now, which may have changed). Click it to open it
@@ -131,7 +137,7 @@ export default function AdminReportsView() {
       // report card can show the name/title and the owner.
       const idsOf = (type) => [...new Set(reportsResult.data.filter((r) => r.target_type === type).map((r) => r.target_id))];
       const callIds = [...new Set(reportsResult.data.map((r) => r.call_id).filter(Boolean))];
-      const [usersResult, servicesResult, jobsResult, projectsResult, callsResult, links] = await Promise.all([
+      const [usersResult, servicesResult, jobsResult, projectsResult, reviewsResult, callsResult, links] = await Promise.all([
         // A reported picture points at its owner, so their profile is looked up
         // too (with where their picture and cover are now).
         supabase.from("profiles").select("id, full_name, username, avatar_path, cover_path").in("id", [...new Set([...idsOf("user"), ...idsOf("profile_picture"), ...idsOf("cover_photo")])]),
@@ -140,6 +146,8 @@ export default function AdminReportsView() {
         supabase.from("job_posts").select("id, title, client_id, owner:profiles!job_posts_client_id_fkey(full_name, username)").in("id", idsOf("job_post")),
         // Reported portfolio projects, with their slides for the same reason as services.
         supabase.from("portfolio_items").select(`id, title, freelancer_id, owner:profiles!portfolio_items_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`).in("id", idsOf("portfolio_item")),
+        // Reported comments on offers: who wrote them, and on which offer.
+        supabase.from("service_reviews").select("id, stars, comment, created_at, author_id, author:profiles!service_reviews_author_id_fkey(full_name, username), service:services(title)").in("id", idsOf("service_review")),
         // Admins can't read the calls table, only this summary (no IP addresses).
         callIds.length ? supabase.rpc("admin_report_calls", { call_ids: callIds }) : { data: [] },
         getScreenshotLinks(reportsResult.data.flatMap((r) => r.evidence_paths || []))
@@ -165,6 +173,13 @@ export default function AdminReportsView() {
       });
       (projectsResult.data || []).forEach((p) => {
         found[targetKey("portfolio_item", p.id)] = { name: p.title, ownerId: p.freelancer_id, ownerName: p.owner?.full_name, item: p };
+      });
+      // The author of a comment is its "owner" (Suspend / Ban apply to them); review keeps the comment to show.
+      (reviewsResult.data || []).forEach((r) => {
+        found[targetKey("service_review", r.id)] = {
+          name: `Comment on "${r.service?.title || "a deleted offer"}"`,
+          ownerId: r.author_id, ownerName: r.author?.full_name, item: { id: r.id }, review: r
+        };
       });
 
       setTargets(found);
@@ -377,6 +392,22 @@ export default function AdminReportsView() {
                 </p>
               )}
 
+              {/* A reported comment: its stars and words, as they are now. */}
+              {report.target_type === "service_review" && target?.review && (
+                <div className="mb-2">
+                  <p className="fs-8 text-white-50 mb-1">What was reported:</p>
+                  <div className="rounded-3 border border-warning border-opacity-50 p-2">
+                    <span className="text-warning" aria-label={`${target.review.stars} out of 5 stars`}>
+                      {[1, 2, 3, 4, 5].map((n) => <i key={n} className={`bi ${n <= target.review.stars ? "bi-star-fill" : "bi-star"}`}></i>)}
+                    </span>
+                    <span className="fs-8 text-white-50"> · {new Date(target.review.created_at).toLocaleDateString()}</span>
+                    {target.review.comment
+                      ? <p className="fs-7 text-white mb-0 mt-1 admin-description" style={{ whiteSpace: "pre-wrap" }}>{target.review.comment}</p>
+                      : <p className="fs-8 text-white-50 fst-italic mb-0 mt-1">(stars only, no comment)</p>}
+                  </div>
+                </div>
+              )}
+
               {/* The reported service's or project's own pictures; click one to open it full size. */}
               {isListing && target && listingPictures(target.item).length > 0 && (
                 <div className="mb-2">
@@ -477,7 +508,7 @@ export default function AdminReportsView() {
               {actionText[action.kind].penalty && action.target && ` — ${action.target.ownerName}`}
             </h2>
             <p className="text-secondary fs-7 mb-3">
-              {action.kind === "remove" && `The ${removeWord(action.report).toLowerCase()} (and its files) will be deleted, and this report marked resolved.`}
+              {action.kind === "remove" && removeText(action.report)}
               {action.kind === "remove_picture" && "The picture is taken off their profile (they go back to the first-letter circle or the plain banner) and its file is deleted. This report will be marked resolved."}
               {action.kind === "suspend" && "The violation decides how long it lasts and what they can't do. This report will be marked resolved."}
               {action.kind === "ban" && "They will be signed out and can't log in until an admin unbans them. This report will be marked resolved."}

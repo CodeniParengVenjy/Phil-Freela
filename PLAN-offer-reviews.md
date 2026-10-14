@@ -86,4 +86,29 @@ The connector did not refuse the two constraint changes this time.
 Not tested: a suspended person can't rate / their comments are hidden (a
 suspension notifies the person, so it isn't made up for a borrowed account).
 
-Next: Step 2b (website): the box and list, the report flag, the admin pages.
+Step 2b (website): built and pushed (2026-10-14). New `lib/serviceReviews.js`
+and `components/ServiceReviews.jsx` (summary, the box with 5 stars and an
+optional comment of up to 1,000 characters, the list, Remove for your own, a
+report flag on others'); `views/ServiceDetailsView.jsx` loads the ratings,
+shows the "★ 4.0 (2)" chip next to the category and price, and puts the
+section above the Book box; `lib/reports.js` (label "Comment", the table for
+removal, no "Stolen work" or "Fake profile" reason for a comment),
+`views/AdminReportsView.jsx` (the reported comment with its stars, Remove
+Comment), `views/AdminApprovalsView.jsx` + `lib/adminRequests.js` +
+`lib/adminListings.js` (a regular admin's request to remove a comment, carried
+out by the super admin; no files to delete). Tested in the browser against a
+fake backend, desktop and phone (73 checks): the box for a client, a refusal in
+the database's own words, posting (trimmed comment, summary and chip update,
+my rating first with "(you)"), reporting a comment, removing my own rating,
+the 1,000-character stop, a freelancer and the offer's owner (no box, told
+why), an offer with no ratings, the admin Reports page as a super admin
+(removes at once) and as a regular admin (sends a request that names the
+comment), and the Approvals page (approving deletes it and resolves the
+report); plus the earlier offer-page (86) and document-preview (65) tests
+again. Not tested: a real post on the live site (the fake backend follows the
+database function's rules, which were tested in SQL), and the Reports page
+with a real reported comment.
+
+All of step 2 is built, pushed and live. Next: PDF blur for all text files
+(PLAN-document-previews.md, step B5), then reporting a chat with its messages
+(PLAN-chat-report-messages.md).
