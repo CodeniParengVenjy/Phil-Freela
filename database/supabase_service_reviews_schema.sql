@@ -205,7 +205,7 @@ end;
 $$;
 
 -- The message to the reporter once an admin has reviewed the report, now also
--- for a comment. (Everything else in it is as before.)
+-- for a comment. (Everything else in it is as before. Part 3 is further down.)
 create or replace function public.notify_report_reviewed()
 returns trigger
 language plpgsql
@@ -242,3 +242,28 @@ begin
   return new;
 end;
 $$;
+
+-- ===========================================================================
+-- Part 3: the average for many offers at once (the cards in Browse, Search and
+-- on profiles). Run it on its own, after parts 1 and 2.
+-- ===========================================================================
+
+-- Gives the average stars and the number of ratings of each listed offer; an
+-- offer with no ratings is not in the answer. It reads the table as the person
+-- asking, so it counts the same ratings they can read on the offer's page (a
+-- suspended person's hidden comments are left out). One call for a whole list,
+-- like rating_summaries does for people.
+create or replace function public.service_rating_summaries(ids uuid[])
+returns table (service_id uuid, avg_stars numeric, rating_count integer)
+language sql
+stable
+set search_path = public
+as $$
+  select r.service_id, round(avg(r.stars)::numeric, 1), count(*)::integer
+  from public.service_reviews r
+  where r.service_id = any (ids)
+  group by r.service_id;
+$$;
+
+revoke execute on function public.service_rating_summaries(uuid[]) from public, anon;
+grant execute on function public.service_rating_summaries(uuid[]) to authenticated;

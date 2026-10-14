@@ -11,6 +11,7 @@ import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import OriginalBadge, { ORIGINAL_EXPLANATION } from "../../../components/OriginalBadge";
+import RatingChip from "../../../components/RatingChip";
 import StarRating from "../../../components/StarRating";
 import BookDialog from "../components/BookDialog";
 import MediaCarousel from "../components/MediaCarousel";
@@ -249,11 +250,7 @@ function ServiceDetails({ serviceId }) {
             </span>
             {isOriginalWork(service) && <OriginalBadge className="px-3 py-2" />}
             {/* What clients rated this offer (from the box further down). */}
-            {reviewSummary.count > 0 && (
-              <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill" title="Average rating clients gave this offer">
-                <i className="bi bi-star-fill me-1"></i>{reviewSummary.average.toFixed(1)} ({reviewSummary.count})
-              </span>
-            )}
+            <RatingChip rating={reviewSummary} className="px-3 py-2" />
           </div>
           {isOriginalWork(service) && <p className="text-secondary fs-9 mt-2 mb-0">{ORIGINAL_EXPLANATION}</p>}
         </div>

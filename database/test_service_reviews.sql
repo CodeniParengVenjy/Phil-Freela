@@ -1,4 +1,4 @@
--- Test for supabase_service_reviews_schema.sql. Paste this whole file into the
+-- Test for supabase_service_reviews_schema.sql (parts 1 to 3). Paste this whole file into the
 -- Supabase SQL Editor and run it AFTER the schema file (or send the schema file
 -- and this block together in one call to try it before applying: the error at
 -- the end rolls the schema back too). It BORROWS real accounts (2 clients, a
@@ -236,6 +236,35 @@ begin
   res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '7b. ...and one that is gone';
   select position('a comment' in prosrc) > 0 into ok from pg_proc where proname = 'notify_report_reviewed' and pronamespace = 'public'::regnamespace;
   res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '7c. the message to the reporter says "a comment"';
+
+  -- ===== The average for many offers (part 3) =====
+  -- svc now has two ratings left: cb's 4 stars and ca's 2 stars (average 3.0).
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub', cb::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', cb, 'role', 'authenticated')::text, true);
+  select count(*) = 1 and bool_and(avg_stars = 3.0 and rating_count = 2 and service_id = svc) into ok from public.service_rating_summaries(array[svc, own_svc]);
+  res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '8a. two offers asked for: only the one with ratings comes back, with its average (3.0) and count (2)';
+  select (select avg_stars from public.service_rating_summaries(array[svc])) = (select round(avg(stars)::numeric, 1) from public.service_reviews where service_id = svc) into ok;
+  res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '8b. the same average the offer page works out from the list';
+  select count(*) = 0 into ok from public.service_rating_summaries(array[]::uuid[]);
+  res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '8c. an empty list gives nothing';
+  select count(*) = 0 into ok from public.service_rating_summaries(array[gen_random_uuid()]);
+  res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '8d. an offer that does not exist gives nothing';
+  perform set_config('request.jwt.claim.sub', fr::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', fr, 'role', 'authenticated')::text, true);
+  select count(*) = 1 into ok from public.service_rating_summaries(array[svc]);
+  res := res || E'\n' || case when ok then 'PASS  ' else 'FAIL  ' end || '8e. a freelancer can ask too (the cards show it to everyone signed in)';
+  reset role;
+  set local role anon;
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claims', '', true);
+  begin
+    perform count(*) from public.service_rating_summaries(array[svc]);
+    res := res || E'\nFAIL  8f. a signed-out visitor could ask';
+  exception when insufficient_privilege then
+    res := res || E'\nPASS  8f. a signed-out visitor can''t ask';
+  end;
+  reset role;
 
   raise exception E'SERVICE REVIEW TESTS (rolled back)%', res;
 end

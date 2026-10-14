@@ -22,6 +22,20 @@ export async function fetchServiceReviews(serviceId) {
   return { reviews: data };
 }
 
+// The average stars and the number of ratings of several offers at once, for
+// the cards in Browse, Search and on profiles: one request for the whole list
+// (the database function service_rating_summaries). Returns a Map of offer id ->
+// { count, average }; an offer with no ratings isn't in it. If the request
+// fails the cards simply show no rating.
+export async function fetchServiceRatings(serviceIds) {
+  const ratings = new Map();
+  if (!serviceIds.length) return ratings;
+  const { data, error } = await supabase.rpc("service_rating_summaries", { ids: serviceIds });
+  if (error) return ratings;
+  data.forEach((row) => ratings.set(row.service_id, { count: row.rating_count, average: Number(row.avg_stars) }));
+  return ratings;
+}
+
 // How many ratings a list has and their average stars (one decimal), or null
 // as the average when there are none.
 export function summarizeReviews(reviews) {

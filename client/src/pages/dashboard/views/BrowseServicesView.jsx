@@ -5,8 +5,10 @@ import { categories, getCategory } from "../../../lib/categories";
 import { removeListing } from "../../../lib/adminListings";
 import { byPick, useRecommendations } from "../../../lib/useRecommendations";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import { useServiceRatings } from "../../../lib/useServiceRatings";
 import { SLIDES_SELECT, isOriginalWork, itemSlides } from "../../../lib/slides";
 import OriginalBadge from "../../../components/OriginalBadge";
+import RatingChip from "../../../components/RatingChip";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import ReportDialog from "../components/ReportDialog";
@@ -62,6 +64,8 @@ export default function BrowseServicesView({ withRecommendations = false }) {
   // The database only lists services from verified freelancers (plus your
   // own), so this is mostly for the check mark next to each name.
   const verifiedIds = useVerifiedIds((services || []).map((s) => s.freelancer?.id));
+  // What clients rated each offer, for the "★ 4.5 (2)" on its card.
+  const ratings = useServiceRatings((services || []).map((s) => s.id));
 
   const filtered = useMemo(() => {
     if (!services) return [];
@@ -166,6 +170,8 @@ export default function BrowseServicesView({ withRecommendations = false }) {
                       {isOriginalWork(s) && <OriginalBadge className="fs-8" />}
                       {/* The freelancer switched "Available for work" off in Settings. */}
                       <AvailabilityBadge available={s.freelancer?.available_for_work} className="fs-8" />
+                      {/* The average of the clients' ratings of this offer. */}
+                      <RatingChip rating={ratings.get(s.id)} className="fs-8" />
                     </div>
                     <h6 className="text-white fw-bold mb-1">
                       {/* Opens the offer's own page: its description and, for

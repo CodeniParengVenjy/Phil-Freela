@@ -1,14 +1,17 @@
 import { Link } from "react-router-dom";
 import { getCategory } from "../../../lib/categories";
 import { itemSlides } from "../../../lib/slides";
+import RatingChip from "../../../components/RatingChip";
 
 const mediaBox = { width: 64, height: 64 };
 
 // One posted service as a row: its first photo or video (a PDF's first page,
 // a document icon for another document, or the category icon when it has
 // none), title, category, price and date. Pass onDelete to show a
-// Delete button, or `to` to make the whole row a link (to the offer's page).
-export default function ServiceCard({ service, onDelete, to }) {
+// Delete button, or `to` to make the whole row a link (to the offer's page),
+// and rating ({ count, average }, lib/useServiceRatings.js) to show the average
+// of its ratings next to the category.
+export default function ServiceCard({ service, onDelete, to, rating }) {
   const category = getCategory(service.category);
   const cover = itemSlides(service)[0];
   // The picture to show: the photo itself, or a PDF's first page (step 11),
@@ -36,7 +39,10 @@ export default function ServiceCard({ service, onDelete, to }) {
         <h6 className="text-white fw-bold mb-1 text-truncate">
           {to ? <Link to={to} className="text-white text-decoration-none stretched-link">{service.title}</Link> : service.title}
         </h6>
-        <span className="badge bg-role text-white fs-8 mb-2 d-inline-block text-truncate mw-100">{category.label}</span>
+        <div className="d-flex flex-wrap align-items-center gap-1 mb-2">
+          <span className="badge bg-role text-white fs-8 d-inline-block text-truncate mw-100">{category.label}</span>
+          <RatingChip rating={rating} className="fs-8" />
+        </div>
         <p className="text-secondary fs-8 mb-0">
           {service.price ? `Starting at ₱${Number(service.price).toLocaleString()}` : "Price on request"} • {new Date(service.created_at).toLocaleDateString()}
         </p>

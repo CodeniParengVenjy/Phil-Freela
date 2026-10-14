@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { SLIDES_SELECT, removeItemFiles } from "../../../lib/slides";
+import { useServiceRatings } from "../../../lib/useServiceRatings";
 import ServiceCard from "../components/ServiceCard";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import ApplicationsPanel from "../components/ApplicationsPanel";
@@ -13,6 +14,8 @@ export default function ProjectsView() {
   // Goes up by one after each hire, so My Projects reloads and shows it.
   const [hireCount, setHireCount] = useState(0);
   const [services, setServices] = useState(null);
+  // What clients rated each of your offers, for the "★ 4.5 (2)" on its card.
+  const ratings = useServiceRatings((services || []).map((s) => s.id));
   const [servicesError, setServicesError] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -83,7 +86,7 @@ export default function ProjectsView() {
               <div className="row g-3">
                 {services?.map((s) => (
                   <div className="col-md-6 col-xl-4" key={s.id}>
-                    <ServiceCard service={s} onDelete={setServiceToDelete} />
+                    <ServiceCard service={s} onDelete={setServiceToDelete} rating={ratings.get(s.id)} />
                   </div>
                 ))}
               </div>

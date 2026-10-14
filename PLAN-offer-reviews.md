@@ -40,7 +40,8 @@ ratings" almost everywhere.
   suspended from posting can't rate, and a suspended person's comments are
   hidden while it lasts.
 - Separate from the freelancer's project stars (the header keeps those).
-- No replies, no bell or email for new comments, no rating on the cards.
+- No replies, no bell or email for new comments. (The rating on the cards was
+  added afterwards, see step 2c.)
 - The report reasons for a comment leave out "Stolen work" and "Fake profile".
 
 ## Database (file `database/supabase_service_reviews_schema.sql`)
@@ -112,3 +113,21 @@ with a real reported comment.
 All of step 2 is built, pushed and live. Next: PDF blur for all text files
 (PLAN-document-previews.md, step B5), then reporting a chat with its messages
 (PLAN-chat-report-messages.md).
+
+Step 2c (the rating on the cards, 2026-10-14, asked for as a small leftover):
+"★ 4.5 (2)" now also shows on the offer cards: Browse Services (and so
+"Recommended for you"), the search results, a freelancer's "Services offered"
+on their public page, and a freelancer's own My Services and Projects lists. One
+request per list, not per card: a new database function
+`service_rating_summaries(ids)` (part 3 of `database/supabase_service_reviews_schema.sql`,
+applied as migration "service_rating_summaries"; it reads the table as the
+person asking, so it counts what they can read on the offer's page; signed-out
+visitors can't call it). Tested before applying in the same rolled-back call as
+the earlier checks (39 checks in all, 6 new; nothing left behind, counter still
+17). Website: `lib/serviceReviews.js` `fetchServiceRatings`,
+`lib/useServiceRatings.js`, new `components/RatingChip.jsx` (the offer page uses
+it too now), `ServiceCard` takes a `rating`. Tested in the browser against a
+fake backend, desktop and phone, dark and light (37 checks; plus the ratings
+(73) and offer-page (86) tests again): the chip, none for an unrated offer, one
+request for the whole list, and a failed request just leaves the chip off. Not
+shown on: the moodboard picture-search results (they are freelancers, not offers).

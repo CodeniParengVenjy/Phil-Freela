@@ -7,7 +7,9 @@ import { PICTURE_TYPES, checkPicture } from "../../../lib/pictureSearch";
 import { searchPeople } from "../../../lib/profile";
 import { profilePath } from "../../../lib/profileStats";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import { useServiceRatings } from "../../../lib/useServiceRatings";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import RatingChip from "../../../components/RatingChip";
 import Avatar from "../../../components/Avatar";
 import PictureSearchDialog from "../components/PictureSearchDialog";
 
@@ -106,6 +108,8 @@ export default function SearchResultsView() {
     ...result.jobs.map((j) => j.client?.id),
     ...foundPeople.map((person) => person.id)
   ]);
+  // What clients rated the services found, for the "★ 4.5 (2)" on their cards.
+  const ratings = useServiceRatings(result.services.map((s) => s.id));
 
   // Clients look for services first, freelancers for jobs.
   const sections = [
@@ -199,6 +203,7 @@ export default function SearchResultsView() {
                   key={item.id}
                   item={item}
                   isService={section.key === "services"}
+                  rating={section.key === "services" ? ratings.get(item.id) : undefined}
                   verifiedIds={verifiedIds}
                   currentUserId={currentUserId}
                   onMessage={openChat}
@@ -254,8 +259,9 @@ function PersonCard({ person, verified, onMessage }) {
 }
 
 // One matching service or job post. A service has a View offer button: its own
-// page shows the description and is where a client books.
-function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage }) {
+// page shows the description and is where a client books, and the average of its
+// ratings (rating) when it has any.
+function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMessage }) {
   const owner = isService ? item.freelancer : item.client;
   const ownerName = owner?.full_name || owner?.username || (isService ? "Freelancer" : "Client");
   const category = getCategory(item.category);
@@ -287,6 +293,7 @@ function ResultCard({ item, isService, verifiedIds, currentUserId, onMessage }) 
           </span>
           {amount && <span className="text-warning">₱{Number(amount).toLocaleString()}</span>}
           <span className="badge bg-black text-light-50 text-wrap text-start">{category.label}</span>
+          <RatingChip rating={rating} className="fs-8" />
         </div>
       </div>
 

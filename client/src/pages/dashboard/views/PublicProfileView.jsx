@@ -5,6 +5,7 @@ import { fetchIsVerified } from "../../../lib/verification";
 import { countPortfolio } from "../../../lib/portfolio";
 import { fetchProfileStats } from "../../../lib/profileStats";
 import { SLIDES_SELECT } from "../../../lib/slides";
+import { useServiceRatings } from "../../../lib/useServiceRatings";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import StarRating from "../../../components/StarRating";
@@ -196,6 +197,8 @@ function PublicProfile({ userId }) {
 function ServicesOffered({ freelancerId }) {
   // null while loading.
   const [services, setServices] = useState(null);
+  // What clients rated each of them, for the "★ 4.5 (2)" on its card.
+  const ratings = useServiceRatings((services || []).map((s) => s.id));
 
   useEffect(() => {
     let active = true;
@@ -222,7 +225,7 @@ function ServicesOffered({ freelancerId }) {
       <div className="row g-3">
         {services.map((service) => (
           <div className="col-md-6" key={service.id}>
-            <ServiceCard service={service} to={`/dashboard/service-details/${service.id}`} />
+            <ServiceCard service={service} to={`/dashboard/service-details/${service.id}`} rating={ratings.get(service.id)} />
           </div>
         ))}
       </div>

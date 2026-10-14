@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
 import { skillOptions } from "../../../lib/serviceSkills";
 import { fetchIsVerified } from "../../../lib/verification";
+import { useServiceRatings } from "../../../lib/useServiceRatings";
 import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, addPickedFiles, ownershipPassedMessage, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
@@ -29,6 +30,8 @@ export default function ServicesView() {
   // "Checking ownership: 2 of 5..." while the slides are being sent.
   const [progress, setProgress] = useState("");
   const [services, setServices] = useState(null);
+  // What clients rated each of your offers, for the "★ 4.5 (2)" on its row.
+  const ratings = useServiceRatings((services || []).map((s) => s.id));
   // Only freelancers with a verified identity can offer services (the
   // database enforces this too). null while checking.
   const [isVerified, setIsVerified] = useState(null);
@@ -266,7 +269,7 @@ export default function ServicesView() {
             )}
 
             <div className="d-flex flex-column gap-3">
-              {services?.map((s) => <ServiceCard key={s.id} service={s} />)}
+              {services?.map((s) => <ServiceCard key={s.id} service={s} rating={ratings.get(s.id)} />)}
             </div>
           </div>
         </div>
