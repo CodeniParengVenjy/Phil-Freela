@@ -40,6 +40,7 @@ const pageTitles = {
   "/admin/forgot-password": "Admin Forgot Password",
   "/admin": "Admin Overview",
   "/admin/users": "Monitor Users",
+  "/admin/pending": "Pending Users",
   "/admin/listings": "Monitor Listings",
   "/admin/reports": "Monitor Reports",
   "/admin/flagged": "Monitor Flagged Content",

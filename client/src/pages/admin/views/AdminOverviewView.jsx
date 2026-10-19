@@ -16,6 +16,7 @@ const statCards = [
   { key: "verified_users", label: "Verified Users", icon: "bi-patch-check-fill", color: "green", to: "/admin/users?verified=verified" },
   { key: "not_verified", label: "Not Verified Users", icon: "bi-person-x-fill", color: "red", to: "/admin/users?verified=unverified", value: (stats) => stats.total_users - stats.verified_users },
   { key: "new_this_week", label: "New Users This Week", icon: "bi-person-plus-fill", color: "green", to: "/admin/users?sort=joined&dir=desc" },
+  { key: "pending_users", label: "Pending Users", icon: "bi-hourglass-split", color: "orange", to: "/admin/pending" },
   { key: "services", label: "Services Posted", icon: "bi-grid-fill", color: "orange", to: "/admin/listings" },
   { key: "job_posts", label: "Job Posts", icon: "bi-megaphone-fill", color: "cyan", to: "/admin/listings" },
   { key: "admins", label: "Admins", icon: "bi-shield-lock-fill", color: "cyan", to: "/admin/admins", superAdminOnly: true },
@@ -76,7 +77,8 @@ export default function AdminOverviewView() {
           {statCards.map((card) => {
             // Only a super admin can open the Admins page.
             const linked = !card.superAdminOnly || isSuperAdmin;
-            const number = stats ? (card.value ? card.value(stats) : stats[card.key]) : "...";
+            // A dash if the database didn't send this number.
+            const number = stats ? ((card.value ? card.value(stats) : stats[card.key]) ?? "-") : "...";
             const body = (
               <>
                 <span className={`admin-stat-icon admin-stat-${card.color}`}>

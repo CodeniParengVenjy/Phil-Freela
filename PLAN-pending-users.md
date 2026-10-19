@@ -119,8 +119,8 @@ New file `database/supabase_pending_users_schema.sql`. No new tables.
 
 1. Any admin can resend, not only super admins (like the Users page).
 2. 60 seconds between sends to the same person (Supabase's own rule).
-3. The sidebar link has a number badge, like Reports. Dropping the badge is a
-   small change.
+3. The sidebar link has a number badge, like Reports (amber instead of red).
+   Dropping the badge is a small change.
 4. The list is cut at the newest 500.
 
 ## Not included
@@ -183,5 +183,31 @@ uses it is pushed)
 
 ## Current step
 
-Plan written on 2026-10-19. Waiting for the owner's "ok" and a yes or no on
-Part B. Nothing is built yet.
+Plan written on 2026-10-19 and approved the same day ("go go go"). The owner
+did not say yes to Part B, so only Part A was built.
+
+Part A, steps 1 to 4: built (2026-10-19).
+
+1. Database: applied to the live project (migration `pending_users`) after a
+   rolled-back trial of 14 checks (`database/test_pending_users.sql`): nothing
+   left behind, no user numbers used up. 11 people were pending at that time.
+2. `lib/resendConfirmation.js`: `resendConfirmation()` and `useResendWait()`.
+3. `AdminPendingView.jsx`, the route, the page title, the sidebar link and the
+   Overview card. Two small choices not in the plan: the sidebar number is
+   amber (`bg-warning`), not red like Reports, because these people wait on
+   their own email, not on an admin decision (and the number never reaches 0
+   while old pending accounts stay); and the page's CSS is a few lines at the
+   end of `admin.css` (`admin-pending-*`).
+4. Browser check: Playwright with a fake backend, laptop and phone, 124 checks
+   (62 each): the card and badge, a missing number shows a dash, the list and
+   search, a resend and the 60-second wait, resending again after the minute
+   (three sends to one person), Supabase's "wait N seconds", the hourly limit,
+   no network, "Sending...", Refresh keeping the wait and dropping someone who
+   confirmed, the empty and error states, and a non-admin sent to the admin
+   sign-in. It found one real bug (the first label said 61s instead of 60s),
+   fixed before committing. Never seen with real rows from the real API: the
+   fake answers `admin_pending_users` with a plain list, like the real function
+   does (checked with the rolled-back SQL test).
+
+Part B (the testers' own "Resend my email" page): not built. Waiting for the
+owner's yes.

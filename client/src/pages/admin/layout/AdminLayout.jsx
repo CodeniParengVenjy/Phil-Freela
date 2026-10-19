@@ -10,6 +10,7 @@ const ADMIN_COLUMNS = "id, full_name, username, role, must_change_password";
 const sidebarLinks = [
   { to: "/admin", end: true, icon: "bi-speedometer2", label: "Overview" },
   { to: "/admin/users", icon: "bi-people-fill", label: "Users" },
+  { to: "/admin/pending", icon: "bi-hourglass-split", label: "Pending Users", showPendingUsers: true },
   { to: "/admin/listings", icon: "bi-grid-fill", label: "Listings" },
   { to: "/admin/reports", icon: "bi-flag-fill", label: "Reports", showPendingReports: true },
   { to: "/admin/verifications", icon: "bi-person-vcard-fill", label: "Verifications", showPendingVerifications: true },
@@ -46,6 +47,9 @@ export default function AdminLayout() {
   const [pendingFlagged, setPendingFlagged] = useState(0);
   // Number shown on the Approvals link (super admins only).
   const [pendingApprovals, setPendingApprovals] = useState(0);
+  // Number shown on the Pending Users link: people who signed up but haven't
+  // confirmed their email.
+  const [pendingUsers, setPendingUsers] = useState(0);
 
   // Counts requests waiting for a super admin. The Approvals page calls this
   // after each decision so the badge stays correct.
@@ -98,6 +102,14 @@ export default function AdminLayout() {
     setPendingFlagged((photos.count || 0) + (documents.count || 0));
   }, []);
 
+  // The number comes from admin_stats() (the same one the Overview uses), since
+  // the people it counts have no profile for the browser to count. The Pending
+  // Users page calls this after it reloads its list so the badge stays correct.
+  const refreshPendingUsers = useCallback(async () => {
+    const { data } = await supabase.rpc("admin_stats");
+    setPendingUsers(data?.pending_users || 0);
+  }, []);
+
   useEffect(() => {
     let active = true;
 
@@ -131,12 +143,13 @@ export default function AdminLayout() {
         refreshPendingVerifications();
         refreshPendingAppeals();
         refreshPendingFlagged();
+        refreshPendingUsers();
         if (adminRow.role === "super_admin") refreshPendingApprovals();
       }
     })();
 
     return () => { active = false; };
-  }, [navigate, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingApprovals]);
+  }, [navigate, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingApprovals]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -192,6 +205,7 @@ export default function AdminLayout() {
     refreshPendingVerifications();
     refreshPendingAppeals();
     refreshPendingFlagged();
+    refreshPendingUsers();
     return true;
   };
 
@@ -276,6 +290,10 @@ export default function AdminLayout() {
                   {link.showPendingApprovals && pendingApprovals > 0 && (
                     <span className="badge bg-danger rounded-pill ms-auto">{pendingApprovals}</span>
                   )}
+                  {/* Amber, not red: these people are waiting on their own email, not on an admin decision. */}
+                  {link.showPendingUsers && pendingUsers > 0 && (
+                    <span className="badge bg-warning text-dark rounded-pill ms-auto">{pendingUsers}</span>
+                  )}
                 </NavLink>
               ))}
             </aside>
@@ -284,7 +302,7 @@ export default function AdminLayout() {
           <main className="col-12 col-md-9 col-xl-10">
             {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                 to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingApprovals }} />
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingApprovals }} />
           </main>
         </div>
       </div>

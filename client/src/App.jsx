@@ -38,6 +38,7 @@ import AdminForgotPassword from "./pages/admin/AdminForgotPassword";
 import AdminLayout from "./pages/admin/layout/AdminLayout";
 import AdminOverviewView from "./pages/admin/views/AdminOverviewView";
 import AdminUsersView from "./pages/admin/views/AdminUsersView";
+import AdminPendingView from "./pages/admin/views/AdminPendingView";
 import AdminAdminsView from "./pages/admin/views/AdminAdminsView";
 import AdminLogView from "./pages/admin/views/AdminLogView";
 import AdminProfileView from "./pages/admin/views/AdminProfileView";
@@ -110,6 +111,7 @@ function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminOverviewView />} />
         <Route path="users" element={<AdminUsersView />} />
+        <Route path="pending" element={<AdminPendingView />} />
         <Route path="listings" element={<AdminListingsView />} />
         <Route path="reports" element={<AdminReportsView />} />
         <Route path="flagged" element={<AdminFlaggedView />} />
