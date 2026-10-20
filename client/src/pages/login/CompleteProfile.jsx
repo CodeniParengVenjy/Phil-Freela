@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { MAX_NAME_LENGTH, dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
+import { MAX_NAME_LENGTH, checkName, cleanName, dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import "../../styles/auth.css";
 
@@ -11,8 +11,8 @@ const MAX_USERNAME_LENGTH = 60;
 // Returns what's wrong with the form (the same rules as the sign-up form),
 // or "" when everything is fine.
 function findProblem(fullName, username, gender) {
-  if (!fullName) return "Please enter your name.";
-  if (fullName.length > MAX_NAME_LENGTH) return `Name must not exceed ${MAX_NAME_LENGTH} characters.`;
+  const nameProblem = checkName(fullName);
+  if (nameProblem) return nameProblem;
   if (!username) return "Please choose a username.";
   if (username.length > MAX_USERNAME_LENGTH) return `Username must not exceed ${MAX_USERNAME_LENGTH} characters.`;
   if (!["male", "female"].includes(gender)) return "Please choose Male or Female.";
@@ -73,7 +73,7 @@ export default function CompleteProfile() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const fullName = form.fullName.trim();
+    const fullName = cleanName(form.fullName);
     const username = form.username.trim();
 
     const problem = findProblem(fullName, username, form.gender);

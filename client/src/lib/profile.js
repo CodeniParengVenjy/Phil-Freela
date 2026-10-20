@@ -12,8 +12,33 @@ export async function getActiveSuspension(userId) {
   return suspensionStatus(data) ? data : null;
 }
 
-// Longest display name allowed -- the same limit as the sign-up form.
-export const MAX_NAME_LENGTH = 100;
+// The Name policy (the database enforces the same rule: database/
+// supabase_name_policy_schema.sql). A name is 2-50 characters, made of letters
+// (any language), spaces and . , ' - only, with at least 2 letters. So
+// "Juan Dela Cruz" and "Ma. Santos Jr." pass, but "qa123", "a@b.com", links
+// and emoji don't.
+export const MIN_NAME_LENGTH = 2;
+export const MAX_NAME_LENGTH = 50;
+const NAME_PATTERN = /^\p{L}[\p{L} .,'’-]*$/u;
+// "www.site.com" is only letters and dots, so links get their own check.
+const LINK_PATTERN = /(www\.|https?:|\.(com|net|org|ph|info|xyz|app|dev)\b)/i;
+
+// Tidies a name before it is checked or saved: joins accented letters typed in
+// two pieces into one, turns any run of spaces into one space, trims the ends.
+export function cleanName(name) {
+  return String(name ?? "").normalize("NFC").replace(/\s+/g, " ").trim();
+}
+
+// Returns "" when the name is fine, or the sentence to show the person.
+// Sign-up, Complete Profile and Settings all use this one function.
+export function checkName(name) {
+  const clean = cleanName(name);
+  if (!clean) return "Please enter your name.";
+  if (clean.length > MAX_NAME_LENGTH) return `Your name can't be longer than ${MAX_NAME_LENGTH} characters.`;
+  if (!NAME_PATTERN.test(clean) || LINK_PATTERN.test(clean)) return "Use letters only: no numbers, emoji, links or symbols. You can use spaces and . , ' -";
+  if ((clean.match(/\p{L}/gu) || []).length < MIN_NAME_LENGTH) return `Your name needs at least ${MIN_NAME_LENGTH} letters.`;
+  return "";
+}
 
 // How long someone must wait between changes (supabase_name_cooldown_schema.sql
 // enforces the same numbers in the database).
@@ -45,9 +70,9 @@ const cooldownMessage = (error) => (error?.message?.startsWith("You can change y
 // password, Venj"). Returns "" when saved, or a message to show the user.
 // The database allows a change every 7 days.
 export async function saveDisplayName(userId, name) {
-  const fullName = name.trim();
-  if (!fullName) return "Please enter a name.";
-  if (fullName.length > MAX_NAME_LENGTH) return `Your name can't be longer than ${MAX_NAME_LENGTH} characters.`;
+  const problem = checkName(name);
+  if (problem) return problem;
+  const fullName = cleanName(name);
 
   // .select("id") returns the updated row, so an empty result means nothing was saved.
   const { data, error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId).select("id");
@@ -244,13 +269,15 @@ export async function resolvePostAuthRoute(user) {
   if (profile) return dashboardRouteFor(profile.account_type);
 
   const meta = user.user_metadata || {};
-  if (meta.username && meta.gender) {
+  // A missing or invalid name never makes a profile: they finish it on the
+  // Complete Profile page instead.
+  if (meta.username && meta.gender && !checkName(meta.full_name)) {
     // Client is the default role: an account only becomes a freelancer by
     // explicitly choosing it at signup.
     const accountType = meta.account_type === "freelancer" ? "freelancer" : "client";
     const { error } = await supabase.from("profiles").insert({
       id: user.id,
-      full_name: meta.full_name || "",
+      full_name: cleanName(meta.full_name),
       username: meta.username,
       gender: meta.gender,
       account_type: accountType

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { isSupabaseConfigured, setRememberMe, supabase } from "../../lib/supabaseClient";
-import { dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
+import { MAX_NAME_LENGTH, checkName, cleanName, dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
 import { EMAIL_PATTERN, getPasswordStrengthMessage } from "../../lib/validators";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import { renderGoogleButton } from "../../lib/googleSignIn";
@@ -190,8 +190,10 @@ export default function Login() {
       return;
     }
 
-    if (isSignup && form.fullName.trim().length > 100) {
-      setMessage({ text: "Name must not exceed 100 characters.", type: "error", field: "fullName" });
+    // The Name policy: required, 2-50 characters, letters only (lib/profile.js).
+    const nameProblem = isSignup ? checkName(form.fullName) : "";
+    if (nameProblem) {
+      setMessage({ text: nameProblem, type: "error", field: "fullName" });
       return;
     }
 
@@ -242,7 +244,7 @@ export default function Login() {
             // the getSession() check at the top).
             emailRedirectTo: `${window.location.origin}/login`,
             data: {
-              full_name: form.fullName.trim(),
+              full_name: cleanName(form.fullName),
               username: form.username.trim(),
               gender: form.gender,
               account_type: form.accountType
@@ -261,7 +263,7 @@ export default function Login() {
         if (data.session) {
           const { error: profileError } = await supabase.from("profiles").insert({
             id: data.user.id,
-            full_name: form.fullName.trim(),
+            full_name: cleanName(form.fullName),
             username: form.username.trim(),
             gender: form.gender,
             account_type: form.accountType
@@ -433,7 +435,7 @@ export default function Login() {
                         type="text"
                         className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                         placeholder="e.g. Keanne Obias"
-                        maxLength={100}
+                        maxLength={MAX_NAME_LENGTH}
                         autoComplete="name"
                         value={form.fullName}
                         onChange={updateField("fullName")}
