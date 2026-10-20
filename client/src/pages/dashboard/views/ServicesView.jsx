@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories } from "../../../lib/categories";
 import { skillOptions } from "../../../lib/serviceSkills";
@@ -13,7 +13,8 @@ import BlockedNotice from "../components/BlockedNotice";
 import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
 import { isPostingBlocked } from "../../../lib/suspensions";
 
-const SERVICE_COLUMNS = "id, title, category, price, image_url, media_type, created_at";
+// description and skill are here so the Edit form can be filled in from the list.
+const SERVICE_COLUMNS = "id, title, category, description, skill, price, image_url, media_type, created_at, updated_at";
 
 export default function ServicesView() {
   const { currentUserId, showToast, suspension } = useOutletContext();
@@ -40,6 +41,47 @@ export default function ServicesView() {
   const [isVerified, setIsVerified] = useState(null);
   // The "Check a file I found" popup (Check Ownership).
   const [checkingOwnership, setCheckingOwnership] = useState(false);
+
+  // Edit mode: /dashboard/services?edit=<service id> (the pencil buttons link
+  // here). The form is filled in from that service and "Save changes" updates
+  // it instead of posting a new one. Only your own services are in the list,
+  // so someone else's id finds nothing and the form stays the normal one.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editId = searchParams.get("edit");
+  const editing = (editId && services?.find((s) => s.id === editId)) || null;
+  const formTop = useRef(null);
+  // Which service the form was last filled in from.
+  const [filledFromId, setFilledFromId] = useState(null);
+  if (editing && filledFromId !== editing.id) {
+    // Filled in while rendering (React allows this for state of this same
+    // component), so the form never shows the old text for a moment.
+    setFilledFromId(editing.id);
+    setTitle(editing.title);
+    setCategory(editing.category);
+    setDescription(editing.description);
+    setSkill(editing.skill || "");
+    setPrice(editing.price ? String(editing.price) : "");
+    setSlideItems([]);
+    setSlidesError("");
+  } else if (!editing && filledFromId) {
+    // Edit mode ended (the address no longer has ?edit=), so the same service can be edited again later.
+    setFilledFromId(null);
+  }
+
+  // Bring the form into view when edit mode starts (it is above the list on a phone).
+  useEffect(() => {
+    if (filledFromId) formTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [filledFromId]);
+
+  // Leaves edit mode and empties the form (Cancel, or after saving).
+  const stopEditing = () => {
+    setTitle("");
+    setCategory("");
+    setDescription("");
+    setSkill("");
+    setPrice("");
+    setSearchParams({}, { replace: true });
+  };
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -90,9 +132,43 @@ export default function ServicesView() {
     setSlideItems((prev) => prev.map((item) => (item.key === key ? { ...item, promo: !item.promo } : item)));
   };
 
+  // Edit mode: saves the changed text of the service being edited. Its photos,
+  // videos and documents are left as they are.
+  const handleSaveEdit = async () => {
+    setSubmitting(true);
+    // .single() fails when no row was updated (for example when the database
+    // refuses because the account is blocked from posting), so that is an error here too.
+    const { data, error } = await supabase
+      .from("services")
+      .update({
+        title: title.trim(),
+        category,
+        description: description.trim(),
+        skill: skill || null,
+        price: price ? Number(price) : null
+      })
+      .eq("id", editing.id)
+      .select(SERVICE_COLUMNS)
+      .single();
+    setSubmitting(false);
+
+    if (error) {
+      showToast("Couldn't save your changes. Please try again.");
+      return;
+    }
+    // Keep the slides the list already had; the update only returns the columns.
+    setServices((prev) => prev.map((s) => (s.id === data.id ? { ...s, ...data } : s)));
+    stopEditing();
+    showToast(`"${data.title}" was updated.`);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId) return;
+    if (editing) {
+      await handleSaveEdit();
+      return;
+    }
     setSubmitting(true);
 
     // 1. Save the service itself. Its photos and videos are added next.
@@ -147,9 +223,11 @@ export default function ServicesView() {
     <section className="dashboard-view active-view">
       <div className="row g-4">
         <div className="col-lg-8">
-          <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
+          <div ref={formTop} className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-              <h3 className="text-white fw-bold mb-0"><i className="bi bi-plus-circle text-orange me-2"></i> Post a Service Offered</h3>
+              <h3 className="text-white fw-bold mb-0">
+                <i className={`bi ${editing ? "bi-pencil-square" : "bi-plus-circle"} text-orange me-2`}></i> {editing ? "Edit Your Service" : "Post a Service Offered"}
+              </h3>
               <button type="button" className="btn btn-sm btn-outline-info rounded-pill px-3 fs-8 fw-bold" onClick={() => setCheckingOwnership(true)}>
                 <i className="bi bi-shield-check me-1"></i> Check a file I found
               </button>
@@ -228,6 +306,13 @@ export default function ServicesView() {
                   />
                 </div>
 
+                {editing && (
+                  <p className="text-secondary fs-8 mb-0">
+                    <i className="bi bi-images text-info me-1"></i>The photos, videos and documents of this service stay as they are.
+                  </p>
+                )}
+
+                {!editing && (
                 <div>
                   <label className="form-label text-white fw-semibold fs-7">Upload photos, videos or documents for a slideshow (optional):</label>
                   <SlidePicker
@@ -248,10 +333,16 @@ export default function ServicesView() {
                     </p>
                   )}
                 </div>
+                )}
 
-                <div className="d-flex justify-content-end pt-2">
+                <div className="d-flex flex-wrap justify-content-end gap-2 pt-2">
+                  {editing && (
+                    <button type="button" className="btn btn-outline-secondary text-white-50 btn-lg px-4 py-2 rounded-pill fw-bold" disabled={submitting} onClick={stopEditing}>
+                      Cancel
+                    </button>
+                  )}
                   <button type="submit" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting}>
-                    {submitting ? progress || "Publishing..." : "Upload & Publish"}
+                    {editing ? (submitting ? "Saving..." : "Save changes") : submitting ? progress || "Publishing..." : "Upload & Publish"}
                   </button>
                 </div>
               </form>
@@ -272,7 +363,7 @@ export default function ServicesView() {
             )}
 
             <div className="d-flex flex-column gap-3">
-              {services?.map((s) => <ServiceCard key={s.id} service={s} onDelete={setServiceToDelete} rating={ratings.get(s.id)} />)}
+              {services?.map((s) => <ServiceCard key={s.id} service={s} editTo={`/dashboard/services?edit=${s.id}`} onDelete={setServiceToDelete} rating={ratings.get(s.id)} />)}
             </div>
           </div>
         </div>
@@ -289,6 +380,8 @@ export default function ServicesView() {
         onDeleted={(service) => {
           setServices((prev) => prev.filter((s) => s.id !== service.id));
           setServiceToDelete(null);
+          // Deleting the one being edited also closes its form.
+          if (service.id === editing?.id) stopEditing();
         }}
       />
     </section>

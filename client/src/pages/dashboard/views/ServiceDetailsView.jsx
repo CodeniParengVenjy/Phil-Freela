@@ -54,7 +54,7 @@ function ServiceDetails({ serviceId }) {
 
     supabase
       .from("services")
-      .select(`id, title, category, description, price, skill, image_url, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, avatar_path, available_for_work, skills), ${SLIDES_SELECT}`)
+      .select(`id, title, category, description, price, skill, image_url, created_at, updated_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, avatar_path, available_for_work, skills), ${SLIDES_SELECT}`)
       .eq("id", serviceId)
       .maybeSingle()
       .then(({ data }) => {
@@ -205,12 +205,19 @@ function ServiceDetails({ serviceId }) {
               <AvailabilityBadge available={freelancer?.available_for_work} className="fs-8" />
             </p>
             {/* The day the freelancer uploaded this offer. */}
-            <p className="text-secondary fs-8 mb-1"><i className="bi bi-calendar3 me-1"></i>Posted {postedOn}</p>
+            <p className="text-secondary fs-8 mb-1">
+              <i className="bi bi-calendar3 me-1"></i>Posted {postedOn}
+              {/* Shown once the freelancer changed the offer, so a booking isn't made on old words. */}
+              {service.updated_at && ` • Edited ${new Date(service.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
+            </p>
             {record.length > 0 && <p className="text-secondary fs-8 mb-0">{record.join(" • ")}</p>}
             {stats && record.length === 0 && <p className="text-secondary fs-8 mb-0">New here: no finished projects yet.</p>}
           </div>
           {isOwnOffer && (
             <div className="d-flex gap-2 flex-shrink-0">
+              <Link to={`/dashboard/services?edit=${service.id}`} className="btn btn-outline-role rounded-pill px-4 fw-bold">
+                <i className="bi bi-pencil-fill me-1"></i> Edit
+              </Link>
               <button type="button" className="btn btn-outline-danger rounded-pill px-4 fw-bold" onClick={() => setConfirmDelete(true)}>
                 <i className="bi bi-trash3-fill me-1"></i> Delete
               </button>

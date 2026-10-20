@@ -26,7 +26,7 @@ export default function ProjectsView() {
 
     supabase
       .from("services")
-      .select(`id, title, category, price, image_url, media_type, created_at, ${SLIDES_SELECT}`)
+      .select(`id, title, category, price, image_url, media_type, created_at, updated_at, ${SLIDES_SELECT}`)
       .eq("freelancer_id", currentUserId)
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -63,7 +63,7 @@ export default function ProjectsView() {
               <div className="row g-3">
                 {services?.map((s) => (
                   <div className="col-md-6 col-xl-4" key={s.id}>
-                    <ServiceCard service={s} onDelete={setServiceToDelete} rating={ratings.get(s.id)} />
+                    <ServiceCard service={s} editTo={`/dashboard/services?edit=${s.id}`} onDelete={setServiceToDelete} rating={ratings.get(s.id)} />
                   </div>
                 ))}
               </div>

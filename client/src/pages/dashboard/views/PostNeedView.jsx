@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
@@ -10,6 +10,9 @@ import DeletePostDialog from "../components/DeletePostDialog";
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
 const MAX_SKILL_LENGTH = 40;
+
+// description and skills are here so the Edit form can be filled in from the list.
+const JOB_COLUMNS = "id, title, category, description, skills, budget, due_date, created_at, updated_at";
 
 export default function PostNeedView() {
   const { currentUserId, showToast, suspension } = useOutletContext();
@@ -30,13 +33,56 @@ export default function PostNeedView() {
   // The job waiting in the "Delete this job post?" pop-up (null = closed).
   const [postToDelete, setPostToDelete] = useState(null);
 
+  // Edit mode: /dashboard/post-need?edit=<job id> (the pencil buttons link
+  // here). The form is filled in from that job and "Save changes" updates it
+  // instead of posting a new one. Only your own jobs are in the list, so
+  // someone else's id finds nothing and the form stays the normal one.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editId = searchParams.get("edit");
+  const editing = (editId && posts?.find((p) => p.id === editId)) || null;
+  const formTop = useRef(null);
+  // Which job the form was last filled in from.
+  const [filledFromId, setFilledFromId] = useState(null);
+  if (editing && filledFromId !== editing.id) {
+    // Filled in while rendering (React allows this for state of this same
+    // component), so the form never shows the old text for a moment.
+    setFilledFromId(editing.id);
+    setTitle(editing.title);
+    setCategory(editing.category);
+    setDescription(editing.description);
+    setSkills(editing.skills || []);
+    setSkillInput("");
+    setDueDate(editing.due_date || "");
+    setBudget(editing.budget ? String(editing.budget) : "");
+  } else if (!editing && filledFromId) {
+    // Edit mode ended (the address no longer has ?edit=), so the same job can be edited again later.
+    setFilledFromId(null);
+  }
+
+  // Bring the form into view when edit mode starts (it is above the list on a phone).
+  useEffect(() => {
+    if (filledFromId) formTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [filledFromId]);
+
+  // Leaves edit mode and empties the form (Cancel, or after saving).
+  const stopEditing = () => {
+    setTitle("");
+    setCategory("");
+    setDescription("");
+    setSkills([]);
+    setSkillInput("");
+    setDueDate("");
+    setBudget("");
+    setSearchParams({}, { replace: true });
+  };
+
   useEffect(() => {
     if (!currentUserId) return;
     let active = true;
 
     supabase
       .from("job_posts")
-      .select("id, title, category, budget, due_date, created_at")
+      .select(JOB_COLUMNS)
       .eq("client_id", currentUserId)
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -67,32 +113,42 @@ export default function PostNeedView() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId) return;
-    // The database refuses a past due date too (job_posts_due_date_check).
-    if (dueDate && dueDate < todayInManila()) {
+    // The database refuses a past due date too (job_posts_due_date_check). When
+    // editing, a due date that is already past and was not changed is fine.
+    const dateChanged = !editing || dueDate !== (editing.due_date || "");
+    if (dueDate && dateChanged && dueDate < todayInManila()) {
       showToast("The due date can't be in the past.");
       return;
     }
     setSubmitting(true);
     const finalSkills = skillInput.trim() ? addSkills(skillInput) : skills;
 
-    const { data, error } = await supabase
-      .from("job_posts")
-      .insert({
-        client_id: currentUserId,
-        title: title.trim(),
-        category,
-        description: description.trim(),
-        skills: finalSkills,
-        due_date: dueDate || null,
-        budget: budget ? Number(budget) : null
-      })
-      .select("id, title, category, budget, due_date, created_at")
-      .single();
+    const fields = {
+      title: title.trim(),
+      category,
+      description: description.trim(),
+      skills: finalSkills,
+      due_date: dueDate || null,
+      budget: budget ? Number(budget) : null
+    };
+    // .single() fails when no row was updated (for example when the database
+    // refuses because the account is blocked from posting), so that is an error too.
+    const { data, error } = editing
+      ? await supabase.from("job_posts").update(fields).eq("id", editing.id).select(JOB_COLUMNS).single()
+      : await supabase.from("job_posts").insert({ client_id: currentUserId, ...fields }).select(JOB_COLUMNS).single();
 
     setSubmitting(false);
     if (error) {
       // 23514 = a table rule was broken; with a due date set, that's the date rule.
-      showToast(error.code === "23514" && dueDate ? "The due date can't be in the past." : "Couldn't publish that listing. Please try again.");
+      const failed = editing ? "Couldn't save your changes. Please try again." : "Couldn't publish that listing. Please try again.";
+      showToast(error.code === "23514" && dueDate ? "The due date can't be in the past." : failed);
+      return;
+    }
+
+    if (editing) {
+      setPosts((prev) => prev.map((p) => (p.id === data.id ? data : p)));
+      stopEditing();
+      showToast(`"${data.title}" was updated.`);
       return;
     }
 
@@ -110,8 +166,10 @@ export default function PostNeedView() {
     <section className="dashboard-view active-view">
       <div className="row g-4">
         <div className="col-lg-8">
-          <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
-            <h3 className="text-white fw-bold mb-4"><i className="bi bi-plus-circle text-role me-2"></i> Post What You Need</h3>
+          <div ref={formTop} className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
+            <h3 className="text-white fw-bold mb-4">
+              <i className={`bi ${editing ? "bi-pencil-square" : "bi-plus-circle"} text-role me-2`}></i> {editing ? "Edit Your Job Post" : "Post What You Need"}
+            </h3>
 
             {postingBlocked && <BlockedNotice suspension={suspension} what="post job listings" />}
 
@@ -196,7 +254,8 @@ export default function PostNeedView() {
                       className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                       // colorScheme: a light calendar icon and a dark calendar, to suit the dark box.
                       style={{ colorScheme: "dark" }}
-                      min={todayInManila()}
+                      // An old due date that has passed can stay while editing; a new pick must be today or later.
+                      min={editing?.due_date && editing.due_date < todayInManila() ? editing.due_date : todayInManila()}
                       value={dueDate}
                       onChange={(e) => setDueDate(e.target.value)}
                     />
@@ -217,10 +276,15 @@ export default function PostNeedView() {
                   </div>
                 </div>
 
-                <div className="pt-2">
+                <div className="d-flex flex-wrap gap-2 pt-2">
                   <button type="submit" className="btn btn-gradient-role btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow-role" disabled={submitting}>
-                    {submitting ? "Publishing..." : "Post Job"}
+                    {editing ? (submitting ? "Saving..." : "Save changes") : submitting ? "Publishing..." : "Post Job"}
                   </button>
+                  {editing && (
+                    <button type="button" className="btn btn-outline-secondary text-white-50 btn-lg px-4 py-2 rounded-pill fw-bold" disabled={submitting} onClick={stopEditing}>
+                      Cancel
+                    </button>
+                  )}
                 </div>
               </form>
             )}
@@ -244,19 +308,30 @@ export default function PostNeedView() {
                       <h6 className="mb-0 text-break">
                         <Link to={`/dashboard/job-details/${p.id}`} className="text-white fw-bold text-decoration-none hover-role">{p.title}</Link>
                       </h6>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center"
-                        style={{ width: 32, height: 32 }}
-                        aria-label={`Delete ${p.title}`}
-                        onClick={() => setPostToDelete(p)}
-                      >
-                        <i className="bi bi-trash3-fill"></i>
-                      </button>
+                      <div className="d-flex gap-2 flex-shrink-0">
+                        <Link
+                          to={`/dashboard/post-need?edit=${p.id}`}
+                          className="btn btn-sm btn-outline-role rounded-circle d-flex align-items-center justify-content-center"
+                          style={{ width: 32, height: 32 }}
+                          aria-label={`Edit ${p.title}`}
+                        >
+                          <i className="bi bi-pencil-fill"></i>
+                        </Link>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger rounded-circle d-flex align-items-center justify-content-center"
+                          style={{ width: 32, height: 32 }}
+                          aria-label={`Delete ${p.title}`}
+                          onClick={() => setPostToDelete(p)}
+                        >
+                          <i className="bi bi-trash3-fill"></i>
+                        </button>
+                      </div>
                     </div>
                     <span className="badge bg-role text-white fs-8 mb-2">{categoryLabel}</span>
                     <p className="text-secondary fs-8 mb-0">
                       {p.budget ? `Budget ₱${Number(p.budget).toLocaleString()}` : "Budget flexible"} • {new Date(p.created_at).toLocaleDateString()}
+                      {p.updated_at && ` • Edited ${new Date(p.updated_at).toLocaleDateString()}`}
                     </p>
                     {p.due_date && <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-calendar-event me-1"></i>Needed by {formatDay(p.due_date)}</p>}
                   </div>
@@ -276,6 +351,8 @@ export default function PostNeedView() {
         onDeleted={(job) => {
           setPosts((prev) => prev.filter((p) => p.id !== job.id));
           setPostToDelete(null);
+          // Deleting the one being edited also closes its form.
+          if (job.id === editing?.id) stopEditing();
         }}
       />
     </section>

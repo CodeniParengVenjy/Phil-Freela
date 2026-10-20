@@ -46,7 +46,7 @@ export default function JobDetailsView() {
     Promise.all([
       supabase
         .from("job_posts")
-        .select("id, title, category, description, budget, skills, due_date, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
+        .select("id, title, category, description, budget, skills, due_date, created_at, updated_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
         .eq("id", jobId)
         .maybeSingle(),
       getMyApplicationForJob(currentUserId, jobId),
@@ -228,6 +228,8 @@ export default function JobDetailsView() {
               {/* The client's average rating from past projects (Feature 5, transparency). */}
               <StarRating userId={job.client?.id} />
               <span>• {new Date(job.created_at).toLocaleDateString()}</span>
+              {/* Shown once the client changed the job, so nobody applies on old words. */}
+              {job.updated_at && <span>• Edited {new Date(job.updated_at).toLocaleDateString()}</span>}
             </p>
             <div className="d-flex flex-wrap align-items-center gap-2">
               <span className="badge bg-role text-white px-3 py-2 rounded-pill"><i className={`bi ${category.icon} me-1`}></i>{category.label}</span>
@@ -238,6 +240,9 @@ export default function JobDetailsView() {
           </div>
           {isOwnJob && (
             <div className="d-flex gap-2 flex-shrink-0">
+              <Link to={`/dashboard/post-need?edit=${job.id}`} className="btn btn-outline-role rounded-pill px-4 fw-bold">
+                <i className="bi bi-pencil-fill me-1"></i> Edit
+              </Link>
               <button type="button" className="btn btn-outline-danger rounded-pill px-4 fw-bold" onClick={() => setConfirmDelete(true)}>
                 <i className="bi bi-trash3-fill me-1"></i> Delete
               </button>

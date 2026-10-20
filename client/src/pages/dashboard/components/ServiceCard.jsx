@@ -7,11 +7,12 @@ const mediaBox = { width: 64, height: 64 };
 
 // One posted service as a row: its first photo or video (a PDF's first page,
 // a document icon for another document, or the category icon when it has
-// none), title, category, price and date. Pass onDelete to show a
-// Delete button, or `to` to make the whole row a link (to the offer's page),
-// and rating ({ count, average }, lib/useServiceRatings.js) to show the average
-// of its ratings next to the category.
-export default function ServiceCard({ service, onDelete, to, rating }) {
+// none), title, category, price and date (plus "Edited <date>" once the owner
+// changed it). Pass onDelete to show a Delete button, editTo (a link to the
+// edit form) to show an Edit button, or `to` to make the whole row a link (to
+// the offer's page), and rating ({ count, average }, lib/useServiceRatings.js)
+// to show the average of its ratings next to the category.
+export default function ServiceCard({ service, onDelete, editTo, to, rating }) {
   const category = getCategory(service.category);
   const cover = itemSlides(service)[0];
   // The picture to show: the photo itself, or a PDF's first page (step 11),
@@ -45,19 +46,34 @@ export default function ServiceCard({ service, onDelete, to, rating }) {
         </div>
         <p className="text-secondary fs-8 mb-0">
           {service.price ? `Starting at ₱${Number(service.price).toLocaleString()}` : "Price on request"} • {new Date(service.created_at).toLocaleDateString()}
+          {service.updated_at && ` • Edited ${new Date(service.updated_at).toLocaleDateString()}`}
         </p>
       </div>
 
-      {onDelete && (
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-danger rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center"
-          style={{ width: 36, height: 36 }}
-          aria-label={`Delete ${service.title}`}
-          onClick={() => onDelete(service)}
-        >
-          <i className="bi bi-trash3-fill"></i>
-        </button>
+      {(editTo || onDelete) && (
+        <div className="d-flex gap-2 flex-shrink-0">
+          {editTo && (
+            <Link
+              to={editTo}
+              className="btn btn-sm btn-outline-role rounded-circle d-flex align-items-center justify-content-center"
+              style={{ width: 36, height: 36 }}
+              aria-label={`Edit ${service.title}`}
+            >
+              <i className="bi bi-pencil-fill"></i>
+            </Link>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-danger rounded-circle d-flex align-items-center justify-content-center"
+              style={{ width: 36, height: 36 }}
+              aria-label={`Delete ${service.title}`}
+              onClick={() => onDelete(service)}
+            >
+              <i className="bi bi-trash3-fill"></i>
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

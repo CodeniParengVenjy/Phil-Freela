@@ -64,7 +64,24 @@ and delete them. What was there:
    contains delete statements, so the connector refused it: NOT RUN, the user
    runs it in the SQL Editor. Browser check against a fake backend, laptop and
    phone: 54 checks.
-3. Edit text (both kinds) and the "Edited" label.
+3. DONE: Edit text (both kinds) and the "Edited" label. One way in: a pencil is
+   a link to `/dashboard/services?edit=<id>` or `/dashboard/post-need?edit=<id>`;
+   those pages fill the same form from that post (while rendering, no effect)
+   and "Save changes" sends an update instead of an insert, "Cancel" goes back.
+   Pencils: the cards in Your Active Services / Your Active Listings, the card
+   on My Projects, and an Edit button next to Delete on the post's own page.
+   An id that isn't yours just opens the normal empty form. Service edit hides
+   the slide picker ("stay as they are", step 4). Job edit keeps an old past due
+   date if it isn't changed (the database rule compares with the posting day);
+   a NEW past date is refused. A refused save (account blocked from posting)
+   shows "Couldn't save your changes" and keeps the form and the typed text.
+   Deleting the post being edited closes the form. "Edited <date>" (a date in
+   the same format as the posted date, not "3 days ago") shows on the cards,
+   the offer's page, the job's page and the freelancer's public list; nothing
+   shows when the save changed nothing (the trigger leaves updated_at empty).
+   Browse Services / Find Jobs cards show no dates at all, so no label there.
+   Browser check against a fake backend, laptop and phone: 95 checks (the
+   Delete one still passes: 54).
 4. (later) Edit photos and videos of a service through the existing upload and
    ownership check.
 5. Admin > Reports shows the saved title and owner for a post that is gone.
