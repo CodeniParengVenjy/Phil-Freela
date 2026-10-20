@@ -1,14 +1,18 @@
 import CallDialog from "./CallDialog";
+import MissingNameDialog from "./MissingNameDialog";
 
 // Identical between the freelancer and client dashboards -- the image
 // preview modal, the role-switch confirmation, the toast notification, and
 // the voice/video call window -- so both layouts share this instead of each
 // keeping their own copy.
-export default function DashboardOverlays({ preview, onClosePreview, toast, onCloseToast, roleConfirm, onResolveRoleConfirm }) {
+export default function DashboardOverlays({ preview, onClosePreview, toast, onCloseToast, roleConfirm, onResolveRoleConfirm, nameMissing, userId, onNameSaved, onSignOut }) {
   return (
     <>
       {/* Ringing and call screens (the call itself lives in lib/calls.js). */}
       <CallDialog />
+
+      {/* Someone with no name must add one before using the dashboard. */}
+      {nameMissing && userId && <MissingNameDialog userId={userId} onSaved={onNameSaved} onSignOut={onSignOut} />}
 
       {roleConfirm.visible && (
         <div

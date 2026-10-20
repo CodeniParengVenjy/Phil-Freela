@@ -60,6 +60,10 @@ function ChoiceRow({ label, value, onChange, options }) {
   );
 }
 
+// Someone who signed up before names were required can have no name. In
+// sentences ("Delete ...'s account?") they are called by their @username.
+const nameOf = (user) => user.full_name || `@${user.username}`;
+
 export default function AdminUsersView() {
   const { adminId, isSuperAdmin } = useOutletContext();
   // The Overview's cards open this page with choices in the address, like
@@ -259,7 +263,7 @@ export default function AdminUsersView() {
       setMessage({ text: error.message || `Failed to ${kind} user.`, type: "error" });
     } else {
       setSuspensions((prev) => ({ ...prev, [data.user_id]: data }));
-      setMessage({ text: `${user.full_name} ${blockText[kind].done}.`, type: "success" });
+      setMessage({ text: `${nameOf(user)} ${blockText[kind].done}.`, type: "success" });
     }
     setBlockTarget(null);
   };
@@ -317,8 +321,8 @@ export default function AdminUsersView() {
     });
     setMessage({
       text: appealAccepted
-        ? `${user.full_name} is active again. Their pending appeal was accepted, so they have been told.`
-        : `${user.full_name} is active again.`,
+        ? `${nameOf(user)} is active again. Their pending appeal was accepted, so they have been told.`
+        : `${nameOf(user)} is active again.`,
       type: "success"
     });
   };
@@ -340,7 +344,7 @@ export default function AdminUsersView() {
     }
 
     setUsers((prev) => prev.filter((u) => u.id !== user.id));
-    setMessage({ text: `${user.full_name}'s account was deleted.`, type: "success" });
+    setMessage({ text: `${nameOf(user)}'s account was deleted.`, type: "success" });
   };
 
   return (
@@ -471,7 +475,11 @@ export default function AdminUsersView() {
                       </button>
                     </td>
                     <td>
-                      {user.full_name}
+                      {user.full_name || (
+                        <span className="text-warning fw-semibold fs-7 text-nowrap" title="This person has no name. They are asked to add one when they next open their dashboard.">
+                          <i className="bi bi-exclamation-triangle-fill me-1"></i>No name yet
+                        </span>
+                      )}
                       <VerifiedBadge verified={verifiedIds.has(user.id)} />
                     </td>
                     <td>{user.username}</td>
@@ -561,7 +569,7 @@ export default function AdminUsersView() {
       {blockTarget && (
         <div className="admin-modal-backdrop" onClick={() => !busy && setBlockTarget(null)}>
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmBlock}>
-            <h2 className="h5 fw-bold text-white mb-1">{blockText[blockTarget.kind].title} {blockTarget.user.full_name}?</h2>
+            <h2 className="h5 fw-bold text-white mb-1">{blockText[blockTarget.kind].title} {nameOf(blockTarget.user)}?</h2>
             <p className="text-secondary fs-7 mb-3">{blockText[blockTarget.kind].info}</p>
             {!isSuperAdmin && (
               <p className="fs-8 text-warning mb-3">
@@ -600,7 +608,7 @@ export default function AdminUsersView() {
             <div className="admin-lift-icon danger mx-auto mb-3">
               <i className="bi bi-trash-fill"></i>
             </div>
-            <h2 id="deleteTitle" className="h5 fw-bold text-white mb-2">Delete {deleteTarget.full_name}'s account?</h2>
+            <h2 id="deleteTitle" className="h5 fw-bold text-white mb-2">Delete {nameOf(deleteTarget)}'s account?</h2>
             <p className="text-secondary fs-7 mb-1">
               {deleteTarget.username} · {deleteTarget.email}
             </p>
@@ -635,7 +643,7 @@ export default function AdminUsersView() {
               <i className="bi bi-unlock-fill"></i>
             </div>
             <h2 id="liftTitle" className="h5 fw-bold text-white mb-2">
-              {liftTarget.status === "banned" ? "Unban" : "Unsuspend"} {liftTarget.user.full_name}?
+              {liftTarget.status === "banned" ? "Unban" : "Unsuspend"} {nameOf(liftTarget.user)}?
             </h2>
             <p className="text-secondary fs-7 mb-3">
               {liftTarget.status === "banned"

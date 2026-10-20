@@ -35,6 +35,9 @@ export function useDashboardShell() {
   // The user's suspension while it's in effect (null = none). Pages use it
   // to disable posting / messaging; the layouts show a banner.
   const [suspension, setSuspension] = useState(null);
+  // True while the profile has no name (people who signed up before names were
+  // required): MissingNameDialog asks for one over every page.
+  const [nameMissing, setNameMissing] = useState(false);
   const [toast, setToast] = useState({ message: "", visible: false });
   const [preview, setPreview] = useState({ src: "", title: "", visible: false });
   const [roleConfirm, setRoleConfirm] = useState({ visible: false, nextType: null });
@@ -151,6 +154,7 @@ export function useDashboardShell() {
       // stays after a refresh. The username is the fallback if it's empty.
       setDisplayName(profile?.full_name || profile?.username || meta.full_name || session.user.email || "User");
       setAvatarPath(profile?.avatar_path || "");
+      setNameMissing(!!profile && !(profile.full_name || "").trim());
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -407,7 +411,14 @@ export function useDashboardShell() {
     document.body.classList.remove("sidebar-open");
   }, []);
 
+  // The name was just saved in the pop-up: show it and let them in.
+  const handleNameSaved = useCallback((name) => {
+    setDisplayName(name);
+    setNameMissing(false);
+  }, []);
+
   return {
+    nameMissing, handleNameSaved,
     displayName, setDisplayName, accountType, currentUserId, username, setUsername,
     avatarPath, setAvatarPath,
     unreadCount, refreshUnreadCount,

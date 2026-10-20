@@ -23,6 +23,15 @@ export default function TermsOfService() {
         <li>One account per person. Accounts found to be fake are banned.</li>
       </ul>
 
+      <h5 className="text-white fw-bold mt-4 mb-2">Your name</h5>
+      <ul className="text-secondary">
+        <li>Every account must have a name, and it should be your real name. Other people see it on your profile, jobs, services and messages.</li>
+        <li>A name is 2 to 50 characters long and uses letters, spaces and . , ' - only. No numbers, emoji, symbols, email addresses or links.</li>
+        <li>You can change your name once every 7 days in Settings.</li>
+        <li>If your account has no name, PhilFreela asks you to add one before you can carry on using the dashboard.</li>
+        <li>A name that pretends to be another person, or is meant to mislead or advertise, can get your account suspended.</li>
+      </ul>
+
       <h5 className="text-white fw-bold mt-4 mb-2">Posting and messaging</h5>
       <ul className="text-secondary">
         <li>Don't post spam, scams, or content that isn't yours to post.</li>
