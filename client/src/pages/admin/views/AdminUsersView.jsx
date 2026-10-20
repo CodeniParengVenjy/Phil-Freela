@@ -40,7 +40,7 @@ const sortOptions = {
 export default function AdminUsersView() {
   const { adminId, isSuperAdmin } = useOutletContext();
   // The Overview's cards open this page with choices in the address, like
-  // /admin/users?role=freelancer or ?verified=unverified or ?sort=online&dir=desc.
+  // /admin/users?role=freelancer or ?verified=unverified or ?presence=online&sort=online&dir=desc.
   // They only decide where the boxes below start; a value that isn't one of the
   // allowed ones is ignored.
   const [params] = useSearchParams();
@@ -61,6 +61,8 @@ export default function AdminUsersView() {
   const [statusFilter, setStatusFilter] = useState(() => fromAddress("status", ["active", "suspended", "banned"], "all"));
   // "all", "verified" or "unverified" (the Verified badge, see lib/verification.js).
   const [verifyFilter, setVerifyFilter] = useState(() => fromAddress("verified", ["verified", "unverified"], "all"));
+  // "all", "online" (seen in the last 2 minutes) or "offline" (everyone else, including people never seen).
+  const [presenceFilter, setPresenceFilter] = useState(() => fromAddress("presence", ["online", "offline"], "all"));
   const [sortBy, setSortBy] = useState(() => fromAddress("sort", Object.keys(sortOptions), "joined"));
   // Each sort has its own usual direction unless the address names one.
   const [sortDir, setSortDir] = useState(() => fromAddress("dir", ["asc", "desc"], sortOptions[fromAddress("sort", Object.keys(sortOptions), "joined")].start));
@@ -147,7 +149,9 @@ export default function AdminUsersView() {
     const matchesStatus = statusFilter === "all" || statusFilter === status;
     const isVerified = verifiedIds.has(user.id);
     const matchesVerify = verifyFilter === "all" || (verifyFilter === "verified") === isVerified;
-    return matchesSearch && matchesRole && matchesStatus && matchesVerify;
+    const isOnline = !!presenceStatus(lastSeen.get(user.id))?.online;
+    const matchesPresence = presenceFilter === "all" || (presenceFilter === "online") === isOnline;
+    return matchesSearch && matchesRole && matchesStatus && matchesVerify && matchesPresence;
   });
 
   // Sort a copy of the filtered list. For "Online", the most recently seen comes
@@ -328,6 +332,13 @@ export default function AdminUsersView() {
             </select>
           </div>
           <div className="col-6 col-lg-3">
+            <select className="form-select admin-input" value={presenceFilter} onChange={(e) => setPresenceFilter(e.target.value)} aria-label="Filter by online status">
+              <option value="all">All activity</option>
+              <option value="online">Online now</option>
+              <option value="offline">Offline</option>
+            </select>
+          </div>
+          <div className="col-6 col-lg-3">
             <select className="form-select admin-input" value={sortBy} onChange={(e) => changeSort(e.target.value)} aria-label="Sort by">
               {Object.entries(sortOptions).map(([value, option]) => (
                 <option key={value} value={value}>Sort by: {option.label}</option>
@@ -345,7 +356,7 @@ export default function AdminUsersView() {
               {sortDir === "asc" ? "Ascending" : "Descending"} · {sortOptions[sortBy][sortDir]}
             </button>
           </div>
-          <div className="col-6 col-lg-3 d-flex align-items-center justify-content-lg-end text-white-50 fs-7">
+          <div className="col-12 text-white-50 fs-7 text-lg-end">
             {users !== null && `${visibleUsers.length} of ${users.length} users shown`}
           </div>
         </div>
@@ -436,11 +447,16 @@ export default function AdminUsersView() {
                       ) : (
                         <span className="badge bg-success fw-normal">Active</span>
                       )}
-                      {/* "Online" or "Offline 5m ago", left out for people never seen. */}
+                      {/* Not "Offline": next to the Active badge that read as a contradiction.
+                          This says when they were last on the site; people never seen get nothing. */}
                       {seen && (
-                        <div className={`fs-8 mt-1 ${seen.online ? "text-success fw-semibold" : "text-white-50"}`}>
-                          <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>{seen.label}
-                        </div>
+                        seen.online ? (
+                          <div className="fs-8 mt-1 text-success fw-semibold">
+                            <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>Online now
+                          </div>
+                        ) : (
+                          <div className="fs-8 mt-1 text-white-50 text-nowrap" title={`Last seen ${seen.ago}`}>Seen {seen.ago}</div>
+                        )
                       )}
                     </td>
                     <td>{new Date(user.created_at).toLocaleDateString()}</td>

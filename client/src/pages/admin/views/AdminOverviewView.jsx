@@ -68,7 +68,7 @@ export default function AdminOverviewView() {
                   <div className="text-secondary fs-7">Users</div>
                 </div>
               </Link>
-              <Link to="/admin/users?sort=online&dir=desc" className="admin-stat-link d-inline-block fs-8 text-success fw-semibold mt-1" style={{ marginLeft: 60 }}>
+              <Link to="/admin/users?presence=online&sort=online&dir=desc" className="admin-stat-link d-inline-block fs-8 text-success fw-semibold mt-1" style={{ marginLeft: 60 }}>
                 <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>
                 {stats ? stats.online_users : "..."} online now
               </Link>

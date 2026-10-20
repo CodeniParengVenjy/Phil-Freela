@@ -28,17 +28,18 @@ export function startPresenceHeartbeat() {
   };
 }
 
-// { online, label } for someone last seen secondsAgo seconds ago, or null
+// { online, label, ago } for someone last seen secondsAgo seconds ago, or null
 // when they've never been seen: "Online", "Offline 5m ago", "Offline 3h ago",
-// "Offline 2d ago".
+// "Offline 2d ago". ago is just the time part ("5m ago"; null while online).
 export function presenceStatus(secondsAgo) {
   if (secondsAgo === undefined) return null;
-  if (secondsAgo <= ONLINE_SECONDS) return { online: true, label: "Online" };
+  if (secondsAgo <= ONLINE_SECONDS) return { online: true, label: "Online", ago: null };
   const minutes = Math.floor(secondsAgo / 60);
-  if (minutes < 60) return { online: false, label: `Offline ${minutes}m ago` };
+  if (minutes < 60) return { online: false, label: `Offline ${minutes}m ago`, ago: `${minutes}m ago` };
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return { online: false, label: `Offline ${hours}h ago` };
-  return { online: false, label: `Offline ${Math.floor(hours / 24)}d ago` };
+  if (hours < 24) return { online: false, label: `Offline ${hours}h ago`, ago: `${hours}h ago` };
+  const days = Math.floor(hours / 24);
+  return { online: false, label: `Offline ${days}d ago`, ago: `${days}d ago` };
 }
 
 // How long ago each of userIds was last seen, as a Map of id -> seconds.
