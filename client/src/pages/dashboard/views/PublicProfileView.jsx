@@ -8,7 +8,7 @@ import { SLIDES_SELECT } from "../../../lib/slides";
 import { useServiceRatings } from "../../../lib/useServiceRatings";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
-import StarRating from "../../../components/StarRating";
+import { TrustBadge } from "../../../components/TrustRing";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
 import PictureViewer from "../../../components/PictureViewer";
@@ -115,8 +115,8 @@ function PublicProfile({ userId }) {
             </h3>
             <p className="text-secondary fs-7 mb-0 d-flex flex-wrap align-items-center gap-2">
               <span>@{person.username} • {ROLE_LABELS[roleToday]}</span>
-              {/* Their average rating from completed projects (Feature 5, transparency). */}
-              <StarRating userId={person.id} />
+              {/* Their Trust score: the average rating from completed projects (Feature 5, transparency). */}
+              <TrustBadge userId={person.id} />
               {/* Whether they are taking new work (freelancers only). */}
               {isFreelancer && <AvailabilityBadge available={person.available_for_work} showAvailable className="fs-8" />}
             </p>

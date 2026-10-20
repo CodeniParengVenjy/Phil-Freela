@@ -279,3 +279,37 @@ for the client and screen 5 for the freelancer), `views/ProjectDetailsView.jsx`
 (the "Add your ratings and feedback" button once Done), `views/JobDetailsView.jsx`
 and `views/FreelancerPortfolioView.jsx` (the star badge next to the name),
 `lib/notifications.js`, `App.jsx`, `lib/pageTitles.js`.
+
+## Added 2026-10-21: the Trust score ring
+
+The user asked for the overall rating of a person to show as a round
+percentage ring (like a 90% / 80% / 70% progress circle) instead of only
+"★ 4.8 (5)". Plan approved in chat ("ok"). No SQL, tables or endpoints: it
+draws the same average that `rating_summaries` and `profile_stats` already
+return, so the blind rule still applies (a hidden rating is not counted).
+
+- The score is the average stars out of 5 as a percentage (4.5 stars = 90%,
+  1 star = 20%). Levels: 80%+ "Highly trusted" (green), 60-79% "Trusted"
+  (the accent color), 40-59% "Fair" (amber), below 40% "Low" (red).
+  `trustPercent` and `trustLevel` are in `lib/ratings.js`.
+- New `components/TrustRing.jsx`: `TrustRing` (the SVG ring, big or small) and
+  `TrustBadge` (a small ring + "Trust · 5 ratings" next to a name; nothing
+  until the person has a rating). The ring's CSS is at the end of
+  `dashboard.css` (`.trust-ring*`); the arc fills up when it appears and the
+  colors follow light mode and the accent color.
+- `PerformanceBox.jsx` (own Profile and public profiles, per role tab): a big
+  ring at the top with the word, "Trust score · 5 ratings" and one line on how
+  it is worked out. Nobody rated yet: an empty grey ring with "—" and "No
+  ratings yet" (never 0%).
+- The small ring replaces the "★ 4.8 (5)" badge on the public profile header,
+  Job Details (the client) and Service Details (the freelancer). Find Jobs
+  rows keep the stars (`StarBadge`), there is little room there.
+
+Tested in a real browser (Playwright, the fake backend): 54 checks, laptop and
+390 px phone, dark and light mode with a yellow accent: the percentage rule
+at its edges, the green / accent / amber / red levels, "1 rating" wording, the
+empty ring, the own Profile, public profile, Service Details and Job Details,
+nothing scrolls sideways, no page errors. Lint and build clean. Files:
+`components/TrustRing.jsx`, `components/StarRating.jsx` (the one-name version
+was removed), `lib/ratings.js`, `PerformanceBox.jsx`, `PublicProfileView.jsx`,
+`JobDetailsView.jsx`, `ServiceDetailsView.jsx`, `dashboard.css`.

@@ -12,7 +12,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import OriginalBadge, { ORIGINAL_EXPLANATION } from "../../../components/OriginalBadge";
 import RatingChip from "../../../components/RatingChip";
-import StarRating from "../../../components/StarRating";
+import { TrustBadge } from "../../../components/TrustRing";
 import BookDialog from "../components/BookDialog";
 import DeletePostDialog from "../components/DeletePostDialog";
 import MediaCarousel from "../components/MediaCarousel";
@@ -200,8 +200,8 @@ function ServiceDetails({ serviceId }) {
                   : <span className="text-white fw-semibold">{freelancerName}</span>}
                 <VerifiedBadge verified={verifiedIds.has(freelancer?.id)} />
               </span>
-              {/* Their average rating from finished projects (Feature 5, transparency). */}
-              <StarRating userId={freelancer?.id} />
+              {/* Their Trust score: their average rating from finished projects (Feature 5, transparency). */}
+              <TrustBadge userId={freelancer?.id} />
               <AvailabilityBadge available={freelancer?.available_for_work} className="fs-8" />
             </p>
             {/* The day the freelancer uploaded this offer. */}

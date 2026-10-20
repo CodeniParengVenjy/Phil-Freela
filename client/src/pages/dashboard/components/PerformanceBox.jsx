@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchProfileStats, formatMemberSince, formatReplyTime } from "../../../lib/profileStats";
+import { trustLevel, trustPercent } from "../../../lib/ratings";
+import TrustRing from "../../../components/TrustRing";
 
 // The Performance box on a profile (Feature 5, Profile transparency): real
 // numbers worked out from the person's projects, ratings and chats, not typed
@@ -33,6 +35,8 @@ export default function PerformanceBox({ userId, role, className = "" }) {
       {stats === undefined && <p className="text-secondary fs-7 mb-0">Loading...</p>}
       {stats === null && <p className="text-secondary fs-7 mb-0">Couldn't load these numbers right now.</p>}
 
+      {stats && <TrustScore stats={stats} />}
+
       {rows.map((row, index) => (
         <div
           key={row.label}
@@ -42,6 +46,25 @@ export default function PerformanceBox({ userId, role, className = "" }) {
           <span className={`fw-bold fs-6 text-end ${row.className}`}>{row.value}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+// The big Trust score ring at the top: the average stars out of 5 as a
+// percentage, with a word for it and how it is worked out. It uses the same
+// numbers as the Average Rating row below, so it needs no new request.
+function TrustScore({ stats }) {
+  const hasRatings = stats.rating_count > 0;
+  const level = hasRatings ? trustLevel(trustPercent(stats.avg_stars)) : null;
+
+  return (
+    <div className="text-center pb-3 mb-2 border-bottom border-secondary border-opacity-25">
+      <TrustRing avgStars={stats.avg_stars} count={stats.rating_count} size="lg" />
+      <div className={`fw-bold mt-2 ${level ? level.tone : "text-white-50"}`}>{level ? level.word : "No ratings yet"}</div>
+      <div className="text-secondary fs-8">
+        Trust score{hasRatings && ` · ${stats.rating_count} rating${stats.rating_count === 1 ? "" : "s"}`}
+      </div>
+      <div className="text-secondary fs-8 mt-1">The average star rating out of 5. Ratings still hidden by the blind rule aren't counted.</div>
     </div>
   );
 }

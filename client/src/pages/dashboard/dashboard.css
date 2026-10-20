@@ -1140,6 +1140,59 @@ body.sidebar-collapsed .sidebar-wrapper {
   transform: scale(1.2);
 }
 
+/* The Trust score ring (components/TrustRing.jsx). The arc is drawn in the
+   current text color, which the level sets with a Bootstrap class, so light mode
+   and the accent color re-color it. The track and the number read Bootstrap's
+   "white" setting, which light mode turns into dark ink. */
+.trust-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trust-ring svg {
+  width: 100%;
+  height: 100%;
+}
+
+.trust-ring-lg { width: 120px; height: 120px; }
+.trust-ring-sm { width: 40px; height: 40px; }
+
+.trust-ring-track,
+.trust-ring-arc {
+  fill: none;
+  stroke-width: 11;
+}
+
+.trust-ring-track { stroke: rgba(var(--bs-white-rgb), 0.15); }
+
+.trust-ring-arc {
+  stroke: currentColor;
+  stroke-linecap: round;
+  /* Fills up from nothing the first time it shows. */
+  animation: trust-ring-fill 0.9s ease-out;
+}
+
+@keyframes trust-ring-fill {
+  from { stroke-dasharray: 0 100; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trust-ring-arc { animation: none; }
+}
+
+.trust-ring-value {
+  position: absolute;
+  font-weight: 700;
+  line-height: 1;
+  color: rgb(var(--bs-white-rgb));
+}
+
+.trust-ring-lg .trust-ring-value { font-size: 1.6rem; }
+.trust-ring-sm .trust-ring-value { font-size: 0.62rem; }
+
 /* The "(optional)" hint inside the feedback box, in light grey so it can be
    read on the dark box (light mode sets its own color in theme.css). */
 .feedback-box::placeholder {

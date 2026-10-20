@@ -34,6 +34,21 @@ export function useRatingSummaries(userIds) {
   return summaries;
 }
 
+// The Trust score ring (components/TrustRing.jsx): the average stars out of 5,
+// as a whole percentage. 4.5 stars = 90%, and the lowest possible (1 star) is 20%.
+export function trustPercent(avgStars) {
+  return Math.round((Number(avgStars) / 5) * 100);
+}
+
+// The word and the color class for a Trust score. The classes are Bootstrap's
+// (plus text-role, the user's accent), so they re-color themselves in light mode.
+export function trustLevel(percent) {
+  if (percent >= 80) return { word: "Highly trusted", tone: "text-success" };
+  if (percent >= 60) return { word: "Trusted", tone: "text-role" };
+  if (percent >= 40) return { word: "Fair", tone: "text-warning" };
+  return { word: "Low", tone: "text-danger" };
+}
+
 // A user's own summary, or undefined while loading / no ratings yet.
 export function useRatingSummary(userId) {
   const [summary, setSummary] = useState(undefined);

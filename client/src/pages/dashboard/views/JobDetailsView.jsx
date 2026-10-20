@@ -9,7 +9,7 @@ import { MAX_NOTE_LENGTH, applyToJob, getMyApplicationForJob, openResume, withdr
 import { formatDay } from "../../../lib/projects";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
-import StarRating from "../../../components/StarRating";
+import { TrustBadge } from "../../../components/TrustRing";
 import BlockedNotice from "../components/BlockedNotice";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import DeletePostDialog from "../components/DeletePostDialog";
@@ -225,8 +225,8 @@ export default function JobDetailsView() {
                 ? <Link to={`/dashboard/clients/${job.client.id}`} className="text-white fw-semibold text-decoration-none hover-role">{clientName}</Link>
                 : <span className="text-white fw-semibold">{clientName}</span>}
               <VerifiedBadge verified={clientVerified} showUnverified />
-              {/* The client's average rating from past projects (Feature 5, transparency). */}
-              <StarRating userId={job.client?.id} />
+              {/* The client's Trust score: their average rating from past projects (Feature 5, transparency). */}
+              <TrustBadge userId={job.client?.id} />
               <span>• {new Date(job.created_at).toLocaleDateString()}</span>
               {/* Shown once the client changed the job, so nobody applies on old words. */}
               {job.updated_at && <span>• Edited {new Date(job.updated_at).toLocaleDateString()}</span>}
