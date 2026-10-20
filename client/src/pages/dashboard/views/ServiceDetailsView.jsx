@@ -14,6 +14,7 @@ import OriginalBadge, { ORIGINAL_EXPLANATION } from "../../../components/Origina
 import RatingChip from "../../../components/RatingChip";
 import StarRating from "../../../components/StarRating";
 import BookDialog from "../components/BookDialog";
+import DeletePostDialog from "../components/DeletePostDialog";
 import MediaCarousel from "../components/MediaCarousel";
 import ReportDialog from "../components/ReportDialog";
 import ServiceReviews from "../components/ServiceReviews";
@@ -45,13 +46,15 @@ function ServiceDetails({ serviceId }) {
   // The offer being reported, and the offer being booked (null = popup closed).
   const [reportTarget, setReportTarget] = useState(null);
   const [bookTarget, setBookTarget] = useState(null);
+  // The offer waiting in the "Delete this service?" pop-up (only the owner can open it).
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     let active = true;
 
     supabase
       .from("services")
-      .select(`id, title, category, description, price, skill, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, avatar_path, available_for_work, skills), ${SLIDES_SELECT}`)
+      .select(`id, title, category, description, price, skill, image_url, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, avatar_path, available_for_work, skills), ${SLIDES_SELECT}`)
       .eq("id", serviceId)
       .maybeSingle()
       .then(({ data }) => {
@@ -206,6 +209,13 @@ function ServiceDetails({ serviceId }) {
             {record.length > 0 && <p className="text-secondary fs-8 mb-0">{record.join(" • ")}</p>}
             {stats && record.length === 0 && <p className="text-secondary fs-8 mb-0">New here: no finished projects yet.</p>}
           </div>
+          {isOwnOffer && (
+            <div className="d-flex gap-2 flex-shrink-0">
+              <button type="button" className="btn btn-outline-danger rounded-pill px-4 fw-bold" onClick={() => setConfirmDelete(true)}>
+                <i className="bi bi-trash3-fill me-1"></i> Delete
+              </button>
+            </div>
+          )}
           {!isOwnOffer && freelancer && (
             <div className="d-flex gap-2 flex-shrink-0">
               <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-4 fw-bold" onClick={() => openChat(freelancer.id)}>
@@ -298,6 +308,14 @@ function ServiceDetails({ serviceId }) {
       </div>
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
+      <DeletePostDialog
+        kind="service"
+        post={confirmDelete ? service : null}
+        showToast={showToast}
+        onCancel={() => setConfirmDelete(false)}
+        // The offer is gone, so go to the page that lists your services.
+        onDeleted={() => navigate("/dashboard/services", { replace: true })}
+      />
       <BookDialog
         key={bookTarget?.service?.id}
         target={bookTarget}

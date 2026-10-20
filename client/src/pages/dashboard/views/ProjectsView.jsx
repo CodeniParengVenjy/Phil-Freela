@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { SLIDES_SELECT, removeItemFiles } from "../../../lib/slides";
+import { SLIDES_SELECT } from "../../../lib/slides";
 import { useServiceRatings } from "../../../lib/useServiceRatings";
 import ServiceCard from "../components/ServiceCard";
-import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
+import DeletePostDialog from "../components/DeletePostDialog";
 import ApplicationsPanel from "../components/ApplicationsPanel";
 import ProjectsPanel from "../components/ProjectsPanel";
 
@@ -18,7 +18,6 @@ export default function ProjectsView() {
   const ratings = useServiceRatings((services || []).map((s) => s.id));
   const [servicesError, setServicesError] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Only freelancers post services, so the "My Published Services" box loads for them alone.
   useEffect(() => {
@@ -40,28 +39,6 @@ export default function ProjectsView() {
       active = false;
     };
   }, [isFreelancer, currentUserId]);
-
-  const handleDelete = async () => {
-    const service = serviceToDelete;
-    setDeleting(true);
-
-    // .select("id") returns the deleted rows, so an empty result means nothing was deleted.
-    const { data, error } = await supabase.from("services").delete().eq("id", service.id).select("id");
-    if (error || !data?.length) {
-      setDeleting(false);
-      showToast("Couldn't delete that service. Please try again.");
-      return;
-    }
-
-    // The row is gone, so remove its photos and videos from Storage too. If
-    // that fails it only leaves unused files behind, so it isn't treated as an error.
-    await removeItemFiles(service);
-
-    setServices((prev) => prev.filter((s) => s.id !== service.id));
-    setServiceToDelete(null);
-    setDeleting(false);
-    showToast(`"${service.title}" was deleted.`);
-  };
 
   return (
     <section className="dashboard-view active-view">
@@ -111,13 +88,16 @@ export default function ProjectsView() {
         </div>
       </div>
 
-      <DeleteConfirmDialog
-        open={Boolean(serviceToDelete)}
-        title="Delete this service?"
-        message={serviceToDelete ? `"${serviceToDelete.title}" will be removed for good, together with its photo or video. This can't be undone.` : ""}
-        busy={deleting}
-        onConfirm={handleDelete}
+      <DeletePostDialog
+        key={serviceToDelete?.id}
+        kind="service"
+        post={serviceToDelete}
+        showToast={showToast}
         onCancel={() => setServiceToDelete(null)}
+        onDeleted={(service) => {
+          setServices((prev) => prev.filter((s) => s.id !== service.id));
+          setServiceToDelete(null);
+        }}
       />
     </section>
   );

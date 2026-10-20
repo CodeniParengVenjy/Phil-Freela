@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useOutletContext, useParams } from "react-router-dom";
+import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getCategory } from "../../../lib/categories";
 import { fetchIsVerified } from "../../../lib/verification";
@@ -12,6 +12,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import StarRating from "../../../components/StarRating";
 import BlockedNotice from "../components/BlockedNotice";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
+import DeletePostDialog from "../components/DeletePostDialog";
 import ReportDialog from "../components/ReportDialog";
 
 // One client job post (opened from Find Jobs). Freelancers apply here with a
@@ -20,6 +21,7 @@ import ReportDialog from "../components/ReportDialog";
 // also where a freelancer can report the client.
 export default function JobDetailsView() {
   const { jobId } = useParams();
+  const navigate = useNavigate();
   const { currentUserId, accountType, suspension, showToast, openChat } = useOutletContext();
   // undefined while loading, null when the job doesn't exist (or was removed).
   const [job, setJob] = useState(undefined);
@@ -34,6 +36,8 @@ export default function JobDetailsView() {
   const [withdrawing, setWithdrawing] = useState(false);
   // The client being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
+  // The "Delete this job post?" pop-up (only the client who posted it can open it).
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!currentUserId) return undefined;
@@ -232,6 +236,13 @@ export default function JobDetailsView() {
               {job.due_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-event me-1"></i>Needed by {formatDay(job.due_date)}</span>}
             </div>
           </div>
+          {isOwnJob && (
+            <div className="d-flex gap-2 flex-shrink-0">
+              <button type="button" className="btn btn-outline-danger rounded-pill px-4 fw-bold" onClick={() => setConfirmDelete(true)}>
+                <i className="bi bi-trash3-fill me-1"></i> Delete
+              </button>
+            </div>
+          )}
           {!isOwnJob && job.client && (
             <div className="d-flex gap-2 flex-shrink-0">
               <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-4 fw-bold" onClick={() => openChat(job.client.id)}>
@@ -285,6 +296,15 @@ export default function JobDetailsView() {
       />
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
+      <DeletePostDialog
+        key={job.id}
+        kind="job"
+        post={confirmDelete ? job : null}
+        showToast={showToast}
+        onCancel={() => setConfirmDelete(false)}
+        // The job is gone, so go back to the page that lists your job posts.
+        onDeleted={() => navigate("/dashboard/post-need", { replace: true })}
+      />
     </section>
   );
 }

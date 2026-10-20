@@ -47,7 +47,23 @@ and delete them. What was there:
    database when a report about a service or job is sent (older reports filled
    in; the one older post report already points at a removed service, so it has
    no copy). No new tables.
-2. Delete buttons (both kinds, card and own page).
+2. DONE: Delete buttons, shared by `lib/ownPosts.js` (deleteService,
+   deleteJobPost, countApplicants) and `components/DeletePostDialog.jsx`.
+   Services: the card on Post a Service (Your Active Services), the card on My
+   Projects (it already had one, now the same pop-up), and a Delete button on
+   the offer's own page (owner only; goes back to Post a Service). Jobs: a
+   trash button on each row of Your Active Listings (the title now opens the
+   job's page) and a Delete button on the job's own page (goes back to Post
+   What You Need). The job pop-up says how many freelancers applied. Found on
+   the way: a job's applications go with it but their resume PDFs sit in the
+   private "resumes" bucket where only the freelancer could remove them, so
+   they would stay forever with nobody able to see them. New storage rule
+   (`database/supabase_post_remove_resumes_schema.sql`, applied) lets the job's
+   client remove the resumes sent to their own job; the website removes them
+   first, then the job. Its test (`database/test_post_remove_resumes.sql`)
+   contains delete statements, so the connector refused it: NOT RUN, the user
+   runs it in the SQL Editor. Browser check against a fake backend, laptop and
+   phone: 54 checks.
 3. Edit text (both kinds) and the "Edited" label.
 4. (later) Edit photos and videos of a service through the existing upload and
    ownership check.

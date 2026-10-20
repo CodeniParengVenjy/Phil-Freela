@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import { formatDay, todayInManila } from "../../../lib/projects";
 import BlockedNotice from "../components/BlockedNotice";
+import DeletePostDialog from "../components/DeletePostDialog";
 
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
@@ -26,6 +27,8 @@ export default function PostNeedView() {
   const [budget, setBudget] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [posts, setPosts] = useState(null);
+  // The job waiting in the "Delete this job post?" pop-up (null = closed).
+  const [postToDelete, setPostToDelete] = useState(null);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -236,7 +239,21 @@ export default function PostNeedView() {
                 const categoryLabel = getCategory(p.category).label;
                 return (
                   <div key={p.id} className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
-                    <h6 className="text-white fw-bold mb-1">{p.title}</h6>
+                    <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
+                      {/* The title opens the job's own page, the way freelancers see it. */}
+                      <h6 className="mb-0 text-break">
+                        <Link to={`/dashboard/job-details/${p.id}`} className="text-white fw-bold text-decoration-none hover-role">{p.title}</Link>
+                      </h6>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center"
+                        style={{ width: 32, height: 32 }}
+                        aria-label={`Delete ${p.title}`}
+                        onClick={() => setPostToDelete(p)}
+                      >
+                        <i className="bi bi-trash3-fill"></i>
+                      </button>
+                    </div>
                     <span className="badge bg-role text-white fs-8 mb-2">{categoryLabel}</span>
                     <p className="text-secondary fs-8 mb-0">
                       {p.budget ? `Budget ₱${Number(p.budget).toLocaleString()}` : "Budget flexible"} • {new Date(p.created_at).toLocaleDateString()}
@@ -249,6 +266,18 @@ export default function PostNeedView() {
           </div>
         </div>
       </div>
+
+      <DeletePostDialog
+        key={postToDelete?.id}
+        kind="job"
+        post={postToDelete}
+        showToast={showToast}
+        onCancel={() => setPostToDelete(null)}
+        onDeleted={(job) => {
+          setPosts((prev) => prev.filter((p) => p.id !== job.id));
+          setPostToDelete(null);
+        }}
+      />
     </section>
   );
 }

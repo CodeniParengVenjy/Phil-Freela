@@ -8,6 +8,7 @@ import { useServiceRatings } from "../../../lib/useServiceRatings";
 import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, addPickedFiles, ownershipPassedMessage, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import ServiceCard from "../components/ServiceCard";
+import DeletePostDialog from "../components/DeletePostDialog";
 import BlockedNotice from "../components/BlockedNotice";
 import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
 import { isPostingBlocked } from "../../../lib/suspensions";
@@ -30,6 +31,8 @@ export default function ServicesView() {
   // "Checking ownership: 2 of 5..." while the slides are being sent.
   const [progress, setProgress] = useState("");
   const [services, setServices] = useState(null);
+  // The service waiting in the "Delete this service?" pop-up (null = closed).
+  const [serviceToDelete, setServiceToDelete] = useState(null);
   // What clients rated each of your offers, for the "★ 4.5 (2)" on its row.
   const ratings = useServiceRatings((services || []).map((s) => s.id));
   // Only freelancers with a verified identity can offer services (the
@@ -269,13 +272,25 @@ export default function ServicesView() {
             )}
 
             <div className="d-flex flex-column gap-3">
-              {services?.map((s) => <ServiceCard key={s.id} service={s} rating={ratings.get(s.id)} />)}
+              {services?.map((s) => <ServiceCard key={s.id} service={s} onDelete={setServiceToDelete} rating={ratings.get(s.id)} />)}
             </div>
           </div>
         </div>
       </div>
 
       {checkingOwnership && <OwnershipCheckDialog onClose={() => setCheckingOwnership(false)} />}
+
+      <DeletePostDialog
+        key={serviceToDelete?.id}
+        kind="service"
+        post={serviceToDelete}
+        showToast={showToast}
+        onCancel={() => setServiceToDelete(null)}
+        onDeleted={(service) => {
+          setServices((prev) => prev.filter((s) => s.id !== service.id));
+          setServiceToDelete(null);
+        }}
+      />
     </section>
   );
 }
