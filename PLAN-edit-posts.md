@@ -84,5 +84,14 @@ and delete them. What was there:
    Delete one still passes: 54).
 4. (later) Edit photos and videos of a service through the existing upload and
    ownership check.
-5. Admin > Reports shows the saved title and owner for a post that is gone.
+5. DONE: Admin > Reports shows the saved title and owner for a service or job
+   post that is gone: the title with a grey "Deleted" badge, "Posted by <owner>",
+   a line saying the post is no longer there and its title and owner were saved
+   when it was reported, and Suspend Owner / Ban Owner / Resolve / Dismiss (no
+   Remove Listing, no files box: nothing is left to remove or show). If the
+   owner's account is gone too, the title still shows with "Posted by Unknown"
+   and only Resolve / Dismiss. A report made before step 1 whose post was
+   already gone has no copy and shows "(deleted)" as before. Browser check
+   against a fake backend, desktop and phone: 31 checks; the live API accepts
+   the two new columns in that query (checked with the anon key).
 6. (later, optional) Close / Pause without deleting.

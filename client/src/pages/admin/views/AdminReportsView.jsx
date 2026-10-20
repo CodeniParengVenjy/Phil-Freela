@@ -203,7 +203,8 @@ export default function AdminReportsView() {
         supabase
           .from("reports")
           // report_messages: the chat messages the reporter ticked (empty for most reports).
-          .select("id, reporter_id, target_type, target_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, report_messages(id, from_reporter, body, attachment_type, attachment_name, is_call, edited, flagged, sent_at), reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
+          // target_title / target_owner_id: a copy of the reported post's title and owner, kept for when the post is gone.
+          .select("id, reporter_id, target_type, target_id, target_title, target_owner_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, report_messages(id, from_reporter, body, attachment_type, attachment_name, is_call, edited, flagged, sent_at), reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
           .order("created_at", { ascending: false })
           .order("sent_at", { referencedTable: "report_messages", ascending: true }),
         supabase.from("user_suspensions").select("user_id, ends_at"),
@@ -221,10 +222,14 @@ export default function AdminReportsView() {
       // report card can show the name/title and the owner.
       const idsOf = (type) => [...new Set(reportsResult.data.filter((r) => r.target_type === type).map((r) => r.target_id))];
       const callIds = [...new Set(reportsResult.data.map((r) => r.call_id).filter(Boolean))];
+      // A service or job post the owner took down after it was reported: the
+      // report still has its title and owner (the database copied them when the
+      // report was sent), so the owner's profile is looked up too.
+      const postReports = reportsResult.data.filter((r) => (r.target_type === "service" || r.target_type === "job_post") && r.target_owner_id);
       const [usersResult, servicesResult, jobsResult, projectsResult, reviewsResult, callsResult, links] = await Promise.all([
         // A reported picture points at its owner, so their profile is looked up
         // too (with where their picture and cover are now).
-        supabase.from("profiles").select("id, full_name, username, avatar_path, cover_path").in("id", [...new Set([...idsOf("user"), ...idsOf("profile_picture"), ...idsOf("cover_photo")])]),
+        supabase.from("profiles").select("id, full_name, username, avatar_path, cover_path").in("id", [...new Set([...idsOf("user"), ...idsOf("profile_picture"), ...idsOf("cover_photo"), ...postReports.map((r) => r.target_owner_id)])]),
         // The slides are only needed so Remove can delete the service's files too.
         supabase.from("services").select(`id, title, image_url, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`).in("id", idsOf("service")),
         supabase.from("job_posts").select("id, title, client_id, owner:profiles!job_posts_client_id_fkey(full_name, username)").in("id", idsOf("job_post")),
@@ -257,6 +262,14 @@ export default function AdminReportsView() {
       });
       (projectsResult.data || []).forEach((p) => {
         found[targetKey("portfolio_item", p.id)] = { name: p.title, ownerId: p.freelancer_id, ownerName: p.owner?.full_name, item: p };
+      });
+      // A post that is gone: its saved title and owner. No `item` (nothing left
+      // to remove or show), so only Suspend / Ban on the owner, Resolve and Dismiss are offered.
+      postReports.forEach((r) => {
+        const key = targetKey(r.target_type, r.target_id);
+        if (found[key] || !r.target_title) return;
+        const owner = (usersResult.data || []).find((u) => u.id === r.target_owner_id);
+        found[key] = { name: r.target_title, gone: true, ownerId: owner ? owner.id : null, ownerName: owner?.full_name };
       });
       // The author of a comment is its "owner" (Suspend / Ban apply to them); review keeps the comment to show.
       (reviewsResult.data || []).forEach((r) => {
@@ -429,6 +442,8 @@ export default function AdminReportsView() {
           const stillThere = isPicture && target && target.currentPath === report.reported_path;
           // "banned", "suspended", or undefined for the reported user / listing owner.
           const ownerStatus = target && blockedStatus[target.ownerId];
+          // Suspend / Ban need an owner account (a post that is gone may also have lost its owner).
+          const canPenalize = Boolean(target?.ownerId);
           const ownerBadge = ownerStatus && (
             <span className={`badge ${blockedBadges[ownerStatus].className} fw-normal`}>{blockedBadges[ownerStatus].label}</span>
           );
@@ -443,12 +458,18 @@ export default function AdminReportsView() {
 
               <h2 className="h6 fw-bold text-white mb-1 admin-title-cell">
                 {target ? target.name : <span className="text-white-50 fst-italic">(deleted)</span>}
+                {target?.gone && <span className="badge bg-secondary fw-normal ms-2 align-middle">Deleted</span>}
               </h2>
 
               {hasOwnerLine && target && (
                 <p className="fs-7 text-white-50 mb-1">
                   {isPicture ? "Belongs to" : "Posted by"} {target.ownerName || "Unknown"}
                   {ownerBadge && <span className="ms-2">{ownerBadge}</span>}
+                </p>
+              )}
+              {target?.gone && (
+                <p className="fs-8 text-white-50 fst-italic mb-1">
+                  This post is no longer there. Its title and owner were saved when it was reported.
                 </p>
               )}
               {!hasOwnerLine && ownerBadge && <div className="mb-1">{ownerBadge}</div>}
@@ -502,7 +523,7 @@ export default function AdminReportsView() {
               )}
 
               {/* The reported service's or project's own pictures; click one to open it full size. */}
-              {isListing && target && <ReportedFiles item={target.item} />}
+              {isListing && target && !target.gone && <ReportedFiles item={target.item} />}
               {report.evidence_paths?.length > 0 && <p className="fs-8 text-white-50 mb-1">The reporter's screenshots:</p>}
 
               {/* The reporter's screenshots; click one to open it full size. */}
@@ -547,7 +568,7 @@ export default function AdminReportsView() {
 
               {report.status === "pending" && requests[report.id]?.status !== "pending" && (
                 <div className="d-flex flex-wrap gap-2 mt-3">
-                  {isListing && target && (
+                  {isListing && target && !target.gone && (
                     <button className="btn btn-outline-danger btn-sm" onClick={() => openAction("remove", report)}>
                       <i className="bi bi-trash"></i> Remove {removeWord(report)}
                     </button>
@@ -557,13 +578,13 @@ export default function AdminReportsView() {
                       <i className="bi bi-trash"></i> Remove Picture
                     </button>
                   )}
-                  {target && !ownerStatus && (
+                  {canPenalize && !ownerStatus && (
                     <button className="btn btn-outline-warning btn-sm" onClick={() => openAction("suspend", report)}>
                       <i className="bi bi-slash-circle"></i> Suspend {hasOwnerLine ? "Owner" : "User"}
                     </button>
                   )}
                   {/* A suspended user can still be banned; that replaces the suspension. */}
-                  {target && ownerStatus !== "banned" && (
+                  {canPenalize && ownerStatus !== "banned" && (
                     <button className="btn btn-outline-danger btn-sm" onClick={() => openAction("ban", report)}>
                       <i className="bi bi-ban"></i> Ban {hasOwnerLine ? "Owner" : "User"}
                     </button>
