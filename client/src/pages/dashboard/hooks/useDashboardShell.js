@@ -350,7 +350,8 @@ export function useDashboardShell() {
     }
     const { data: conversationId, error } = await supabase.rpc("get_or_create_conversation", { other_id: otherUserId });
     if (error || !conversationId) {
-      showToast("Couldn't start that conversation.");
+      // The database says why when someone has started too many new chats today.
+      showToast(error?.message?.includes("new chats today") ? error.message : "Couldn't start that conversation.");
       return;
     }
     navigate(`/dashboard/chat/${conversationId}`);
