@@ -37,6 +37,29 @@ const sortOptions = {
   name: { label: "Name A-Z", start: "asc", desc: "Z to A", asc: "A to Z" }
 };
 
+// A labelled row of round choice buttons (one is picked), used in the Filters pop-up.
+// options: [[value, text], ...]
+function ChoiceRow({ label, value, onChange, options }) {
+  return (
+    <div className="mb-3">
+      <div className="text-white-50 fs-8 fw-semibold text-uppercase mb-2">{label}</div>
+      <div className="d-flex flex-wrap gap-2" role="group" aria-label={label}>
+        {options.map(([optionValue, text]) => (
+          <button
+            type="button"
+            key={optionValue}
+            className={`admin-choice ${value === optionValue ? "active" : ""}`}
+            aria-pressed={value === optionValue}
+            onClick={() => onChange(optionValue)}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminUsersView() {
   const { adminId, isSuperAdmin } = useOutletContext();
   // The Overview's cards open this page with choices in the address, like
@@ -66,6 +89,8 @@ export default function AdminUsersView() {
   const [sortBy, setSortBy] = useState(() => fromAddress("sort", Object.keys(sortOptions), "joined"));
   // Each sort has its own usual direction unless the address names one.
   const [sortDir, setSortDir] = useState(() => fromAddress("dir", ["asc", "desc"], sortOptions[fromAddress("sort", Object.keys(sortOptions), "joined")].start));
+  // The Filters and sorting pop-up is open.
+  const [filterOpen, setFilterOpen] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
   // The open Suspend / Ban pop-up: { kind: "suspend" | "ban", user } (null = closed).
   const [blockTarget, setBlockTarget] = useState(null);
@@ -172,6 +197,30 @@ export default function AdminUsersView() {
     setSortBy(value);
     setSortDir(sortOptions[value].start);
   };
+
+  // The start: sorted by Joined, newest first, every filter on "all", nothing searched.
+  // changedCount is how many of the five choices (4 filters + the sorting) are away
+  // from it (the orange number on the Filters button); the search text isn't counted
+  // there, but Reset clears it too.
+  const sortChanged = sortBy !== "joined" || sortDir !== sortOptions.joined.start;
+  const changedCount = [roleFilter, statusFilter, verifyFilter, presenceFilter].filter((value) => value !== "all").length + (sortChanged ? 1 : 0);
+  const anythingChanged = changedCount > 0 || search !== "";
+  const resetAll = () => {
+    setSearch("");
+    setRoleFilter("all");
+    setStatusFilter("all");
+    setVerifyFilter("all");
+    setPresenceFilter("all");
+    changeSort("joined");
+  };
+
+  // Escape closes the Filters pop-up.
+  useEffect(() => {
+    if (!filterOpen) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") setFilterOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [filterOpen]);
 
   const openBlockDialog = (kind, user) => {
     setBlockTarget({ kind, user });
@@ -299,68 +348,78 @@ export default function AdminUsersView() {
       <h1 className="h4 fw-bold mb-3">Users</h1>
 
       <div className="admin-card rounded-4 p-3 mb-3">
-        <div className="row g-2">
-          <div className="col-12 col-lg-6">
-            <input
-              type="search"
-              className="form-control admin-input"
-              placeholder="Search by name, username, email, or ID (like PF-0007)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="col-6 col-lg-3">
-            <select className="form-select admin-input" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Filter by role">
-              <option value="all">All roles</option>
-              <option value="freelancer">Freelancers</option>
-              <option value="client">Clients</option>
-            </select>
-          </div>
-          <div className="col-6 col-lg-3">
-            <select className="form-select admin-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
-              <option value="all">All statuses</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-              <option value="banned">Banned</option>
-            </select>
-          </div>
-          <div className="col-6 col-lg-3">
-            <select className="form-select admin-input" value={verifyFilter} onChange={(e) => setVerifyFilter(e.target.value)} aria-label="Filter by verification">
-              <option value="all">All users</option>
-              <option value="verified">Verified</option>
-              <option value="unverified">Not verified</option>
-            </select>
-          </div>
-          <div className="col-6 col-lg-3">
-            <select className="form-select admin-input" value={presenceFilter} onChange={(e) => setPresenceFilter(e.target.value)} aria-label="Filter by online status">
-              <option value="all">All activity</option>
-              <option value="online">Online now</option>
-              <option value="offline">Offline</option>
-            </select>
-          </div>
-          <div className="col-6 col-lg-3">
-            <select className="form-select admin-input" value={sortBy} onChange={(e) => changeSort(e.target.value)} aria-label="Sort by">
-              {Object.entries(sortOptions).map(([value, option]) => (
-                <option key={value} value={value}>Sort by: {option.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="col-6 col-lg-3">
-            <button
-              type="button"
-              className="btn btn-outline-light w-100"
-              onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
-              aria-label="Change the sort direction"
-            >
-              <i className={`bi ${sortDir === "desc" ? "bi-sort-down" : "bi-sort-up"} me-1`}></i>
-              {sortDir === "asc" ? "Ascending" : "Descending"} · {sortOptions[sortBy][sortDir]}
-            </button>
-          </div>
-          <div className="col-12 text-white-50 fs-7 text-lg-end">
-            {users !== null && `${visibleUsers.length} of ${users.length} users shown`}
-          </div>
+        <div className="d-flex gap-2">
+          <input
+            type="search"
+            className="form-control admin-input"
+            placeholder="Search by name, username, email, or ID (like PF-0007)..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {/* One button for all the filters and the sorting. The orange number is how
+              many of them are away from the default, so a closed pop-up still shows it. */}
+          <button
+            type="button"
+            className="btn btn-outline-light position-relative flex-shrink-0"
+            onClick={() => setFilterOpen(true)}
+            aria-haspopup="dialog"
+            aria-label={changedCount > 0 ? `Filters and sorting (${changedCount} changed)` : "Filters and sorting"}
+          >
+            <i className="bi bi-sliders"></i><span className="d-none d-sm-inline ms-2">Filters</span>
+            {changedCount > 0 && (
+              <span className="admin-filter-count position-absolute top-0 start-100 translate-middle badge rounded-pill">{changedCount}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary flex-shrink-0"
+            onClick={resetAll}
+            disabled={!anythingChanged}
+            aria-label="Reset the search, filters and sorting"
+          >
+            <i className="bi bi-arrow-counterclockwise"></i><span className="d-none d-sm-inline ms-2">Reset</span>
+          </button>
+        </div>
+        <div className="text-white-50 fs-7 mt-2 text-end">
+          {users !== null && `${visibleUsers.length} of ${users.length} users shown`}
         </div>
       </div>
+
+      {/* Filters and sorting pop-up. Choices apply at once, so the list behind it
+          changes while the admin presses; Reset puts everything back to the start. */}
+      {filterOpen && (
+        <div className="admin-modal-backdrop" onClick={() => setFilterOpen(false)}>
+          <div className="admin-card admin-modal admin-filter-modal rounded-4 p-4" role="dialog" aria-modal="true" aria-label="Filters and sorting" onClick={(e) => e.stopPropagation()}>
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <h2 className="h5 fw-bold text-white mb-0">Filters and sorting</h2>
+              <button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={() => setFilterOpen(false)}></button>
+            </div>
+            <div className="admin-filter-body">
+              <ChoiceRow label="Online" value={presenceFilter} onChange={setPresenceFilter} options={[["all", "All"], ["online", "Online now"], ["offline", "Offline"]]} />
+              <ChoiceRow label="Role" value={roleFilter} onChange={setRoleFilter} options={[["all", "All"], ["freelancer", "Freelancers"], ["client", "Clients"]]} />
+              <ChoiceRow label="Status" value={statusFilter} onChange={setStatusFilter} options={[["all", "All"], ["active", "Active"], ["suspended", "Suspended"], ["banned", "Banned"]]} />
+              <ChoiceRow label="Verification" value={verifyFilter} onChange={setVerifyFilter} options={[["all", "All"], ["verified", "Verified"], ["unverified", "Not verified"]]} />
+              <ChoiceRow label="Sort by" value={sortBy} onChange={changeSort} options={Object.entries(sortOptions).map(([value, option]) => [value, option.label])} />
+              <button
+                type="button"
+                className="btn btn-outline-light btn-sm"
+                onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
+                aria-label="Change the sort direction"
+              >
+                <i className={`bi ${sortDir === "desc" ? "bi-sort-down" : "bi-sort-up"} me-1`}></i>
+                {sortDir === "asc" ? "Ascending" : "Descending"} · {sortOptions[sortBy][sortDir]}
+              </button>
+            </div>
+            <div className="d-flex align-items-center justify-content-between gap-2 mt-4">
+              <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={resetAll} disabled={!anythingChanged}>
+                <i className="bi bi-arrow-counterclockwise me-1"></i>Reset
+              </button>
+              <span className="text-white-50 fs-8">{users !== null && `${visibleUsers.length} of ${users.length} shown`}</span>
+              <button type="button" className="btn btn-admin-orange btn-sm rounded-pill px-4 fw-bold" onClick={() => setFilterOpen(false)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {message.text && (
         <p className={`admin-message ${message.type} fs-7 fw-semibold`} aria-live="polite">{message.text}</p>

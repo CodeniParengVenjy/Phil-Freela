@@ -619,3 +619,39 @@ body {
   .admin-pending-times { flex: 0 0 13rem; }
   .admin-pending-action { flex: 0 0 11rem; text-align: right; }
 }
+
+/* Users > Filters and sorting pop-up: round choice buttons, the orange number on the
+   Filters button, and a pop-up that scrolls inside itself so Reset / Done stay in view. */
+.admin-choice {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.875rem;
+  padding: 0.3rem 0.9rem;
+}
+
+.admin-choice:hover { border-color: rgba(255, 255, 255, 0.5); }
+
+.admin-choice.active {
+  background: linear-gradient(135deg, #ff6b00 0%, #ff8800 100%);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+
+.admin-filter-count {
+  background: #ff6b00;
+  color: #fff;
+}
+
+.admin-filter-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 32px);
+}
+
+.admin-filter-body {
+  overflow-y: auto;
+  min-height: 0;
+}
