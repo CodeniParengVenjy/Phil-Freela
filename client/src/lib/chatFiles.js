@@ -134,3 +134,41 @@ export async function openChatFile(path) {
 export async function deleteChatFile(path) {
   await supabase.storage.from(BUCKET).remove([path]);
 }
+
+// Photos and videos (the photo button) live in the "chat-attachments" bucket.
+// It is private like "chat-files": a message keeps only the file's path, and
+// the two people in the chat open it through a link that expires
+// (database/supabase_chat_media_private_schema.sql).
+export const MEDIA_BUCKET = "chat-attachments";
+const MEDIA_LINK_SECONDS = 60 * 60;
+const MEDIA_LINK_KEEP_MS = (MEDIA_LINK_SECONDS - 5 * 60) * 1000;
+
+// The file's path inside the bucket. Older messages saved the whole public
+// link ("https://.../chat-attachments/<chat>/<file>"); this accepts both.
+export function chatMediaPath(value) {
+  const marker = `/${MEDIA_BUCKET}/`;
+  const at = value.indexOf(marker);
+  return at === -1 ? value : value.slice(at + marker.length).split("?")[0];
+}
+
+// Links already made, so a chat doesn't ask for the same picture again each
+// time it redraws. A link is reused until 5 minutes before it runs out.
+const mediaLinks = new Map();
+
+// A link to a chat photo or video that stops working after an hour, or null.
+export async function chatMediaLink(value) {
+  const path = chatMediaPath(value);
+  const saved = mediaLinks.get(path);
+  if (saved && saved.until > Date.now()) return saved.url;
+
+  const { data, error } = await supabase.storage.from(MEDIA_BUCKET).createSignedUrl(path, MEDIA_LINK_SECONDS);
+  if (error || !data?.signedUrl) return null;
+  mediaLinks.set(path, { url: data.signedUrl, until: Date.now() + MEDIA_LINK_KEEP_MS });
+  return data.signedUrl;
+}
+
+// Deletes the stored photo or video after its message is unsent (same as
+// deleteChatFile: a failure only leaves an unused file behind).
+export async function deleteChatMedia(value) {
+  await supabase.storage.from(MEDIA_BUCKET).remove([chatMediaPath(value)]);
+}

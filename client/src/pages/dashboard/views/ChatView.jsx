@@ -13,8 +13,9 @@ import { presenceStatus, usePresence } from "../../../lib/presence";
 import { profilePath } from "../../../lib/profileStats";
 import { needsTimeDivider, timeDividerLabel } from "../../../lib/chatTime";
 import { pickReportMessages } from "../../../lib/reportMessages";
-import { FILE_ACCEPT, checkChatFile, deleteChatFile, fileIcon, formatSize, sendChatFile, sendVoiceMessage } from "../../../lib/chatFiles";
+import { FILE_ACCEPT, checkChatFile, deleteChatFile, deleteChatMedia, fileIcon, formatSize, sendChatFile, sendVoiceMessage } from "../../../lib/chatFiles";
 import ChatAttachment from "../components/ChatAttachment";
+import ChatMedia from "../components/ChatMedia";
 import VoiceRecorder from "../components/VoiceRecorder";
 
 // Same upload rules as the Post a Service media dropzone.
@@ -244,9 +245,11 @@ export default function ChatView() {
   const confirmUnsend = async () => {
     setDeleting(true);
     const { error } = await supabase.from("messages").delete().eq("id", deleteTarget.id);
-    // An unsent file or voice message is deleted from storage too.
+    // An unsent file, voice message, photo or video is deleted from storage too.
     if (!error && (deleteTarget.attachment_type === "file" || deleteTarget.attachment_type === "audio")) {
       await deleteChatFile(deleteTarget.attachment_url);
+    } else if (!error && (deleteTarget.attachment_type === "image" || deleteTarget.attachment_type === "video")) {
+      await deleteChatMedia(deleteTarget.attachment_url);
     }
     setDeleting(false);
     setDeleteTarget(null);
@@ -390,14 +393,16 @@ export default function ChatView() {
       showToast?.(`Couldn't upload that ${mediaType}. Please try again.`);
       return;
     }
-    const attachmentUrl = supabase.storage.from("chat-attachments").getPublicUrl(path).data.publicUrl;
 
+    // The message keeps only the file's path; the chat opens it through a link
+    // that expires (the bucket is private, see lib/chatFiles.js).
     const { error: insertError } = await supabase.from("messages").insert({
       conversation_id: conversationId,
       sender_id: currentUserId,
-      attachment_url: attachmentUrl,
+      attachment_url: path,
       attachment_type: mediaType
     });
+    if (insertError) await deleteChatMedia(path); // don't leave an unused file behind
     setUploadingMedia(false);
     URL.revokeObjectURL(previewUrl);
     setPendingMedia(null);
@@ -571,17 +576,8 @@ export default function ChatView() {
                     </form>
                   ) : (
                     <>
-                      {m.attachment_url && m.attachment_type === "image" && (
-                        <img
-                          src={m.attachment_url}
-                          alt="Sent"
-                          className="rounded-3 mb-1 d-block"
-                          style={{ maxWidth: 240, maxHeight: 240, objectFit: "cover", cursor: "pointer" }}
-                          onClick={() => openPreview?.(m.attachment_url, "Photo")}
-                        />
-                      )}
-                      {m.attachment_url && m.attachment_type === "video" && (
-                        <video src={m.attachment_url} controls className="rounded-3 mb-1 d-block" style={{ maxWidth: 240 }} />
+                      {m.attachment_url && (m.attachment_type === "image" || m.attachment_type === "video") && (
+                        <ChatMedia message={m} openPreview={openPreview} />
                       )}
                       {m.attachment_url && (m.attachment_type === "file" || m.attachment_type === "audio") && (
                         <ChatAttachment message={m} showToast={showToast} />

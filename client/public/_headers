@@ -1,0 +1,22 @@
+# Cloudflare Pages adds these headers to every page of the website.
+#
+#   frame-ancestors 'none' / X-Frame-Options: no other website can show
+#     PhilFreela inside a frame (clickjacking: tricking someone into clicking
+#     a hidden button, like Delete or Approve).
+#   nosniff: the browser must not guess a file's type, so an uploaded picture
+#     can never be run as a script.
+#   Referrer-Policy: other websites only learn that a visitor came from
+#     PhilFreela, not which page they were on.
+#   Permissions-Policy: only PhilFreela itself may ask for the camera and
+#     microphone (face scan, calls, voice messages); location and payment are
+#     not used at all.
+#
+# A full Content-Security-Policy (which scripts may run) is not set here: it
+# has to be tried on every page with a real camera, call and sign-in first, or
+# it would break the live site.
+/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(self), geolocation=(), payment=()

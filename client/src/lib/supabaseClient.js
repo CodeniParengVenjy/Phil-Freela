@@ -31,6 +31,14 @@ export function setRememberMe(remember) {
   localStorage.setItem(REMEMBER_KEY, remember ? "true" : "false");
 }
 
+// Where the sign-in lives right now (the same choice dynamicStorage makes).
+export function activeStorage() {
+  return localStorage.getItem(REMEMBER_KEY) !== "false" ? localStorage : sessionStorage;
+}
+
+// The other linked account's saved sign-in (see accountSwitch.js).
+export const OTHER_ACCOUNT_KEY = "philfreela-other-account";
+
 // Falls back to placeholder values so createClient() never throws when the
 // real .env hasn't been filled in yet; callers should check isSupabaseConfigured.
 export const supabase = createClient(
@@ -38,6 +46,19 @@ export const supabase = createClient(
   supabaseAnonKey || "placeholder-anon-key",
   { auth: { storage: dynamicStorage } }
 );
+
+// Signing out also forgets the other account's saved sign-in. Without this it
+// stayed in the browser after sign-out (it could be the admin's), on a shared
+// computer too. Only touches storage, as the library asks for in this callback.
+supabase.auth.onAuthStateChange((event) => {
+  if (event !== "SIGNED_OUT") return;
+  try {
+    localStorage.removeItem(OTHER_ACCOUNT_KEY);
+    sessionStorage.removeItem(OTHER_ACCOUNT_KEY);
+  } catch {
+    // Storage blocked: nothing was saved there either.
+  }
+});
 
 // A second connection used only by the admin "Add Admin" form. Calling
 // signUp() on the main client would replace the signed-in admin's session

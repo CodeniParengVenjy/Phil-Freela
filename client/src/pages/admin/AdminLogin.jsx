@@ -6,11 +6,12 @@ import "../../styles/auth.css";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  // The normal sign-in sends an admin's email here after a wrong password
-  // (state.email), and the reset page sends them here after a new password
-  // (state.justReset).
+  // The normal sign-in's "Admin? Sign in here" link brings the email typed
+  // there (state.prefill), and the reset page sends them here after a new
+  // password (state.justReset). The normal sign-in no longer tells anyone
+  // whether an email is an admin's, so nothing says so here either.
   const location = useLocation();
-  const [email, setEmail] = useState(location.state?.email || "");
+  const [email, setEmail] = useState(location.state?.prefill || "");
   const [password, setPassword] = useState("");
   // True when this page was opened by a confirmation link that no longer
   // works: the reason comes back after the # in the address.
@@ -20,7 +21,6 @@ export default function AdminLogin() {
       return { text: "That confirmation link no longer works. A new email cancels the links in older ones, and links also expire. Type your admin email below and send a new one, then use the link in the newest email.", type: "error" };
     }
     if (location.state?.justReset) return { text: "Your password was changed. Sign in with the new one.", type: "success" };
-    if (location.state?.email) return { text: "That email belongs to an admin account, so sign in here. Forgot your password? Use the link under the password box.", type: "" };
     return { text: "", type: "" };
   });
   // Shows the "Resend confirmation email" button: after a dead link, or when

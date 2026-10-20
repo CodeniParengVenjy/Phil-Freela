@@ -1,4 +1,4 @@
-import { supabase, supabaseSignup } from "./supabaseClient";
+import { OTHER_ACCOUNT_KEY, activeStorage, supabase, supabaseSignup } from "./supabaseClient";
 import { getFriendlyErrorMessage } from "./errors";
 import { resolvePostAuthRoute } from "./profile";
 
@@ -11,8 +11,11 @@ import { resolvePostAuthRoute } from "./profile";
 // lives. Switching swaps the two and opens the right dashboard. Nothing but the
 // tokens is stored, never a password. A new browser has nothing stored yet, so
 // the other account's password is asked once there.
+//
+// It is kept where the sign-in itself is kept: with "Remember me" off that is
+// this tab only, and signing out removes it (see supabaseClient.js).
 
-const SLOT_KEY = "philfreela-other-account";
+const SLOT_KEY = OTHER_ACCOUNT_KEY;
 
 // Who this login is linked to, or null. For an admin: { side: "admin", other_id,
 // other_name, other_username } is their user account. For a user account:
@@ -26,7 +29,7 @@ export async function fetchMyLink() {
 // The stored sign-in of the other account: { forUser, access_token, refresh_token } or null.
 function readSlot() {
   try {
-    const slot = JSON.parse(localStorage.getItem(SLOT_KEY) || "null");
+    const slot = JSON.parse(activeStorage().getItem(SLOT_KEY) || "null");
     return slot?.forUser && slot.access_token && slot.refresh_token ? slot : null;
   } catch {
     return null;
@@ -35,7 +38,7 @@ function readSlot() {
 
 function writeSlot(forUser, session) {
   try {
-    localStorage.setItem(SLOT_KEY, JSON.stringify({ forUser, access_token: session.access_token, refresh_token: session.refresh_token }));
+    activeStorage().setItem(SLOT_KEY, JSON.stringify({ forUser, access_token: session.access_token, refresh_token: session.refresh_token }));
   } catch {
     // Storage blocked: the switch will simply ask for the password again.
   }
@@ -44,6 +47,7 @@ function writeSlot(forUser, session) {
 export function clearSlot() {
   try {
     localStorage.removeItem(SLOT_KEY);
+    sessionStorage.removeItem(SLOT_KEY);
   } catch {
     // nothing stored, nothing to clear
   }

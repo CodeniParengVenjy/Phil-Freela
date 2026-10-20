@@ -301,13 +301,9 @@ export default function Login() {
             if (wasDeleted) {
               throw new Error("This account was deleted after a ban and can no longer be used. You can create a new account with this email.");
             }
-            // An admin typed the wrong password here: send them to the admin
-            // sign-in, where "Forgot password?" resets an admin's password.
-            const { data: isAdminEmail } = await supabase.rpc("is_admin_email", { email: normalizedEmail });
-            if (isAdminEmail === true) {
-              navigate("/admin/login", { state: { email: normalizedEmail } });
-              return;
-            }
+            // The same sentence for every email: this page no longer tells
+            // anyone whether an email belongs to an admin. (Admins use the
+            // "Admin? Sign in here" link below, where "Forgot password?" is.)
             // A wrong email or password shows under the Password box.
             throw fieldError("password", "Incorrect email or password.");
           }
@@ -661,6 +657,18 @@ export default function Login() {
             <Link to="/" className="text-white-50 text-decoration-none fs-7 hover-orange">
               <i className="bi bi-arrow-left me-1"></i> Back to Homepage
             </Link>
+            {!isSignup && (
+              <p className="mt-2 mb-0 fs-8 text-white-50">
+                Admin?{" "}
+                <Link
+                  to="/admin/login"
+                  state={form.email.trim() ? { prefill: form.email.trim().toLowerCase() } : undefined}
+                  className="text-orange text-decoration-none hover-orange fw-semibold"
+                >
+                  Sign in here
+                </Link>
+              </p>
+            )}
           </div>
         </section>
       </main>
