@@ -8,6 +8,12 @@ import { shrinkImage } from "./shrinkImage";
 // 512 px is plenty (about 50 KB); a cover is a wide banner, so 1600 px.
 const PICTURE = { bucket: "avatars", column: "avatar_path", side: 512, label: "picture" };
 const COVER = { bucket: "covers", column: "cover_path", side: 1600, label: "cover photo" };
+// The crop window (components/ImageCropDialog.jsx) cuts a picked photo to these
+// shapes: width / height, and the width the cut is saved at. A picture is a
+// square (shown round); a cover is 4:1, between the banner on a phone (about
+// 3:1) and on a wide screen (about 6:1).
+export const PICTURE_CROP = { aspect: 1, outputWidth: PICTURE.side, round: true, title: "Crop your profile picture" };
+export const COVER_CROP = { aspect: 4, outputWidth: COVER.side, round: false, title: "Crop your cover photo" };
 const PICKABLE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_PICK_BYTES = 5 * 1024 * 1024;
 

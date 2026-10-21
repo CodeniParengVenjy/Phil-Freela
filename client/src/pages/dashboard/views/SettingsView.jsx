@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline, saveUsername } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
-import { checkAvatarFile, fetchCoverPath, removeCover, uploadAvatar, uploadCover } from "../../../lib/avatar";
+import { COVER_CROP, PICTURE_CROP, checkAvatarFile, fetchCoverPath, removeCover, uploadAvatar, uploadCover } from "../../../lib/avatar";
 import { deleteMyAccount, downloadAsFile, exportMyData } from "../../../lib/privacy";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
+import ImageCropDialog from "../../../components/ImageCropDialog";
 import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
@@ -65,6 +66,8 @@ export default function SettingsView() {
   const [coverPreviewUrl, setCoverPreviewUrl] = useState(null);
   const [savingCover, setSavingCover] = useState(false);
   const coverInputRef = useRef(null);
+  // The photo being cropped before it's uploaded: { kind: "picture" | "cover", file }, or null.
+  const [cropping, setCropping] = useState(null);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -163,8 +166,9 @@ export default function SettingsView() {
     if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
   }, [coverPreviewUrl]);
 
-  // The cover photo is saved as soon as it's picked, like the profile picture.
-  const handleCoverPick = async (event) => {
+  // A picked cover photo is cropped first (ImageCropDialog), then saved
+  // straight away, like the profile picture.
+  const handleCoverPick = (event) => {
     const file = event.target.files?.[0];
     event.target.value = ""; // lets the same file be picked again later
     if (!file || !currentUserId || coverPath === null) return;
@@ -173,10 +177,13 @@ export default function SettingsView() {
       showToast(problem);
       return;
     }
+    setCropping({ kind: "cover", file });
+  };
 
-    setCoverPreviewUrl(URL.createObjectURL(file));
+  const saveCover = async (croppedFile) => {
+    setCoverPreviewUrl(URL.createObjectURL(croppedFile));
     setSavingCover(true);
-    const { path, error } = await uploadCover(currentUserId, file, coverPath);
+    const { path, error } = await uploadCover(currentUserId, croppedFile, coverPath);
     setSavingCover(false);
     setCoverPreviewUrl(null);
     if (error) {
@@ -199,9 +206,10 @@ export default function SettingsView() {
     showToast("Cover photo removed.");
   };
 
-  // The picture is saved as soon as it's picked. (It used to wait for Save
-  // Changes, so leaving the page first quietly dropped the new picture.)
-  const handlePicturePick = async (event) => {
+  // The picture is cropped first, then saved as soon as the crop is accepted.
+  // (It used to wait for Save Changes, so leaving the page first quietly
+  // dropped the new picture.)
+  const handlePicturePick = (event) => {
     const file = event.target.files?.[0];
     event.target.value = ""; // lets the same file be picked again later
     if (!file || !currentUserId) return;
@@ -210,10 +218,13 @@ export default function SettingsView() {
       showToast(problem);
       return;
     }
+    setCropping({ kind: "picture", file });
+  };
 
-    setPreviewUrl(URL.createObjectURL(file));
+  const savePicture = async (croppedFile) => {
+    setPreviewUrl(URL.createObjectURL(croppedFile));
     setUploadingPicture(true);
-    const { path, error } = await uploadAvatar(currentUserId, file, avatarPath);
+    const { path, error } = await uploadAvatar(currentUserId, croppedFile, avatarPath);
     setUploadingPicture(false);
     setPreviewUrl(null);
     if (error) {
@@ -222,6 +233,14 @@ export default function SettingsView() {
     }
     setAvatarPath(path);
     showToast("Profile picture updated!");
+  };
+
+  // The crop popup hands back the cut JPEG: close it, then save it.
+  const handleCropped = (croppedFile) => {
+    const { kind } = cropping;
+    setCropping(null);
+    if (kind === "picture") savePicture(croppedFile);
+    else saveCover(croppedFile);
   };
 
   // Saves the name and description to the database (not just the screen), so
@@ -325,7 +344,7 @@ export default function SettingsView() {
                         <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => pictureInputRef.current?.click()} disabled={uploadingPicture || !currentUserId}>
                           {uploadingPicture ? "Uploading..." : "Upload Picture"}
                         </button>
-                        <small className="text-secondary fs-8">JPG, PNG, WebP or GIF. Max 5 MB.</small>
+                        <small className="text-secondary fs-8">JPG, PNG, WebP or GIF. Max 5 MB. You can crop and zoom it before it's saved.</small>
                       </div>
                     </div>
                   </div>
@@ -344,7 +363,7 @@ export default function SettingsView() {
                         </button>
                       )}
                     </div>
-                    <small className="text-secondary fs-8">The wide banner at the top of your profile. JPG, PNG, WebP or GIF. Max 5 MB.</small>
+                    <small className="text-secondary fs-8">The wide banner at the top of your profile. JPG, PNG, WebP or GIF. Max 5 MB. You can crop and zoom it before it's saved.</small>
                   </div>
 
                   <div>
@@ -509,6 +528,19 @@ export default function SettingsView() {
           </div>
         </div>
       </div>
+
+      {cropping && (
+        <ImageCropDialog
+          file={cropping.file}
+          {...(cropping.kind === "picture" ? PICTURE_CROP : COVER_CROP)}
+          onConfirm={handleCropped}
+          onCancel={() => setCropping(null)}
+          onError={(message) => {
+            setCropping(null);
+            showToast(message);
+          }}
+        />
+      )}
     </section>
   );
 }
