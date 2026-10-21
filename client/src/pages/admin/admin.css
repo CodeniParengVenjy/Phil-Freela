@@ -655,3 +655,15 @@ body {
   overflow-y: auto;
   min-height: 0;
 }
+
+/* The From / To date boxes in the pop-up: two side by side where there is room,
+   one above the other on a narrow phone. color-scheme keeps the calendar icon
+   and the picker readable on the dark box. */
+.admin-date-field {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.admin-input[type="date"] {
+  color-scheme: dark;
+}

@@ -64,6 +64,14 @@ function ChoiceRow({ label, value, onChange, options }) {
 // sentences ("Delete ...'s account?") they are called by their @username.
 const nameOf = (user) => user.full_name || `@${user.username}`;
 
+// A timestamp as the calendar day the admin sees in the Joined column ("2026-10-21",
+// in their own time zone), so it can be compared with a date box's value as text.
+const pad = (number) => String(number).padStart(2, "0");
+const localDay = (value) => {
+  const day = new Date(value);
+  return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+};
+
 export default function AdminUsersView() {
   const { adminId, isSuperAdmin } = useOutletContext();
   // The Overview's cards open this page with choices in the address, like
@@ -90,6 +98,10 @@ export default function AdminUsersView() {
   const [verifyFilter, setVerifyFilter] = useState(() => fromAddress("verified", ["verified", "unverified"], "all"));
   // "all", "online" (seen in the last 2 minutes) or "offline" (everyone else, including people never seen).
   const [presenceFilter, setPresenceFilter] = useState(() => fromAddress("presence", ["online", "offline"], "all"));
+  // The Joined date range, each end "YYYY-MM-DD" or "" (no limit). Both ends count
+  // as part of the range, so the same day twice shows who joined that day.
+  const [joinedFrom, setJoinedFrom] = useState("");
+  const [joinedTo, setJoinedTo] = useState("");
   const [sortBy, setSortBy] = useState(() => fromAddress("sort", Object.keys(sortOptions), "joined"));
   // Each sort has its own usual direction unless the address names one.
   const [sortDir, setSortDir] = useState(() => fromAddress("dir", ["asc", "desc"], sortOptions[fromAddress("sort", Object.keys(sortOptions), "joined")].start));
@@ -180,7 +192,9 @@ export default function AdminUsersView() {
     const matchesVerify = verifyFilter === "all" || (verifyFilter === "verified") === isVerified;
     const isOnline = !!presenceStatus(lastSeen.get(user.id))?.online;
     const matchesPresence = presenceFilter === "all" || (presenceFilter === "online") === isOnline;
-    return matchesSearch && matchesRole && matchesStatus && matchesVerify && matchesPresence;
+    const joinedDay = localDay(user.created_at);
+    const matchesJoined = (!joinedFrom || joinedDay >= joinedFrom) && (!joinedTo || joinedDay <= joinedTo);
+    return matchesSearch && matchesRole && matchesStatus && matchesVerify && matchesPresence && matchesJoined;
   });
 
   // Sort a copy of the filtered list. For "Online", the most recently seen comes
@@ -203,18 +217,27 @@ export default function AdminUsersView() {
   };
 
   // The start: sorted by Joined, newest first, every filter on "all", nothing searched.
-  // changedCount is how many of the five choices (4 filters + the sorting) are away
-  // from it (the orange number on the Filters button); the search text isn't counted
-  // there, but Reset clears it too.
+  // changedCount is how many of the six choices (4 filters, the date range and the
+  // sorting) are away from it (the orange number on the Filters button); the search
+  // text isn't counted there, but Reset clears it too. The date range is one choice
+  // however many of its two ends are set.
   const sortChanged = sortBy !== "joined" || sortDir !== sortOptions.joined.start;
-  const changedCount = [roleFilter, statusFilter, verifyFilter, presenceFilter].filter((value) => value !== "all").length + (sortChanged ? 1 : 0);
+  const dateRangeSet = joinedFrom !== "" || joinedTo !== "";
+  const changedCount = [roleFilter, statusFilter, verifyFilter, presenceFilter].filter((value) => value !== "all").length + (dateRangeSet ? 1 : 0) + (sortChanged ? 1 : 0);
   const anythingChanged = changedCount > 0 || search !== "";
+  // Typed in by hand, the start can be after the end; nobody matches then.
+  const rangeBackwards = joinedFrom !== "" && joinedTo !== "" && joinedFrom > joinedTo;
+  const clearDates = () => {
+    setJoinedFrom("");
+    setJoinedTo("");
+  };
   const resetAll = () => {
     setSearch("");
     setRoleFilter("all");
     setStatusFilter("all");
     setVerifyFilter("all");
     setPresenceFilter("all");
+    clearDates();
     changeSort("joined");
   };
 
@@ -403,6 +426,42 @@ export default function AdminUsersView() {
               <ChoiceRow label="Role" value={roleFilter} onChange={setRoleFilter} options={[["all", "All"], ["freelancer", "Freelancers"], ["client", "Clients"]]} />
               <ChoiceRow label="Status" value={statusFilter} onChange={setStatusFilter} options={[["all", "All"], ["active", "Active"], ["suspended", "Suspended"], ["banned", "Banned"]]} />
               <ChoiceRow label="Verification" value={verifyFilter} onChange={setVerifyFilter} options={[["all", "All"], ["verified", "Verified"], ["unverified", "Not verified"]]} />
+              {/* The day they signed up, the same date the Joined column shows. Either end can be left empty. */}
+              <div className="mb-3">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <div className="text-white-50 fs-8 fw-semibold text-uppercase">Joined between</div>
+                  {dateRangeSet && (
+                    <button type="button" className="btn btn-link text-orange fw-semibold p-0 text-decoration-none fs-8 hover-orange" onClick={clearDates}>Clear dates</button>
+                  )}
+                </div>
+                <div className="d-flex flex-wrap gap-3">
+                  <label className="admin-date-field">
+                    <span className="text-white-50 fs-8 d-block mb-1">From</span>
+                    <input
+                      type="date"
+                      className="form-control form-control-sm admin-input"
+                      value={joinedFrom}
+                      max={joinedTo || undefined}
+                      onChange={(e) => setJoinedFrom(e.target.value)}
+                    />
+                  </label>
+                  <label className="admin-date-field">
+                    <span className="text-white-50 fs-8 d-block mb-1">To</span>
+                    <input
+                      type="date"
+                      className="form-control form-control-sm admin-input"
+                      value={joinedTo}
+                      min={joinedFrom || undefined}
+                      onChange={(e) => setJoinedTo(e.target.value)}
+                    />
+                  </label>
+                </div>
+                {rangeBackwards && (
+                  <div className="text-warning fs-8 mt-2" role="alert">
+                    <i className="bi bi-exclamation-triangle-fill me-1"></i>The start date is after the end date, so nobody matches.
+                  </div>
+                )}
+              </div>
               <ChoiceRow label="Sort by" value={sortBy} onChange={changeSort} options={Object.entries(sortOptions).map(([value, option]) => [value, option.label])} />
               <button
                 type="button"
