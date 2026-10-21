@@ -12,6 +12,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import RatingChip from "../../../components/RatingChip";
 import Avatar from "../../../components/Avatar";
 import PictureSearchDialog from "../components/PictureSearchDialog";
+import CensoredText from "../../../components/CensoredText";
 
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
 const JOB_COLUMNS = "id, title, category, budget, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
@@ -277,7 +278,7 @@ function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMes
       {/* flexBasis: on a phone the buttons drop under the text instead of squeezing it. */}
       <div className="flex-grow-1 overflow-hidden" style={{ flexBasis: 200 }}>
         <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-          <h6 className="text-white fw-bold mb-0 text-break">{item.title}</h6>
+          <h6 className="text-white fw-bold mb-0 text-break"><CensoredText text={item.title} /></h6>
           {/* How close its meaning is to the search (see listing_search.py). */}
           <span className={`badge rounded-pill fw-semibold ${item.match.strong ? "bg-success" : "bg-secondary bg-opacity-50"}`}>
             {item.match.strong ? "Strong match" : "Related"}

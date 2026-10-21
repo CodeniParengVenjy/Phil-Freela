@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { getCategory } from "../../../lib/categories";
 import { itemSlides } from "../../../lib/slides";
 import RatingChip from "../../../components/RatingChip";
+import CensoredText from "../../../components/CensoredText";
 
 const mediaBox = { width: 64, height: 64 };
 
@@ -38,7 +39,7 @@ export default function ServiceCard({ service, onDelete, editTo, to, rating }) {
 
       <div className="flex-grow-1 overflow-hidden">
         <h6 className="text-white fw-bold mb-1 text-truncate">
-          {to ? <Link to={to} className="text-white text-decoration-none stretched-link">{service.title}</Link> : service.title}
+          {to ? <Link to={to} className="text-white text-decoration-none stretched-link"><CensoredText text={service.title} /></Link> : <CensoredText text={service.title} />}
         </h6>
         <div className="d-flex flex-wrap align-items-center gap-1 mb-2">
           <span className="badge bg-role text-white fs-8 d-inline-block text-truncate mw-100">{category.label}</span>

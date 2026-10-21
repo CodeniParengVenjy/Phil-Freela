@@ -1,7 +1,7 @@
 # Hide curse words: plan and progress
 
-Status (2026-10-21): approved ("build build it"). Step 1 (database) is DONE and
-live; steps 2 and 3 are next. To continue in a new Claude session, say: "Read
+Status (2026-10-21): approved ("build build it"). Steps 1 (database) and 2
+(website) are DONE and live; step 3 (clean up old rows) waits for the user's "run it". To continue in a new Claude session, say: "Read
 PLAN-word-filter.md and continue from the current step."
 
 ## Why
@@ -123,9 +123,35 @@ The database does the hiding; the website only draws it:
    with an insert into blocked_words in the SQL Editor.
    Found while testing: only whole words are matched, and "f0ck" is not caught
    (0 stands for o, not u).
-2. Website: `CensoredText` + tape styles, wire it into the screens above, name
-   sentences, hint lines and Terms line. Browser check against a fake backend,
-   laptop and phone, dark and light, orange and cyan accent.
+2. DONE (website): `components/CensoredText.jsx` + the `.bleep` tape styles at the
+   end of `dashboard.css`, wired into 24 screens (ChatView bubbles, InboxView
+   preview, ServiceReviews, CompletedProjects, ProjectDetailsView, ProjectsPanel,
+   DueDateCalendar, SubmitProjectView, FeedbackView, ApplicationsPanel,
+   JobDetailsView, ServiceDetailsView, BookDialog, FindJobsView, BrowseServicesView,
+   ServiceCard, PostNeedView, BookingsView, ProfileView, PublicProfileView,
+   SkillsBox, PortfolioSection, PortfolioViewer, SearchResultsView).
+   Found while building: the project asks people to confirm their e-mail, so a bad
+   name at sign-up would only have been refused at first sign-in, after the account
+   existed; and `saveDisplayName` / `saveUsername` showed a generic "Couldn't save"
+   for any refusal. So the database got one more small function,
+   `bad_word_in_name(full_name, username)` (answers 'name', 'username' or nothing;
+   the sign-up form may ask it, the list stays closed), the trigger now uses it, and
+   `lib/profile.js` has `checkNameWords` (asked in Login.jsx BEFORE the account is
+   made) and shows the database's own sentence in Settings and the no-name pop-up.
+   Terms of Service has two new lines; the two post forms have "Bad words are hidden
+   automatically." under the description. NOT done: a hint under the chat box (the
+   Terms line and the visible tape say it; the box is tight on a phone).
+   Not wired on purpose: notifications and toasts (plain `***`), admin pages (plain
+   `***`), the edit boxes (they show the saved text).
+   Tested in the browser against a fake backend (a copy of the shared fake in the
+   session scratchpad, `censor.test.mjs`), laptop and phone, dark and light, default
+   and yellow accent: tape on an offer's title, description, skill chip and review
+   comment, a public profile (bio, skill, service), the inbox preview, chat bubbles
+   (white tape on my own accent bubble, accent tape on the grey one), a service card;
+   clean text is untouched; the tape is announced as "hidden word"; no sideways
+   scrolling; sign-up stops a bad name or username before any account is made and
+   goes on with clean ones; the no-name pop-up shows the database's sentence; Terms
+   and both post forms show the new lines. Lint and build clean.
 3. One-time clean-up of rows already saved (a count first; it rewrites live data, so
    it runs only after the user says "run it").
 4. LATER, only if asked: Admin page to add/remove words from the list.

@@ -7,6 +7,7 @@ import OriginalBadge, { ORIGINAL_EXPLANATION } from "../../../components/Origina
 import MediaCarousel from "./MediaCarousel";
 import ProtectedText from "./ProtectedText";
 import "./portfolio.css";
+import CensoredText from "../../../components/CensoredText";
 
 // A portfolio project opened big: its slideshow (or, for older writing, a
 // preview of its text), title, category, tags, the "Original" badge (step 10) and description.
@@ -67,7 +68,7 @@ export default function PortfolioViewer({ item, ownerName, onDelete, onReport, o
 
         <div className="p-4">
           <div className="d-flex justify-content-between align-items-start gap-3 mb-1">
-            <h5 id="portfolio-viewer-title" className="fw-bold mb-0 text-break">{item.title}</h5>
+            <h5 id="portfolio-viewer-title" className="fw-bold mb-0 text-break"><CensoredText text={item.title} /></h5>
             <div className="d-flex gap-2 flex-shrink-0">
               {onReport && (
                 <button
@@ -96,7 +97,7 @@ export default function PortfolioViewer({ item, ownerName, onDelete, onReport, o
             </div>
           )}
           {isOriginalWork(item) && <p className="text-secondary fs-9 mb-3">{ORIGINAL_EXPLANATION}</p>}
-          {item.description && <p className="text-light fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{item.description}</p>}
+          {item.description && <p className="text-light fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}><CensoredText text={item.description} /></p>}
 
           {onDelete && (
             <div className="d-flex justify-content-end mt-4">

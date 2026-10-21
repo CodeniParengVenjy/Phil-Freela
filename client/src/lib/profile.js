@@ -64,6 +64,23 @@ export async function fetchNameChangeDates(userId) {
 // that is what stopped the save.
 const cooldownMessage = (error) => (error?.message?.startsWith("You can change your") ? error.message : "");
 
+// The database's own "Please don't use bad words in your name/username." (the
+// word filter, database/supabase_word_filter_schema.sql), if that is what
+// stopped the save.
+const badWordMessage = (error) => (/bad words in your/i.test(error?.message || "") ? error.message : "");
+
+// Asks the database, before an account is made, whether a name or username holds
+// a blocked word. It only answers yes or no (the list stays in the database).
+// Returns null when both are fine, or { field, text } for the box to blame.
+// If it can't be asked, it says fine: the database refuses the name later anyway.
+export async function checkNameWords(fullName, username) {
+  const { data, error } = await supabase.rpc("bad_word_in_name", { full_name: cleanName(fullName), username: String(username ?? "").trim() });
+  if (error) return null;
+  if (data === "name") return { field: "fullName", text: "Please don't use bad words in your name." };
+  if (data === "username") return { field: "username", text: "Please don't use bad words in your username." };
+  return null;
+}
+
 // Saves a new name (Settings > Name). It goes into
 // profiles.full_name, the name other people see in chat, jobs and services,
 // and into the login's user_metadata, the copy the emails use ("Reset your
@@ -77,6 +94,7 @@ export async function saveDisplayName(userId, name) {
   // .select("id") returns the updated row, so an empty result means nothing was saved.
   const { data, error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId).select("id");
   if (cooldownMessage(error)) return cooldownMessage(error);
+  if (badWordMessage(error)) return badWordMessage(error);
   if (error || !data?.length) return "Couldn't save your name. Please try again.";
 
   // The dashboard reads the name from profiles, so if only this second copy
@@ -100,6 +118,7 @@ export async function saveUsername(userId, name) {
   // 23505 = the database's "username is unique" rule.
   if (error?.code === "23505") return "That username is already taken.";
   if (cooldownMessage(error)) return cooldownMessage(error);
+  if (badWordMessage(error)) return badWordMessage(error);
   if (error || !data?.length) return "Couldn't save your username. Please try again.";
 
   await supabase.auth.updateUser({ data: { username } });

@@ -283,6 +283,7 @@ export default function ServicesView() {
                     onChange={(e) => setDescription(e.target.value)}
                     required
                   ></textarea>
+                  <small className="text-secondary fs-8 d-block mt-1">Bad words are hidden automatically.</small>
                 </div>
 
                 <div>

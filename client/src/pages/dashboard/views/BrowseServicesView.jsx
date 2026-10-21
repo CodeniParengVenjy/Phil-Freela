@@ -14,6 +14,7 @@ import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import ReportDialog from "../components/ReportDialog";
 import MediaCarousel from "../components/MediaCarousel";
 import RecommendationMarks from "../components/RecommendationMarks";
+import CensoredText from "../../../components/CensoredText";
 
 // withRecommendations (the client dashboard): the services the Hybrid
 // recommendation system picked ("Recommended for you", see lib/aiService.js)
@@ -178,8 +179,8 @@ export default function BrowseServicesView({ withRecommendations = false }) {
                       {/* Opens the offer's own page: its description and, for
                           clients, the Book button (admins stay in the panel). */}
                       {isAdmin
-                        ? s.title
-                        : <Link to={`/dashboard/service-details/${s.id}`} className="text-white text-decoration-none hover-role">{s.title}</Link>}
+                        ? <CensoredText text={s.title} />
+                        : <Link to={`/dashboard/service-details/${s.id}`} className="text-white text-decoration-none hover-role"><CensoredText text={s.title} /></Link>}
                     </h6>
                     <p className="fs-8 text-secondary mb-3 flex-grow-1">
                       by{" "}

@@ -10,6 +10,7 @@ import PortfolioUploadDialog from "./PortfolioUploadDialog";
 import PortfolioViewer from "./PortfolioViewer";
 import ReportDialog from "./ReportDialog";
 import "./portfolio.css";
+import CensoredText from "../../../components/CensoredText";
 
 // Stops the browser's "Save image as..." menu on the cover pictures.
 const blockSaveMenu = (event) => event.preventDefault();
@@ -175,7 +176,7 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
                   )}
                 </div>
                 <span className="portfolio-card-title">
-                  {item.title}
+                  <CensoredText text={item.title} />
                   {item.category && <span className="portfolio-card-category">{getCategory(item.category).label}</span>}
                 </span>
               </button>

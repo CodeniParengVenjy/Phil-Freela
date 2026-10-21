@@ -6,6 +6,7 @@ import { isPostingBlocked } from "../../../lib/suspensions";
 import { formatDay, todayInManila } from "../../../lib/projects";
 import BlockedNotice from "../components/BlockedNotice";
 import DeletePostDialog from "../components/DeletePostDialog";
+import CensoredText from "../../../components/CensoredText";
 
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
@@ -205,6 +206,7 @@ export default function PostNeedView() {
                     onChange={(e) => setDescription(e.target.value)}
                     required
                   ></textarea>
+                  <small className="text-secondary fs-8 d-block mt-1">Bad words are hidden automatically.</small>
                 </div>
 
                 <div>
@@ -306,7 +308,7 @@ export default function PostNeedView() {
                     <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
                       {/* The title opens the job's own page, the way freelancers see it. */}
                       <h6 className="mb-0 text-break">
-                        <Link to={`/dashboard/job-details/${p.id}`} className="text-white fw-bold text-decoration-none hover-role">{p.title}</Link>
+                        <Link to={`/dashboard/job-details/${p.id}`} className="text-white fw-bold text-decoration-none hover-role"><CensoredText text={p.title} /></Link>
                       </h6>
                       <div className="d-flex gap-2 flex-shrink-0">
                         <Link

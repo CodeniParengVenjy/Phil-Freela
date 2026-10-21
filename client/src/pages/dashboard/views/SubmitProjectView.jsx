@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { MAX_SUBMISSION_MESSAGE_LENGTH, getProject, submitProject } from "../../../lib/projects";
+import CensoredText from "../../../components/CensoredText";
 
 // "Attach your files" (screen 6), at /dashboard/submit-project/:projectId.
 // The freelancer sends the finished work: a file, a link, or both, plus an
@@ -71,7 +72,7 @@ export default function SubmitProjectView() {
         <div className="mb-4 text-center">
           <span className="badge bg-warning text-dark rounded-pill px-3 py-1 fw-bold fs-8 mb-2">PROJECT DELIVERABLE</span>
           <h2 className="display-6 fw-bold text-white mb-2">Submit Your Project</h2>
-          <p className="text-secondary fs-7">"{project.title}" — upload your completed deliverable or paste your portfolio URL for client review.</p>
+          <p className="text-secondary fs-7">"<CensoredText text={project.title} />" — upload your completed deliverable or paste your portfolio URL for client review.</p>
         </div>
 
         <form className="d-flex flex-column gap-4" onSubmit={handleSubmit}>

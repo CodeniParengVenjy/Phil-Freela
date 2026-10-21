@@ -211,6 +211,14 @@ begin
       'profiles_mask_words', 'profiles_name_words', 'job_applications_mask_words', 'bookings_mask_words',
       'projects_mask_words', 'project_ratings_mask_words', 'service_reviews_mask_words',
       'reports_mask_words', 'appeals_mask_words')) = 13);
+  -- The yes/no question the sign-up form asks (without the list leaking).
+  res := res || pg_temp.line('bad_word_in_name: name', public.bad_word_in_name('Fuck Off', 'okay_user') = 'name');
+  res := res || pg_temp.line('bad_word_in_name: username', public.bad_word_in_name('Maria Santos', 'xx_fuck_xx') = 'username');
+  res := res || pg_temp.line('bad_word_in_name: both fine', public.bad_word_in_name('Maria Santos', 'class2024') is null);
+  res := res || pg_temp.line('bad_word_in_name: only the asked one', public.bad_word_in_name(null, 'maria') is null);
+  res := res || pg_temp.line('the website may ask it, not read the list',
+    has_function_privilege('anon', 'public.bad_word_in_name(text, text)', 'execute')
+    and not has_function_privilege('anon', 'public.bad_word_pattern()', 'execute'));
   res := res || pg_temp.line('blocked_words is closed to the website',
     not has_table_privilege('authenticated', 'public.blocked_words', 'select')
     and not has_table_privilege('anon', 'public.blocked_words', 'select'));

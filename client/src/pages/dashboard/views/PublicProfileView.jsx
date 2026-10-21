@@ -18,6 +18,7 @@ import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import ReportDialog from "../components/ReportDialog";
 import ServiceCard from "../components/ServiceCard";
+import CensoredText from "../../../components/CensoredText";
 
 const ROLE_LABELS = { freelancer: "Freelancer", client: "Client" };
 
@@ -146,7 +147,7 @@ function PublicProfile({ userId }) {
       {person.description && (
         <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
           <h5 className="text-white fw-bold mb-2"><i className="bi bi-text-paragraph text-orange me-2"></i> Description</h5>
-          <p className="text-light-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{person.description}</p>
+          <p className="text-light-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}><CensoredText text={person.description} /></p>
         </div>
       )}
 
@@ -156,7 +157,7 @@ function PublicProfile({ userId }) {
           <h5 className="text-white fw-bold mb-3"><i className="bi bi-tools text-orange me-2"></i> Skills</h5>
           <div className="d-flex flex-wrap gap-2">
             {person.skills.map((skill) => (
-              <span key={skill} className="badge bg-secondary bg-opacity-75 text-light px-3 py-2 rounded-pill fs-7">{skill}</span>
+              <span key={skill} className="badge bg-secondary bg-opacity-75 text-light px-3 py-2 rounded-pill fs-7"><CensoredText text={skill} /></span>
             ))}
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchProfileHistory, profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
+import CensoredText from "../../../components/CensoredText";
 
 // How many show before "Show all".
 const SHOWN_AT_FIRST = 5;
@@ -50,7 +51,7 @@ export default function CompletedProjects({ userId, role }) {
               <div className="d-flex align-items-start gap-3">
                 <Avatar path={row.other_avatar_path} name={otherName} size={44} to={path} />
                 <div className="flex-grow-1 overflow-hidden">
-                  <h6 className="text-white fw-bold mb-1 text-break">{row.title}</h6>
+                  <h6 className="text-white fw-bold mb-1 text-break"><CensoredText text={row.title} /></h6>
                   <p className="text-white-50 fs-8 mb-1 text-break">
                     {role === "freelancer" ? "Client" : "Freelancer"}:{" "}
                     <Link to={path} className="text-white fw-semibold text-decoration-none hover-role">{otherName}</Link>
@@ -59,7 +60,7 @@ export default function CompletedProjects({ userId, role }) {
                   {row.stars ? (
                     <p className="fs-8 mb-0 text-break">
                       <span className="text-warning fw-bold"><i className="bi bi-star-fill me-1"></i>{row.stars}/5</span>
-                      {row.feedback && <span className="text-light-50 fst-italic"> "{row.feedback}"</span>}
+                      {row.feedback && <span className="text-light-50 fst-italic"> "<CensoredText text={row.feedback} />"</span>}
                     </p>
                   ) : (
                     <p className="text-secondary fs-8 mb-0">Not rated yet</p>

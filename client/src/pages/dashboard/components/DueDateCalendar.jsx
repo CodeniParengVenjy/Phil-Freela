@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { formatDay, projectStatuses } from "../../../lib/projects";
+import CensoredText from "../../../components/CensoredText";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 // At most this many dots under one day; a "+" follows when there are more.
@@ -135,7 +136,7 @@ export default function DueDateCalendar({ projects, today }) {
                   to={`/dashboard/project-details/${project.id}`}
                   className="p-2 px-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-2 hover-lift text-decoration-none"
                 >
-                  <span className="text-white fs-7 fw-semibold text-break flex-grow-1">{project.title}</span>
+                  <span className="text-white fs-7 fw-semibold text-break flex-grow-1"><CensoredText text={project.title} /></span>
                   {overdue && <span className="text-danger fs-8 fw-semibold flex-shrink-0">Overdue</span>}
                   <span className={`badge rounded-pill flex-shrink-0 ${status.className}`}>{status.label}</span>
                 </Link>

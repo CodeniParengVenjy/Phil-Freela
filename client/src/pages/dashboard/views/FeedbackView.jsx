@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { MAX_FEEDBACK_LENGTH, getMyRating, getProject, personName, rateProject, ratingDeadline } from "../../../lib/projects";
+import CensoredText from "../../../components/CensoredText";
 
 // The interactive star picker used to choose a rating (not the read-only
 // "★ 4.8 (5)" badge — that's components/StarRating.jsx). Each star is a
@@ -115,7 +116,7 @@ export default function FeedbackView() {
     <section className="dashboard-view active-view">
       <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25 max-w-850 mx-auto">
         <h2 className="display-6 fw-bold text-white mb-2">Ratings and Feedback</h2>
-        <p className="text-secondary fs-7 mb-4">Rate your experience working with <strong className="text-white">{otherName}</strong> on "{project.title}".</p>
+        <p className="text-secondary fs-7 mb-4">Rate your experience working with <strong className="text-white">{otherName}</strong> on "<CensoredText text={project.title} />".</p>
 
         <form className="d-flex flex-column gap-4" onSubmit={handleSubmit}>
           {iAmClient && (

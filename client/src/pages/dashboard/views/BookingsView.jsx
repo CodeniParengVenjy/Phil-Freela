@@ -7,6 +7,7 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
+import CensoredText from "../../../components/CensoredText";
 
 // One booking: the other person, the service, the note, the date needed and
 // the status. The buttons depend on who is looking and on the status:
@@ -30,7 +31,7 @@ function BookingCard({ booking, isFreelancer, today, verified, working, onMessag
       <div className="d-flex align-items-start gap-3 mb-2">
         <Avatar path={other?.avatar_path} name={otherName} size={48} to={otherPath} />
         <div className="flex-grow-1 overflow-hidden">
-          <h6 className="text-white fw-bold mb-1 text-break">{booking.title}</h6>
+          <h6 className="text-white fw-bold mb-1 text-break"><CensoredText text={booking.title} /></h6>
           <p className="text-white-50 fs-7 mb-0 text-break">
             {isFreelancer ? "Client" : "Freelancer"}:{" "}
             {otherPath ? (
@@ -45,7 +46,7 @@ function BookingCard({ booking, isFreelancer, today, verified, working, onMessag
       </div>
 
       {booking.note && (
-        <p className="text-light-50 fs-7 fst-italic mb-2 text-break" style={{ whiteSpace: "pre-wrap" }}>"{booking.note}"</p>
+        <p className="text-light-50 fs-7 fst-italic mb-2 text-break" style={{ whiteSpace: "pre-wrap" }}>"<CensoredText text={booking.note} />"</p>
       )}
 
       <p className="text-white-50 fs-8 mb-3">

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { formatDay, getMyProjects, personName, projectStatuses, ratingStep, todayInManila } from "../../../lib/projects";
 import Avatar from "../../../components/Avatar";
 import DueDateCalendar from "./DueDateCalendar";
+import CensoredText from "../../../components/CensoredText";
 
 // The "My Projects" box on the Projects page. Each card opens its project
 // page (the Project Details screen). Freelancers see the jobs they were hired
@@ -68,7 +69,7 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
             >
               <Avatar path={other?.avatar_path} name={otherName} size={48} />
               <div className="flex-grow-1 overflow-hidden">
-                <h6 className="text-white fw-bold mb-1 text-break">{p.title}</h6>
+                <h6 className="text-white fw-bold mb-1 text-break"><CensoredText text={p.title} /></h6>
                 <p className="text-white-50 fs-7 mb-0 text-break">
                   {isFreelancer ? "Client" : "Freelancer"}: {otherName} •{" "}
                   <span className={overdue ? "text-danger" : ""}>Due {formatDay(p.due_date)}{overdue && " (overdue)"}</span>

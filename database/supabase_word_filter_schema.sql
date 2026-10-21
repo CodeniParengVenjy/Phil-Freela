@@ -192,13 +192,17 @@ begin
 end;
 $$;
 
--- A name or username with a blocked word is refused. Only a new profile or a
--- changed value is checked, so someone who already has such a name can still
--- change other things. For a username, "_ . -" count as spaces and digits at
+-- Which of a name and a username holds a blocked word: 'name', 'username' or
+-- null (both fine). For a username, "_ . -" count as spaces and digits at
 -- either end are ignored, so xx_fuck_xx and fuck123 are caught.
-create or replace function public.refuse_bad_name()
-returns trigger
+-- The website asks this at sign-up (before the account is made, lib/profile.js
+-- checkNameWords), and the trigger below uses the same function, so the two
+-- can't disagree. It only answers yes or no: it does not show the list. Pass
+-- null for the one you don't want checked.
+create or replace function public.bad_word_in_name(full_name text, username text)
+returns text
 language plpgsql
+stable
 security definer
 set search_path = public
 as $$
@@ -206,16 +210,41 @@ declare
   pat text := public.bad_word_pattern();
   handle text;
 begin
+  if coalesce(full_name, '') ~* pat then
+    return 'name';
+  end if;
+
+  handle := regexp_replace(lower(coalesce(username, '')), '[_.\-]+', ' ', 'g');
+  if handle ~* pat
+     or regexp_replace(handle, '(^|\s)[0-9]+|[0-9]+(\s|$)', ' ', 'g') ~* pat then
+    return 'username';
+  end if;
+
+  return null;
+end;
+$$;
+
+revoke execute on function public.bad_word_in_name(text, text) from public;
+grant execute on function public.bad_word_in_name(text, text) to anon, authenticated;
+
+-- A name or username with a blocked word is refused. Only a new profile or a
+-- changed value is checked, so someone who already has such a name can still
+-- change other things.
+create or replace function public.refuse_bad_name()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
   if tg_op = 'INSERT' or new.full_name is distinct from old.full_name then
-    if coalesce(new.full_name, '') ~* pat then
+    if public.bad_word_in_name(new.full_name, null) = 'name' then
       raise exception 'Please don''t use bad words in your name.' using errcode = 'check_violation';
     end if;
   end if;
 
   if tg_op = 'INSERT' or new.username is distinct from old.username then
-    handle := regexp_replace(lower(coalesce(new.username, '')), '[_.\-]+', ' ', 'g');
-    if handle ~* pat
-       or regexp_replace(handle, '(^|\s)[0-9]+|[0-9]+(\s|$)', ' ', 'g') ~* pat then
+    if public.bad_word_in_name(null, new.username) = 'username' then
       raise exception 'Please don''t use bad words in your username.' using errcode = 'check_violation';
     end if;
   end if;

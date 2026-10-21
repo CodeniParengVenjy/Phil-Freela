@@ -14,6 +14,7 @@ import BlockedNotice from "../components/BlockedNotice";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import DeletePostDialog from "../components/DeletePostDialog";
 import ReportDialog from "../components/ReportDialog";
+import CensoredText from "../../../components/CensoredText";
 
 // One client job post (opened from Find Jobs). Freelancers apply here with a
 // PDF resume and an optional note; the client then sees them in Projects &
@@ -217,7 +218,7 @@ export default function JobDetailsView() {
         <div className="d-flex flex-column flex-md-row align-items-md-center gap-4 mb-4 pb-4 border-bottom border-secondary border-opacity-25">
           <Avatar path={job.client?.avatar_path} name={clientName} size={80} to={job.client?.id ? `/dashboard/clients/${job.client.id}` : undefined} />
           <div className="flex-grow-1 overflow-hidden">
-            <h2 className="h3 fw-bold text-white mb-1 text-break">{job.title}</h2>
+            <h2 className="h3 fw-bold text-white mb-1 text-break"><CensoredText text={job.title} /></h2>
             <p className="text-white-50 fs-7 mb-2 d-flex flex-wrap align-items-center gap-2">
               Posted by{" "}
               {/* Opens the client's public page: their record, to check before applying. */}
@@ -268,7 +269,7 @@ export default function JobDetailsView() {
 
         <h4 className="text-white fw-bold mb-3"><i className="bi bi-card-text text-role me-2"></i> Description</h4>
         <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-25 text-light-50 fs-7 lh-lg mb-4" style={{ whiteSpace: "pre-wrap" }}>
-          {job.description}
+          <CensoredText text={job.description} />
         </div>
 
         {/* The skills the client listed when posting (hidden when there are none). */}
@@ -277,7 +278,7 @@ export default function JobDetailsView() {
             <h4 className="text-white fw-bold mb-3"><i className="bi bi-tools text-role me-2"></i> Required Skills</h4>
             <div className="d-flex flex-wrap gap-2 mb-4">
               {job.skills.map((skill) => (
-                <span key={skill} className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill fw-semibold">{skill}</span>
+                <span key={skill} className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill fw-semibold"><CensoredText text={skill} /></span>
               ))}
             </div>
           </>

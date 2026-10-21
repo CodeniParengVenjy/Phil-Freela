@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_SKILLS, addSkillsFromText, fetchSkills, saveSkills } from "../../../lib/profile";
+import CensoredText from "../../../components/CensoredText";
 
 // The Skills box on a freelancer's own Profile. Their saved skills show as chips
 // (the same ones appear on their public page). "+ Add Skill" opens a box:
@@ -75,7 +76,7 @@ export default function SkillsBox({ userId, showToast }) {
         <div className="d-flex flex-wrap gap-2">
           {skills.map((skill) => (
             <span key={skill} className="badge bg-secondary bg-opacity-75 text-light px-3 py-2 rounded-pill fs-7 d-inline-flex align-items-center gap-2">
-              {skill}
+              <CensoredText text={skill} />
               <button
                 type="button"
                 className="btn-close btn-close-white"

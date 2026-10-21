@@ -6,6 +6,7 @@ import {
 } from "../../../lib/projects";
 import { profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
+import CensoredText from "../../../components/CensoredText";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
 // My Projects or from a project notification. Both people on the project use
@@ -161,7 +162,7 @@ export default function ProjectDetailsView() {
         </Link>
 
         <div className="d-flex align-items-start gap-3 mb-2">
-          <h2 className="h3 fw-bold text-white mb-0 text-break flex-grow-1">{project.title}</h2>
+          <h2 className="h3 fw-bold text-white mb-0 text-break flex-grow-1"><CensoredText text={project.title} /></h2>
           <button
             type="button"
             className="btn btn-dark border border-secondary text-orange rounded-3 px-3 py-2 flex-shrink-0"
@@ -233,7 +234,7 @@ export default function ProjectDetailsView() {
           <div className="col-12">
             <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
               <span className="text-secondary fs-8 d-block mb-1">Note from the client</span>
-              <p className="text-white-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-wrap" }}>{project.note || "No note."}</p>
+              <p className="text-white-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-wrap" }}>{project.note ? <CensoredText text={project.note} /> : "No note."}</p>
             </div>
           </div>
         </div>
@@ -314,7 +315,7 @@ export default function ProjectDetailsView() {
             )}
 
             {project.submission_message && (
-              <p className="text-white-50 fs-7 fst-italic text-break mb-3">"{project.submission_message}"</p>
+              <p className="text-white-50 fs-7 fst-italic text-break mb-3">"<CensoredText text={project.submission_message} />"</p>
             )}
 
             {iAmClient && project.status === "submitted" && (
@@ -360,7 +361,7 @@ export default function ProjectDetailsView() {
                 {myRating !== undefined && theirRating && (
                   <p className="text-white-50 fs-7 mt-2 mb-0 text-break">
                     <i className="bi bi-star-fill text-warning me-1"></i> {otherName} rated you {theirRating.stars}/5.
-                    {theirRating.feedback && <span className="d-block fst-italic mt-1">"{theirRating.feedback}"</span>}
+                    {theirRating.feedback && <span className="d-block fst-italic mt-1">"<CensoredText text={theirRating.feedback} />"</span>}
                   </p>
                 )}
                 {myRating !== undefined && !theirRating && deadline?.ended && (

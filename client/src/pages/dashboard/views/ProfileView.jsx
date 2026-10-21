@@ -10,6 +10,7 @@ import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
 import PictureViewer from "../../../components/PictureViewer";
 import { avatarUrl, coverUrl, fetchCoverPath } from "../../../lib/avatar";
+import CensoredText from "../../../components/CensoredText";
 
 export default function ProfileView() {
   const { displayName, avatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
@@ -63,7 +64,7 @@ export default function ProfileView() {
                   </p>
                 )}
                 {/* pre-line keeps the line breaks the user typed. */}
-                {description && <p className="text-light-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{description}</p>}
+                {description && <p className="text-light-50 fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}><CensoredText text={description} /></p>}
               </div>
 
               {/* Only freelancers have skills: saved on their profile, and shown on their public page too. */}

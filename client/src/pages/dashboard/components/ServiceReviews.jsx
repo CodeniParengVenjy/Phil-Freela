@@ -3,6 +3,7 @@ import Avatar from "../../../components/Avatar";
 import { profilePath } from "../../../lib/profileStats";
 import { MAX_REVIEW_COMMENT_LENGTH, addServiceReview, fetchServiceReviews, removeOwnReview, summarizeReviews } from "../../../lib/serviceReviews";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
+import CensoredText from "../../../components/CensoredText";
 
 // 1 to 5 small stars, read-only.
 function Stars({ value }) {
@@ -145,7 +146,7 @@ export default function ServiceReviews({ serviceId, reviews, loadError, onReview
                 <Stars value={review.stars} />
                 <small className="text-secondary">{new Date(review.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</small>
               </div>
-              {review.comment && <p className="text-light-50 fs-7 mb-0 mt-1 text-break" style={{ whiteSpace: "pre-wrap" }}>{review.comment}</p>}
+              {review.comment && <p className="text-light-50 fs-7 mb-0 mt-1 text-break" style={{ whiteSpace: "pre-wrap" }}><CensoredText text={review.comment} /></p>}
             </div>
             <div className="flex-shrink-0">
               {isMine ? (

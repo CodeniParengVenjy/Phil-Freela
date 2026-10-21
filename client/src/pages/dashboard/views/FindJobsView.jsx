@@ -11,6 +11,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import { StarBadge } from "../../../components/StarRating";
 import RecommendationMarks from "../components/RecommendationMarks";
 import ReportDialog from "../components/ReportDialog";
+import CensoredText from "../../../components/CensoredText";
 
 // withRecommendations (the freelancer dashboard): the jobs the Hybrid
 // recommendation system picked ("Recommended for you", see lib/aiService.js)
@@ -136,7 +137,7 @@ export default function FindJobsView({ withRecommendations = false }) {
                 <div className="flex-grow-1 overflow-hidden">
                   {/* Opens the job's page, where freelancers apply (not in the admin panel). */}
                   <h5 className="text-white fw-bold mb-1 text-break">
-                    {isAdmin ? job.title : <Link to={`/dashboard/job-details/${job.id}`} className="stretched-link text-white text-decoration-none hover-role">{job.title}</Link>}
+                    {isAdmin ? <CensoredText text={job.title} /> : <Link to={`/dashboard/job-details/${job.id}`} className="stretched-link text-white text-decoration-none hover-role"><CensoredText text={job.title} /></Link>}
                   </h5>
                   <div className="position-relative z-2 d-inline-flex flex-wrap align-items-center gap-2 fs-7 mb-2">
                     <span className="text-white-50 text-break">

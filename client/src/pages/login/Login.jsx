@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { isSupabaseConfigured, setRememberMe, supabase } from "../../lib/supabaseClient";
-import { MAX_NAME_LENGTH, checkName, cleanName, dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
+import { MAX_NAME_LENGTH, checkName, checkNameWords, cleanName, dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
 import { EMAIL_PATTERN, getPasswordStrengthMessage } from "../../lib/validators";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import { renderGoogleButton } from "../../lib/googleSignIn";
@@ -235,6 +235,11 @@ export default function Login() {
 
     try {
       if (isSignup) {
+        // A name or username with a bad word is refused before the account is
+        // made (the database refuses it too, but only at first sign-in).
+        const wordProblem = await checkNameWords(form.fullName, form.username);
+        if (wordProblem) throw fieldError(wordProblem.field, wordProblem.text);
+
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password: form.password,

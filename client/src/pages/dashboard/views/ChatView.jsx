@@ -16,6 +16,7 @@ import { pickReportMessages } from "../../../lib/reportMessages";
 import { FILE_ACCEPT, checkChatFile, deleteChatFile, deleteChatMedia, fileIcon, formatSize, sendChatFile, sendVoiceMessage } from "../../../lib/chatFiles";
 import ChatAttachment from "../components/ChatAttachment";
 import ChatMedia from "../components/ChatMedia";
+import CensoredText from "../../../components/CensoredText";
 import VoiceRecorder from "../components/VoiceRecorder";
 
 // Same upload rules as the Post a Service media dropzone.
@@ -615,7 +616,7 @@ export default function ChatView() {
                       {m.attachment_url && (m.attachment_type === "file" || m.attachment_type === "audio") && (
                         <ChatAttachment message={m} showToast={showToast} />
                       )}
-                      {m.body && <p className="mb-0 fs-7">{m.body}</p>}
+                      {m.body && <p className="mb-0 fs-7"><CensoredText text={m.body} /></p>}
                       {m.edited_at && <small className="fs-9 text-white-50 fst-italic">(edited)</small>}
                       {isMe && m.id === lastMineId && (
                         <small className="fs-9 text-white-50 d-block text-end mt-1">

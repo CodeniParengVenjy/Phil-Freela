@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { MAX_BOOKING_NOTE_LENGTH, createBooking } from "../../../lib/bookings";
 import { todayInManila } from "../../../lib/projects";
+import CensoredText from "../../../components/CensoredText";
 
 // The Book popup. A client says what they need and the date they need it by;
 // "Send booking" asks the freelancer (see lib/bookings.js). It uses the same
@@ -66,7 +67,7 @@ export default function BookDialog({ target, onClose, onBooked }) {
             <i className="bi bi-calendar-check-fill fs-4"></i>
           </div>
           <h5 id="book-dialog-title" className="fw-bold mb-1 text-break">Book {target.freelancerName}</h5>
-          <p className="text-secondary fs-7 mb-4 text-break">for "{target.service.title}"</p>
+          <p className="text-secondary fs-7 mb-4 text-break">for "<CensoredText text={target.service.title} />"</p>
         </div>
 
         <label htmlFor="bookNote" className="form-label text-white-50 fw-semibold fs-7">What do you need? (optional)</label>

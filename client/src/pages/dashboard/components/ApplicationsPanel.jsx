@@ -5,6 +5,7 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import HireDialog from "./HireDialog";
+import CensoredText from "../../../components/CensoredText";
 
 // Longest part of a cover note shown in the list.
 const NOTE_PREVIEW_LENGTH = 160;
@@ -110,7 +111,7 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
       <div className="d-flex flex-column gap-3">
         {shownRows.map((row) => {
           const sentOn = new Date(row.created_at).toLocaleDateString();
-          const jobLink = <Link to={`/dashboard/job-details/${row.job?.id}`} className="text-role fw-semibold text-decoration-none">{row.job?.title}</Link>;
+          const jobLink = <Link to={`/dashboard/job-details/${row.job?.id}`} className="text-role fw-semibold text-decoration-none"><CensoredText text={row.job?.title} /></Link>;
 
           if (isFreelancer) {
             const clientName = row.job?.client?.full_name || row.job?.client?.username || "Client";
@@ -162,7 +163,7 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
               </div>
               {note && (
                 <p className="text-light-50 fs-7 fst-italic mb-2 text-break" title={note}>
-                  "{note.length > NOTE_PREVIEW_LENGTH ? `${note.slice(0, NOTE_PREVIEW_LENGTH)}...` : note}"
+                  "<CensoredText text={note.length > NOTE_PREVIEW_LENGTH ? `${note.slice(0, NOTE_PREVIEW_LENGTH)}...` : note} />"
                 </p>
               )}
               <div className="d-flex flex-wrap gap-2">

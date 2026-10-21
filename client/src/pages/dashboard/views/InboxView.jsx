@@ -5,6 +5,7 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import { presenceStatus, usePresence } from "../../../lib/presence";
+import CensoredText from "../../../components/CensoredText";
 
 export default function InboxView() {
   const { currentUserId } = useOutletContext();
@@ -128,7 +129,7 @@ export default function InboxView() {
                   </h6>
                   <small className="text-secondary fs-8 flex-shrink-0">{new Date(c.lastMessageAt).toLocaleDateString()}</small>
                 </div>
-                <p className="fs-7 mb-0 text-light-50 text-truncate">{c.preview}</p>
+                <p className="fs-7 mb-0 text-light-50 text-truncate"><CensoredText text={c.preview} /></p>
               </div>
             </div>
           ))}

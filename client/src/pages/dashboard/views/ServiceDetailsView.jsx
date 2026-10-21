@@ -18,6 +18,7 @@ import DeletePostDialog from "../components/DeletePostDialog";
 import MediaCarousel from "../components/MediaCarousel";
 import ReportDialog from "../components/ReportDialog";
 import ServiceReviews from "../components/ServiceReviews";
+import CensoredText from "../../../components/CensoredText";
 
 // One service offer (a "project offer"), opened from a card on Browse Services
 // or the AI search results, or from a freelancer's page. This is the only place
@@ -190,7 +191,7 @@ function ServiceDetails({ serviceId }) {
         <div className="d-flex flex-column flex-md-row align-items-md-center gap-4 mb-4 pb-4 border-bottom border-secondary border-opacity-25">
           <Avatar path={freelancer?.avatar_path} name={freelancerName} size={80} to={freelancerPath} />
           <div className="flex-grow-1 overflow-hidden">
-            <h2 className="h3 fw-bold text-white mb-1 text-break">{service.title}</h2>
+            <h2 className="h3 fw-bold text-white mb-1 text-break"><CensoredText text={service.title} /></h2>
             <p className="text-white-50 fs-7 mb-1 d-flex flex-wrap align-items-center gap-2">
               <span>
                 by{" "}
@@ -274,7 +275,7 @@ function ServiceDetails({ serviceId }) {
 
         <h4 className="text-white fw-bold mb-3"><i className="bi bi-card-text text-role me-2"></i> Description</h4>
         <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-25 text-light-50 fs-7 lh-lg mb-4 text-break" style={{ whiteSpace: "pre-wrap" }}>
-          {service.description}
+          <CensoredText text={service.description} />
         </div>
 
         {/* The offer's skill and the freelancer's profile skills (hidden when there are none). */}
@@ -283,7 +284,7 @@ function ServiceDetails({ serviceId }) {
             <h4 className="text-white fw-bold mb-3"><i className="bi bi-tools text-role me-2"></i> Skills</h4>
             <div className="d-flex flex-wrap gap-2 mb-4">
               {skills.map((skill) => (
-                <span key={skill} className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill fw-semibold">{skill}</span>
+                <span key={skill} className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill fw-semibold"><CensoredText text={skill} /></span>
               ))}
             </div>
           </>
