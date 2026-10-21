@@ -432,9 +432,31 @@ body {
   .nav-links {
     gap: 18px;
   }
+
+  /* The welcome picture is never taller than 640px here. Its height is 85% of
+     the window, which on a tablet, or on a phone that asks for the desktop
+     site, is more than a whole screen and hid the two cards under it. */
+  .hero {
+    height: min(85vh, 640px);
+    min-height: 440px;
+  }
 }
 
 @media (max-width: 760px) {
+  /* A phone: the picture is only as tall as its words (a floor of 420px), so
+     the first of the two cards shows under it without scrolling. The words
+     sit in the flow instead of floating over a fixed height. */
+  .hero {
+    height: auto;
+    min-height: 420px;
+  }
+
+  .hero-overlay-content {
+    position: relative;
+    inset: auto;
+    padding: 32px 24px;
+  }
+
   nav {
     padding: 12px 14px;
     flex-wrap: wrap;
