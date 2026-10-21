@@ -129,7 +129,7 @@ export default function ChatView() {
 
       const { data: messageRows, error: messagesError } = await supabase
         .from("messages")
-        .select("id, sender_id, body, created_at, edited_at, delivered_at, attachment_url, attachment_type, attachment_name, attachment_size, call_id")
+        .select("id, sender_id, body, created_at, edited_at, delivered_at, unsent_at, attachment_url, attachment_type, attachment_name, attachment_size, call_id")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
@@ -242,9 +242,18 @@ export default function ChatView() {
     setDeleteTarget(message);
   };
 
+  // Unsend keeps the message as a line ("Maria unsent a message"): the database
+  // empties its text and file link and sets unsent_at (unsend_message(), see
+  // database/supabase_chat_unsent_schema.sql).
   const confirmUnsend = async () => {
     setDeleting(true);
-    const { error } = await supabase.from("messages").delete().eq("id", deleteTarget.id);
+    const { error } = await supabase.rpc("unsend_message", { target_message_id: deleteTarget.id });
+    if (!error) {
+      // Shown at once; the live update from the database says the same.
+      setMessages((prev) => prev?.map((m) => (m.id === deleteTarget.id
+        ? { ...m, unsent_at: new Date().toISOString(), body: null, edited_at: null, attachment_url: null, attachment_type: null, attachment_name: null, attachment_size: null }
+        : m)) ?? prev);
+    }
     // An unsent file, voice message, photo or video is deleted from storage too.
     if (!error && (deleteTarget.attachment_type === "file" || deleteTarget.attachment_type === "audio")) {
       await deleteChatFile(deleteTarget.attachment_url);
@@ -435,8 +444,8 @@ export default function ChatView() {
   const recipientName = otherProfile?.full_name || otherProfile?.username || "...";
   // The other person's public page (their picture and name link to it).
   const otherPath = otherProfile ? profilePath(otherProfile.account_type, otherProfile.id) : null;
-  // Call lines don't get the Sent / Delivered / Seen label.
-  const lastMineId = [...(messages || [])].reverse().find((m) => m.sender_id === currentUserId && !m.call_id)?.id;
+  // Call lines and unsent messages don't get the Sent / Delivered / Seen label.
+  const lastMineId = [...(messages || [])].reverse().find((m) => m.sender_id === currentUserId && !m.call_id && !m.unsent_at)?.id;
 
   // Opens the Report popup with this chat's messages to tick, so admins (who
   // can't read chats) see what happened. From the header flag: the last 10 are
@@ -547,6 +556,22 @@ export default function ChatView() {
             }
 
             const isMe = m.sender_id === currentUserId;
+
+            // An unsent message: just a line in the middle, like a call line,
+            // with no right-click menu (its text and file are gone).
+            if (m.unsent_at) {
+              return (
+                <Fragment key={m.id}>
+                  {divider}
+                  <div className="align-self-center d-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-dark bg-opacity-75 border border-secondary border-opacity-25 fs-8 text-white-50">
+                    <i className="bi bi-slash-circle"></i>
+                    <span className="fst-italic">{isMe ? "You unsent a message" : `${recipientName} unsent a message`}</span>
+                    <span>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                </Fragment>
+              );
+            }
+
             const isEditingThis = editingMessage?.id === m.id;
             return (
               <Fragment key={m.id}>
@@ -798,7 +823,9 @@ export default function ChatView() {
       <DeleteConfirmDialog
         open={!!deleteTarget}
         title="Unsend this message?"
-        message="This deletes it permanently for everyone in this conversation. This can't be undone."
+        message="Its text or file is removed for everyone in this conversation, and they will see that you unsent a message. This can't be undone."
+        confirmLabel="Unsend"
+        busyLabel="Unsending..."
         busy={deleting}
         onConfirm={confirmUnsend}
         onCancel={() => setDeleteTarget(null)}

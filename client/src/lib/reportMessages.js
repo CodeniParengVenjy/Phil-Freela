@@ -12,7 +12,9 @@ const TICKED_AROUND = 2; // from one message: that one, plus 2 before and 2 afte
 //   aroundId = one message's id: 30 messages with that one in the middle (moved
 //   when it is near either end of the chat), it and 2 each side ticked.
 // Returns { messages, ticked: [ids] }.
-export function pickReportMessages(chat, aroundId = null) {
+export function pickReportMessages(allMessages, aroundId = null) {
+  // An unsent message has nothing left in it to send.
+  const chat = allMessages.filter((m) => !m.unsent_at);
   const index = aroundId ? chat.findIndex((m) => m.id === aroundId) : -1;
   if (index === -1) {
     const messages = chat.slice(-LISTED);
