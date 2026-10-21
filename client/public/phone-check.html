@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>PhilFreela phone check</title>
+    <style>
+      body { margin: 0; padding: 4%; background: #0b0d12; color: #f1f5f9; font-family: system-ui, sans-serif; line-height: 1.4; }
+      h1 { margin: 0 0 0.4em; font-size: 1.5em; }
+      p { margin: 0 0 0.8em; color: #cbd5e1; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
+      th, td { text-align: left; padding: 0.35em 0.4em; border-bottom: 1px solid #1e293b; vertical-align: top; word-break: break-word; }
+      th { width: 42%; color: #94a3b8; font-weight: 600; }
+      #verdict { padding: 0.7em 0.9em; border-radius: 0.6em; font-weight: 700; margin-bottom: 1em; }
+      .bad { background: #7c2d12; color: #ffedd5; }
+      .good { background: #14532d; color: #dcfce7; }
+    </style>
+  </head>
+  <body>
+    <h1>PhilFreela phone check</h1>
+    <p>Take a screenshot of this whole page and send it. It only reads your browser's own numbers; nothing is sent anywhere.</p>
+    <div id="verdict"></div>
+    <table id="rows"></table>
+    <script>
+      // The text is sized from the page width, so it can be read in a
+      // screenshot even when the browser has shrunk the page to desktop size.
+      (function () {
+        var vv = window.visualViewport;
+        var scale = vv ? vv.scale : 1;
+        document.body.style.fontSize = Math.max(16, Math.round(window.innerWidth / 24)) + "px";
+
+        var meta = document.querySelector('meta[name="viewport"]');
+        var screenShort = Math.min(screen.width, screen.height);
+        var ua = navigator.userAgent;
+        var uaData = navigator.userAgentData;
+        var touch = navigator.maxTouchPoints || 0;
+
+        var rows = [
+          ["Page width (layout)", window.innerWidth + " px"],
+          ["Page height (layout)", window.innerHeight + " px"],
+          ["Screen size", screen.width + " x " + screen.height + " px"],
+          ["Pixel ratio", String(window.devicePixelRatio)],
+          ["Zoom level (visual viewport)", vv ? vv.scale.toFixed(2) + ", width " + Math.round(vv.width) + " px" : "not available"],
+          ["Touch points", String(touch)],
+          ["Fingers or mouse", (matchMedia("(pointer: coarse)").matches ? "finger (coarse)" : "mouse (fine)") + ", hover " + (matchMedia("(hover: hover)").matches ? "yes" : "no")],
+          ["Says it is mobile", uaData ? String(uaData.mobile) : "not available"],
+          ["\"Mobile\" or \"Android\" in browser name", (/Mobile/.test(ua) ? "Mobile yes" : "Mobile no") + ", " + (/Android/.test(ua) ? "Android yes" : "Android no")],
+          ["Viewport tag", meta ? meta.getAttribute("content") : "none"],
+          ["Phone-width rule (max 767px)", matchMedia("(max-width: 767.98px)").matches ? "on" : "off"],
+          ["Browser name", ua]
+        ];
+        var table = document.getElementById("rows");
+        rows.forEach(function (row) {
+          var tr = document.createElement("tr");
+          var th = document.createElement("th");
+          var td = document.createElement("td");
+          th.textContent = row[0];
+          td.textContent = row[1];
+          tr.appendChild(th);
+          tr.appendChild(td);
+          table.appendChild(tr);
+        });
+
+        var verdict = document.getElementById("verdict");
+        if (window.innerWidth >= 768 && screenShort <= 600) {
+          verdict.className = "bad";
+          verdict.textContent = "This screen is " + screenShort + " px wide, but the page is laid out " + window.innerWidth + " px wide: the browser is showing the desktop version.";
+        } else if (window.innerWidth >= 768) {
+          verdict.className = "good";
+          verdict.textContent = "This looks like a tablet, laptop or computer screen (" + screenShort + " px).";
+        } else {
+          verdict.className = "good";
+          verdict.textContent = "The page is laid out " + window.innerWidth + " px wide: the phone layout is on.";
+        }
+      })();
+    </script>
+  </body>
+</html>
