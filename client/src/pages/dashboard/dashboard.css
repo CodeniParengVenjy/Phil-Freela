@@ -531,6 +531,12 @@ body.sidebar-collapsed .sidebar-wrapper {
   .settings-panel {
     border-left: 0 !important;
   }
+
+  /* The title of a list page (Browse Freelancer Services, Client Job
+     Openings): one line on a phone instead of two, so the cards start higher. */
+  .view-title {
+    font-size: 1.25rem;
+  }
 }
 
 .nav-links a {

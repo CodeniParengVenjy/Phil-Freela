@@ -91,11 +91,12 @@ export default function FreelancerDashboardLayout({
           <SuspensionBanner suspension={suspension} />
 
           {isDashboardHome && (
-            <div className="welcome-banner glass-card p-4 rounded-4 mb-4 border border-secondary border-opacity-25 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div className="welcome-banner glass-card p-3 p-md-4 rounded-4 mb-3 mb-md-4 border border-secondary border-opacity-25 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 gap-md-3">
               <div>
-                <span className="badge bg-orange-subtle text-orange px-3 py-1 rounded-pill fw-bold text-uppercase fs-8 mb-2">PHILFREELA PORTAL</span>
+                {/* The tag and the line under the name are left out on a phone, so the cards below come into view sooner. */}
+                <span className="badge bg-orange-subtle text-orange px-3 py-1 rounded-pill fw-bold text-uppercase fs-8 mb-2 d-none d-md-inline-block">PHILFREELA PORTAL</span>
                 <h1 className="welcome-title h2 text-white mb-1">Welcome, {displayName}</h1>
-                <p className="text-secondary mb-0 fs-7">
+                <p className="text-secondary mb-0 fs-7 d-none d-md-block">
                   Manage your freelance portfolio, job proposals, messages, and settings seamlessly.
                 </p>
               </div>

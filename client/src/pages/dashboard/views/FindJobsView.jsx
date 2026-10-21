@@ -77,10 +77,11 @@ export default function FindJobsView({ withRecommendations = false }) {
 
   return (
     <section className="dashboard-view active-view">
-      <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
+      <div className="glass-card rounded-4 p-3 p-md-4 border border-secondary border-opacity-25 mb-4">
         <div className="mb-3">
-          <h3 className="text-white fw-bold mb-1"><i className="bi bi-briefcase text-orange me-2"></i> Client Job Openings</h3>
-          <p className="text-secondary fs-7 mb-0">
+          <h3 className="view-title text-white fw-bold mb-1"><i className="bi bi-briefcase text-orange me-2"></i> Client Job Openings</h3>
+          {/* The line under the title is left out on a phone, so the list starts higher. */}
+          <p className="text-secondary fs-7 mb-0 d-none d-md-block">
             {withRecommendations && picked.size > 0
               ? (recs.personalized
                 ? "Jobs picked for you by PhilFreela's AI come first, then the newest listings from clients."
@@ -95,7 +96,7 @@ export default function FindJobsView({ withRecommendations = false }) {
         </div>
 
         {/* Filters the list below as you type (job title, client or category). */}
-        <div className="position-relative search-nav-box mb-4">
+        <div className="position-relative search-nav-box mb-3 mb-md-4">
           <i className="bi bi-search search-icon text-secondary"></i>
           <input
             type="search"

@@ -82,11 +82,12 @@ export default function BrowseServicesView({ withRecommendations = false }) {
 
   return (
     <section className="dashboard-view active-view">
-      <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+      <div className="glass-card rounded-4 p-3 p-md-4 border border-secondary border-opacity-25">
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3 mb-md-4">
           <div>
-            <h3 className="text-white fw-bold mb-1"><i className="bi bi-grid-fill text-role me-2"></i> Browse Freelancer Services</h3>
-            <p className="text-secondary fs-7 mb-0">
+            <h3 className="view-title text-white fw-bold mb-1"><i className="bi bi-grid-fill text-role me-2"></i> Browse Freelancer Services</h3>
+            {/* The line under the title is left out on a phone, so the cards start higher. */}
+            <p className="text-secondary fs-7 mb-0 d-none d-md-block">
               {withRecommendations && picked.size > 0
                 ? (recs.personalized
                   ? "Freelancers picked for you by PhilFreela's AI come first, then the newest services."
@@ -101,7 +102,7 @@ export default function BrowseServicesView({ withRecommendations = false }) {
           </div>
         </div>
 
-        <div className="d-flex flex-column flex-md-row gap-3 mb-4">
+        <div className="d-flex flex-column flex-md-row gap-2 gap-md-3 mb-3 mb-md-4">
           <select
             className="category-filter form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
             value={category}

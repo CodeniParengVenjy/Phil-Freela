@@ -38,7 +38,7 @@ export default function DashboardBillboard() {
 
   return (
     <section
-      className="dashboard-billboard glass-card rounded-4 mb-4 border border-secondary border-opacity-25 overflow-hidden"
+      className="dashboard-billboard glass-card rounded-4 mb-3 mb-md-4 border border-secondary border-opacity-25 overflow-hidden"
       aria-label="Billboard"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -52,7 +52,7 @@ export default function DashboardBillboard() {
           // the picture itself needs no description (alt="").
           <img src={billboardImageUrl(billboard.image_path)} alt="" className="dashboard-billboard-picture" />
         )}
-        <div className="dashboard-billboard-text p-3 p-md-4 d-flex align-items-center gap-3">
+        <div className="dashboard-billboard-text px-3 py-2 p-md-4 d-flex align-items-center gap-3">
           {!billboard.image_path && (
             <div className="rounded-circle bg-role-subtle text-role d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 48, height: 48 }}>
               <i className="bi bi-megaphone-fill fs-5"></i>
