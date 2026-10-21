@@ -557,16 +557,24 @@ export default function ChatView() {
 
             const isMe = m.sender_id === currentUserId;
 
-            // An unsent message: just a line in the middle, like a call line,
-            // with no right-click menu (its text and file are gone).
+            // An unsent message: an empty outlined bubble on its sender's side,
+            // like the message it was, with no right-click menu (its text and
+            // file are gone).
             if (m.unsent_at) {
               return (
                 <Fragment key={m.id}>
                   {divider}
-                  <div className="align-self-center d-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-dark bg-opacity-75 border border-secondary border-opacity-25 fs-8 text-white-50">
-                    <i className="bi bi-slash-circle"></i>
-                    <span className="fst-italic">{isMe ? "You unsent a message" : `${recipientName} unsent a message`}</span>
-                    <span>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  <div
+                    data-unsent
+                    className={`chat-bubble ${isMe ? "outgoing align-self-end" : "incoming align-self-start"} px-3 py-2 rounded-4 border border-secondary border-opacity-50 text-white-50`}
+                  >
+                    <div className={`d-flex ${isMe ? "justify-content-end" : ""}`}>
+                      <small className="fs-8">{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small>
+                    </div>
+                    <p className="mb-0 fs-7 fst-italic">
+                      <i className="bi bi-slash-circle me-2"></i>
+                      {isMe ? "You unsent a message" : `${recipientName} unsent a message`}
+                    </p>
                   </div>
                 </Fragment>
               );

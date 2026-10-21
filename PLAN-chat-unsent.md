@@ -14,10 +14,13 @@ and the chat showed nothing where the message had been.
 
 1. Right-click my message > Unsend. The popup says its text or file is removed for
    everyone and they will see that I unsent a message (red button "Unsend").
-2. The message becomes a small centered line at its own place and time:
-   "You unsent a message" for me, "Maria unsent a message" for the other person. The
-   line has no right-click menu, and the text, photo, video, voice message or file
-   is really gone (the database empties it; the stored file is removed as before).
+2. The message becomes an empty outlined bubble at its own place and time, on its
+   sender's side like the message it was (right for mine, left for theirs), grey
+   italics with its time: "You unsent a message" for me, "Maria unsent a message"
+   for the other person. (First built as a small centered line; the user asked for
+   "a chat message way" after seeing it live, so it became a bubble.) The bubble has
+   no right-click menu, and the text, photo, video, voice message or file is really
+   gone (the database empties it; the stored file is removed as before).
 3. The other person sees it change live (the chat already listens for message
    updates).
 4. The Inbox preview says "Message unsent" when the newest message is unsent.
@@ -64,8 +67,8 @@ as before, user number counter 35, the offline-email trigger back on).
 the line at once; the line; the popup's words; the Sent/Delivered label skips unsent
 messages), `lib/reportMessages.js` (the Report popup skips unsent messages).
 
-Tested in the browser against a fake backend, desktop and phone, dark and light: 56
-checks (the line for both people, no menu on it, the popup's words, Cancel, a
+Tested in the browser against a fake backend, desktop and phone, dark and light: 60
+checks (the bubble for both people, on the sender's side, no menu on it, the popup's words, Cancel, a
 refusal from the database keeps the message, text/file/photo unsent with the stored
 file removed, the lines survive a reload, the Sent label moves to my newest message
 that is still there, the Report popup skips unsent, no sideways scroll, no page
