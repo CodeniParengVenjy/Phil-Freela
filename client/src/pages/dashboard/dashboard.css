@@ -1244,6 +1244,29 @@ body.sidebar-collapsed .sidebar-wrapper {
   }
 }
 
+/* Wide screens: stacked, the picture alone was about half of the window and
+   pushed the cards below it out of sight. The picture stays whole (it is drawn
+   4:1 and its words run edge to edge, so it is not trimmed) but no wider than
+   110% of the window's height, which keeps it to about a quarter of the
+   screen, and the headline and message sit beside it. Both can then be seen
+   without scrolling. Narrower screens keep the stacked board above. */
+@media (min-width: 1200px) {
+  .dashboard-billboard-slide.has-picture {
+    display: flex;
+    align-items: center;
+  }
+
+  .dashboard-billboard-slide.has-picture .dashboard-billboard-picture {
+    flex: none;
+    width: min(68%, 110vh);
+  }
+
+  .dashboard-billboard-slide.has-picture .dashboard-billboard-text {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
 /* One dot per billboard when several take turns; the current one is in the
    accent color. */
 .dashboard-billboard-dots {

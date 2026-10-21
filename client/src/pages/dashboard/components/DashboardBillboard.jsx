@@ -46,13 +46,13 @@ export default function DashboardBillboard() {
       onBlur={() => setPaused(false)}
     >
       {/* The key makes each billboard fade in when it takes its turn. */}
-      <div className="dashboard-billboard-slide" key={billboard.id}>
+      <div className={`dashboard-billboard-slide${billboard.image_path ? " has-picture" : ""}`} key={billboard.id}>
         {billboard.image_path && (
-          // The headline right under the picture says what it shows, so the
-          // picture itself needs no description (alt="").
+          // The headline beside or under the picture says what it shows, so
+          // the picture itself needs no description (alt="").
           <img src={billboardImageUrl(billboard.image_path)} alt="" className="dashboard-billboard-picture" />
         )}
-        <div className="p-3 p-md-4 d-flex align-items-center gap-3">
+        <div className="dashboard-billboard-text p-3 p-md-4 d-flex align-items-center gap-3">
           {!billboard.image_path && (
             <div className="rounded-circle bg-role-subtle text-role d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 48, height: 48 }}>
               <i className="bi bi-megaphone-fill fs-5"></i>
