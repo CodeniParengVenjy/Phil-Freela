@@ -9,6 +9,7 @@ const pageTitles = {
   "/reset-password": "Reset Password",
   "/complete-profile": "Complete Your Profile",
   "/appeal": "Appeal",
+  "/archived": "Account Archived",
   "/terms": "Terms of Service",
   "/privacy": "Privacy Policy",
 
@@ -41,6 +42,7 @@ const pageTitles = {
   "/admin": "Admin Overview",
   "/admin/users": "Monitor Users",
   "/admin/pending": "Pending Users",
+  "/admin/archives": "Archives",
   "/admin/listings": "Monitor Listings",
   "/admin/reports": "Monitor Reports",
   "/admin/flagged": "Monitor Flagged Content",

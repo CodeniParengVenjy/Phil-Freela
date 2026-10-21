@@ -21,7 +21,9 @@ export const isMessagingBlocked = (row) => Boolean(suspensionStatus(row) && row.
 // Badge text and color for each status, shared by the admin pages.
 export const blockedBadges = {
   banned: { label: "Banned", className: "bg-danger" },
-  suspended: { label: "Suspended", className: "bg-warning text-dark" }
+  suspended: { label: "Suspended", className: "bg-warning text-dark" },
+  // Not a penalty: the account is archived (lib/archives.js). Only the Listings page shows it.
+  archived: { label: "Archived", className: "bg-secondary" }
 };
 
 // What a suspension stops the user from doing, e.g. "can't send messages".

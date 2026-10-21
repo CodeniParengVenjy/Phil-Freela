@@ -11,6 +11,7 @@ const sidebarLinks = [
   { to: "/admin", end: true, icon: "bi-speedometer2", label: "Overview" },
   { to: "/admin/users", icon: "bi-people-fill", label: "Users" },
   { to: "/admin/pending", icon: "bi-hourglass-split", label: "Pending Users", showPendingUsers: true },
+  { to: "/admin/archives", icon: "bi-archive-fill", label: "Archives" },
   { to: "/admin/listings", icon: "bi-grid-fill", label: "Listings" },
   { to: "/admin/reports", icon: "bi-flag-fill", label: "Reports", showPendingReports: true },
   { to: "/admin/verifications", icon: "bi-person-vcard-fill", label: "Verifications", showPendingVerifications: true },

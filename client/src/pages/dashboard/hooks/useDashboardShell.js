@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { getMyArchive } from "../../../lib/archives";
 import { getActiveSuspension } from "../../../lib/profile";
 import { applyAppearance, clearAppearance, fetchAppearance, forgetAppearance, readSavedAppearance, rememberAppearance } from "../../../lib/appearance";
 import { countUnreadNotifications } from "../../../lib/notifications";
@@ -132,6 +133,15 @@ export function useDashboardShell() {
       // dashboard can't work without one, so finish the account first.
       if (!profileError && !profile) {
         navigate("/complete-profile", { replace: true });
+        return;
+      }
+
+      // Archived (even while already logged in): the "archived" page is the only
+      // page they can use (see resolvePostAuthRoute).
+      const archive = await getMyArchive(session.user.id);
+      if (!active) return;
+      if (archive) {
+        navigate("/archived", { replace: true });
         return;
       }
 

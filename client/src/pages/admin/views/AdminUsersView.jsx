@@ -6,6 +6,7 @@ import { presenceStatus, usePresence } from "../../../lib/presence";
 import { formatUserNumber } from "../../../lib/userNumber";
 import { loadRequests, newestBy, requestKindText, sendRequest } from "../../../lib/adminRequests";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import { ARCHIVE_DELETE_DAYS } from "../../../lib/archives";
 import { BAN_DELETE_DAYS, SUSPENSION_COLUMNS, banDeletionDay, blockedBadges, formatEndDate, restrictionText, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
@@ -61,7 +62,7 @@ function ChoiceRow({ label, value, onChange, options }) {
 }
 
 // Someone who signed up before names were required can have no name. In
-// sentences ("Delete ...'s account?") they are called by their @username.
+// sentences ("Archive ...'s account?") they are called by their @username.
 const nameOf = (user) => user.full_name || `@${user.username}`;
 
 // A timestamp as the calendar day the admin sees in the Joined column ("2026-10-21",
@@ -87,8 +88,8 @@ export default function AdminUsersView() {
   // user_id -> suspension row, so each table row can look up its status fast.
   // A row with no end date is a ban (see lib/suspensions.js).
   const [suspensions, setSuspensions] = useState({});
-  // user id -> a Suspend / Ban request still waiting for a super admin (see
-  // lib/adminRequests.js). A regular admin's Suspend / Ban is such a request.
+  // user id -> a Suspend / Ban / Archive request still waiting for a super admin (see
+  // lib/adminRequests.js). A regular admin's Suspend / Ban / Archive is such a request.
   const [requests, setRequests] = useState({});
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
@@ -114,8 +115,8 @@ export default function AdminUsersView() {
   const [fields, setFields] = useState(emptyViolationFields);
   // The open Unsuspend / Unban pop-up: { user, status } (null = closed).
   const [liftTarget, setLiftTarget] = useState(null);
-  // The open Delete account pop-up (super admins only): the user, or null (closed).
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  // The open Archive account pop-up: the user, or null (closed).
+  const [archiveTarget, setArchiveTarget] = useState(null);
   const [busy, setBusy] = useState(false);
   // user id -> user number (the "7" in PF-0007), loaded next to the users.
   const [numbers, setNumbers] = useState({});
@@ -160,7 +161,7 @@ export default function AdminUsersView() {
       }
 
       setRequests(newestBy(
-        requestsResult.data.filter((request) => request.kind === "suspend" || request.kind === "ban"),
+        requestsResult.data.filter((request) => ["suspend", "ban", "archive"].includes(request.kind)),
         (request) => request.target_user_id
       ));
 
@@ -350,24 +351,39 @@ export default function AdminUsersView() {
     });
   };
 
-  // delete_user() is a database function that re-checks on the server that the
-  // caller is a super admin and the target isn't an admin, then deletes the
-  // login account and everything tied to it.
-  const confirmDelete = async () => {
-    const user = deleteTarget;
+  // Archiving keeps the account and everything in it, but shuts it (see
+  // lib/archives.js). archive_user() is a database function that re-checks on
+  // the server that the caller is a super admin and the target isn't an admin.
+  // A regular admin sends a request instead, and a super admin approves it on
+  // the Approvals page. Deleting for good happens on the Archives page.
+  const confirmArchive = async () => {
+    const user = archiveTarget;
 
     setBusy(true);
-    const { error } = await supabase.rpc("delete_user", { target_id: user.id });
+    if (!isSuperAdmin) {
+      const result = await sendRequest({ adminId, kind: "archive", targetUserId: user.id });
+      setBusy(false);
+      setArchiveTarget(null);
+      if (result.error) {
+        setMessage({ text: result.error, type: "error" });
+        return;
+      }
+      setRequests((prev) => ({ ...prev, [user.id]: result.data }));
+      setMessage({ text: "Sent to a super admin. Nothing happens until they approve it.", type: "success" });
+      return;
+    }
+
+    const { error } = await supabase.rpc("archive_user", { target_id: user.id });
     setBusy(false);
-    setDeleteTarget(null);
+    setArchiveTarget(null);
 
     if (error) {
-      setMessage({ text: error.message || "Failed to delete the account.", type: "error" });
+      setMessage({ text: error.message || "Failed to archive the account.", type: "error" });
       return;
     }
 
     setUsers((prev) => prev.filter((u) => u.id !== user.id));
-    setMessage({ text: `${nameOf(user)}'s account was deleted.`, type: "success" });
+    setMessage({ text: `${nameOf(user)}'s account was archived. You can restore it from Archives.`, type: "success" });
   };
 
   return (
@@ -608,10 +624,11 @@ export default function AdminUsersView() {
                           <i className="bi bi-ban"></i> Ban
                         </button>
                       )}
-                      {/* Hiding this is only for looks; the database refuses anyone but a super admin. */}
-                      {isSuperAdmin && (
-                        <button className="btn btn-danger btn-sm ms-2" onClick={() => { setDeleteTarget(user); setMessage({ text: "", type: "" }); }}>
-                          <i className="bi bi-trash"></i> Delete
+                      {/* A regular admin's Archive is a request, like Ban; the database
+                          refuses a direct archive from anyone but a super admin. */}
+                      {!waiting && (
+                        <button className="btn btn-outline-light btn-sm ms-2" onClick={() => { setArchiveTarget(user); setMessage({ text: "", type: "" }); }}>
+                          <i className="bi bi-archive"></i> Archive
                         </button>
                       )}
                     </td>
@@ -653,34 +670,35 @@ export default function AdminUsersView() {
         </div>
       )}
 
-      {/* Delete account pop-up (super admins only): permanent, so it spells out
-          what is lost before the admin confirms. */}
-      {isSuperAdmin && deleteTarget && (
-        <div className="admin-modal-backdrop" onClick={() => !busy && setDeleteTarget(null)}>
+      {/* Archive account pop-up: says what happens (and what doesn't) before the
+          admin confirms. A regular admin's button sends it for approval. */}
+      {archiveTarget && (
+        <div className="admin-modal-backdrop" onClick={() => !busy && setArchiveTarget(null)}>
           <div
             className="admin-card admin-modal rounded-4 p-4 text-center"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="deleteTitle"
+            aria-labelledby="archiveTitle"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="admin-lift-icon danger mx-auto mb-3">
-              <i className="bi bi-trash-fill"></i>
+            <div className="admin-lift-icon warning mx-auto mb-3">
+              <i className="bi bi-archive-fill"></i>
             </div>
-            <h2 id="deleteTitle" className="h5 fw-bold text-white mb-2">Delete {nameOf(deleteTarget)}'s account?</h2>
+            <h2 id="archiveTitle" className="h5 fw-bold text-white mb-2">Archive {nameOf(archiveTarget)}'s account?</h2>
             <p className="text-secondary fs-7 mb-1">
-              {deleteTarget.username} · {deleteTarget.email}
+              {archiveTarget.username} · {archiveTarget.email}
             </p>
             <p className="text-secondary fs-7 mb-4">
-              This permanently deletes their login and everything in the account. It cannot be undone. To stop someone without deleting them, use Suspend or Ban instead.
+              They can't log in, and their listings are hidden. Nothing is deleted, and you can restore the account from Archives.
+              If it isn't restored within {ARCHIVE_DELETE_DAYS} days, the account and everything in it is deleted for good.
             </p>
             <div className="d-flex justify-content-center gap-2">
-              <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-4" onClick={() => setDeleteTarget(null)} disabled={busy}>
+              <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-4" onClick={() => setArchiveTarget(null)} disabled={busy}>
                 Cancel
               </button>
-              <button type="button" className="btn btn-danger btn-sm rounded-pill px-4 fw-bold" onClick={confirmDelete} disabled={busy}>
-                <i className="bi bi-trash me-1"></i>
-                {busy ? "Deleting..." : "Delete account"}
+              <button type="button" className="btn btn-admin-orange btn-sm rounded-pill px-4 fw-bold" onClick={confirmArchive} disabled={busy}>
+                <i className="bi bi-archive me-1"></i>
+                {busy ? "Working..." : isSuperAdmin ? "Archive account" : "Send for approval"}
               </button>
             </div>
           </div>

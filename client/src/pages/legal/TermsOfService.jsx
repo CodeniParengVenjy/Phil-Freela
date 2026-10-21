@@ -70,7 +70,8 @@ export default function TermsOfService() {
       <h5 className="text-white fw-bold mt-4 mb-2">Ending your account</h5>
       <p className="text-secondary">
         You can delete your account at any time in Settings. We may suspend or ban an account that breaks these rules; a
-        banned account is permanently deleted after 100 days.
+        banned account is permanently deleted after 100 days. An admin may also archive an account: it is kept but
+        can't be used, and it is permanently deleted after 100 days unless an admin restores it.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">No warranty</h5>

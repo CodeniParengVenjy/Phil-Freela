@@ -6,6 +6,7 @@ import ResetPassword from "./pages/login/ResetPassword";
 import CompleteProfile from "./pages/login/CompleteProfile";
 import VerifyPhone from "./pages/verify-phone/VerifyPhone";
 import AppealPage from "./pages/appeal/AppealPage";
+import ArchivedPage from "./pages/archived/ArchivedPage";
 import TermsOfService from "./pages/legal/TermsOfService";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import DashboardLayout from "./pages/dashboard/layouts/DashboardLayout";
@@ -39,6 +40,7 @@ import AdminLayout from "./pages/admin/layout/AdminLayout";
 import AdminOverviewView from "./pages/admin/views/AdminOverviewView";
 import AdminUsersView from "./pages/admin/views/AdminUsersView";
 import AdminPendingView from "./pages/admin/views/AdminPendingView";
+import AdminArchivesView from "./pages/admin/views/AdminArchivesView";
 import AdminAdminsView from "./pages/admin/views/AdminAdminsView";
 import AdminLogView from "./pages/admin/views/AdminLogView";
 import AdminProfileView from "./pages/admin/views/AdminProfileView";
@@ -69,6 +71,8 @@ function App() {
       <Route path="/verify-phone/:token" element={<VerifyPhone />} />
       {/* Suspended and banned users appeal here (banned users can't use anything else). */}
       <Route path="/appeal" element={<AppealPage />} />
+      {/* Archived accounts can't use anything else (an admin archived them). */}
+      <Route path="/archived" element={<ArchivedPage />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/dashboard-freelancer" element={<DashboardFreelancerRoute />}>
@@ -112,6 +116,7 @@ function App() {
         <Route index element={<AdminOverviewView />} />
         <Route path="users" element={<AdminUsersView />} />
         <Route path="pending" element={<AdminPendingView />} />
+        <Route path="archives" element={<AdminArchivesView />} />
         <Route path="listings" element={<AdminListingsView />} />
         <Route path="reports" element={<AdminReportsView />} />
         <Route path="flagged" element={<AdminFlaggedView />} />

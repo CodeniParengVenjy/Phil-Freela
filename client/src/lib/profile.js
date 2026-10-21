@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { getMyArchive } from "./archives";
 import { SUSPENSION_COLUMNS, suspensionStatus } from "./suspensions";
 
 export function dashboardRouteFor(accountType) {
@@ -277,6 +278,10 @@ export async function resolvePostAuthRoute(user) {
   // admin panel instead of the profile checks below.
   const { data: adminRow } = await supabase.from("admins").select("id").eq("id", user.id).maybeSingle();
   if (adminRow) return "/admin";
+
+  // An archived account (an admin archived it) can't use anything: it goes to
+  // the "archived" page, which says so and has a Sign out button.
+  if (await getMyArchive(user.id)) return "/archived";
 
   // A banned user goes to the appeal page instead of the dashboard: it shows
   // why, lets them appeal once, and has a Sign out button. Suspended users can

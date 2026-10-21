@@ -46,23 +46,26 @@ export default function AdminListingsView() {
     let active = true;
 
     (async () => {
-      const [servicesResult, jobsResult, suspensionsResult] = await Promise.all([
+      const [servicesResult, jobsResult, suspensionsResult, archivedResult] = await Promise.all([
         supabase.from("services").select(tabs.services.select).order("created_at", { ascending: false }),
         supabase.from("job_posts").select(tabs.jobs.select).order("created_at", { ascending: false }),
-        supabase.from("user_suspensions").select("user_id, ends_at")
+        supabase.from("user_suspensions").select("user_id, ends_at"),
+        supabase.from("archived_users").select("user_id")
       ]);
 
       if (!active) return;
 
-      if (servicesResult.error || jobsResult.error || suspensionsResult.error) {
+      if (servicesResult.error || jobsResult.error || suspensionsResult.error || archivedResult.error) {
         setLoadError("Failed to load listings.");
         return;
       }
 
       setListings({ services: servicesResult.data, jobs: jobsResult.data });
-      setBlockedStatus(Object.fromEntries(
-        suspensionsResult.data.map((s) => [s.user_id, suspensionStatus(s)]).filter(([, status]) => status)
-      ));
+      // An archived account's badge wins over a penalty it may also have.
+      setBlockedStatus({
+        ...Object.fromEntries(suspensionsResult.data.map((s) => [s.user_id, suspensionStatus(s)]).filter(([, status]) => status)),
+        ...Object.fromEntries(archivedResult.data.map((a) => [a.user_id, "archived"]))
+      });
     })();
 
     return () => { active = false; };

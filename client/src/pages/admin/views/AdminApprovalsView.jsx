@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { ARCHIVE_DELETE_DAYS } from "../../../lib/archives";
 import { removeListing } from "../../../lib/adminListings";
 import { REQUEST_COLUMNS, loadRequests, requestText } from "../../../lib/adminRequests";
 import { SLIDES_SELECT } from "../../../lib/slides";
@@ -18,7 +19,7 @@ const tabs = [
 const targetOfTable = { services: "service", job_posts: "job_post", portfolio_items: "portfolio_item", service_reviews: "service_review" };
 
 // Super admins only (the menu hides it, and the database refuses everyone
-// else). A regular admin's Suspend, Ban, Resolve, Dismiss, Remove listing and
+// else). A regular admin's Suspend, Ban, Archive, Resolve, Dismiss, Remove listing and
 // Remove picture arrive here as requests. Approving does the action as the super admin, the
 // same way the Reports and Users pages do it for a super admin; declining
 // does nothing and leaves the report pending.
@@ -96,7 +97,7 @@ export default function AdminApprovalsView() {
   const nameOf = (type, id) => names[`${type}:${id}`] || "(deleted)";
 
   const aboutText = (request) => {
-    if (request.kind === "suspend" || request.kind === "ban") return nameOf("user", request.target_user_id);
+    if (["suspend", "ban", "archive"].includes(request.kind)) return nameOf("user", request.target_user_id);
     if (request.kind === "remove_listing") return nameOf(targetOfTable[request.listing_table], request.listing_id);
     const report = reports[request.report_id];
     if (request.kind === "remove_picture") return report ? nameOf(report.target_type, report.target_id) : "a picture from a report that no longer exists";
@@ -138,6 +139,11 @@ export default function AdminApprovalsView() {
       if (request.report_id) {
         await closeReport(request.report_id, "resolved", request.kind === "ban" ? `Banned: ${penalty.reason}` : `Suspended ${penalty.days} days: ${penalty.reason}`);
       }
+    } else if (request.kind === "archive") {
+      // The database re-checks that this is a super admin and the target isn't an
+      // admin. An account that is already archived is left as it is.
+      const { error } = await supabase.rpc("archive_user", { target_id: request.target_user_id });
+      if (error) throw new Error(error.message || "Couldn't archive the account.");
     } else if (request.kind === "remove_listing") {
       // Removing a service or a portfolio project also removes its files, so load them first.
       // (A comment has no files.)
@@ -198,6 +204,7 @@ export default function AdminApprovalsView() {
   const approveText = (request) => {
     if (request.kind === "ban") return "They will be signed out and can't log in until an admin unbans them.";
     if (request.kind === "suspend") return "The suspension starts now, and the length and limits come from the violation.";
+    if (request.kind === "archive") return `The account is archived: they can't log in and their listings are hidden, but nothing is deleted. You can restore it from Archives. After ${ARCHIVE_DELETE_DAYS} days it is deleted for good.`;
     if (request.kind === "remove_listing") {
       if (request.listing_table === "service_reviews") return "The comment will be deleted, and the report marked resolved.";
       return `The ${request.listing_table === "portfolio_items" ? "project" : "listing"} (and its files) will be deleted, and the report marked resolved.`;
@@ -293,7 +300,9 @@ export default function AdminApprovalsView() {
             </h2>
             <p className="text-white fs-7 mb-1">{aboutText(dialog.request)}</p>
             <p className="text-secondary fs-7 mb-3">
-              {dialog.mode === "approve" ? approveText(dialog.request) : "Nothing will be changed. The report stays pending, and the admin can pick another action."}
+              {dialog.mode === "approve"
+                ? approveText(dialog.request)
+                : `Nothing will be changed.${dialog.request.report_id ? " The report stays pending, and the admin can pick another action." : ""}`}
             </p>
             <label htmlFor="decisionNote" className="form-label text-white-50 fs-7 mb-1">
               {dialog.mode === "approve" ? "Note (optional)" : "Why? (optional, the admin will see it)"}

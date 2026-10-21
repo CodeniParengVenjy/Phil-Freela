@@ -158,6 +158,9 @@ begin
   -- ===== Removing the admin and deleting the user (through the existing functions) =====
   perform set_config('request.jwt.claims', json_build_object('sub', sa, 'role', 'authenticated')::text, true);
   perform public.remove_admin(a1);
+  -- Deleting an account now takes two steps: archive it, then delete it
+  -- (supabase_archives_schema.sql and supabase_archives_finish.sql).
+  perform public.archive_user(f);
   perform public.delete_user(f);
 
   reset role;
@@ -189,8 +192,9 @@ begin
     'Elena Cruz suspended Mark Santos for 3 days (Spam).',
     'Elena Cruz ended Mark Santos''s suspension.',
     'Elena Cruz removed Paolo Lim as an admin.',
+    'Elena Cruz archived Keanne Reyes''s account.',
     'Elena Cruz permanently deleted Keanne Reyes''s account.');
-  res := res || E'\n' || case when got = want then 'PASS  ' else 'FAIL  ' end || '4b. the log holds exactly the 23 expected sentences, in order (deleting a service or an account adds one line, not one per thing that went with it)';
+  res := res || E'\n' || case when got = want then 'PASS  ' else 'FAIL  ' end || '4b. the log holds exactly the 24 expected sentences, in order (deleting a service or an account adds one line, not one per thing that went with it)';
 
   raise exception E'ADMIN LOG TESTS (rolled back)%\n\nThe log as written:\n%', res, got;
 end

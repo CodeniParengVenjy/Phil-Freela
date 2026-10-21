@@ -19,6 +19,8 @@ const ACTIONS = {
   flagged: { label: "Flagged content", icon: "bi-images", tone: "warning" },
   listing: { label: "Listing", icon: "bi-grid-fill", tone: "info" },
   admin: { label: "Admin", icon: "bi-shield-lock-fill", tone: "orange" },
+  user_archive: { label: "Account archived", icon: "bi-archive-fill", tone: "warning" },
+  user_restore: { label: "Account restored", icon: "bi-arrow-counterclockwise", tone: "success" },
   user_delete: { label: "Account deleted", icon: "bi-person-x-fill", tone: "danger" }
 };
 

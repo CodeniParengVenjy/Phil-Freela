@@ -75,9 +75,14 @@ begin
   perform public.remove_admin(a2);
   reset role; select count(*) into n from public.admins where id = a2; set local role authenticated;
   res := res || E'\n' || case when n = 0 then 'PASS  ' else 'FAIL  ' end || '3j. a super admin removes a plain admin';
+  -- Deleting a user takes two steps now: archive, then delete (supabase_archives_schema.sql
+  -- and supabase_archives_finish.sql).
+  begin perform public.delete_user(u); res := res || E'\nFAIL  3k. deleted a user who was not archived';
+  exception when others then res := res || E'\n' || case when sqlerrm = 'Archive the account first.' then 'PASS  ' else 'FAIL  ' end || '3k. delete_user refuses a user who is not archived'; end;
+  perform public.archive_user(u);
   perform public.delete_user(u);
   reset role; select count(*) into n from public.profiles where id = u; set local role authenticated;
-  res := res || E'\n' || case when n = 0 then 'PASS  ' else 'FAIL  ' end || '3k. a super admin deletes a user';
+  res := res || E'\n' || case when n = 0 then 'PASS  ' else 'FAIL  ' end || '3l. a super admin archives a user, then deletes them';
 
   raise exception E'SUPER ADMIN TESTS (rolled back)%', res;
 end
