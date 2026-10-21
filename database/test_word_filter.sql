@@ -1,5 +1,7 @@
--- Test for supabase_word_filter_schema.sql. Run it in the Supabase SQL Editor
--- AFTER the schema file. It borrows rows and accounts that already exist, makes
+-- Test for supabase_word_filter_schema.sql and supabase_word_filter_languages.sql.
+-- Run it in the Supabase SQL Editor AFTER both files (it also checks the other
+-- languages and a list of words and names that must stay untouched). It borrows
+-- rows and accounts that already exist, makes
 -- changes, reads them back and ends with an error on purpose, so EVERYTHING it
 -- did is rolled back. Read the result in the error message: every line should
 -- start with PASS ("SKIP" means that table has no row to borrow).
@@ -12,6 +14,11 @@ language sql
 as $$ select case when coalesce(ok, false) then 'PASS ' else 'FAIL ' end || label || E'\n' $$;
 
 -- ($test$ and not $$, because one of the test words has "$$" in it.)
+create or replace function pg_temp.mask_is(label text, input text, expected text)
+returns text
+language sql
+as $$ select pg_temp.line(label, public.mask_bad_words(input) = expected) $$;
+
 do $test$
 declare
   res text := '';
@@ -54,6 +61,57 @@ begin
   res := res || pg_temp.line('stars alone are not a word', public.has_bad_word('***') = false);
   res := res || pg_temp.line('has_bad_word yes/no', public.has_bad_word('you bitch') and not public.has_bad_word('you are kind'));
   res := res || pg_temp.line('null text', public.mask_bad_words(null) is null and public.has_bad_word(null) = false);
+
+  -- ---- A2. Other languages (supabase_word_filter_languages.sql) -----------
+  res := res || pg_temp.mask_is('Spanish', 'esto es una mierda, qué pendejo eres', 'esto es una ***, qué *** eres');
+  res := res || pg_temp.mask_is('Spanish phrase', 'hijo de puta', '***');
+  res := res || pg_temp.mask_is('Portuguese', 'que merda, caralho', 'que ***, ***');
+  res := res || pg_temp.mask_is('Italian', 'che cazzo vuoi', 'che *** vuoi');
+  res := res || pg_temp.mask_is('French', 'putain de merde', '*** de ***');
+  res := res || pg_temp.mask_is('German', 'du bist ein Arschloch, Scheiße', 'du bist ein ***, ***');
+  res := res || pg_temp.mask_is('Dutch', 'klootzak', '***');
+  res := res || pg_temp.mask_is('Polish', 'kurwa mac', '*** mac');
+  res := res || pg_temp.mask_is('Finnish', 'vittu', '***');
+  res := res || pg_temp.mask_is('Turkish', 'siktir git', '*** git');
+  res := res || pg_temp.mask_is('Indonesian', 'dasar anjing', 'dasar ***');
+  res := res || pg_temp.mask_is('Vietnamese', 'dit me', '***');
+  res := res || pg_temp.mask_is('Hindi (Latin letters)', 'tu chutiya hai', 'tu *** hai');
+  res := res || pg_temp.mask_is('Arabic (Latin letters)', 'ya kalb', '***');
+  res := res || pg_temp.mask_is('Chinese (pinyin)', 'cao ni ma', '***');
+  res := res || pg_temp.mask_is('Japanese (romaji)', 'kuso', '***');
+  res := res || pg_temp.mask_is('Korean (romaji)', 'ssibal', '***');
+  res := res || pg_temp.mask_is('Visayan and Tagalog extras', 'yawa ka, amputa', '*** ka, ***');
+  res := res || pg_temp.mask_is('Russian word', 'ты блять', 'ты ***');
+  res := res || pg_temp.mask_is('Russian in capitals', 'БЛЯТЬ', '***');
+  res := res || pg_temp.mask_is('Russian root with a prefix', 'нахуй', '***');
+  res := res || pg_temp.mask_is('Russian root with an ending', 'это пиздец и хуйня', 'это *** и ***');
+  res := res || pg_temp.mask_is('Arabic letters', 'يا شرموطة', 'يا ***');
+  res := res || pg_temp.mask_is('Hindi letters', 'तू चूतिया है', 'तू *** है');
+  res := res || pg_temp.mask_is('Chinese characters', '你这个傻逼啊', '你这个***啊');
+  res := res || pg_temp.mask_is('Chinese phrase', '他妈的', '***');
+  res := res || pg_temp.mask_is('Japanese', 'まんこ', '***');
+  res := res || pg_temp.mask_is('Korean', '이 씨발 놈', '이 *** 놈');
+  res := res || pg_temp.mask_is('Thai', 'ไอ้เหี้ย', 'ไอ้***');
+  res := res || pg_temp.mask_is('Greek', 'μαλάκας', '***');
+  res := res || pg_temp.mask_is('Hebrew', 'בן זונה', '***');
+  res := res || pg_temp.mask_is('words and names in other languages stay',
+    'Lund Kuss ASU con hora cono kalb pic got fan bite suka kos Pula Troia Randi Manko piste leche flan puto Hellen reputation computación',
+    'Lund Kuss ASU con hora cono kalb pic got fan bite suka kos Pula Troia Randi Manko piste leche flan puto Hellen reputation computación');
+  res := res || pg_temp.mask_is('Chinese and Thai text that only looks close stays', '姑妈的书 我操心 ห่างไกล แม่งาน', '姑妈的书 我操心 ห่างไกล แม่งาน');
+  res := res || pg_temp.mask_is('Russian text that only looks close stays', 'требование ребята оболочка', 'требование ребята оболочка');
+  res := res || pg_temp.line('the list now holds more than 400 entries in the three modes',
+    (select count(*) from public.blocked_words) > 400
+    and exists (select 1 from public.blocked_words where mode = 'stem')
+    and exists (select 1 from public.blocked_words where mode = 'exact'));
+  declare
+    started timestamptz := clock_timestamp();
+    sample text := repeat('Hello, this is a normal message about a logo design for my shop, thank you. ', 8);
+    n int;
+  begin
+    for n in 1..20 loop perform public.mask_bad_words(sample); end loop;
+    res := res || pg_temp.line('a long text takes under 150 ms to clean (' || round(extract(milliseconds from clock_timestamp() - started) / 20) || ' ms each)',
+      extract(milliseconds from clock_timestamp() - started) / 20 < 150);
+  end;
 
   -- ---- B. The triggers (borrowed rows, changed, read back) ----------------
   select id into rid from public.services limit 1;

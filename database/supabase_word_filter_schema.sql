@@ -10,36 +10,66 @@
 --     also covers the AI service and anyone calling the API directly.
 --   * A name or username that holds a blocked word is REFUSED instead (a name
 --     of *** is no name).
---   * Whole words only, so "computer", "reputation", "class" and "assistant"
---     stay as they are. It also catches capitals, stretched letters (fuuuck),
---     number and symbol look-alikes (sh1t, $hit, f*ck, fvck) and endings (-s -ed -ing).
+--   * Whole words by default, so "computer", "reputation", "class" and
+--     "assistant" stay as they are. It also catches capitals, stretched letters
+--     (fuuuck), number and symbol look-alikes (sh1t, $hit, f*ck, fvck) and
+--     endings (-s -ed -ing). Languages that grow endings (Russian, Arabic...) or
+--     have no spaces (Chinese, Japanese, Korean, Thai) use the other two modes,
+--     see supabase_word_filter_languages.sql.
 --   * Spaced-out letters (f u c k) and other tricks are NOT caught. No filter is
 --     perfect; add words to blocked_words to widen it.
 --
 -- Why three stars: a column that is a varchar(n) can never overflow, because
--- every blocked word is at least three letters long.
+-- every blocked Latin-letter word is at least three letters long. (A two-
+-- character Chinese, Japanese or Korean word turns into three stars, so a title
+-- that is already at its very last character could be refused as too long; the
+-- person just shortens it by one.)
 --
 -- Left alone on purpose: a freelancer's own written work (portfolio_items.body,
 -- slide_texts), text the admins write, voice, photos and video.
 --
--- Written with no destructive statements. To apply it to rows saved BEFORE this
--- file, see the one-time clean-up at the bottom (run it separately, on purpose).
+-- The one destructive-looking statement is part 1's "drop constraint if exists"
+-- on blocked_words itself (the word rule is replaced by a wider one, so a
+-- database that has the first version of this file is upgraded). To apply the
+-- filter to rows saved BEFORE this file, see the one-time clean-up at the bottom
+-- (run it separately, on purpose).
 
 -- ---------------------------------------------------------------------------
--- 1. The list of blocked words (lowercase letters, a space for a two-word
---    phrase). Nobody can read or change it from the website.
+-- 1. The list of blocked words. A word is lowercase letters of any script, one
+--    space between the words of a phrase, no digits or punctuation. Nobody can
+--    read or change the list from the website.
+--    mode: 'word' (must stand alone), 'stem' (a root, found inside a word and
+--    the whole word is hidden) or 'exact' (matched anywhere, for writing with
+--    no spaces between words).
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.blocked_words (
-  word text primary key
-    check (word ~ '^[a-z]+( [a-z]+)*$' and char_length(word) between 3 and 40),
+  word text primary key,
   added_at timestamptz not null default now()
 );
+
+alter table public.blocked_words
+  add column if not exists mode text not null default 'word'
+    check (mode in ('word', 'stem', 'exact'));
+
+-- The rule for the word itself. (A first version only allowed a-z, 3 or more
+-- letters: this widens it to other scripts; a Latin-letter word still needs 3.)
+-- No punctuation or digits: the word is put into a pattern, so a "." or "*"
+-- would change what it matches.
+alter table public.blocked_words drop constraint if exists blocked_words_word_check;
+alter table public.blocked_words add constraint blocked_words_word_check
+  check (
+    word = lower(word) and word = btrim(word) and word !~ '  '
+    and word !~ '[\x01-\x1f\x21-\x40\x5b-\x60\x7b-\x7e]'
+    and char_length(word) between 2 and 40
+    and (word !~ '^[a-z ]+$' or char_length(word) >= 3)
+  );
 
 alter table public.blocked_words enable row level security;
 revoke all on public.blocked_words from anon, authenticated;
 
--- Starter list: English, then Filipino / Taglish. Left out on purpose because
+-- Starter list: English, then Filipino / Taglish (other languages are in
+-- supabase_word_filter_languages.sql). Left out on purpose because
 -- they are also normal words: hell, crap, cock (cocker spaniel), cum (cum laude),
 -- leche (leche flan), puto (the rice cake), bobo and tanga (plain insults).
 insert into public.blocked_words (word) values
@@ -71,8 +101,10 @@ on conflict (word) do nothing;
 -- ---------------------------------------------------------------------------
 
 -- Builds one pattern out of the whole list. Each letter allows stretching
--- (u+) and its look-alikes; a space in a phrase allows any spaces or none. The
--- word must not touch another letter or digit, so "reputation" is safe.
+-- (u+) and its look-alikes; a space in a phrase allows any spaces or none.
+-- A 'word' must not touch another letter or digit, so "reputation" is safe, and
+-- may carry an ending (-s -ed -ing). A 'stem' is found inside a word and the
+-- whole word is taken. An 'exact' is matched as it is, anywhere.
 create or replace function public.bad_word_pattern()
 returns text
 language plpgsql
@@ -82,11 +114,15 @@ set search_path = public
 as $$
 declare
   w text;
+  m text;
   ch text;
   one text;
-  alts text[] := '{}';
+  whole text[] := '{}';
+  stems text[] := '{}';
+  exacts text[] := '{}';
+  parts text[] := '{}';
 begin
-  for w in select word from public.blocked_words order by char_length(word) desc, word loop
+  for w, m in select word, mode from public.blocked_words order by char_length(word) desc, word loop
     one := '';
     for ch in select regexp_split_to_table(w, '') loop
       one := one || case ch
@@ -101,15 +137,31 @@ begin
         else ch || '+'
       end;
     end loop;
-    alts := alts || one;
+    if m = 'stem' then
+      stems := stems || one;
+    elsif m = 'exact' then
+      exacts := exacts || one;
+    else
+      whole := whole || one;
+    end if;
   end loop;
 
+  if cardinality(whole) > 0 then
+    parts := parts || ('(?<![[:alnum:]])(?:' || array_to_string(whole, '|') || ')(?:s|es|ed|er|ers|ing|in)?(?![[:alnum:]])');
+  end if;
+  if cardinality(stems) > 0 then
+    parts := parts || ('[[:alnum:]]*(?:' || array_to_string(stems, '|') || ')[[:alnum:]]*');
+  end if;
+  if cardinality(exacts) > 0 then
+    parts := parts || ('(?:' || array_to_string(exacts, '|') || ')');
+  end if;
+
   -- An empty list must match nothing.
-  if cardinality(alts) = 0 then
+  if cardinality(parts) = 0 then
     return '(?!)';
   end if;
 
-  return '(?<![[:alnum:]])(?:' || array_to_string(alts, '|') || ')(?:s|es|ed|er|ers|ing|in)?(?![[:alnum:]])';
+  return array_to_string(parts, '|');
 end;
 $$;
 
@@ -338,4 +390,13 @@ create or replace trigger appeals_mask_words
 --
 --   update public.messages set body = public.mask_bad_words(body)
 --     where public.has_bad_word(body);
+--
+-- Remember the places that keep a COPY of typed text, which the triggers above
+-- do not watch: conversations.last_message_preview (the inbox line),
+-- report_messages (the evidence copy of reported chat messages) and
+-- reports.target_title. Clean those the same way if the count finds any.
+--
+-- Done once on the live database on 2026-10-21 (after the other languages were
+-- added): 3 rows (one chat message, the inbox preview that copied it and one
+-- appeal) were cleaned; the count had found nothing else anywhere.
 -- ---------------------------------------------------------------------------

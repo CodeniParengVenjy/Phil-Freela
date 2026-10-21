@@ -1,7 +1,8 @@
 # Hide curse words: plan and progress
 
-Status (2026-10-21): approved ("build build it"). Steps 1 (database) and 2
-(website) are DONE and live; step 3 (clean up old rows) waits for the user's "run it". To continue in a new Claude session, say: "Read
+Status (2026-10-21): approved ("build build it"). Steps 1 (database), 2 (website)
+and 3 (other languages + clean-up of old rows) are DONE and live. Only step 4 (an
+admin page to edit the word list) is left, and only if the user asks. To continue in a new Claude session, say: "Read
 PLAN-word-filter.md and continue from the current step."
 
 ## Why
@@ -152,8 +153,32 @@ The database does the hiding; the website only draws it:
    scrolling; sign-up stops a bad name or username before any account is made and
    goes on with clean ones; the no-name pop-up shows the database's sentence; Terms
    and both post forms show the new lines. Lint and build clean.
-3. One-time clean-up of rows already saved (a count first; it rewrites live data, so
-   it runs only after the user says "run it").
+3. DONE (2026-10-21, the user answered "Run it now, but not only that, include every
+   other language curse words"):
+   a. The word list was widened to other languages first
+      (`database/supabase_word_filter_languages.sql`, applied live): 476 entries now
+      (393 whole words, 33 stems, 50 exact), covering Spanish, Portuguese, Italian,
+      French, German, Dutch, the Nordic languages and Finnish, Polish, Czech / Slovak,
+      Serbian / Croatian, Hungarian, Romanian, Turkish, Indonesian / Malay,
+      Vietnamese, Hindi / Urdu, Arabic, Chinese, Japanese, Korean, Thai, Greek,
+      Hebrew, Russian / Ukrainian and Visayan / Ilocano / Tagalog extras, in Latin
+      letters and in their own writing. For that the table got a `mode` column:
+      `word` (stands alone, English-style endings allowed), `stem` (a root found
+      inside a word and the whole word is hidden: Russian, Arabic, Hindi) and `exact`
+      (matched anywhere, for writing with no spaces: Chinese, Japanese, Korean, Thai,
+      only specific phrases, never a fragment that sits inside a normal word, so
+      姑妈的书 "aunt's book" and 我操心 "I worry" stay). The word rule now allows
+      any script (Latin-letter words still need 3 letters). Words left out because
+      they are also normal words or names are listed at the top of that file.
+      Cleaning a text takes about 15 ms.
+   b. The count over every typed-text column found 3 old rows (the earlier service
+      row had since been removed): a chat message ("tangina"), the inbox preview that
+      copied it, and an appeal ("titi baho pudai mong pink"). They were cleaned to
+      `***`; the count is 0 afterwards. Only the user's own test rows were touched.
+   c. `database/test_word_filter.sql` now has 91 checks (36 for the other languages,
+      including capitals in Russian, roots with prefixes and endings, and lists of
+      words, names and Chinese, Thai and Russian text that must NOT change); all pass
+      live, rolled back.
 4. LATER, only if asked: Admin page to add/remove words from the list.
 
 ## Honest limits (for the defense)
