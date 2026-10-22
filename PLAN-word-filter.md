@@ -181,10 +181,47 @@ The database does the hiding; the website only draws it:
       live, rolled back.
 4. LATER, only if asked: Admin page to add/remove words from the list.
 
+## Step 5: stricter matching (2026-10-22)
+
+The user tried it and said some words were still not hidden: "any words in any
+format such as Fu ck you, bo bo, bobo, gagu". Before the change, none of those were
+caught (a probe on the live database showed "Fu ck you", "f u c k", "bo bo",
+"bobo", "gagu", "gagoka", "fuckyou", a Cyrillic "с" or full-width letters in "fuck",
+and "fûck" all went through). Now (`database/supabase_word_filter_schema.sql`, applied
+live as two migrations):
+- The text is FOLDED first (`fold_text`, one character for one character): full-width
+  letters, accented letters, the Cyrillic and Greek letters that look like Latin ones.
+  Matching is done on the folded text, but the stars replace the span in the ORIGINAL
+  text. Native-script words (Russian, Arabic, Chinese...) are matched on the original.
+- `loose` words (English and Filipino) also catch letters pulled apart: "Fu ck",
+  "f u c k", "F.U.C.K", "f_u_c_k", "bo bo", "B.O.B.O". A split is accepted only when
+  it leaves 2+ letters on both ends, or when EVERY letter is separated, so
+  "put a logo" (puta), "pot a toes" and "haha u lol" (ulol) are never touched. A
+  pulled-apart ROOT must stand alone, so "a bit chilly" is not a "bitch".
+- New mode `stem` for English and Filipino roots: found inside a longer word and the
+  whole word goes ("fuckyou", "motherfuckers", "putanginamo"). New mode `tail` for
+  short Filipino insults that take little words glued on ("gagoka", "tangamo",
+  "boboka", "gagong"). `allowed_words` lists look-alikes that are fine ("snigger").
+- Words added: bobo, bubu, gago, gagu, ulol, ulul, tanga, engot, hangal, pucha,
+  putcha, putsa, potek, putang, bilat, yawa, pisti, siraulo, talipandas, lapastangan,
+  walanghiya, lecheng, amputa, ampota, ampucha, ... and in English idiot, moron,
+  imbecile, stupid, crap, arse, bugger, tosser, feck, scumbag, asswipe, asshat... Still
+  left out on purpose (normal words or names): hell, leche flan, puto, gaga (Lady
+  Gaga), inutil, tonto, hudas, mangmang.
+- Look-alikes now also: `|` for i, and a star can stand for a vowel (f*ck, f**k).
+- Count over every typed-text column of the live database with the stricter filter:
+  nothing matched (so no false positive on the real data and nothing to clean).
+- `database/test_word_filter.sql`: 122 checks, all pass live (rolled back). A cleaning
+  call now takes about 50-65 ms (the pattern is 34 KB), fine for a message.
+- Known trade-offs: "Dick" (Dick Van Dyke, Moby Dick) and a name such as "Bo Bo" are
+  masked or refused, because the user wants bobo and dick covered.
+
 ## Honest limits (for the defense)
 
-- No filter is perfect: spaced-out letters (f u c k), other languages and new slang
-  slip through; the list is easy to extend.
+- No filter is perfect: a word that is not in the list, new slang, a look-alike
+  letter we do not know, and a word broken in an odd place (f uck, fu c k) slip
+  through; the list is easy to extend. Letters pulled apart evenly or one by one
+  ("Fu ck", "f u c k") are caught since step 5.
 - The real word is not kept, so an admin reading a report sees the stars. The
   messages around it still show what happened.
 

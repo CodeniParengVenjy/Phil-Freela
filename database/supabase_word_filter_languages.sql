@@ -15,6 +15,9 @@
 --           could sit inside a normal word (for example 我操 is left out: it is
 --           inside 我操心, "I worry").
 --
+-- (The schema file adds two more switches for the English and Filipino words:
+-- mode 'tail' and 'loose'. They do not apply to the words in this file.)
+--
 -- Languages: Spanish, Portuguese, Italian, French, German, Dutch, Swedish /
 -- Norwegian / Danish / Finnish, Polish, Czech / Slovak, Serbian / Croatian,
 -- Hungarian, Romanian, Turkish, Indonesian / Malay, Vietnamese, Hindi / Urdu,

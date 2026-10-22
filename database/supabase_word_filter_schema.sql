@@ -10,14 +10,28 @@
 --     also covers the AI service and anyone calling the API directly.
 --   * A name or username that holds a blocked word is REFUSED instead (a name
 --     of *** is no name).
---   * Whole words by default, so "computer", "reputation", "class" and
---     "assistant" stay as they are. It also catches capitals, stretched letters
---     (fuuuck), number and symbol look-alikes (sh1t, $hit, f*ck, fvck) and
---     endings (-s -ed -ing). Languages that grow endings (Russian, Arabic...) or
---     have no spaces (Chinese, Japanese, Korean, Thai) use the other two modes,
---     see supabase_word_filter_languages.sql.
---   * Spaced-out letters (f u c k) and other tricks are NOT caught. No filter is
---     perfect; add words to blocked_words to widen it.
+--
+-- How strict it is (the word list is in blocked_words, each word has a mode):
+--   * Capitals, stretched letters (fuuuck), number and symbol look-alikes
+--     (sh1t, $hit, f*ck, fvck) and endings (-s -ed -ing) are always caught.
+--   * The text is first "folded": full-width letters, accented letters and the
+--     Cyrillic / Greek letters that look like Latin ones (a Cyrillic "с" in
+--     "fuсk") become plain Latin letters before matching.
+--   * 'loose' words (the English and Filipino ones) also catch letters pulled
+--     apart by spaces or symbols: "Fu ck", "bo bo", "f u c k", "F.U.C.K",
+--     "f_u_c_k". A split is only accepted when it leaves 2 letters or more on
+--     both ends, or when EVERY letter is separated, so "put a logo" (puta) and
+--     "u lol" (ulol) are never touched.
+--   * 'stem' words are found inside a longer word and the whole word is hidden
+--     ("fuckyou", "motherfuckers"); 'tail' words (Filipino insults) also take the
+--     little words glued to them ("gagoka", "tangamo", "boboka"); 'word' words must
+--     stand alone, so "computer", "reputation", "class" and "assistant" stay;
+--     'exact' words are for writing with no spaces (see the languages file).
+--   * allowed_words lists words that look like a blocked root but are fine
+--     ("snigger" is not a slur).
+--   * Not caught: a letter swapped for another look-alike we do not know, and
+--     words that are not in the list. No filter is perfect; add words to
+--     blocked_words to widen it.
 --
 -- Why three stars: a column that is a varchar(n) can never overflow, because
 -- every blocked Latin-letter word is at least three letters long. (A two-
@@ -28,19 +42,20 @@
 -- Left alone on purpose: a freelancer's own written work (portfolio_items.body,
 -- slide_texts), text the admins write, voice, photos and video.
 --
--- The one destructive-looking statement is part 1's "drop constraint if exists"
--- on blocked_words itself (the word rule is replaced by a wider one, so a
--- database that has the first version of this file is upgraded). To apply the
--- filter to rows saved BEFORE this file, see the one-time clean-up at the bottom
--- (run it separately, on purpose).
+-- The destructive-looking statements are only "drop constraint if exists" on
+-- blocked_words itself (a word rule is replaced by a wider one, so a database
+-- that has an older version of this file is upgraded). To apply the filter to
+-- rows saved BEFORE this file, see the one-time clean-up at the bottom (run it
+-- separately, on purpose).
 
 -- ---------------------------------------------------------------------------
--- 1. The list of blocked words. A word is lowercase letters of any script, one
---    space between the words of a phrase, no digits or punctuation. Nobody can
---    read or change the list from the website.
---    mode: 'word' (must stand alone), 'stem' (a root, found inside a word and
---    the whole word is hidden) or 'exact' (matched anywhere, for writing with
---    no spaces between words).
+-- 1. The tables. Nobody can read or change them from the website.
+--    blocked_words: a word is lowercase letters of any script, one space between
+--    the words of a phrase, no digits or punctuation.
+--      mode:  'word' (stands alone), 'tail' (stands alone, may carry Filipino
+--             little words), 'stem' (found inside a word, the whole word goes)
+--             or 'exact' (matched anywhere, for writing with no spaces).
+--      loose: also catch the letters pulled apart (Latin-letter words only).
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.blocked_words (
@@ -48,14 +63,16 @@ create table if not exists public.blocked_words (
   added_at timestamptz not null default now()
 );
 
-alter table public.blocked_words
-  add column if not exists mode text not null default 'word'
-    check (mode in ('word', 'stem', 'exact'));
+alter table public.blocked_words add column if not exists mode text not null default 'word';
+alter table public.blocked_words add column if not exists loose boolean not null default false;
 
--- The rule for the word itself. (A first version only allowed a-z, 3 or more
--- letters: this widens it to other scripts; a Latin-letter word still needs 3.)
--- No punctuation or digits: the word is put into a pattern, so a "." or "*"
--- would change what it matches.
+alter table public.blocked_words drop constraint if exists blocked_words_mode_check;
+alter table public.blocked_words add constraint blocked_words_mode_check
+  check (mode in ('word', 'tail', 'stem', 'exact'));
+
+-- The rule for the word itself: any script, no punctuation or digits (the word
+-- is put into a pattern, so a "." or "*" would change what it matches), and a
+-- Latin-letter word needs 3 letters.
 alter table public.blocked_words drop constraint if exists blocked_words_word_check;
 alter table public.blocked_words add constraint blocked_words_word_check
   check (
@@ -68,44 +85,292 @@ alter table public.blocked_words add constraint blocked_words_word_check
 alter table public.blocked_words enable row level security;
 revoke all on public.blocked_words from anon, authenticated;
 
+-- Words that contain a blocked 'stem' but are fine (the start of the word).
+create table if not exists public.allowed_words (
+  word text primary key check (word ~ '^[a-z]+$' and char_length(word) between 3 and 40),
+  added_at timestamptz not null default now()
+);
+alter table public.allowed_words enable row level security;
+revoke all on public.allowed_words from anon, authenticated;
+
+insert into public.allowed_words (word) values ('snigger') on conflict (word) do nothing;
+
 -- Starter list: English, then Filipino / Taglish (other languages are in
--- supabase_word_filter_languages.sql). Left out on purpose because
--- they are also normal words: hell, crap, cock (cocker spaniel), cum (cum laude),
--- leche (leche flan), puto (the rice cake), bobo and tanga (plain insults).
-insert into public.blocked_words (word) values
-  -- English
-  ('fuck'), ('fck'), ('fuk'), ('fuq'), ('motherfuck'), ('mofo'),
-  ('shit'), ('shitty'), ('bullshit'), ('horseshit'), ('shithead'), ('dipshit'),
-  ('bitch'), ('bitchy'), ('biatch'),
-  ('ass'), ('asshole'), ('jackass'), ('dumbass'),
-  ('bastard'), ('damn'), ('dammit'), ('damnit'), ('goddamn'),
-  ('cunt'), ('twat'), ('wanker'), ('bollocks'), ('prick'),
-  ('dick'), ('dickhead'), ('cocksucker'), ('pussy'),
-  ('whore'), ('slut'), ('slutty'),
-  ('piss'), ('pissy'), ('douche'), ('douchebag'),
-  ('blowjob'), ('handjob'), ('cumshot'), ('jerk off'),
-  ('wtf'), ('stfu'), ('gtfo'),
-  ('nigger'), ('nigga'), ('faggot'), ('fag'), ('retard'), ('retarded'), ('tranny'),
-  -- Filipino / Taglish
-  ('putangina'), ('putang ina'), ('tangina'), ('tang ina'), ('tanginamo'),
-  ('kingina'), ('kinangina'), ('potangina'), ('putragis'), ('punyeta'),
-  ('puta'), ('pota'), ('pakshet'), ('pakyu'),
-  ('gago'), ('ulol'), ('kupal'), ('tarantado'), ('hayop ka'), ('animal ka'),
-  ('buwisit'), ('bwisit'), ('lintik'), ('hinayupak'), ('shunga'), ('gunggong'),
-  ('burat'), ('tite'), ('titi'), ('puki'), ('pekpek'), ('kantot'), ('kantutan'),
-  ('jakol'), ('hindot'), ('pokpok')
-on conflict (word) do nothing;
+-- supabase_word_filter_languages.sql). Left out on purpose because they are
+-- also normal words or names: hell, cock (cocker spaniel), cum (cum laude),
+-- leche (leche flan), puto (the rice cake), gaga (Lady Gaga), inutil, tonto,
+-- hudas, mangmang. Running this file again re-applies the modes below.
+-- English: roots found inside a longer word ("fuckyou", "motherfuckers").
+insert into public.blocked_words (word, mode, loose) values
+  ('fuck', 'stem', true), ('motherfuck', 'stem', true), ('phuck', 'stem', true),
+  ('bullshit', 'stem', true), ('horseshit', 'stem', true), ('shithead', 'stem', true),
+  ('dipshit', 'stem', true), ('shitty', 'stem', true), ('shitshow', 'stem', true),
+  ('bitch', 'stem', true), ('bitchy', 'stem', true), ('biatch', 'stem', true),
+  ('asshole', 'stem', true), ('jackass', 'stem', true), ('dumbass', 'stem', true),
+  ('asswipe', 'stem', true), ('asshat', 'stem', true), ('assface', 'stem', true),
+  ('asskisser', 'stem', true), ('arsehole', 'stem', true),
+  ('bastard', 'stem', true), ('goddamn', 'stem', true), ('dammit', 'stem', true),
+  ('damnit', 'stem', true), ('douche', 'stem', true), ('douchebag', 'stem', true),
+  ('cocksucker', 'stem', true), ('dickhead', 'stem', true), ('pussy', 'stem', true),
+  ('whore', 'stem', true), ('slutty', 'stem', true), ('blowjob', 'stem', true),
+  ('handjob', 'stem', true), ('cumshot', 'stem', true), ('nigger', 'stem', true),
+  ('faggot', 'stem', true), ('tranny', 'stem', true), ('wanker', 'stem', true),
+  ('bollocks', 'stem', true), ('scumbag', 'stem', true), ('crappy', 'stem', true)
+on conflict (word) do update set mode = excluded.mode, loose = excluded.loose;
+
+-- English: words that must stand alone (a short word can sit inside a normal
+-- one: "Scunthorpe", "retardant", "snigger", "Pissarro").
+insert into public.blocked_words (word, mode, loose) values
+  ('fck', 'word', true), ('fuk', 'word', true), ('fuq', 'word', true), ('phuk', 'word', true),
+  ('kunt', 'word', true), ('mofo', 'word', true), ('shit', 'word', true), ('ass', 'word', true),
+  ('damn', 'word', true), ('cunt', 'word', true), ('twat', 'word', true), ('prick', 'word', true),
+  ('dick', 'word', true), ('piss', 'word', true), ('pissy', 'word', true), ('slut', 'word', true),
+  ('wtf', 'word', true), ('stfu', 'word', true), ('gtfo', 'word', true), ('nigga', 'word', true),
+  ('fag', 'word', true), ('retard', 'word', true), ('retarded', 'word', true),
+  ('crap', 'word', true), ('arse', 'word', true), ('tosser', 'word', true),
+  ('bugger', 'word', true), ('feck', 'word', true), ('idiot', 'word', true),
+  ('moron', 'word', true), ('imbecile', 'word', true), ('stupid', 'word', true),
+  ('jerk off', 'word', false)
+on conflict (word) do update set mode = excluded.mode, loose = excluded.loose;
+
+-- Filipino / Taglish: roots found inside a longer word.
+insert into public.blocked_words (word, mode, loose) values
+  ('putangina', 'stem', true), ('tangina', 'stem', true), ('tanginamo', 'stem', true),
+  ('kingina', 'stem', true), ('kinangina', 'stem', true), ('potangina', 'stem', true),
+  ('putragis', 'stem', true), ('punyeta', 'stem', true), ('pakshet', 'stem', true),
+  ('pasnea', 'stem', true), ('pakyu', 'stem', true), ('hinayupak', 'stem', true),
+  ('tarantado', 'stem', true), ('tarantada', 'stem', true), ('lintik', 'stem', true),
+  ('buwisit', 'stem', true), ('bwisit', 'stem', true), ('gunggong', 'stem', true),
+  ('kupal', 'stem', true), ('shunga', 'stem', true), ('pekpek', 'stem', true),
+  ('kantot', 'stem', true), ('kantutan', 'stem', true), ('jakol', 'stem', true),
+  ('hindot', 'stem', true), ('pokpok', 'stem', true), ('amputa', 'stem', true),
+  ('ampota', 'stem', true), ('ampucha', 'stem', true), ('siraulo', 'stem', true),
+  ('talipandas', 'stem', true), ('lapastangan', 'stem', true), ('walanghiya', 'stem', true),
+  ('lecheng', 'stem', true), ('salsal', 'stem', true), ('giatay', 'stem', true),
+  ('ukinnam', 'stem', true), ('ukininam', 'stem', true), ('ukinam', 'stem', true)
+on conflict (word) do update set mode = excluded.mode, loose = excluded.loose;
+
+-- Filipino / Taglish: short words (and insults) that also take the little words
+-- people glue on: gagoka, tangamo, boboka, gagong.
+insert into public.blocked_words (word, mode, loose) values
+  ('gago', 'tail', true), ('gagu', 'tail', true), ('ulol', 'tail', true), ('ulul', 'tail', true),
+  ('bobo', 'tail', true), ('bubu', 'tail', true), ('tanga', 'tail', true), ('engot', 'tail', true),
+  ('puta', 'tail', true), ('pota', 'tail', true), ('tite', 'tail', true), ('titi', 'tail', true),
+  ('puki', 'tail', true), ('burat', 'tail', true), ('hangal', 'tail', true), ('pucha', 'tail', true),
+  ('putcha', 'tail', true), ('putsa', 'tail', true), ('potek', 'tail', true), ('putang', 'tail', true),
+  ('bilat', 'tail', true), ('yawa', 'tail', true), ('pisti', 'tail', true), ('tangna', 'tail', true),
+  ('iyot', 'tail', true)
+on conflict (word) do update set mode = excluded.mode, loose = excluded.loose;
+
+-- Filipino / Taglish phrases.
+insert into public.blocked_words (word, mode, loose) values
+  ('putang ina', 'word', false), ('tang ina', 'word', false), ('hayop ka', 'word', false),
+  ('animal ka', 'word', false), ('sira ulo', 'word', false), ('walang hiya', 'word', false)
+on conflict (word) do update set mode = excluded.mode, loose = excluded.loose;
 
 -- ---------------------------------------------------------------------------
 -- 2. The functions.
 -- ---------------------------------------------------------------------------
 
--- Builds one pattern out of the whole list. Each letter allows stretching
--- (u+) and its look-alikes; a space in a phrase allows any spaces or none.
--- A 'word' must not touch another letter or digit, so "reputation" is safe, and
--- may carry an ending (-s -ed -ing). A 'stem' is found inside a word and the
--- whole word is taken. An 'exact' is matched as it is, anywhere.
+-- "Folds" a text so look-alikes become plain Latin letters, one character for
+-- one character (so a position in the folded text is the same position in the
+-- original): full-width letters and digits, accented letters, and the Cyrillic
+-- and Greek letters that look like Latin ones. Math-style letters (bold, script)
+-- are folded too when that doesn't change the length. The two lists are built
+-- here once and put into the function.
+do $fold$
+declare
+  src text := '';
+  dst text := '';
+  v record;
+  c text;
+  i int;
+begin
+  -- Accented Latin letters.
+  for v in select * from (values
+    ('a', 'àáâãäåāăąǎ'), ('A', 'ÀÁÂÃÄÅĀĂĄǍ'), ('c', 'çćĉċč'), ('C', 'ÇĆĈĊČ'),
+    ('d', 'ďđ'), ('D', 'ĎĐ'), ('e', 'èéêëēĕėęě'), ('E', 'ÈÉÊËĒĔĖĘĚ'),
+    ('g', 'ĝğġģ'), ('G', 'ĜĞĠĢ'), ('h', 'ĥħ'), ('H', 'ĤĦ'),
+    ('i', 'ìíîïĩīĭįı'), ('I', 'ÌÍÎÏĨĪĬĮİ'), ('j', 'ĵ'), ('J', 'Ĵ'), ('k', 'ķ'), ('K', 'Ķ'),
+    ('l', 'ĺļľŀł'), ('L', 'ĹĻĽĿŁ'), ('n', 'ñńņň'), ('N', 'ÑŃŅŇ'),
+    ('o', 'òóôõöøōŏőǒ'), ('O', 'ÒÓÔÕÖØŌŎŐǑ'), ('r', 'ŕŗř'), ('R', 'ŔŖŘ'),
+    ('s', 'śŝşš'), ('S', 'ŚŜŞŠ'), ('t', 'ţťŧ'), ('T', 'ŢŤŦ'),
+    ('u', 'ùúûüũūŭůűųǔ'), ('U', 'ÙÚÛÜŨŪŬŮŰŲǓ'), ('w', 'ŵ'), ('W', 'Ŵ'),
+    ('y', 'ýÿŷ'), ('Y', 'ÝŸŶ'), ('z', 'źżž'), ('Z', 'ŹŻŽ')
+  ) as t(base, chars) loop
+    for c in select regexp_split_to_table(v.chars, '') loop
+      src := src || c;
+      dst := dst || v.base;
+    end loop;
+  end loop;
+
+  -- Full-width letters, digits and the symbols people use for letters.
+  for i in 0..25 loop
+    src := src || chr(65313 + i) || chr(65345 + i);
+    dst := dst || chr(65 + i) || chr(97 + i);
+  end loop;
+  for i in 0..9 loop
+    src := src || chr(65296 + i);
+    dst := dst || chr(48 + i);
+  end loop;
+  src := src || chr(65290) || chr(65312) || chr(65284) || chr(65281) || chr(65291);
+  dst := dst || '*@$!+';
+
+  -- Cyrillic and Greek letters that look like Latin ones (code point, letter).
+  for v in select * from (values
+    (1072, 'a'), (1089, 'c'), (1077, 'e'), (1086, 'o'), (1088, 'p'), (1093, 'x'), (1091, 'y'),
+    (1110, 'i'), (1112, 'j'), (1109, 's'), (1082, 'k'), (1084, 'm'), (1085, 'h'), (1090, 't'),
+    (1040, 'A'), (1042, 'B'), (1045, 'E'), (1050, 'K'), (1052, 'M'), (1053, 'H'), (1054, 'O'),
+    (1056, 'P'), (1057, 'C'), (1058, 'T'), (1061, 'X'), (1030, 'I'), (1032, 'J'), (1029, 'S'),
+    (1059, 'Y'),
+    (913, 'A'), (914, 'B'), (917, 'E'), (918, 'Z'), (919, 'H'), (921, 'I'), (922, 'K'),
+    (924, 'M'), (925, 'N'), (927, 'O'), (929, 'P'), (932, 'T'), (933, 'Y'), (935, 'X'),
+    (959, 'o'), (957, 'v'), (953, 'i'), (954, 'k'), (961, 'p'), (965, 'u'), (964, 't'),
+    (945, 'a'), (949, 'e'), (967, 'x')
+  ) as t(cp, base) loop
+    src := src || chr(v.cp);
+    dst := dst || v.base;
+  end loop;
+
+  execute format(
+    'create or replace function public.fold_text(t text) returns text language sql immutable set search_path = public as $b$ select translate(case when char_length(normalize(t, nfkc)) = char_length(t) then normalize(t, nfkc) else t end, %L, %L) $b$',
+    src, dst);
+end;
+$fold$;
+
+-- One letter of a Latin-letter word as a pattern: it may be stretched (u+) and
+-- may be one of its look-alikes.
+create or replace function public.word_letter_class(ch text)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select case ch
+    when 'a' then '[a@4*]+'
+    when 'e' then '[e3*]+'
+    when 'i' then '[i1!*|]+'
+    when 'o' then '[o0*]+'
+    when 'u' then '[uv*]+'
+    when 's' then '[s$5]+'
+    when 't' then '[t7+]+'
+    else ch || '+'
+  end
+$$;
+
+-- The pattern for every blocked word written with plain Latin letters. It is
+-- matched against the FOLDED text (see fold_text).
+--   A letter run:  fuuuck   (stretched letters and look-alikes)
+--   loose gap:     fu ck    (after letter 2 up to 2 letters from the end, any 0-2
+--                  symbols or spaces; this leaves 2+ letters on both ends)
+--   loose spaced:  f u c k  (every letter separated by 1-2 symbols or spaces)
+-- 'word' must stand alone (an ending -s -ed -ing is fine), 'tail' may carry
+-- Filipino little words, 'stem' is found inside a word and takes the whole word
+-- (unless the word starts like an allowed_words entry).
 create or replace function public.bad_word_pattern()
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  rec record;
+  toks text[];
+  tok text;
+  letters text[];
+  n int;
+  i int;
+  a text;
+  p text;
+  b text;
+  phrase text[];
+  plain text[];
+  alt text;
+  altplain text;
+  gap constant text := '[^[:alnum:]]{0,2}';
+  sep constant text := '[^[:alnum:]]{1,2}';
+  psep constant text := '[^[:alnum:]]{0,3}';
+  whole text[] := '{}';
+  tails text[] := '{}';
+  stems text[] := '{}';
+  parts text[] := '{}';
+  allow text;
+begin
+  for rec in
+    select word, mode, loose from public.blocked_words
+     where word ~ '^[a-z]+( [a-z]+)*$'
+     order by char_length(word) desc, word
+  loop
+    toks := string_to_array(rec.word, ' ');
+    phrase := '{}';
+    plain := '{}';
+    foreach tok in array toks loop
+      letters := regexp_split_to_array(tok, '');
+      n := cardinality(letters);
+      a := '';
+      p := '';
+      for i in 1..n loop
+        a := a || public.word_letter_class(letters[i]);
+        p := p || public.word_letter_class(letters[i]);
+        if rec.loose and cardinality(toks) = 1 and i between 2 and n - 2 then
+          a := a || gap;
+        end if;
+      end loop;
+      if rec.loose and cardinality(toks) = 1 and n >= 3 then
+        b := '';
+        for i in 1..n loop
+          b := b || public.word_letter_class(letters[i]) || case when i < n then sep else '' end;
+        end loop;
+        a := '(?:' || a || '|' || b || ')';
+      end if;
+      phrase := phrase || a;
+      plain := plain || p;
+    end loop;
+    alt := array_to_string(phrase, psep);
+    altplain := array_to_string(plain, psep);
+
+    if rec.mode = 'stem' then
+      -- The glued root is found inside a longer word. The pulled-apart forms
+      -- (Fu ck, f u c k) must stand alone: otherwise "bit chilly" would be a
+      -- "bitch" with an ending.
+      stems := stems || altplain;
+      if rec.loose and cardinality(toks) = 1 then
+        whole := whole || alt;
+      end if;
+    elsif rec.mode = 'tail' then
+      tails := tails || alt;
+    else
+      whole := whole || alt;
+    end if;
+  end loop;
+
+  if cardinality(whole) > 0 then
+    parts := parts || ('(?<![[:alnum:]])(?:' || array_to_string(whole, '|') || ')(?:s|es|ed|er|ers|ing|in)?(?![[:alnum:]])');
+  end if;
+  if cardinality(tails) > 0 then
+    parts := parts || ('(?<![[:alnum:]])(?:' || array_to_string(tails, '|') || ')(?:ka|mo|ko|ba|ng|na|nga|lang)*(?![[:alnum:]])');
+  end if;
+  if cardinality(stems) > 0 then
+    select string_agg(word, '|') into allow from public.allowed_words;
+    parts := parts || ('(?<![[:alnum:]])'
+      || case when allow is not null then '(?!(?:' || allow || '))' else '' end
+      || '[[:alnum:]]*(?:' || array_to_string(stems, '|') || ')[[:alnum:]]*');
+  end if;
+
+  -- An empty list must match nothing.
+  if cardinality(parts) = 0 then
+    return '(?!)';
+  end if;
+
+  return array_to_string(parts, '|');
+end;
+$$;
+
+-- The pattern for every other blocked word (other scripts, and Latin words with
+-- an accent such as coño or piç). It is matched against the ORIGINAL text, so
+-- Russian, Arabic, Chinese... are never folded into Latin letters.
+create or replace function public.bad_native_pattern()
 returns text
 language plpgsql
 stable
@@ -122,20 +387,14 @@ declare
   exacts text[] := '{}';
   parts text[] := '{}';
 begin
-  for w, m in select word, mode from public.blocked_words order by char_length(word) desc, word loop
+  for w, m in
+    select word, mode from public.blocked_words
+     where word !~ '^[a-z]+( [a-z]+)*$'
+     order by char_length(word) desc, word
+  loop
     one := '';
     for ch in select regexp_split_to_table(w, '') loop
-      one := one || case ch
-        when ' ' then '\s*'
-        when 'a' then '[a@4*]+'
-        when 'e' then '[e3*]+'
-        when 'i' then '[i1!*]+'
-        when 'o' then '[o0*]+'
-        when 'u' then '[uv*]+'
-        when 's' then '[s$5]+'
-        when 't' then '[t7+]+'
-        else ch || '+'
-      end;
+      one := one || case ch when ' ' then '[^[:alnum:]]{0,3}' else ch || '+' end;
     end loop;
     if m = 'stem' then
       stems := stems || one;
@@ -147,7 +406,7 @@ begin
   end loop;
 
   if cardinality(whole) > 0 then
-    parts := parts || ('(?<![[:alnum:]])(?:' || array_to_string(whole, '|') || ')(?:s|es|ed|er|ers|ing|in)?(?![[:alnum:]])');
+    parts := parts || ('(?<![[:alnum:]])(?:' || array_to_string(whole, '|') || ')(?![[:alnum:]])');
   end if;
   if cardinality(stems) > 0 then
     parts := parts || ('[[:alnum:]]*(?:' || array_to_string(stems, '|') || ')[[:alnum:]]*');
@@ -156,7 +415,6 @@ begin
     parts := parts || ('(?:' || array_to_string(exacts, '|') || ')');
   end if;
 
-  -- An empty list must match nothing.
   if cardinality(parts) = 0 then
     return '(?!)';
   end if;
@@ -165,14 +423,49 @@ begin
 end;
 $$;
 
--- The text with every blocked word replaced by ***.
+-- The text with every blocked word replaced by ***. The Latin-letter words are
+-- found in the folded text but cut out of the ORIGINAL (folding keeps every
+-- position), so nothing else in the text changes.
 create or replace function public.mask_bad_words(input text)
 returns text
-language sql
+language plpgsql
 stable
 set search_path = public
 as $$
-  select regexp_replace(input, public.bad_word_pattern(), '***', 'gi');
+declare
+  lat text;
+  nat text;
+  folded text;
+  result text := '';
+  pos int := 1;
+  s int;
+  e int;
+begin
+  if input is null then
+    return null;
+  end if;
+
+  lat := public.bad_word_pattern();
+  folded := public.fold_text(input);
+
+  loop
+    s := regexp_instr(folded, lat, pos, 1, 0, 'i');
+    exit when s = 0;
+    e := regexp_instr(folded, lat, pos, 1, 1, 'i');
+    if e <= s then
+      -- Safety: never loop on an empty match.
+      result := result || substr(input, pos, s - pos + 1);
+      pos := s + 1;
+    else
+      result := result || substr(input, pos, s - pos) || '***';
+      pos := e;
+    end if;
+  end loop;
+  result := result || substr(input, pos);
+
+  nat := public.bad_native_pattern();
+  return regexp_replace(result, nat, '***', 'gi');
+end;
 $$;
 
 -- Yes or no: does the text hold a blocked word?
@@ -182,10 +475,16 @@ language sql
 stable
 set search_path = public
 as $$
-  select coalesce(input ~* public.bad_word_pattern(), false);
+  select coalesce(
+    public.fold_text(input) ~* public.bad_word_pattern()
+    or input ~* public.bad_native_pattern(),
+    false);
 $$;
 
+revoke execute on function public.fold_text(text) from public, anon, authenticated;
+revoke execute on function public.word_letter_class(text) from public, anon, authenticated;
 revoke execute on function public.bad_word_pattern() from public, anon, authenticated;
+revoke execute on function public.bad_native_pattern() from public, anon, authenticated;
 revoke execute on function public.mask_bad_words(text) from public, anon, authenticated;
 revoke execute on function public.has_bad_word(text) from public, anon, authenticated;
 
@@ -205,7 +504,6 @@ security definer
 set search_path = public
 as $$
 declare
-  pat text := public.bad_word_pattern();
   newrow jsonb := to_jsonb(new);
   oldrow jsonb := case when tg_op = 'UPDATE' then to_jsonb(old) end;
   col text;
@@ -220,12 +518,12 @@ begin
     end if;
 
     if jsonb_typeof(newval) = 'string' then
-      masked := to_jsonb(regexp_replace(newval #>> '{}', pat, '***', 'gi'));
+      masked := to_jsonb(public.mask_bad_words(newval #>> '{}'));
     elsif jsonb_typeof(newval) = 'array' then
       select coalesce(
                jsonb_agg(
                  case when jsonb_typeof(t.e) = 'string'
-                      then to_jsonb(regexp_replace(t.e #>> '{}', pat, '***', 'gi'))
+                      then to_jsonb(public.mask_bad_words(t.e #>> '{}'))
                       else t.e end
                  order by t.n),
                '[]'::jsonb)
@@ -259,16 +557,15 @@ security definer
 set search_path = public
 as $$
 declare
-  pat text := public.bad_word_pattern();
   handle text;
 begin
-  if coalesce(full_name, '') ~* pat then
+  if public.has_bad_word(coalesce(full_name, '')) then
     return 'name';
   end if;
 
   handle := regexp_replace(lower(coalesce(username, '')), '[_.\-]+', ' ', 'g');
-  if handle ~* pat
-     or regexp_replace(handle, '(^|\s)[0-9]+|[0-9]+(\s|$)', ' ', 'g') ~* pat then
+  if public.has_bad_word(handle)
+     or public.has_bad_word(regexp_replace(handle, '(^|\s)[0-9]+|[0-9]+(\s|$)', ' ', 'g')) then
     return 'username';
   end if;
 
@@ -396,7 +693,7 @@ create or replace trigger appeals_mask_words
 -- report_messages (the evidence copy of reported chat messages) and
 -- reports.target_title. Clean those the same way if the count finds any.
 --
--- Done once on the live database on 2026-10-21 (after the other languages were
--- added): 3 rows (one chat message, the inbox preview that copied it and one
--- appeal) were cleaned; the count had found nothing else anywhere.
+-- Done on the live database on 2026-10-21 (3 rows: a chat message, the inbox
+-- preview that copied it and an appeal) and again after the stricter matching
+-- on 2026-10-22 (see PLAN-word-filter.md).
 -- ---------------------------------------------------------------------------
