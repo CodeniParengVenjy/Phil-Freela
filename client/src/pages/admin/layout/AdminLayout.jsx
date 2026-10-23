@@ -7,28 +7,59 @@ import "../admin.css";
 
 const ADMIN_COLUMNS = "id, full_name, username, role, must_change_password";
 
-const sidebarLinks = [
+// The sidebar: single links and groups (a group is a dropdown on laptops and a
+// plain row of tabs on phones). `badge` names the pending-count that shows
+// beside a link (see `badges` in the component).
+const sidebarItems = [
   { to: "/admin", end: true, icon: "bi-speedometer2", label: "Overview" },
-  { to: "/admin/users", icon: "bi-people-fill", label: "Users" },
-  { to: "/admin/pending", icon: "bi-hourglass-split", label: "Pending Users", showPendingUsers: true },
-  { to: "/admin/archives", icon: "bi-archive-fill", label: "Archives" },
-  { to: "/admin/listings", icon: "bi-grid-fill", label: "Listings" },
-  { to: "/admin/reports", icon: "bi-flag-fill", label: "Reports", showPendingReports: true },
-  { to: "/admin/verifications", icon: "bi-person-vcard-fill", label: "Verifications", showPendingVerifications: true },
-  { to: "/admin/appeals", icon: "bi-envelope-paper-fill", label: "Appeals", showPendingAppeals: true },
-  { to: "/admin/flagged", icon: "bi-images", label: "Flagged Content", showPendingFlagged: true },
-  // superAdminOnly: hidden from regular admins, and their address bar is
-  // sent back to Overview. The database rules are the real protection.
-  { to: "/admin/approvals", icon: "bi-patch-check-fill", label: "Approvals", superAdminOnly: true, showPendingApprovals: true },
-  { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements", superAdminOnly: true },
-  { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard", superAdminOnly: true },
-  { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins", superAdminOnly: true },
-  { to: "/admin/log", icon: "bi-journal-text", label: "Activity Log" },
-  { to: "/admin/profile", icon: "bi-person-gear", label: "My Profile" },
-  // The same Browse Services / Find Jobs pages users see, shown in admin mode.
-  { to: "/admin/browse-services", icon: "bi-shop", label: "Browse Services" },
-  { to: "/admin/browse-jobs", icon: "bi-briefcase-fill", label: "Browse Jobs" }
+  {
+    id: "people", icon: "bi-person-lines-fill", label: "People",
+    links: [
+      { to: "/admin/users", icon: "bi-people-fill", label: "Users" },
+      { to: "/admin/pending", icon: "bi-hourglass-split", label: "Pending Users", badge: "users" },
+      { to: "/admin/verifications", icon: "bi-person-vcard-fill", label: "Verifications", badge: "verifications" },
+      { to: "/admin/archives", icon: "bi-archive-fill", label: "Archives" }
+    ]
+  },
+  {
+    id: "moderation", icon: "bi-shield-exclamation", label: "Moderation",
+    links: [
+      { to: "/admin/reports", icon: "bi-flag-fill", label: "Reports", badge: "reports" },
+      { to: "/admin/appeals", icon: "bi-envelope-paper-fill", label: "Appeals", badge: "appeals" },
+      { to: "/admin/flagged", icon: "bi-images", label: "Flagged Content", badge: "flagged" },
+      { to: "/admin/listings", icon: "bi-grid-fill", label: "Listings" },
+      // superAdminOnly: hidden from regular admins, and their address bar is
+      // sent back to Overview. The database rules are the real protection.
+      { to: "/admin/approvals", icon: "bi-patch-check-fill", label: "Approvals", superAdminOnly: true, badge: "approvals" }
+    ]
+  },
+  {
+    id: "site", icon: "bi-sliders", label: "Site",
+    links: [
+      { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements", superAdminOnly: true },
+      { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard", superAdminOnly: true },
+      { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins", superAdminOnly: true },
+      { to: "/admin/log", icon: "bi-journal-text", label: "Activity Log" }
+    ]
+  },
+  {
+    // The same Browse Services / Find Jobs pages users see, shown in admin mode.
+    id: "browse", icon: "bi-compass-fill", label: "Browse",
+    links: [
+      { to: "/admin/browse-services", icon: "bi-shop", label: "Browse Services" },
+      { to: "/admin/browse-jobs", icon: "bi-briefcase-fill", label: "Browse Jobs" }
+    ]
+  },
+  { to: "/admin/profile", icon: "bi-person-gear", label: "My Profile" }
 ];
+
+const allSidebarLinks = sidebarItems.flatMap((item) => item.links || [item]);
+
+// True when the address bar is on this link's page (or one inside it).
+const isOnLink = (pathname, link) => (link.end ? pathname === link.to : pathname === link.to || pathname.startsWith(`${link.to}/`));
+
+// The group that holds the page being viewed, so it starts open.
+const groupOfPath = (pathname) => sidebarItems.find((item) => item.links?.some((link) => isOnLink(pathname, link)))?.id;
 
 // The shell every admin page shares: top bar, sidebar, and the admin-only
 // guard. The pages themselves render inside <Outlet />.
@@ -51,6 +82,20 @@ export default function AdminLayout() {
   // Number shown on the Pending Users link: people who signed up but haven't
   // confirmed their email.
   const [pendingUsers, setPendingUsers] = useState(0);
+  // Which sidebar groups are open. The group with the current page starts
+  // open, and opens again whenever the admin lands on one of its pages.
+  const [openGroups, setOpenGroups] = useState(() => new Set([groupOfPath(pathname)].filter(Boolean)));
+  const [seenPath, setSeenPath] = useState(pathname);
+  if (seenPath !== pathname) {
+    setSeenPath(pathname);
+    const id = groupOfPath(pathname);
+    if (id && !openGroups.has(id)) setOpenGroups(new Set(openGroups).add(id));
+  }
+  const toggleGroup = (id) => setOpenGroups((open) => {
+    const next = new Set(open);
+    if (!next.delete(id)) next.add(id);
+    return next;
+  });
 
   // Counts requests waiting for a super admin. The Approvals page calls this
   // after each decision so the badge stays correct.
@@ -225,11 +270,77 @@ export default function AdminLayout() {
   }
 
   // A regular admin who types a super-admin-only address goes back to Overview.
-  const visibleLinks = sidebarLinks.filter((link) => isSuperAdmin || !link.superAdminOnly);
-  const onSuperAdminPage = sidebarLinks.some((link) => link.superAdminOnly && (pathname === link.to || pathname.startsWith(`${link.to}/`)));
+  const onSuperAdminPage = allSidebarLinks.some((link) => link.superAdminOnly && isOnLink(pathname, link));
   if (!isSuperAdmin && onSuperAdminPage) {
     return <Navigate to="/admin" replace />;
   }
+
+  // What this admin sees. A group left with no links disappears, and a group
+  // left with one link (Site, for a regular admin) is just that link.
+  const canSee = (link) => isSuperAdmin || !link.superAdminOnly;
+  const visibleItems = sidebarItems
+    .map((item) => (item.links ? { ...item, links: item.links.filter(canSee) } : item))
+    .filter((item) => canSee(item) && (!item.links || item.links.length > 0))
+    .map((item) => (item.links?.length === 1 ? item.links[0] : item));
+
+  // Pending counts beside the links. Red = waiting for an admin decision;
+  // amber (Pending Users) = waiting on the person's own email.
+  const badges = {
+    users: { count: pendingUsers, amber: true },
+    reports: { count: pendingReports },
+    verifications: { count: pendingVerifications },
+    appeals: { count: pendingAppeals },
+    flagged: { count: pendingFlagged },
+    approvals: { count: pendingApprovals }
+  };
+  const renderBadge = (count, amber, extra = "") => (
+    <span className={`badge rounded-pill ${amber ? "bg-warning text-dark" : "bg-danger"} ${extra}`}>{count}</span>
+  );
+
+  const renderLink = (link) => {
+    const badge = badges[link.badge];
+    return (
+      <NavLink
+        key={link.to}
+        to={link.to}
+        end={link.end}
+        className={({ isActive }) => `admin-nav-btn${isActive ? " active" : ""}`}
+      >
+        <i className={`bi ${link.icon}`}></i>
+        <span>{link.label}</span>
+        {badge && badge.count > 0 && renderBadge(badge.count, badge.amber, "ms-auto")}
+      </NavLink>
+    );
+  };
+
+  const renderGroup = (group) => {
+    const open = openGroups.has(group.id);
+    const hasActivePage = group.links.some((link) => isOnLink(pathname, link));
+    // While a group is closed its header carries the counts of the links
+    // inside, so nothing waiting for an admin is hidden.
+    const red = group.links.reduce((sum, link) => sum + (badges[link.badge] && !badges[link.badge].amber ? badges[link.badge].count : 0), 0);
+    const amber = group.links.reduce((sum, link) => sum + (badges[link.badge]?.amber ? badges[link.badge].count : 0), 0);
+    return (
+      <div key={group.id} className="admin-nav-group">
+        <button
+          type="button"
+          className={`admin-nav-btn admin-nav-group-toggle${open ? " open" : ""}${hasActivePage ? " has-active" : ""}`}
+          aria-expanded={open}
+          aria-controls={`admin-nav-${group.id}`}
+          onClick={() => toggleGroup(group.id)}
+        >
+          <i className={`bi ${group.icon}`}></i>
+          <span className="flex-grow-1 text-start">{group.label}</span>
+          {!open && red > 0 && renderBadge(red, false)}
+          {!open && amber > 0 && renderBadge(amber, true)}
+          <i className="bi bi-chevron-down admin-nav-chevron"></i>
+        </button>
+        <div id={`admin-nav-${group.id}`} className={`admin-nav-group-links${open ? "" : " is-closed"}`}>
+          {group.links.map(renderLink)}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="admin-shell text-light min-vh-100">
@@ -267,36 +378,7 @@ export default function AdminLayout() {
         <div className="row g-4">
           <div className="col-12 col-md-3 col-xl-2">
             <aside className="admin-sidebar p-2 rounded-4">
-              {visibleLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.end}
-                  className={({ isActive }) => `admin-nav-btn${isActive ? " active" : ""}`}
-                >
-                  <i className={`bi ${link.icon}`}></i>
-                  <span>{link.label}</span>
-                  {link.showPendingReports && pendingReports > 0 && (
-                    <span className="badge bg-danger rounded-pill ms-auto">{pendingReports}</span>
-                  )}
-                  {link.showPendingVerifications && pendingVerifications > 0 && (
-                    <span className="badge bg-danger rounded-pill ms-auto">{pendingVerifications}</span>
-                  )}
-                  {link.showPendingAppeals && pendingAppeals > 0 && (
-                    <span className="badge bg-danger rounded-pill ms-auto">{pendingAppeals}</span>
-                  )}
-                  {link.showPendingFlagged && pendingFlagged > 0 && (
-                    <span className="badge bg-danger rounded-pill ms-auto">{pendingFlagged}</span>
-                  )}
-                  {link.showPendingApprovals && pendingApprovals > 0 && (
-                    <span className="badge bg-danger rounded-pill ms-auto">{pendingApprovals}</span>
-                  )}
-                  {/* Amber, not red: these people are waiting on their own email, not on an admin decision. */}
-                  {link.showPendingUsers && pendingUsers > 0 && (
-                    <span className="badge bg-warning text-dark rounded-pill ms-auto">{pendingUsers}</span>
-                  )}
-                </NavLink>
-              ))}
+              {visibleItems.map((item) => (item.links ? renderGroup(item) : renderLink(item)))}
             </aside>
           </div>
 

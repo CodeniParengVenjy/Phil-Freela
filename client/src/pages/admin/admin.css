@@ -36,7 +36,86 @@ body {
   gap: 4px;
 }
 
-/* On phones the sidebar sits above the page as a row of scrollable tabs. */
+/* A group of links that folds away behind one button (People, Moderation...). */
+.admin-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-nav-group-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Header: label, then pending counts, then the arrow, kept small so a header
+   with two counts still fits the narrow sidebar. */
+.admin-sidebar .admin-nav-group-toggle {
+  gap: 6px;
+}
+.admin-nav-group-toggle > i:first-child {
+  margin-right: 4px;
+}
+.admin-nav-group-toggle .badge,
+.admin-nav-group-links .badge {
+  font-size: 0.68rem;
+  padding: 0.3em 0.55em;
+}
+.admin-nav-chevron {
+  font-size: 0.7rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.admin-nav-group-toggle.open .admin-nav-chevron {
+  transform: rotate(180deg);
+}
+
+/* Closed, but the page being viewed is inside: say so without opening it. */
+.admin-nav-group-toggle.has-active:not(.open) {
+  background: rgba(255, 107, 0, 0.14);
+  color: #fff;
+}
+
+/* Indented under the header's icon, with a thin guide line down the left. The
+   links inside are text only so "Flagged Content" and its count fit one line. */
+.admin-nav-group-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 14px;
+  padding-left: 4px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  animation: admin-nav-open 0.18s ease-out;
+}
+.admin-nav-group-links.is-closed {
+  display: none;
+}
+.admin-nav-group-links .admin-nav-btn {
+  gap: 6px;
+  padding: 8px 6px;
+  font-size: 0.84rem;
+}
+.admin-nav-group-links .admin-nav-btn > i {
+  display: none;
+}
+
+@keyframes admin-nav-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-nav-group-links { animation: none; }
+  .admin-nav-chevron { transition: none; }
+}
+
+/* On phones the sidebar sits above the page as a row of scrollable tabs. A
+   tall folding menu would push the page down, so the groups fall away: no
+   header buttons, every link in the row. */
 @media (max-width: 767.98px) {
   .admin-sidebar {
     flex-direction: row;
@@ -44,6 +123,22 @@ body {
   }
   .admin-nav-btn {
     white-space: nowrap;
+  }
+  .admin-nav-group,
+  .admin-nav-group-links,
+  .admin-nav-group-links.is-closed {
+    display: contents;
+  }
+  /* .admin-sidebar in front so this beats .admin-nav-btn, which comes later. */
+  .admin-sidebar .admin-nav-group-toggle {
+    display: none;
+  }
+  .admin-nav-group-links .admin-nav-btn {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+  }
+  .admin-nav-group-links .admin-nav-btn > i {
+    display: inline;
   }
 }
 
