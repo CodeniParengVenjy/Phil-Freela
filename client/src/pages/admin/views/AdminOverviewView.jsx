@@ -3,6 +3,8 @@ import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { GrowthChart, GrowthTable } from "../components/GrowthChart";
 import SplitBar from "../components/SplitBar";
+import RatingCard from "../components/RatingCard";
+import StatusCounts from "../components/StatusCounts";
 
 // One card per number returned by the admin_stats() database function. Every
 // card opens the page behind its number; the Users ones open the Users page
@@ -105,6 +107,34 @@ export default function AdminOverviewView() {
 
     return () => { active = false; };
   }, [days]);
+
+  // The stars given to freelancers and clients (admin_ratings()) and where the
+  // bookings and projects stand (admin_transactions()). Each has its own error,
+  // so one failing does not hide the other or the cards.
+  const [ratings, setRatings] = useState(null);
+  const [ratingsError, setRatingsError] = useState("");
+  const [transactions, setTransactions] = useState(null);
+  const [transactionsError, setTransactionsError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const [ratingsResult, transactionsResult] = await Promise.all([
+        supabase.rpc("admin_ratings"),
+        supabase.rpc("admin_transactions")
+      ]);
+      if (!active) return;
+
+      if (ratingsResult.error) setRatingsError("Failed to load the ratings.");
+      else setRatings(ratingsResult.data);
+
+      if (transactionsResult.error) setTransactionsError("Failed to load the transactions.");
+      else setTransactions(transactionsResult.data);
+    })();
+
+    return () => { active = false; };
+  }, []);
 
   const currentTab = growthTabs.find((tab) => tab.key === growthTab);
 
@@ -253,6 +283,84 @@ export default function AdminOverviewView() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!error && (
+        <div className="admin-trends mt-4">
+          <div className="mb-3">
+            <h2 className="h5 fw-bold text-white mb-0">Ratings</h2>
+            <p className="text-secondary fs-7 mb-0">The stars people were given after a finished project. A rating shows here once both sides have rated, or after 14 days.</p>
+          </div>
+
+          {ratingsError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{ratingsError}</div>}
+          {!ratingsError && !ratings && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the ratings...</div>}
+
+          {ratings && (
+            <>
+              <div className="row g-3">
+                <div className="col-12 col-md-6">
+                  <RatingCard title="Freelancers" rating={ratings.freelancers} color="var(--trend-orange)" />
+                </div>
+                <div className="col-12 col-md-6">
+                  <RatingCard title="Clients" rating={ratings.clients} color="var(--trend-blue)" />
+                </div>
+              </div>
+              <p className="text-secondary fs-7 mt-2 mb-0">
+                <i className="bi bi-star-fill text-warning me-1" aria-hidden="true"></i>
+                Offer reviews, the stars clients gave a service:{" "}
+                {ratings.offers.count === 0
+                  ? "none yet."
+                  : `${Number(ratings.offers.average).toFixed(1)} out of 5 from ${ratings.offers.count} ${ratings.offers.count === 1 ? "review" : "reviews"}.`}
+              </p>
+            </>
+          )}
+
+          <div className="mt-4 mb-3">
+            <h2 className="h5 fw-bold text-white mb-0">Transactions</h2>
+            <p className="text-secondary fs-7 mb-0">Where the work stands today, from bookings and projects.</p>
+          </div>
+
+          {transactionsError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{transactionsError}</div>}
+          {!transactionsError && !transactions && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the transactions...</div>}
+
+          {transactions && (
+            <div className="row g-3">
+              <div className="col-12 col-md-6">
+                <StatusCounts
+                  title="Bookings"
+                  items={[
+                    { label: "Pending", value: transactions.bookings.pending },
+                    { label: "Accepted", value: transactions.bookings.accepted },
+                    { label: "Declined", value: transactions.bookings.declined },
+                    { label: "Cancelled", value: transactions.bookings.cancelled }
+                  ]}
+                />
+              </div>
+              <div className="col-12 col-md-6">
+                <StatusCounts
+                  title="Projects"
+                  items={[
+                    { label: "Started", value: transactions.projects.started },
+                    { label: "Submitted", value: transactions.projects.submitted },
+                    { label: "Done", value: transactions.projects.done }
+                  ]}
+                />
+              </div>
+              {/* Payments are not built, so this only says where their numbers will go. */}
+              <div className="col-12">
+                <div className="admin-card rounded-4 p-3 d-flex align-items-center gap-3">
+                  <span className="admin-stat-icon admin-stat-orange">
+                    <i className="bi bi-cash-coin"></i>
+                  </span>
+                  <div>
+                    <div className="fw-bold text-white">Payments <span className="badge admin-badge-orange rounded-pill fs-8 ms-1">Not set up yet</span></div>
+                    <div className="text-secondary fs-7">When payments are added, how many there are will show here.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>

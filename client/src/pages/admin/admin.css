@@ -373,6 +373,29 @@ body {
   outline-offset: -2px;
 }
 
+/* A row of the star bars (RatingCard.jsx): the star level, the bar, the count. */
+.admin-rating-row {
+  display: grid;
+  grid-template-columns: 2.6rem 1fr 2rem;
+  align-items: center;
+  gap: 0.6rem;
+}
+.admin-rating-row strong {
+  text-align: right;
+}
+.admin-rating-track {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--trend-track);
+  overflow: hidden;
+}
+.admin-rating-fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+}
+
 /* Table view: scrolls inside its box, the header stays on top. */
 .admin-trend-table {
   max-height: 480px;
