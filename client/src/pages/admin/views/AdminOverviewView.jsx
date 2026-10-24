@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { TrendChart, TrendTable } from "../components/TrendChart";
 
 // One card per number returned by the admin_stats() database function. Every
 // card opens the page behind its number; the Users ones open the Users page
@@ -23,10 +24,43 @@ const statCards = [
   { key: "open_reports", label: "Open Reports", icon: "bi-flag-fill", color: "red", to: "/admin/reports" }
 ];
 
+// The graphs under the cards. Each one is a column chart of new items per day
+// (the rows come from the admin_trends() database function). Colors follow the
+// thing counted: orange is freelancers and the services they offer, blue is
+// clients and the jobs they post. They are set in admin.css (.admin-trends).
+const trendRanges = [7, 30, 90];
+const trendCharts = [
+  {
+    title: "New users",
+    totalLabel: "new users",
+    series: [
+      { key: "freelancers", label: "Freelancers", color: "var(--trend-orange)" },
+      { key: "clients", label: "Clients", color: "var(--trend-blue)" }
+    ]
+  },
+  {
+    title: "New posts",
+    totalLabel: "new posts",
+    series: [
+      { key: "services", label: "Services", color: "var(--trend-orange)" },
+      { key: "job_posts", label: "Job posts", color: "var(--trend-blue)" }
+    ]
+  },
+  { title: "New reports", totalLabel: "new reports", series: [{ key: "reports", label: "Reports", color: "var(--trend-red)" }] },
+  { title: "Verification requests", totalLabel: "new requests", series: [{ key: "verifications", label: "Verification requests", color: "var(--trend-aqua)" }] }
+];
+
 export default function AdminOverviewView() {
   const { adminName, isSuperAdmin } = useOutletContext();
   const [stats, setStats] = useState(null);
   const [error, setError] = useState("");
+
+  // The graphs: how many days to show, the rows for them, and charts or table.
+  const [days, setDays] = useState(30);
+  const [trends, setTrends] = useState(null);
+  const [trendError, setTrendError] = useState("");
+  const [trendsLoading, setTrendsLoading] = useState(true);
+  const [trendView, setTrendView] = useState("charts");
 
   useEffect(() => {
     let active = true;
@@ -43,6 +77,33 @@ export default function AdminOverviewView() {
 
     return () => { active = false; };
   }, []);
+
+  // Runs again whenever a different number of days is picked. admin_trends()
+  // is admin-only too and sends one row per day, with zeros on quiet days.
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const { data, error: trendsError } = await supabase.rpc("admin_trends", { p_days: days });
+      if (!active) return;
+
+      if (trendsError) setTrendError("Failed to load the graphs.");
+      else {
+        setTrends(data);
+        setTrendError("");
+      }
+      setTrendsLoading(false);
+    })();
+
+    return () => { active = false; };
+  }, [days]);
+
+  function pickDays(count) {
+    if (count === days) return;
+    // The old graphs stay on screen, dimmed, until the new numbers arrive.
+    setTrendsLoading(true);
+    setDays(count);
+  }
 
   return (
     <section>
@@ -102,6 +163,54 @@ export default function AdminOverviewView() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!error && (
+        <div className="admin-trends mt-4">
+          <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
+            <div>
+              <h2 className="h5 fw-bold text-white mb-0">Activity over time</h2>
+              <p className="text-secondary fs-7 mb-0">New activity on each day, in Philippine time.</p>
+            </div>
+            {/* One row of choices that applies to every graph below. */}
+            <div className="d-flex flex-wrap gap-2">
+              <div className="admin-seg" role="group" aria-label="How many days to show">
+                {trendRanges.map((count) => (
+                  <button key={count} type="button" className={days === count ? "active" : ""} aria-pressed={days === count} onClick={() => pickDays(count)}>
+                    {count} days
+                  </button>
+                ))}
+              </div>
+              <div className="admin-seg" role="group" aria-label="Show as">
+                <button type="button" className={trendView === "charts" ? "active" : ""} aria-pressed={trendView === "charts"} onClick={() => setTrendView("charts")}>
+                  <i className="bi bi-bar-chart-fill me-1"></i>Charts
+                </button>
+                <button type="button" className={trendView === "table" ? "active" : ""} aria-pressed={trendView === "table"} onClick={() => setTrendView("table")}>
+                  <i className="bi bi-table me-1"></i>Table
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {trendError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{trendError}</div>}
+          {!trendError && !trends && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the graphs...</div>}
+
+          {!trendError && trends && (
+            <div className={trendsLoading ? "admin-trends-loading" : ""} aria-busy={trendsLoading}>
+              {trendView === "table" ? (
+                <TrendTable data={trends} />
+              ) : (
+                <div className="row g-3">
+                  {trendCharts.map((chart) => (
+                    <div key={chart.title} className="col-12 col-lg-6">
+                      <TrendChart title={chart.title} totalLabel={chart.totalLabel} series={chart.series} data={trends} days={trends.length} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </section>

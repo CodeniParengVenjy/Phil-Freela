@@ -230,6 +230,140 @@ body {
   line-height: 1.1;
 }
 
+/* Overview graphs (TrendChart.jsx). The admin panel is always dark, so these
+   are the dark-surface steps of the chart palette, checked against the card
+   color #161a26: orange and blue are told apart even by color-blind eyes. */
+.admin-trends {
+  --trend-orange: #d95926;
+  --trend-blue: #3987e5;
+  --trend-red: #e66767;
+  --trend-aqua: #199e70;
+}
+
+/* While another number of days loads, the graphs on screen stay, dimmed. */
+.admin-trends-loading {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+/* The row of choices (7 / 30 / 90 days, Charts / Table). */
+.admin-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+.admin-seg button {
+  min-height: 32px;
+  padding: 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.75);
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-seg button:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.admin-seg button:focus-visible {
+  outline: 2px solid #ff8a33;
+  outline-offset: 1px;
+}
+.admin-seg button.active {
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b00 0%, #ff8800 100%);
+  cursor: default;
+}
+
+.admin-trend-total {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+.admin-trend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* The drawing area. Focusable, so the arrow keys can step through the days. */
+.admin-trend-box {
+  position: relative;
+  border-radius: 10px;
+}
+.admin-trend-box:focus-visible {
+  outline: 2px solid #ff8a33;
+  outline-offset: 2px;
+}
+.admin-trend-box svg {
+  display: block;
+  touch-action: pan-y;
+}
+.admin-trend-grid { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; }
+.admin-trend-base { stroke: rgba(255, 255, 255, 0.2); stroke-width: 1; }
+.admin-trend-axis { fill: rgba(255, 255, 255, 0.55); font-size: 11px; }
+.admin-trend-wash { fill: rgba(255, 255, 255, 0.07); }
+.admin-trend-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+}
+
+/* The box that shows the numbers of the day under the pointer. */
+.admin-trend-tip {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  min-width: 130px;
+  padding: 0.5rem 0.65rem;
+  background: #0d0f16;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 2;
+}
+.admin-trend-key {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Table view: scrolls inside its box, the header stays on top. */
+.admin-trend-table {
+  max-height: 480px;
+  overflow-y: auto;
+}
+.admin-trend-table thead th {
+  position: sticky;
+  top: 0;
+  background: #161a26;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-trends-loading,
+  .admin-seg button {
+    transition: none;
+  }
+}
+
 /* Form inputs and feedback messages */
 .admin-input {
   background: rgba(255, 255, 255, 0.05);
