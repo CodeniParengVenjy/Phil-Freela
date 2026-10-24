@@ -59,11 +59,13 @@ begin
 
   -- 3. The numbers match counting the tables directly (read as the owner)
   reset role;
+  -- A rating belongs to the role the person had on that project, not to their
+  -- account type today (people can switch).
   foreach kind in array array['freelancer', 'client'] loop
     select count(*) into want
       from public.project_ratings pr
-      join public.profiles p on p.id = pr.ratee_id
-     where p.account_type::text = kind
+      join public.projects j on j.id = pr.project_id
+     where (case when pr.ratee_id = j.freelancer_id then 'freelancer' else 'client' end) = kind
        and public.rating_is_visible(pr.project_id)
        and not exists (select 1 from public.archived_users a where a.user_id in (pr.rater_id, pr.ratee_id));
     got := (r -> (kind || 's') ->> 'count')::numeric;

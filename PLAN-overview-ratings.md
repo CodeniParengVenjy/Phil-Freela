@@ -30,16 +30,22 @@ section and the cards keep working.
 
 - `admin_ratings()`: admin-only like `admin_stats()`. Returns
   `{ freelancers, clients: { count, average, stars[5] }, offers: { count, average } }`.
-  Project ratings come from `project_ratings` (grouped by who was rated) and are
-  filtered with `rating_is_visible(project_id)`. Offer reviews come from
-  `service_reviews`.
+  Project ratings come from `project_ratings` and are filtered with
+  `rating_is_visible(project_id)`. A rating goes in the Freelancers or the
+  Clients list by the role the person had ON THAT PROJECT (the freelancer or the
+  client of the project), the same as the Performance box on a profile, not by
+  their account type today: people can switch account type, and grouping by the
+  current type moved their old ratings to the wrong card (seen on the live
+  Overview on 2026-10-24: Freelancers 0 and Clients 4, when 2 and 2 were right).
+  Offer reviews come from `service_reviews`.
 - `admin_transactions()`: admin-only. Returns
   `{ bookings: { pending, accepted, declined, cancelled }, projects: { started, submitted, done } }`.
 - Archived accounts are left out, the same as `admin_stats()`: a rating, offer
   review, booking or project is not counted when either person on it is archived.
-- Applied live as the migrations `admin_ratings_transactions` and
-  `admin_ratings_account_type_cast` (no DROP or DELETE). The second one fixed
-  `account_type`, which is an enum, so it is cast to text before comparing.
+- Applied live as the migrations `admin_ratings_transactions`,
+  `admin_ratings_account_type_cast` and `admin_ratings_by_project_role` (no DROP
+  or DELETE). The second one fixed `account_type`, which is an enum; the third
+  replaced it by the role on the project (above).
 
 ## Website
 

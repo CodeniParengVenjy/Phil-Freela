@@ -8,6 +8,8 @@
 
 -- ---------------------------------------------------------------------------
 -- admin_ratings(): the stars people were given, for freelancers and for clients.
+-- A rating counts for the role the person had on that project (as the freelancer
+-- or as the client), the same as the Performance box on a profile.
 --   freelancers / clients   { count, average, stars }
 --       count    how many ratings that kind of account received
 --       average  the mean stars (2 decimals), or null when there are none
@@ -33,14 +35,19 @@ begin
   end if;
 
   with shown as (
-    select r.stars, p.account_type::text as account_type
+    -- Which list a rating goes in is the role the person had ON THAT PROJECT
+    -- (the same as the Performance box on a profile), not their account type
+    -- today, so a person who later switched account type keeps their ratings
+    -- where they were earned.
+    select r.stars,
+           case when r.ratee_id = pr.freelancer_id then 'freelancer' else 'client' end as role
     from public.project_ratings r
-    join public.profiles p on p.id = r.ratee_id
+    join public.projects pr on pr.id = r.project_id
     where public.rating_is_visible(r.project_id)
       and not exists (select 1 from public.archived_users a where a.user_id in (r.rater_id, r.ratee_id))
   ),
   by_kind as (
-    select kind.account_type,
+    select kind.role,
            count(s.stars) as total,
            round(avg(s.stars), 2) as average,
            json_build_array(
@@ -50,9 +57,9 @@ begin
              count(*) filter (where s.stars = 4),
              count(*) filter (where s.stars = 5)
            ) as stars
-    from (values ('freelancer'), ('client')) as kind(account_type)
-    left join shown s on s.account_type = kind.account_type
-    group by kind.account_type
+    from (values ('freelancer'), ('client')) as kind(role)
+    left join shown s on s.role = kind.role
+    group by kind.role
   ),
   offer_reviews as (
     select count(*) as total, round(avg(v.stars), 2) as average
@@ -62,9 +69,9 @@ begin
   )
   select json_build_object(
            'freelancers', (select json_build_object('count', total, 'average', average, 'stars', stars)
-                           from by_kind where account_type = 'freelancer'),
+                           from by_kind where role = 'freelancer'),
            'clients',     (select json_build_object('count', total, 'average', average, 'stars', stars)
-                           from by_kind where account_type = 'client'),
+                           from by_kind where role = 'client'),
            'offers',      (select json_build_object('count', total, 'average', average) from offer_reviews)
          )
   into result;
