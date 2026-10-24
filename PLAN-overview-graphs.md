@@ -1,66 +1,69 @@
-# Admin Overview: graphs of new activity per day
+# Admin Overview: growth graph
 
-Status (2026-10-24): approved ("yes"), built and tested.
-
-Why: the Overview only showed totals, so an admin could not tell whether the
-site was growing or quiet. The cards stay (they are links into Users, Reports and
-Listings); graphs of how much happened on each day are added under them.
+Status (2026-10-24): built and tested. This is the second design. The first one
+(four column charts of new items per day, commit 84d8fa0) was replaced because
+it was too busy, most days had 0 to 3 new things so the columns looked empty, and
+it did not show the one thing an admin wants to know: is the site growing?
 
 ## What the admin sees
 
-Under the number cards, "Activity over time":
+Under the number cards (which stay, and now read "All Users", "Current
+Freelancers", "Current Clients"), a "Growth" section:
 
-1. One row of choices that applies to every graph: **7 / 30 / 90 days** (30 by
-   default) and **Charts / Table**.
-2. Four column charts, one column per day (Philippine time):
-   - **New users**: freelancers (orange) and clients (blue), stacked.
-   - **New posts**: services (orange) and job posts (blue), stacked.
-   - **New reports**: red.
-   - **Verification requests**: green (any status; the request, not the result).
-   Each has a big total for the period, a legend when it has two colors, and a
-   hover box (or the left/right arrow keys, or a press on a phone) with that day's
-   numbers. A quiet period says "No new ... in this period."
-3. **Table** swaps the four charts for one table with the same numbers, newest
-   day first, so nothing depends on seeing colors or hovering.
-4. While a new range loads, the old graphs stay on screen, dimmed. If the
-   graphs fail to load, one sentence replaces them and the cards keep working.
+1. **One line graph: the total over time.** A tab picks what is counted:
+   **Users** (freelancers and clients as two lines) or **Listings** (services and
+   job posts). A choice of **7 / 30 / 90 days** (30 by default) sets how far back.
+   - The big number is the total now, with "+N in the last 30 days" beside it.
+   - The line ends are labelled with the current numbers (left out when the two
+     lines end almost on top of each other; the legend above still has them).
+   - Hovering a day (or the left / right arrow keys, Home, End, Escape, or a
+     press on a phone) shows a vertical line, a dot on each line and a box with
+     that day's totals and how many were added that day.
+   - "View as table" swaps the graph for a table (day, totals, added that day).
+2. **Two share bars** under it, from numbers the page already has:
+   - **Users by role**: Current Freelancers and Current Clients, each part as
+     wide as its share, with the number and percent. Each part opens the Users
+     page already filtered, like the cards.
+   - **Verified users**: verified against not verified, same idea.
 
-Columns, not lines: most days have 0 to 3 new things, and a line through that
-zigzags and suggests something in between days. Columns say "this many on this day".
+Straight lines between days, not smoothed: smoothing would draw growth on days
+nothing happened. A bar, not a donut: two slices read faster as one bar.
 
-## Database (`database/supabase_admin_trends_schema.sql`)
+## How the totals are worked out (no database change)
 
-1. New function `admin_trends(p_days)`, admin-only like `admin_stats()` (anyone
-   else gets an error; browsers signed out cannot call it). It returns one row
-   per day, oldest first, today last, with zeros on quiet days: freelancers,
-   clients, services, job_posts, reports, verifications.
-2. Days are cut at midnight in Asia/Manila. `p_days` is kept between 1 and 365.
-3. Archived accounts are left out of the user and verification numbers, the
-   same as `admin_stats()`.
-4. No new table; nothing existing changes.
+The database sends how many NEW things there were on each day
+(`admin_trends`, `supabase_admin_trends_schema.sql`, already applied) and the
+totals right now (`admin_stats`). The total at the end of an earlier day is
+today's total minus everything added after that day. So no history is stored.
+Because it starts from today's totals, it counts the accounts and listings that
+exist now: an account that was deleted does not appear in the past.
+
+`admin_trends` still returns `reports` and `verifications` per day. The page no
+longer uses them (the first design did). They are cheap and left in for later.
 
 ## Files
 
-1. `client/src/pages/admin/components/TrendChart.jsx` (new): `TrendChart` draws
-   one chart as SVG (no chart library), `TrendTable` is the table view.
-2. `client/src/pages/admin/views/AdminOverviewView.jsx`: the section and the
-   `admin_trends` call.
-3. `client/src/pages/admin/admin.css`: graph styles and the chart colors
-   (`.admin-trends`). The colors are the dark steps of the chart palette checked
+1. `client/src/pages/admin/components/GrowthChart.jsx` (new): `GrowthChart`
+   draws the graph as SVG (no chart library), `GrowthTable` is the table view.
+2. `client/src/pages/admin/components/SplitBar.jsx` (new): one share bar.
+3. `client/src/pages/admin/views/AdminOverviewView.jsx`: the Growth section,
+   the tabs, the range, and the card names.
+4. `client/src/pages/admin/admin.css`: graph and bar styles, and the chart
+   colors (`.admin-trends`). They are the dark steps of a chart palette checked
    with the validator against the admin card color: orange and blue stay apart
-   under color blindness; the single-chart red and green pass on their own.
-4. `database/supabase_admin_trends_schema.sql`, `database/test_admin_trends.sql`.
+   under color blindness.
+5. Removed: `TrendChart.jsx` (the column charts).
 
 ## Testing
 
-1. `test_admin_trends.sql` (rolled back, borrows an existing admin, user and
-   service, makes no accounts so no user numbers are used): 19 checks. Day
-   counts and clamping, today last, no gaps, totals equal counting the tables
-   directly, 23:59 counts on its day and 00:01 on the next (Manila), a normal
-   user and a signed-out visitor are refused. All pass on the live database.
-2. Browser, fake backend (89 checks): cards still link, graph totals and
-   column counts match the data, legends, hover and keyboard readouts, 7 / 30 /
-   90 days (also two quick clicks: the slow answer does not overwrite the last
-   one), table view, empty, error and recovery, regular admin, phone at 390px
-   (no sideways scroll, date labels never touch, tooltip stays inside).
+1. `database/test_admin_trends.sql` (rolled back, no accounts made): 19 checks
+   on the live database, unchanged from the first design.
+2. Browser, fake backend (85 checks): the graph's lines have one point per day
+   and only go up, hover and keyboard numbers equal "today minus what came
+   later" (first day, last day, a middle day), +N only for series that grew,
+   Listings tab, 7 / 30 / 90 days (and two quick clicks: the slow answer does not
+   overwrite the last one), table adds up to the headline gain, share bars have
+   the right widths, percents and links, lines ending together, nothing yet
+   (no NaN), error and recovery with the bars still showing, regular admin, and
+   a 390px phone (no sideways scroll, labels never touch, tooltip stays inside).
 3. Lint and build clean.

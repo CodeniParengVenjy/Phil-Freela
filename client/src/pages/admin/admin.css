@@ -230,14 +230,15 @@ body {
   line-height: 1.1;
 }
 
-/* Overview graphs (TrendChart.jsx). The admin panel is always dark, so these
-   are the dark-surface steps of the chart palette, checked against the card
-   color #161a26: orange and blue are told apart even by color-blind eyes. */
+/* Overview growth graph and split bars (GrowthChart.jsx, SplitBar.jsx). The
+   admin panel is always dark, so these are the dark-surface steps of the chart
+   palette, checked against the card color #161a26: orange and blue are told
+   apart even by color-blind eyes. The track is the empty part of a share bar. */
 .admin-trends {
   --trend-orange: #d95926;
   --trend-blue: #3987e5;
-  --trend-red: #e66767;
   --trend-aqua: #199e70;
+  --trend-track: rgba(255, 255, 255, 0.16);
 }
 
 /* While another number of days loads, the graphs on screen stay, dimmed. */
@@ -312,7 +313,12 @@ body {
 .admin-trend-grid { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; }
 .admin-trend-base { stroke: rgba(255, 255, 255, 0.2); stroke-width: 1; }
 .admin-trend-axis { fill: rgba(255, 255, 255, 0.55); font-size: 11px; }
-.admin-trend-wash { fill: rgba(255, 255, 255, 0.07); }
+/* The lines: 2px, round corners. The dots carry a 2px ring in the card color so
+   they stay clear where the lines cross. */
+.admin-trend-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.admin-trend-ring { stroke: #161a26; stroke-width: 2; }
+.admin-trend-end { fill: #fff; font-size: 12px; font-weight: 700; }
+.admin-trend-cross { stroke: rgba(255, 255, 255, 0.28); stroke-width: 1; }
 .admin-trend-empty {
   height: 100%;
   display: flex;
@@ -327,7 +333,6 @@ body {
 .admin-trend-tip {
   position: absolute;
   top: 4px;
-  transform: translateX(-50%);
   min-width: 130px;
   padding: 0.5rem 0.65rem;
   background: #0d0f16;
@@ -345,6 +350,29 @@ body {
   flex-shrink: 0;
 }
 
+/* A share bar (SplitBar.jsx): each part as wide as its share, 2px between parts. */
+.admin-split-bar {
+  display: flex;
+  gap: 2px;
+  height: 16px;
+  border-radius: 6px;
+  background: var(--trend-track);
+  overflow: hidden;
+}
+.admin-split-part {
+  min-width: 4px;
+  border-radius: 4px;
+  transition: filter 0.15s ease;
+}
+.admin-split-part:hover,
+.admin-split-part:focus-visible {
+  filter: brightness(1.25);
+}
+.admin-split-part:focus-visible {
+  outline: 2px solid #ff8a33;
+  outline-offset: -2px;
+}
+
 /* Table view: scrolls inside its box, the header stays on top. */
 .admin-trend-table {
   max-height: 480px;
@@ -359,6 +387,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .admin-trends-loading,
+  .admin-split-part,
   .admin-seg button {
     transition: none;
   }
