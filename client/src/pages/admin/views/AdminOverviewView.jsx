@@ -126,58 +126,7 @@ export default function AdminOverviewView() {
       {error && <div className="admin-card rounded-4 p-4 text-center text-white-50">{error}</div>}
 
       {!error && (
-        <div className="row g-3">
-          {/* All users, and the ones online right now (seen in the last 2 minutes). */}
-          <div className="col-12 col-sm-6 col-xl-4">
-            <div className="admin-card admin-stat-card is-link rounded-4 p-3">
-              <Link to="/admin/users" className="admin-stat-link d-flex align-items-center gap-3">
-                <span className="admin-stat-icon admin-stat-orange">
-                  <i className="bi bi-people-fill"></i>
-                </span>
-                <div>
-                  <div className="admin-stat-value">{stats ? stats.total_users : "..."}</div>
-                  <div className="text-secondary fs-7">All Users</div>
-                </div>
-              </Link>
-              <Link to="/admin/users?presence=online&sort=online&dir=desc" className="admin-stat-link d-inline-block fs-8 text-success fw-semibold mt-1" style={{ marginLeft: 60 }}>
-                <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>
-                {stats ? stats.online_users : "..."} online now
-              </Link>
-            </div>
-          </div>
-          {statCards.map((card) => {
-            // Only a super admin can open the Admins page.
-            const linked = !card.superAdminOnly || isSuperAdmin;
-            // A dash if the database didn't send this number.
-            const number = stats ? ((card.value ? card.value(stats) : stats[card.key]) ?? "-") : "...";
-            const body = (
-              <>
-                <span className={`admin-stat-icon admin-stat-${card.color}`}>
-                  <i className={`bi ${card.icon}`}></i>
-                </span>
-                <div>
-                  <div className="admin-stat-value">{number}</div>
-                  <div className="text-secondary fs-7">{card.label}</div>
-                </div>
-              </>
-            );
-            return (
-              <div key={card.key} className="col-12 col-sm-6 col-xl-4">
-                {linked ? (
-                  <Link to={card.to} className="admin-card admin-stat-card is-link admin-stat-link rounded-4 p-3 d-flex align-items-center gap-3">
-                    {body}
-                  </Link>
-                ) : (
-                  <div className="admin-card admin-stat-card rounded-4 p-3 d-flex align-items-center gap-3">{body}</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {!error && (
-        <div className="admin-trends mt-4">
+        <div className="admin-trends mb-4">
           <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
             <div>
               <h2 className="h5 fw-bold text-white mb-0">Growth</h2>
@@ -253,6 +202,57 @@ export default function AdminOverviewView() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {!error && (
+        <div className="row g-3">
+          {/* All users, and the ones online right now (seen in the last 2 minutes). */}
+          <div className="col-12 col-sm-6 col-xl-4">
+            <div className="admin-card admin-stat-card is-link rounded-4 p-3">
+              <Link to="/admin/users" className="admin-stat-link d-flex align-items-center gap-3">
+                <span className="admin-stat-icon admin-stat-orange">
+                  <i className="bi bi-people-fill"></i>
+                </span>
+                <div>
+                  <div className="admin-stat-value">{stats ? stats.total_users : "..."}</div>
+                  <div className="text-secondary fs-7">All Users</div>
+                </div>
+              </Link>
+              <Link to="/admin/users?presence=online&sort=online&dir=desc" className="admin-stat-link d-inline-block fs-8 text-success fw-semibold mt-1" style={{ marginLeft: 60 }}>
+                <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>
+                {stats ? stats.online_users : "..."} online now
+              </Link>
+            </div>
+          </div>
+          {statCards.map((card) => {
+            // Only a super admin can open the Admins page.
+            const linked = !card.superAdminOnly || isSuperAdmin;
+            // A dash if the database didn't send this number.
+            const number = stats ? ((card.value ? card.value(stats) : stats[card.key]) ?? "-") : "...";
+            const body = (
+              <>
+                <span className={`admin-stat-icon admin-stat-${card.color}`}>
+                  <i className={`bi ${card.icon}`}></i>
+                </span>
+                <div>
+                  <div className="admin-stat-value">{number}</div>
+                  <div className="text-secondary fs-7">{card.label}</div>
+                </div>
+              </>
+            );
+            return (
+              <div key={card.key} className="col-12 col-sm-6 col-xl-4">
+                {linked ? (
+                  <Link to={card.to} className="admin-card admin-stat-card is-link admin-stat-link rounded-4 p-3 d-flex align-items-center gap-3">
+                    {body}
+                  </Link>
+                ) : (
+                  <div className="admin-card admin-stat-card rounded-4 p-3 d-flex align-items-center gap-3">{body}</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </section>
