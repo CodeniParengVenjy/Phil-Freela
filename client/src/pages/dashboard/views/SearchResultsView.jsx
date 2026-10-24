@@ -3,6 +3,7 @@ import { Link, useNavigate, useOutletContext, useSearchParams } from "react-rout
 import { supabase } from "../../../lib/supabaseClient";
 import { searchListings } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
+import { budgetText } from "../../../lib/jobTerms";
 import { PICTURE_TYPES, checkPicture } from "../../../lib/pictureSearch";
 import { searchPeople } from "../../../lib/profile";
 import { profilePath } from "../../../lib/profileStats";
@@ -15,7 +16,7 @@ import PictureSearchDialog from "../components/PictureSearchDialog";
 import CensoredText from "../../../components/CensoredText";
 
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
-const JOB_COLUMNS = "id, title, category, budget, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
+const JOB_COLUMNS = "id, title, category, budget, budget_type, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
 
 // The AI search box's results page: the content-based filtering part of the
 // Hybrid recommendation system (see ai-service/listing_search.py). The AI
@@ -62,10 +63,13 @@ export default function SearchResultsView() {
         const idsOf = (type) => matches.filter((m) => m.type === type).map((m) => m.id);
         const load = (table, columns, ids) =>
           ids.length ? supabase.from(table).select(columns).in("id", ids) : Promise.resolve({ data: [] });
+        // Only jobs that are still open (one the person applied to may be filled or expired).
+        const loadOpenJobs = (ids) =>
+          ids.length ? supabase.from("job_posts").select(JOB_COLUMNS).in("id", ids).eq("job_state", "open") : Promise.resolve({ data: [] });
 
         const [services, jobs] = await Promise.all([
           load("services", SERVICE_COLUMNS, idsOf("service")),
-          load("job_posts", JOB_COLUMNS, idsOf("job"))
+          loadOpenJobs(idsOf("job"))
         ]);
         if (services.error || jobs.error) throw new Error("Couldn't load the results. Please try again.");
 
@@ -266,7 +270,8 @@ function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMes
   const owner = isService ? item.freelancer : item.client;
   const ownerName = owner?.full_name || owner?.username || (isService ? "Freelancer" : "Client");
   const category = getCategory(item.category);
-  const amount = isService ? item.price : item.budget;
+  // A service shows its price; a job its budget with what it counts ("per day").
+  const amount = isService ? (item.price ? `₱${Number(item.price).toLocaleString()}` : "") : budgetText(item);
   const isMine = owner?.id === currentUserId;
 
   return (
@@ -292,7 +297,7 @@ function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMes
             ) : ownerName}
             <VerifiedBadge verified={verifiedIds.has(owner?.id)} showUnverified={!isService} />
           </span>
-          {amount && <span className="text-warning">₱{Number(amount).toLocaleString()}</span>}
+          {amount && <span className="text-warning">{amount}</span>}
           <span className="badge bg-black text-light-50 text-wrap text-start">{category.label}</span>
           <RatingChip rating={rating} className="fs-8" />
         </div>

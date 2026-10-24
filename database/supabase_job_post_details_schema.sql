@@ -109,9 +109,28 @@ as $$
   );
 $$;
 
+-- The same answer as a column of job_posts, for the website's lists. The
+-- database's web API (PostgREST) shows a function that takes a whole job_posts
+-- row as a column of that table, one that can be asked for and filtered on:
+--   .from("job_posts").select("...").eq("job_state", "open")
+-- It is needed because a freelancer who applied still SEES a post that filled or
+-- expired (section 5, so their My Applications keeps working), and without the
+-- filter Find Jobs would list it among the openings.
+create or replace function public.job_state(job public.job_posts)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.job_state(job.id);
+$$;
+
 revoke execute on function public.job_state(uuid) from public, anon;
+revoke execute on function public.job_state(public.job_posts) from public, anon;
 revoke execute on function public.applied_to_job(uuid) from public, anon;
 grant execute on function public.job_state(uuid) to authenticated, service_role;
+grant execute on function public.job_state(public.job_posts) to authenticated, service_role;
 grant execute on function public.applied_to_job(uuid) to authenticated, service_role;
 
 -- ---------------------------------------------------------------------------

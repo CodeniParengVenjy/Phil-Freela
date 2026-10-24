@@ -173,6 +173,13 @@ begin
   select count(*) into n from public.job_posts where id = j_old;
   res := res || E'\n' || case when n = 1 then 'PASS  ' else 'FAIL  ' end || '3c. the freelancer who applied still sees the expired post';
 
+  -- Find Jobs asks for job_state = 'open' as well (the column form of job_state):
+  -- the applicant above can SEE the expired post, but it is not listed as an opening.
+  select count(*) into n from public.job_posts where id in (j_open, j_old, j_two, j_edge, j_ai) and job_posts.job_state = 'open';
+  res := res || E'\n' || case when n = 4 then 'PASS  ' else 'FAIL  ' end || '3c2. with the open-only filter the applicant''s list has the 4 open posts and not the expired one (' || n || ' of 4)';
+  select job_posts.job_state into st from public.job_posts where id = j_old;
+  res := res || E'\n' || case when st = 'expired' then 'PASS  ' else 'FAIL  ' end || '3c3. the column form says expired for the expired post (' || coalesce(st, 'nothing') || ')';
+
   perform set_config('request.jwt.claim.sub', cl::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', cl, 'role', 'authenticated')::text, true);
   select count(*) into n from public.job_posts where id in (j_open, j_old, j_two, j_edge, j_ai, j_new);

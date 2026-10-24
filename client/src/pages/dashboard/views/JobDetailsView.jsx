@@ -7,6 +7,7 @@ import { isPostingBlocked } from "../../../lib/suspensions";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { MAX_NOTE_LENGTH, applyToJob, getMyApplicationForJob, openResume, withdrawApplication } from "../../../lib/applications";
 import { formatDay } from "../../../lib/projects";
+import { budgetText, getJobType, hiredCount, jobState } from "../../../lib/jobTerms";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { TrustBadge } from "../../../components/TrustRing";
@@ -47,7 +48,9 @@ export default function JobDetailsView() {
     Promise.all([
       supabase
         .from("job_posts")
-        .select("id, title, category, description, budget, skills, due_date, created_at, updated_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
+        // hired:projects(count) is only meaningful to the owner (a freelancer
+        // can only see their own project), so only the owner's view uses it.
+        .select("id, title, category, description, budget, budget_type, job_type, freelancers_needed, skills, start_date, due_date, created_at, updated_at, hired:projects(count), client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
         .eq("id", jobId)
         .maybeSingle(),
       getMyApplicationForJob(currentUserId, jobId),
@@ -120,11 +123,33 @@ export default function JobDetailsView() {
   const clientName = job.client?.full_name || job.client?.username || "Client";
   const isOwnJob = job.client?.id === currentUserId;
   const category = getCategory(job.category);
+  const type = getJobType(job.job_type);
 
   // Which box shows at the bottom: the apply form, or why they can't apply.
   const renderApplySection = () => {
     if (isOwnJob) {
-      return <p className="text-secondary fs-7 mb-0">This is your job post. Freelancers who apply show up in <Link to="/dashboard/projects" className="text-role fw-bold text-decoration-none">Projects & Resumes</Link>.</p>;
+      const hired = hiredCount(job);
+      const state = jobState(job, hired);
+      return (
+        <>
+          <p className="text-secondary fs-7 mb-0">
+            This is your job post. {hired} of {job.freelancers_needed} hired so far. Freelancers who apply show up in <Link to="/dashboard/projects" className="text-role fw-bold text-decoration-none">Projects & Resumes</Link>.
+          </p>
+          {/* A filled or expired post is hidden from freelancers: say what brings it back. */}
+          {state === "expired" && (
+            <p className="text-warning fs-7 mt-2 mb-0">
+              <i className="bi bi-hourglass-bottom me-1"></i> The due date passed, so freelancers can't see this post or apply.{" "}
+              <Link to={`/dashboard/post-need?edit=${job.id}`} className="text-role fw-bold text-decoration-none">Pick new dates</Link> to show it again.
+            </p>
+          )}
+          {state === "filled" && (
+            <p className="text-info fs-7 mt-2 mb-0">
+              <i className="bi bi-people-fill me-1"></i> You hired everyone you needed, so this post is hidden from freelancers.{" "}
+              <Link to={`/dashboard/post-need?edit=${job.id}`} className="text-role fw-bold text-decoration-none">Raise "Freelancers needed"</Link> to show it again.
+            </p>
+          )}
+        </>
+      );
     }
     // Hired: the application became a project, so it can't be withdrawn anymore.
     if (application?.project) {
@@ -234,9 +259,12 @@ export default function JobDetailsView() {
             </p>
             <div className="d-flex flex-wrap align-items-center gap-2">
               <span className="badge bg-role text-white px-3 py-2 rounded-pill"><i className={`bi ${category.icon} me-1`}></i>{category.label}</span>
-              {job.budget && <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill">Budget: ₱{Number(job.budget).toLocaleString()}</span>}
-              {/* The day the client needs the work by (older job posts don't have one). */}
-              {job.due_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-event me-1"></i>Needed by {formatDay(job.due_date)}</span>}
+              <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className={`bi ${type.icon} me-1`}></i>{type.label}</span>
+              {/* "₱5,000 per project", per day or per month. */}
+              {budgetText(job) && <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill">Budget: {budgetText(job)}</span>}
+              {job.start_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-event me-1"></i>Starts {formatDay(job.start_date)}</span>}
+              {job.due_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-check me-1"></i>Due {formatDay(job.due_date)}</span>}
+              {job.freelancers_needed > 1 && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-people me-1"></i>Needs {job.freelancers_needed} freelancers</span>}
             </div>
           </div>
           {isOwnJob && (

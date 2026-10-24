@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import { formatDay, todayInManila } from "../../../lib/projects";
+import { BUDGET_TYPES, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, datesText, getJobType, hiredCount, jobState } from "../../../lib/jobTerms";
 import BlockedNotice from "../components/BlockedNotice";
 import DeletePostDialog from "../components/DeletePostDialog";
 import CensoredText from "../../../components/CensoredText";
@@ -13,22 +14,48 @@ const MAX_SKILLS = 10;
 const MAX_SKILL_LENGTH = 40;
 
 // description and skills are here so the Edit form can be filled in from the list.
-const JOB_COLUMNS = "id, title, category, description, skills, budget, due_date, created_at, updated_at";
+// hired:projects(count) is how many freelancers were hired from the post (the
+// owner can read their own projects), for the Open / Filled badge.
+const JOB_COLUMNS =
+  "id, title, category, description, skills, budget, budget_type, job_type, freelancers_needed, start_date, due_date, created_at, updated_at, hired:projects(count)";
+
+// The sentence for a save the database refused. 23514 = a table rule was broken;
+// the message names which one.
+function saveErrorText(error, editing) {
+  const text = error.message || "";
+  if (error.code === "23514") {
+    if (text.includes("job_posts_start_date_check")) return "The start date can't be before the day you posted this job.";
+    if (text.includes("job_posts_dates_order_check")) return "The due date can't be before the start date.";
+    if (text.includes("job_posts_due_date_check")) return "The due date can't be in the past.";
+    if (text.includes("job_posts_freelancers_needed_check")) return `Freelancers needed must be from 1 to ${MAX_FREELANCERS_NEEDED}.`;
+  }
+  return editing ? "Couldn't save your changes. Please try again." : "Couldn't publish that listing. Please try again.";
+}
 
 export default function PostNeedView() {
   const { currentUserId, showToast, suspension } = useOutletContext();
   // Suspended for a posting violation (e.g. spam): the form is replaced by a notice.
   const postingBlocked = isPostingBlocked(suspension);
+  // What is being posted: "project" or "job" ("" = not chosen yet, chosen first).
+  const [jobType, setJobType] = useState("");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   // Required skills, shown as chips on the job page (e.g. "Video Editing").
   const [skills, setSkills] = useState([]);
   const [skillInput, setSkillInput] = useState("");
-  // The day the client needs the work by, as "YYYY-MM-DD" ("" = not set).
-  // It shows on the job's page and fills in the Hire popup later.
-  const [dueDate, setDueDate] = useState("");
   const [budget, setBudget] = useState("");
+  // What the budget counts: "project", "day" or "month". It follows the type
+  // until the client picks one themselves.
+  const [budgetType, setBudgetType] = useState("project");
+  const [budgetTypeChosen, setBudgetTypeChosen] = useState(false);
+  // The days the work starts and is due, as "YYYY-MM-DD". Both are required.
+  // When the due date passes, the post stops showing to freelancers.
+  const [startDate, setStartDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  // How many freelancers the client wants to hire (a number box, so text).
+  // When that many are hired, the post stops showing.
+  const [freelancersNeeded, setFreelancersNeeded] = useState("1");
   const [submitting, setSubmitting] = useState(false);
   const [posts, setPosts] = useState(null);
   // The job waiting in the "Delete this job post?" pop-up (null = closed).
@@ -41,20 +68,27 @@ export default function PostNeedView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const editId = searchParams.get("edit");
   const editing = (editId && posts?.find((p) => p.id === editId)) || null;
+  const editingState = editing ? jobState(editing, hiredCount(editing)) : null;
   const formTop = useRef(null);
+  const typeTop = useRef(null);
   // Which job the form was last filled in from.
   const [filledFromId, setFilledFromId] = useState(null);
   if (editing && filledFromId !== editing.id) {
     // Filled in while rendering (React allows this for state of this same
     // component), so the form never shows the old text for a moment.
     setFilledFromId(editing.id);
+    setJobType(editing.job_type);
     setTitle(editing.title);
     setCategory(editing.category);
     setDescription(editing.description);
     setSkills(editing.skills || []);
     setSkillInput("");
-    setDueDate(editing.due_date || "");
     setBudget(editing.budget ? String(editing.budget) : "");
+    setBudgetType(editing.budget_type);
+    setBudgetTypeChosen(true);
+    setStartDate(editing.start_date || "");
+    setDueDate(editing.due_date || "");
+    setFreelancersNeeded(String(editing.freelancers_needed));
   } else if (!editing && filledFromId) {
     // Edit mode ended (the address no longer has ?edit=), so the same job can be edited again later.
     setFilledFromId(null);
@@ -65,15 +99,25 @@ export default function PostNeedView() {
     if (filledFromId) formTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [filledFromId]);
 
-  // Leaves edit mode and empties the form (Cancel, or after saving).
-  const stopEditing = () => {
+  // Empties every box of the form.
+  const clearForm = () => {
+    setJobType("");
     setTitle("");
     setCategory("");
     setDescription("");
     setSkills([]);
     setSkillInput("");
-    setDueDate("");
     setBudget("");
+    setBudgetType("project");
+    setBudgetTypeChosen(false);
+    setStartDate("");
+    setDueDate("");
+    setFreelancersNeeded("1");
+  };
+
+  // Leaves edit mode and empties the form (Cancel, or after saving).
+  const stopEditing = () => {
+    clearForm();
     setSearchParams({}, { replace: true });
   };
 
@@ -96,6 +140,13 @@ export default function PostNeedView() {
     };
   }, [currentUserId]);
 
+  // Picking a type also preselects how the budget is counted (a project is
+  // paid per project, an ongoing job per month), unless the client already chose.
+  const pickType = (type) => {
+    setJobType(type.value);
+    if (!budgetTypeChosen) setBudgetType(type.budgetType);
+  };
+
   // Adds the typed skill (or several, split by commas) as chips, skipping
   // blanks and repeats. Returns the new list, so Post Listing can use it
   // right away (a skill typed without pressing Enter isn't lost).
@@ -114,11 +165,26 @@ export default function PostNeedView() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId) return;
-    // The database refuses a past due date too (job_posts_due_date_check). When
-    // editing, a due date that is already past and was not changed is fine.
-    const dateChanged = !editing || dueDate !== (editing.due_date || "");
-    if (dueDate && dateChanged && dueDate < todayInManila()) {
+    if (!jobType) {
+      showToast("First choose what you're posting: a one-time project or an ongoing job.");
+      typeTop.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    // The database refuses wrong dates too (job_posts_start_date_check,
+    // job_posts_dates_order_check). When editing, a date that is already past
+    // and was not changed is fine.
+    const today = todayInManila();
+    const changed = (value, field) => !editing || value !== (editing[field] || "");
+    if (startDate < today && changed(startDate, "start_date")) {
+      showToast("The start date can't be in the past.");
+      return;
+    }
+    if (dueDate < today && changed(dueDate, "due_date")) {
       showToast("The due date can't be in the past.");
+      return;
+    }
+    if (dueDate < startDate) {
+      showToast("The due date can't be before the start date.");
       return;
     }
     setSubmitting(true);
@@ -129,8 +195,12 @@ export default function PostNeedView() {
       category,
       description: description.trim(),
       skills: finalSkills,
-      due_date: dueDate || null,
-      budget: budget ? Number(budget) : null
+      job_type: jobType,
+      budget: budget ? Number(budget) : null,
+      budget_type: budgetType,
+      start_date: startDate,
+      due_date: dueDate,
+      freelancers_needed: Number(freelancersNeeded)
     };
     // .single() fails when no row was updated (for example when the database
     // refuses because the account is blocked from posting), so that is an error too.
@@ -140,9 +210,7 @@ export default function PostNeedView() {
 
     setSubmitting(false);
     if (error) {
-      // 23514 = a table rule was broken; with a due date set, that's the date rule.
-      const failed = editing ? "Couldn't save your changes. Please try again." : "Couldn't publish that listing. Please try again.";
-      showToast(error.code === "23514" && dueDate ? "The due date can't be in the past." : failed);
+      showToast(saveErrorText(error, editing));
       return;
     }
 
@@ -154,14 +222,11 @@ export default function PostNeedView() {
     }
 
     setPosts((prev) => [data, ...(prev || [])]);
-    setTitle("");
-    setCategory("");
-    setDescription("");
-    setSkills([]);
-    setDueDate("");
-    setBudget("");
+    clearForm();
     showToast(`Your listing "${data.title}" is live for freelancers to see!`);
   };
+
+  const inputClass = "form-control bg-secondary bg-opacity-25 border-secondary text-white py-2";
 
   return (
     <section className="dashboard-view active-view">
@@ -174,13 +239,55 @@ export default function PostNeedView() {
 
             {postingBlocked && <BlockedNotice suspension={suspension} what="post job listings" />}
 
+            {/* A filled or expired post is hidden from freelancers: say what brings it back. */}
+            {!postingBlocked && editingState === "expired" && (
+              <div className="alert alert-warning fs-7 py-2 mb-3" role="status">
+                <i className="bi bi-hourglass-bottom me-1"></i> This post expired on {formatDay(editing.due_date)}, so freelancers can't see it or apply.
+                Pick new dates to show it again.
+              </div>
+            )}
+            {!postingBlocked && editingState === "filled" && (
+              <div className="alert alert-info fs-7 py-2 mb-3" role="status">
+                <i className="bi bi-people-fill me-1"></i> You hired {hiredCount(editing)} of the {editing.freelancers_needed} freelancer{editing.freelancers_needed === 1 ? "" : "s"} you needed, so this post is hidden from freelancers.
+                Raise "Freelancers needed" to show it again.
+              </div>
+            )}
+
             {!postingBlocked && (
               <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
+                <div ref={typeTop}>
+                  <div id="jobTypeLabel" className="form-label text-white fw-semibold fs-7">What are you posting?</div>
+                  <div className="row g-3" role="radiogroup" aria-labelledby="jobTypeLabel">
+                    {JOB_TYPES.map((type) => {
+                      const picked = jobType === type.value;
+                      return (
+                        <div className="col-sm-6" key={type.value}>
+                          {/* Same look as the Dark / Light choice in Settings > Appearance. */}
+                          <button
+                            type="button"
+                            role="radio"
+                            aria-checked={picked}
+                            className={`mode-choice w-100 h-100 text-start rounded-3 p-3 d-flex align-items-center gap-3${picked ? " is-selected" : ""}`}
+                            onClick={() => pickType(type)}
+                          >
+                            <i className={`bi ${type.icon} fs-4 text-role`}></i>
+                            <span>
+                              <span className="d-block text-white fw-bold fs-7">{type.label}</span>
+                              <span className="d-block text-secondary fs-8">{type.hint}</span>
+                            </span>
+                            {picked && <i className="bi bi-check-circle-fill text-role ms-auto"></i>}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div>
                   <label className="form-label text-white fw-semibold fs-7">Enter the job title:</label>
                   <input
                     type="text"
-                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    className={inputClass}
                     placeholder="e.g. Hiring a logo designer for our cafe business"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -230,7 +337,7 @@ export default function PostNeedView() {
                   <input
                     id="skillInput"
                     type="text"
-                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    className={inputClass}
                     placeholder={skills.length >= MAX_SKILLS ? "You've added the most skills allowed." : "Type a skill and press Enter, e.g. Video Editing"}
                     value={skillInput}
                     disabled={skills.length >= MAX_SKILLS}
@@ -249,32 +356,84 @@ export default function PostNeedView() {
                 {/* Side by side on a laptop, one above the other on a phone. */}
                 <div className="row g-3">
                   <div className="col-sm-6">
-                    <label htmlFor="jobDueDate" className="form-label text-white fw-semibold fs-7">Due date (optional):</label>
+                    <label htmlFor="jobBudget" className="form-label text-white fw-semibold fs-7">Budget (₱, optional):</label>
                     <input
-                      id="jobDueDate"
-                      type="date"
-                      className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                      // colorScheme: a light calendar icon and a dark calendar, to suit the dark box.
-                      style={{ colorScheme: "dark" }}
-                      // An old due date that has passed can stay while editing; a new pick must be today or later.
-                      min={editing?.due_date && editing.due_date < todayInManila() ? editing.due_date : todayInManila()}
-                      value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
-                    />
-                    <small className="text-secondary fs-8">The day you need the work by.</small>
-                  </div>
-
-                  <div className="col-sm-6">
-                    <label className="form-label text-white fw-semibold fs-7">Budget (₱):</label>
-                    <input
+                      id="jobBudget"
                       type="number"
                       min="0"
                       step="1"
-                      className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                      className={inputClass}
                       placeholder="e.g. 5000"
                       value={budget}
                       onChange={(e) => setBudget(e.target.value)}
                     />
+                  </div>
+                  <div className="col-sm-6">
+                    <label htmlFor="jobBudgetType" className="form-label text-white fw-semibold fs-7">The budget is counted:</label>
+                    <select
+                      id="jobBudgetType"
+                      className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                      value={budgetType}
+                      onChange={(e) => {
+                        setBudgetType(e.target.value);
+                        setBudgetTypeChosen(true);
+                      }}
+                    >
+                      {BUDGET_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="row g-3">
+                  <div className="col-sm-6">
+                    <label htmlFor="jobStartDate" className="form-label text-white fw-semibold fs-7">Start date:</label>
+                    <input
+                      id="jobStartDate"
+                      type="date"
+                      className={inputClass}
+                      // colorScheme: a light calendar icon and a dark calendar, to suit the dark box.
+                      style={{ colorScheme: "dark" }}
+                      // An old start date that has passed can stay while editing; a new pick must be today or later.
+                      min={editing?.start_date && editing.start_date < todayInManila() ? editing.start_date : todayInManila()}
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      required
+                    />
+                    <small className="text-secondary fs-8">The day the work begins.</small>
+                  </div>
+
+                  <div className="col-sm-6">
+                    <label htmlFor="jobDueDate" className="form-label text-white fw-semibold fs-7">Due date:</label>
+                    <input
+                      id="jobDueDate"
+                      type="date"
+                      className={inputClass}
+                      style={{ colorScheme: "dark" }}
+                      // Not before the start date. Freelancers stop seeing the post after this day.
+                      min={startDate || todayInManila()}
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      required
+                    />
+                    <small className="text-secondary fs-8">The day it must be done. After it, the post is hidden from freelancers.</small>
+                  </div>
+                </div>
+
+                <div className="row g-3">
+                  <div className="col-sm-6">
+                    <label htmlFor="jobFreelancersNeeded" className="form-label text-white fw-semibold fs-7">Freelancers needed:</label>
+                    <input
+                      id="jobFreelancersNeeded"
+                      type="number"
+                      min="1"
+                      max={MAX_FREELANCERS_NEEDED}
+                      step="1"
+                      className={inputClass}
+                      value={freelancersNeeded}
+                      onChange={(e) => setFreelancersNeeded(e.target.value)}
+                      required
+                    />
+                    <small className="text-secondary fs-8">Once you've hired this many, the post is hidden from freelancers.</small>
                   </div>
                 </div>
 
@@ -303,6 +462,8 @@ export default function PostNeedView() {
             <div className="d-flex flex-column gap-3">
               {posts?.map((p) => {
                 const categoryLabel = getCategory(p.category).label;
+                const hired = hiredCount(p);
+                const state = jobState(p, hired);
                 return (
                   <div key={p.id} className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
                     <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
@@ -330,12 +491,23 @@ export default function PostNeedView() {
                         </button>
                       </div>
                     </div>
-                    <span className="badge bg-role text-white fs-8 mb-2">{categoryLabel}</span>
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                      <span className={`badge ${JOB_STATES[state].className} fs-8`}>{JOB_STATES[state].label}</span>
+                      <span className="badge bg-role text-white fs-8">{categoryLabel}</span>
+                      <span className="badge bg-secondary bg-opacity-50 text-white fs-8">{getJobType(p.job_type).short}</span>
+                    </div>
                     <p className="text-secondary fs-8 mb-0">
-                      {p.budget ? `Budget ₱${Number(p.budget).toLocaleString()}` : "Budget flexible"} • {new Date(p.created_at).toLocaleDateString()}
+                      {budgetText(p) || "Budget flexible"} • {new Date(p.created_at).toLocaleDateString()}
                       {p.updated_at && ` • Edited ${new Date(p.updated_at).toLocaleDateString()}`}
                     </p>
-                    {p.due_date && <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-calendar-event me-1"></i>Needed by {formatDay(p.due_date)}</p>}
+                    <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-calendar-event me-1"></i>{datesText(p)}</p>
+                    <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-people me-1"></i>{hired} of {p.freelancers_needed} hired</p>
+                    {/* Brings a hidden post back: the same form, to pick new dates or more openings. */}
+                    {state !== "open" && (
+                      <Link to={`/dashboard/post-need?edit=${p.id}`} className="btn btn-sm btn-outline-role rounded-pill px-3 mt-2 fs-8 fw-bold">
+                        <i className="bi bi-arrow-repeat me-1"></i> Reopen
+                      </Link>
+                    )}
                   </div>
                 );
               })}

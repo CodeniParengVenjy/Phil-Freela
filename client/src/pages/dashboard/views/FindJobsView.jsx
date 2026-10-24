@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getCategory } from "../../../lib/categories";
+import { budgetText, datesText, getJobType } from "../../../lib/jobTerms";
 import { removeListing } from "../../../lib/adminListings";
 import { byPick, useRecommendations } from "../../../lib/useRecommendations";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
@@ -13,16 +14,29 @@ import RecommendationMarks from "../components/RecommendationMarks";
 import ReportDialog from "../components/ReportDialog";
 import CensoredText from "../../../components/CensoredText";
 
+// The pills above the list: all posts, or only one-time projects, or only ongoing jobs.
+const TYPE_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "project", label: "Projects" },
+  { value: "job", label: "Jobs" }
+];
+
 // withRecommendations (the freelancer dashboard): the jobs the Hybrid
 // recommendation system picked ("Recommended for you", see lib/aiService.js)
 // are merged into this one list, first and in the AI's order, each marked with
 // why it was picked; everything else follows, newest first. If the AI service
 // can't be reached the list is simply the plain newest-first one.
+//
+// The database only shows the posts that are still open: one that is filled
+// (all the freelancers it needed were hired) or past its due date is hidden
+// from freelancers (see database/supabase_job_post_details_schema.sql).
 export default function FindJobsView({ withRecommendations = false }) {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Jobs): admins get a Remove button instead of the chat button.
   const { openChat, isAdmin, currentUserId, showToast } = useOutletContext();
   const [query, setQuery] = useState("");
+  // Which kind of work the pills show: "all", "project" or "job".
+  const [typeFilter, setTypeFilter] = useState("all");
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState("");
   // The job post being reported (null = Report popup closed).
@@ -34,9 +48,15 @@ export default function FindJobsView({ withRecommendations = false }) {
   useEffect(() => {
     let active = true;
 
-    supabase
+    let request = supabase
       .from("job_posts")
-      .select("id, title, category, budget, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
+      .select("id, title, category, budget, budget_type, job_type, start_date, due_date, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)");
+    // A freelancer who applied still SEES a post that filled or expired (so My
+    // Applications keeps working), but it is no longer an opening: ask the
+    // database for the open ones only. Admins see everything.
+    if (!isAdmin) request = request.eq("job_state", "open");
+
+    request
       .order("created_at", { ascending: false })
       .then(({ data, error: fetchError }) => {
         if (!active) return;
@@ -47,7 +67,7 @@ export default function FindJobsView({ withRecommendations = false }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isAdmin]);
 
   const handleRemove = async (job) => {
     if (!window.confirm(`Remove "${job.title}"? This cannot be undone.`)) return;
@@ -68,13 +88,14 @@ export default function FindJobsView({ withRecommendations = false }) {
     if (!jobs) return [];
     const q = query.toLowerCase();
     const matching = jobs.filter((job) => {
+      if (typeFilter !== "all" && job.job_type !== typeFilter) return false;
       const clientName = job.client?.full_name || job.client?.username || "";
       const categoryLabel = getCategory(job.category).label;
       return `${clientName} ${job.title} ${categoryLabel}`.toLowerCase().includes(q);
     });
     // The AI's picks first, in its order; the rest stay newest first.
     return matching.sort(byPick(picked));
-  }, [jobs, query, picked]);
+  }, [jobs, query, typeFilter, picked]);
 
   return (
     <section className="dashboard-view active-view">
@@ -109,11 +130,30 @@ export default function FindJobsView({ withRecommendations = false }) {
           />
         </div>
 
+        {/* Only one-time projects, or only ongoing jobs. */}
+        <div className="d-flex flex-wrap gap-2 mb-3 mb-md-4" role="group" aria-label="Type of work">
+          {TYPE_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              aria-pressed={typeFilter === filter.value}
+              className={`btn btn-sm rounded-pill px-3 fw-bold ${typeFilter === filter.value ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`}
+              onClick={() => setTypeFilter(filter.value)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
         {error && <p className="text-danger fs-7 text-center py-4 mb-0">{error}</p>}
         {!error && jobs === null && <p className="text-secondary fs-7 text-center py-4 mb-0">Loading listings...</p>}
         {!error && jobs !== null && filtered.length === 0 && (
           <p className="text-secondary fs-7 text-center py-4 mb-0">
-            {jobs.length === 0 ? "No client listings yet." : `No job openings match "${query}".`}
+            {jobs.length === 0
+              ? "No client listings yet."
+              : query.trim()
+                ? `No job openings match "${query}".`
+                : `No ${typeFilter === "job" ? "ongoing jobs" : "one-time projects"} right now.`}
           </p>
         )}
 
@@ -152,8 +192,13 @@ export default function FindJobsView({ withRecommendations = false }) {
                   <div className="d-flex flex-wrap align-items-center gap-2 fs-7">
                     {/* text-wrap: a long category name goes to a second line on a phone. */}
                     <span className="badge bg-black text-light text-wrap text-start px-3 py-1 rounded-pill">{categoryLabel}</span>
-                    {job.budget && <span className="text-warning">₱{Number(job.budget).toLocaleString()}</span>}
+                    <span className="badge bg-role-subtle text-role px-3 py-1 rounded-pill">{getJobType(job.job_type).short}</span>
+                    {budgetText(job) && <span className="text-warning">{budgetText(job)}</span>}
                   </div>
+                  {/* When the work starts and is due. */}
+                  {datesText(job) && (
+                    <p className="text-white-50 fs-8 mb-0 mt-2"><i className="bi bi-calendar-event me-1"></i>{datesText(job)}</p>
+                  )}
                   {/* Picked by the AI: marked, with why. */}
                   {picked.has(job.id) && <RecommendationMarks pick={picked.get(job.id)} personalized={recs.personalized} want="jobs" />}
                 </div>
