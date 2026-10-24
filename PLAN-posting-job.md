@@ -63,20 +63,59 @@ The user asked that Post What You Need (client job posts) ask for:
    `closest_listings`, `content_candidates`, `collaborative_candidates` skip
    closed posts; `ai-service/recommendations.py` `recent_posts` uses
    `recent_open_jobs`. Applied live as `job_post_details_columns`,
-   `job_post_details_state_and_rules`, `job_post_details_ai_functions`. NOT yet
-   applied: section 8 of the schema file (start_date and due_date NOT NULL),
-   because the live website of that moment still posted without dates; it goes
-   live right after step 2 is deployed (`job_post_details_dates_required`). Six
+   `job_post_details_state_and_rules`, `job_post_details_ai_functions`. A
+   freelancer who APPLIED can still see a post that filled or expired (so My
+   Applications keeps working), which would have kept it listed as an opening in
+   Find Jobs; found while planning the browser test, fixed with a second
+   function `job_state(job_posts)` that the web API exposes as a column
+   (`job_post_details_state_column`), so lists ask `.eq("job_state", "open")`.
+   Section 8 (start_date and due_date NOT NULL) was applied AFTER step 2 was
+   live (`job_post_details_dates_required`), so the old form never broke. Six
    older SQL files that insert job posts got the two date columns (demo_data,
    test_admin_log, test_archives, test_blind_ratings, test_post_edit,
-   test_post_remove_resumes). Re-run `test_post_edit.sql` on live: 17 checks pass.
-2. (website) `PostNeedView.jsx` form and Your Active Listings, `FindJobsView.jsx`,
-   `JobDetailsView.jsx`, `SearchResultsView.jsx`, new `lib/jobTerms.js`,
-   `lib/privacy.js` export. Then apply section 8.
-3. (AI skills) `ai-service/skills.py` with a hand-made list of about 300 skills,
-   `POST /skills/suggest` and `POST /skills/match`, calls in `lib/aiService.js`,
-   chips in the form; accuracy test on about 20 made-up jobs. If the AI service is
-   offline the form still lets the client type skills.
+   test_post_remove_resumes). Final run of `test_job_post_details.sql` on live:
+   42 checks, 0 failed, rolled back, nothing left behind. `test_post_edit.sql`
+   still 17 of 17.
+2. DONE (2026-10-24, website; commit ea1cc8e): `PostNeedView.jsx` (type cards that
+   reuse the Settings `.mode-choice` look, budget with basis, required start and
+   due dates, freelancers needed, Open / Filled / Expired badges, "1 of 2 hired",
+   Reopen with a note that is checked to be really visible after the scroll),
+   `FindJobsView.jsx` (type badge, "₱5,000 per project", dates, All / Projects /
+   Jobs pills, open-only filter except for admins), `JobDetailsView.jsx` (type,
+   budget basis, dates, "Needs N freelancers", owner lines), `SearchResultsView.jsx`
+   (open-only, budget wording), new `lib/jobTerms.js`, `lib/privacy.js` export.
+   The page's own copy of the open / filled / expired rule (`jobState` in
+   `lib/jobTerms.js`) is only for the owner's badges; the database's `job_state()`
+   is the one that decides who sees what. Browser check against a fake backend
+   that imitates the new database rules and refuses columns the real table
+   lacks, laptop and phone: 126 checks, 0 failed (the script is not saved in
+   the repo; the commit message lists what it covered).
+3. DONE (2026-10-24, AI skills): `ai-service/skills_list.py` (348 skills in the 18
+   categories, each with other ways people write it), `ai-service/skills.py`,
+   `POST /skills/suggest` and `POST /skills/match` in `ai-service/main.py`,
+   `suggestSkills` and `matchSkill` in `client/src/lib/aiService.js`, and the form:
+   once there are a title and a description, "AI suggests:" shows up to 6 tap-to-add
+   chips (asked again after a pause, and again after each tap, with the chosen
+   skills in `have`; a slow older answer is ignored); a typed skill is added at once
+   and then tidied to its standard name ("vid editng" -> "Video Editing", dropped
+   if the standard one is already there); a skill the AI doesn't know stays as
+   typed; when the AI service is offline the form says so and typing works as before.
+   How suggestions are chosen (all in `skills.py`): meaning (the same pretrained
+   MiniLM as the search box: job text vs the skill's name) + words (the skill or
+   another spelling is really in the text: +0.30 / +0.14) + category (+0.10);
+   a skill needs meaning >= 0.25 and >= 70% of the best one, or a words hit; a
+   skill named by an everyday word ("Swift", "Notion", "Sales", "Editing") is only
+   suggested in its own category. Numbers chosen from a grid over 33 made-up job
+   posts: 90% of the expected skills are among the 6 suggested (72 of 80), about
+   1.8 others per post, "Walk my dog" gets nothing. Typed-skill tidying uses
+   spelling, not meaning: meaning alone merged "data analytics" into "Google
+   Analytics". Known limit: a typo rule can't tell "Canvas" from a typo of "Canva".
+   `ai-service/test_skills.py`: 124 checks (list integrity, the made-up posts, the
+   rules, typed skills, the two endpoints with the login check replaced), run with
+   `python test_skills.py` in the service's venv. Browser check of the form with
+   a fake AI service, laptop and phone: 171 checks in total with the earlier ones.
+   Goes live when the push is deployed (the Vercel AI service redeploys from
+   main; until then the form just says the AI ideas aren't available).
 
 ## Later (optional)
 

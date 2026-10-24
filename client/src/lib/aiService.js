@@ -191,6 +191,42 @@ export async function searchListings(query) {
   return body.results || [];
 }
 
+// Post What You Need: the skills a job post's title and description call for,
+// best first, as standard names (["Logo Design", "Brand Identity"]). `have` are
+// the skills already on the post, which aren't suggested again. Too little text
+// gives []. See ai-service/skills.py.
+export async function suggestSkills({ title, category, description, have = [] }) {
+  const body = await request("/skills/suggest", {
+    method: "POST",
+    headers: { ...(await authHeader()), "Content-Type": "application/json" },
+    body: JSON.stringify({ title, category, description, have })
+  });
+  return body.skills || [];
+}
+
+// Tidies one skill the client typed: the standard name when it is the same skill
+// written another way or with a typo ("vid editng" -> "Video Editing"), or null
+// when the AI doesn't know it (then it stays as typed). It never fails: if the AI
+// service is offline or slow (4 seconds), the answer is null and the typed skill
+// is simply kept.
+export async function matchSkill(text) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const body = await request("/skills/match", {
+      method: "POST",
+      headers: { ...(await authHeader()), "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal: controller.signal
+    });
+    return body.skill || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // "Recommended for you" (Hybrid recommendation system: content-based +
 // collaborative filtering + ranking): job posts for freelancers, services for
 // clients, best first. Returns { personalized, results: [{ type, id, score,

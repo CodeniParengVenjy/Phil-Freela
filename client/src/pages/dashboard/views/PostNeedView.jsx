@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { matchSkill, suggestSkills } from "../../../lib/aiService";
 import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import { formatDay, todayInManila } from "../../../lib/projects";
@@ -44,6 +45,10 @@ export default function PostNeedView() {
   // Required skills, shown as chips on the job page (e.g. "Video Editing").
   const [skills, setSkills] = useState([]);
   const [skillInput, setSkillInput] = useState("");
+  // The AI's skill ideas for what's written so far (tap one to add it), and
+  // whether it is working ("loading") or couldn't be reached ("offline").
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestState, setSuggestState] = useState("idle");
   const [budget, setBudget] = useState("");
   // What the budget counts: "project", "day" or "month". It follows the type
   // until the client picks one themselves.
@@ -140,6 +145,36 @@ export default function PostNeedView() {
     };
   }, [currentUserId]);
 
+  // Skills handled by the AI (ai-service/skills.py), part 1: once there is a
+  // title and a description to read, it suggests the skills the job needs. It
+  // asks again, after a short pause in typing, whenever the text, the category
+  // or the chosen skills change (so a tapped skill is replaced by the next best).
+  // A slow answer to an older question is ignored (`active`).
+  const canSuggest = title.trim().length >= 3 && description.trim().length >= 10;
+  useEffect(() => {
+    if (postingBlocked || !canSuggest) return undefined;
+    let active = true;
+
+    const timer = setTimeout(async () => {
+      setSuggestState("loading");
+      try {
+        const names = await suggestSkills({ title, category, description, have: skills });
+        if (!active) return;
+        setSuggestions(names);
+        setSuggestState("idle");
+      } catch {
+        if (!active) return;
+        setSuggestions([]);
+        setSuggestState("offline");
+      }
+    }, 900);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [postingBlocked, canSuggest, title, category, description, skills]);
+
   // Picking a type also preselects how the budget is counted (a project is
   // paid per project, an ongoing job per month), unless the client already chose.
   const pickType = (type) => {
@@ -147,20 +182,44 @@ export default function PostNeedView() {
     if (!budgetTypeChosen) setBudgetType(type.budgetType);
   };
 
+  // Skills handled by the AI, part 2: a skill the client typed is tidied to its
+  // standard name when it is the same skill written another way or with a typo
+  // ("vid editng" -> "Video Editing"). The chip is added at once, as typed, and
+  // renamed when the answer comes; if the AI can't be reached it stays as typed.
+  const tidySkill = async (typed) => {
+    const standard = await matchSkill(typed);
+    if (!standard || standard === typed) return;
+    setSkills((prev) => {
+      if (!prev.includes(typed)) return prev; // the client already removed it
+      // Already there under the standard name: just drop the repeat.
+      if (prev.some((s) => s.toLowerCase() === standard.toLowerCase())) return prev.filter((s) => s !== typed);
+      return prev.map((s) => (s === typed ? standard : s));
+    });
+  };
+
   // Adds the typed skill (or several, split by commas) as chips, skipping
   // blanks and repeats. Returns the new list, so Post Listing can use it
-  // right away (a skill typed without pressing Enter isn't lost).
-  const addSkills = (text) => {
+  // right away (a skill typed without pressing Enter isn't lost). A skill the
+  // AI suggested already has its standard name, so it isn't tidied again.
+  const addSkills = (text, { tidy = true } = {}) => {
     const next = [...skills];
+    const added = [];
     for (const part of text.split(",")) {
       const skill = part.trim().slice(0, MAX_SKILL_LENGTH).trim();
       const isRepeat = next.some((s) => s.toLowerCase() === skill.toLowerCase());
-      if (skill && !isRepeat && next.length < MAX_SKILLS) next.push(skill);
+      if (skill && !isRepeat && next.length < MAX_SKILLS) {
+        next.push(skill);
+        added.push(skill);
+      }
     }
     setSkills(next);
     setSkillInput("");
+    if (tidy) added.forEach(tidySkill);
     return next;
   };
+
+  // The AI's ideas that aren't chosen yet, shown only while there is enough text to read.
+  const shownSuggestions = canSuggest ? suggestions.filter((name) => !skills.some((s) => s.toLowerCase() === name.toLowerCase())) : [];
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -351,6 +410,34 @@ export default function PostNeedView() {
                       }
                     }}
                   />
+                  {/* The AI reads the title and description and suggests skills; tap one to add it. */}
+                  {skills.length < MAX_SKILLS && canSuggest && (suggestState !== "idle" || shownSuggestions.length > 0) && (
+                    <div className="d-flex flex-wrap align-items-center gap-2 mt-2" aria-live="polite">
+                      {suggestState === "loading" && (
+                        <small className="text-secondary fs-8">
+                          <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Reading your description for skills...
+                        </small>
+                      )}
+                      {suggestState === "offline" && (
+                        <small className="text-secondary fs-8"><i className="bi bi-robot me-1"></i>AI skill ideas aren't available right now. You can type the skills yourself.</small>
+                      )}
+                      {suggestState !== "offline" && shownSuggestions.length > 0 && (
+                        <>
+                          <small className="text-secondary fs-8"><i className="bi bi-stars text-role me-1"></i>AI suggests:</small>
+                          {shownSuggestions.map((name) => (
+                            <button
+                              key={name}
+                              type="button"
+                              className="btn btn-sm btn-outline-role rounded-pill px-3 fs-8 fw-semibold"
+                              onClick={() => addSkills(name, { tidy: false })}
+                            >
+                              <i className="bi bi-plus-lg me-1"></i>{name}
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Side by side on a laptop, one above the other on a phone. */}

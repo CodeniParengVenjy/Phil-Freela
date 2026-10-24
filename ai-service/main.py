@@ -45,6 +45,7 @@ from page_blur import blur_pages
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
 from recommendations import recommend
 from similarity import image_embedding
+from skills import match_skill, suggest_skills
 from text_embedder import embed_texts
 from text_watermark import add_code as add_text_code
 from text_watermark import footer as text_footer
@@ -1337,6 +1338,45 @@ def search_posts(body: SearchRequest, authorization: str | None = Header(default
     except APIError:
         logging.exception("Search failed")
         raise HTTPException(503, "Search isn't available right now. Please try again.")
+
+
+# ---------------------------------------------------------------------------
+# Required skills of a job post, handled by the AI (see skills.py): Post What
+# You Need asks for suggestions while the client writes, and tidies each skill
+# they type. Nothing is saved here; the website saves the skills with the job.
+# ---------------------------------------------------------------------------
+
+class SkillSuggestRequest(BaseModel):
+    title: str = ""
+    category: str = ""
+    description: str = ""
+    # Skills the post already has, so they aren't suggested again.
+    have: list[str] = []
+
+
+@app.post("/skills/suggest")
+def suggest_job_skills(body: SkillSuggestRequest, authorization: str | None = Header(default=None)):
+    """The skills a job post's title and description call for, best first, as
+    standard names: {"skills": ["Logo Design", ...]}. Too little text to read
+    gives an empty list, not an error."""
+    get_user_id(authorization)
+    title = " ".join(body.title.split())[:150]
+    description = " ".join(body.description.split())[:2000]
+    return {"skills": suggest_skills(title, body.category, description, have=body.have[:20])}
+
+
+class SkillMatchRequest(BaseModel):
+    text: str
+
+
+@app.post("/skills/match")
+def match_typed_skill(body: SkillMatchRequest, authorization: str | None = Header(default=None)):
+    """Tidies a skill the client typed: {"skill": "Video Editing"} when it is
+    the standard name, another way of writing it or a typo of one, and
+    {"skill": null} when it isn't a skill we know (it then stays as typed)."""
+    get_user_id(authorization)
+    text = " ".join(body.text.split())[:40]
+    return {"skill": match_skill(text) if text else None}
 
 
 # ---------------------------------------------------------------------------
