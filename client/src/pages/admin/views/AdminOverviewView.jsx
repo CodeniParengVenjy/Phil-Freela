@@ -12,8 +12,8 @@ import { TrendChart, TrendTable } from "../components/TrendChart";
 //       regular admin, like the sidebar).
 //   value: a number worked out from the stats, for ones the database doesn't send.
 const statCards = [
-  { key: "freelancers", label: "Freelancers", icon: "bi-person-workspace", color: "orange", to: "/admin/users?role=freelancer" },
-  { key: "clients", label: "Clients", icon: "bi-briefcase-fill", color: "cyan", to: "/admin/users?role=client" },
+  { key: "freelancers", label: "Current Freelancers", icon: "bi-person-workspace", color: "orange", to: "/admin/users?role=freelancer" },
+  { key: "clients", label: "Current Clients", icon: "bi-briefcase-fill", color: "cyan", to: "/admin/users?role=client" },
   { key: "verified_users", label: "Verified Users", icon: "bi-patch-check-fill", color: "green", to: "/admin/users?verified=verified" },
   { key: "not_verified", label: "Not Verified Users", icon: "bi-person-x-fill", color: "red", to: "/admin/users?verified=unverified", value: (stats) => stats.total_users - stats.verified_users },
   { key: "new_this_week", label: "New Users This Week", icon: "bi-person-plus-fill", color: "green", to: "/admin/users?sort=joined&dir=desc" },
@@ -126,7 +126,7 @@ export default function AdminOverviewView() {
                 </span>
                 <div>
                   <div className="admin-stat-value">{stats ? stats.total_users : "..."}</div>
-                  <div className="text-secondary fs-7">Users</div>
+                  <div className="text-secondary fs-7">All Users</div>
                 </div>
               </Link>
               <Link to="/admin/users?presence=online&sort=online&dir=desc" className="admin-stat-link d-inline-block fs-8 text-success fw-semibold mt-1" style={{ marginLeft: 60 }}>
