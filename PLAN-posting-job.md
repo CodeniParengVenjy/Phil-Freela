@@ -19,8 +19,9 @@ The user asked that Post What You Need (client job posts) ask for:
 
 - Client form, in this order: two cards "One-time Project" / "Ongoing Job"; title;
   category; description; required skills (AI suggestions as tap-to-add chips);
-  budget amount (optional) with "per project / per day / per month"; start date
-  and due date (both required); freelancers needed (1 to 10, default 1).
+  budget amount (optional) counted per project (a One-time Project, locked) or
+  per day / per month (an Ongoing Job); start date and due date (both
+  required); freelancers needed (1 to 10, default 1).
 - A post is Open, Filled or Expired (worked out, never stored, see
   `job_state()` in `database/supabase_job_post_details_schema.sql`):
   - Filled: as many freelancers were hired as it needed.
@@ -39,8 +40,13 @@ The user asked that Post What You Need (client job posts) ask for:
 - A post expires after the end of its due date, not at its start date.
 - "Freelancers needed" is new (my reading of "depends if already what freelancers
   needed"); 1 unless the client changes it, so most posts hide after the first hire.
-- The budget basis is not locked to the type: Project preselects "per project",
-  Job preselects "per month", all three are allowed for both.
+- The budget basis follows the type (the user corrected my first default, which
+  allowed all three for both, on 2026-10-24): a One-time Project is per project
+  ONLY (the box is locked), an Ongoing Job is per day or per month ("per month"
+  first, no "per project"). The database refuses any other pair
+  (`job_posts_type_budget_check`, migration `job_post_details_type_budget_rule`,
+  applied after the form was live). Switching the type in the form changes the
+  basis to one that fits.
 - Budget and skills stay optional; the AI only suggests skills, the client decides.
 - Labels: "One-time Project" and "Ongoing Job" (so "Job" is not confused with "job post").
 - Old posts: start = the day they were posted; the 4 that had no due date got
@@ -75,7 +81,12 @@ The user asked that Post What You Need (client job posts) ask for:
    test_admin_log, test_archives, test_blind_ratings, test_post_edit,
    test_post_remove_resumes). Final run of `test_job_post_details.sql` on live:
    42 checks, 0 failed, rolled back, nothing left behind. `test_post_edit.sql`
-   still 17 of 17.
+   still 17 of 17. Later the same day the budget-basis rule above was added
+   (section 3b of the schema file) and the test grew to 46 checks (all pass). The
+   test now needs only ONE verified freelancer (the second applicant's
+   applications are added as the owner): people switch between client and
+   freelancer, and on 2026-10-24 the number of verified people currently in the
+   freelancer role dropped from 2 to 1 while it was being run.
 2. DONE (2026-10-24, website; commit ea1cc8e): `PostNeedView.jsx` (type cards that
    reuse the Settings `.mode-choice` look, budget with basis, required start and
    due dates, freelancers needed, Open / Filled / Expired badges, "1 of 2 hired",

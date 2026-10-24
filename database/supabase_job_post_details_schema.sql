@@ -26,6 +26,7 @@ alter table public.job_posts
   add column job_type text not null default 'project'
     constraint job_posts_job_type_check check (job_type in ('project', 'job')),
   -- What the budget amount counts: the whole project, one day, or one month.
+  -- Which of them is allowed depends on the type (section 3b).
   add column budget_type text not null default 'project'
     constraint job_posts_budget_type_check check (budget_type in ('project', 'day', 'month')),
   -- How many freelancers the client wants to hire. When that many are hired,
@@ -68,6 +69,21 @@ alter table public.job_posts
     check (start_date is null or start_date >= (created_at at time zone 'Asia/Manila')::date),
   add constraint job_posts_dates_order_check
     check (start_date is null or due_date is null or due_date >= start_date);
+
+-- ---------------------------------------------------------------------------
+-- 3b. The budget basis follows the type
+-- ---------------------------------------------------------------------------
+
+-- A one-time project is counted per project only; an ongoing job is counted per
+-- day or per month. (Added after the first version, which allowed every pair;
+-- every post that existed then was a project counted per project, so nothing
+-- had to change.) The website only offers the pairs that fit.
+alter table public.job_posts
+  add constraint job_posts_type_budget_check
+    check (
+      (job_type = 'project' and budget_type = 'project')
+      or (job_type = 'job' and budget_type in ('day', 'month'))
+    );
 
 -- ---------------------------------------------------------------------------
 -- 4. The state of a post

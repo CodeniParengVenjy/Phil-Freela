@@ -1,19 +1,21 @@
 -- Test for supabase_job_post_details_schema.sql. Send the schema file and this
 -- block together in ONE call to try it before applying (the error at the end
 -- rolls the schema back too), or run this alone in the Supabase SQL Editor
--- after the schema file. It BORROWS a real client, two real verified
--- freelancers, a real admin and one more real user (so no user numbers are used
--- up), adds made-up job posts and applications, and ends with an error that
--- carries the PASS/FAIL list; that error rolls everything back, so nothing is
--- left behind. The two e-mail triggers are switched off for the block (the
--- switch rolls back too), so nobody gets a message about made-up applications.
+-- after the schema file. It BORROWS a real client, one real verified
+-- freelancer, another real freelancer, a real admin and one more real user (so
+-- no user numbers are used up; people change between client and freelancer, so
+-- the block takes whoever fits right now), adds made-up job posts and
+-- applications, and ends with an error that carries the PASS/FAIL list; that
+-- error rolls everything back, so nothing is left behind. The two e-mail
+-- triggers are switched off for the block (the switch rolls back too), so nobody
+-- gets a message about made-up applications.
 do $t$
 declare
   res text := '';
   today date := (now() at time zone 'Asia/Manila')::date;
   cl uuid;                       -- a real client, borrowed: owns the made-up jobs
-  fr1 uuid;                      -- a real verified freelancer: applies, is hired
-  fr2 uuid;                      -- a second real verified freelancer
+  fr1 uuid;                      -- a real verified freelancer: applies as themselves, is hired
+  fr2 uuid;                      -- another real freelancer: their applications are added as the owner (as if made earlier)
   adm uuid;                      -- a real admin
   outsider uuid;                 -- another real user who never applies
   j_open uuid;                   -- open: due in 10 days, needs 1 freelancer
@@ -50,7 +52,7 @@ begin
      and not exists (select 1 from public.admins a where a.id = p.id)
      and not public.is_posting_blocked(p.id) order by p.id limit 1;
   select p.id into fr2 from public.profiles p
-   where p.account_type = 'freelancer' and public.is_verified(p.id) and p.id <> fr1
+   where p.account_type = 'freelancer' and p.id <> fr1
      and not exists (select 1 from public.admins a where a.id = p.id)
      and not public.is_posting_blocked(p.id) order by p.id limit 1;
   select a.id into adm from public.admins a where not a.must_change_password order by a.id limit 1;
@@ -59,7 +61,7 @@ begin
      and not exists (select 1 from public.admins a where a.id = p.id)
      and not public.is_posting_blocked(p.id) order by p.id limit 1;
   if cl is null or fr1 is null or fr2 is null or adm is null or outsider is null then
-    raise exception 'The test needs a client, two verified freelancers, an admin and one more user, none of them suspended.';
+    raise exception 'The test needs a client, a verified freelancer, another freelancer, an admin and one more user, none of them suspended.';
   end if;
 
   alter table public.job_applications disable trigger email_offline_on_application;
@@ -93,6 +95,22 @@ begin
   exception when others then err := sqlerrm;
   end;
   res := res || E'\n' || case when err like '%job_posts_budget_type_check%' then 'PASS  ' else 'FAIL  ' end || '1c. a budget basis other than project, day or month is refused';
+
+  begin
+    insert into public.job_posts (client_id, title, category, description, job_type, budget_type, freelancers_needed, start_date, due_date)
+    values (cl, 'T', 'graphic-design', 'x', 'project', 'day', 1, today, today + 5);
+    err := 'accepted';
+  exception when others then err := sqlerrm;
+  end;
+  res := res || E'\n' || case when err like '%job_posts_type_budget_check%' then 'PASS  ' else 'FAIL  ' end || '1c2. a one-time project counted per day is refused (a project is per project only)';
+
+  begin
+    insert into public.job_posts (client_id, title, category, description, job_type, budget_type, freelancers_needed, start_date, due_date)
+    values (cl, 'T', 'graphic-design', 'x', 'job', 'project', 1, today, today + 5);
+    err := 'accepted';
+  exception when others then err := sqlerrm;
+  end;
+  res := res || E'\n' || case when err like '%job_posts_type_budget_check%' then 'PASS  ' else 'FAIL  ' end || '1c3. an ongoing job counted per project is refused (a job is per day or per month)';
 
   begin
     insert into public.job_posts (client_id, title, category, description, job_type, budget_type, freelancers_needed, start_date, due_date)
@@ -133,6 +151,17 @@ begin
   res := res || E'\n' || case when row_new.job_type = 'job' and row_new.budget_type = 'month' and row_new.freelancers_needed = 2
                                and row_new.start_date = today + 1 and row_new.due_date = today + 30 then 'PASS  ' else 'FAIL  ' end || '1h. a complete ongoing job (per month, 2 freelancers, 30 days) is saved as sent';
 
+  -- Editing the type has to bring the basis along.
+  begin
+    update public.job_posts set job_type = 'project' where id = j_new;
+    err := 'accepted';
+  exception when others then err := sqlerrm;
+  end;
+  res := res || E'\n' || case when err like '%job_posts_type_budget_check%' then 'PASS  ' else 'FAIL  ' end || '1i. turning an ongoing job into a project without changing its basis (per month) is refused';
+  update public.job_posts set job_type = 'project', budget_type = 'project' where id = j_new;
+  select job_type, budget_type into row_new from public.job_posts where id = j_new;
+  res := res || E'\n' || case when row_new.job_type = 'project' and row_new.budget_type = 'project' then 'PASS  ' else 'FAIL  ' end || '1j. changing the type and the basis together is accepted';
+
   -- Made-up posts for the rest, added as the database owner. -----------------
   reset role;
   perform set_config('request.jwt.claim.sub', '', true);
@@ -156,9 +185,14 @@ begin
   res := res || E'\n' || case when public.job_state(gen_random_uuid()) is null then 'PASS  ' else 'FAIL  ' end || '2d. a post that does not exist has no state';
 
   -- 3. Who sees what. --------------------------------------------------------
-  -- fr1 applied to the old post back when it was open (added as the owner).
+  -- fr2 applied to the old post back when it was open, and to two open posts
+  -- (added as the owner, as if made earlier).
   insert into public.job_applications (job_post_id, freelancer_id, resume_path)
-  values (j_old, fr1, fr1::text || '/' || j_old::text || '-1.pdf') returning id into a_old;
+  values (j_old, fr2, fr2::text || '/' || j_old::text || '-1.pdf') returning id into a_old;
+  insert into public.job_applications (job_post_id, freelancer_id, resume_path)
+  values (j_open, fr2, fr2::text || '/' || j_open::text || '-1.pdf') returning id into a2;
+  insert into public.job_applications (job_post_id, freelancer_id, resume_path)
+  values (j_two, fr2, fr2::text || '/' || j_two::text || '-1.pdf') returning id into a4;
 
   set local role authenticated;
   perform set_config('request.jwt.claim.sub', outsider::text, true);
@@ -168,8 +202,8 @@ begin
   select count(*) into n from public.job_posts where id = j_old;
   res := res || E'\n' || case when n = 0 then 'PASS  ' else 'FAIL  ' end || '3b. another user does not see the expired post';
 
-  perform set_config('request.jwt.claim.sub', fr1::text, true);
-  perform set_config('request.jwt.claims', json_build_object('sub', fr1, 'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claim.sub', fr2::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', fr2, 'role', 'authenticated')::text, true);
   select count(*) into n from public.job_posts where id = j_old;
   res := res || E'\n' || case when n = 1 then 'PASS  ' else 'FAIL  ' end || '3c. the freelancer who applied still sees the expired post';
 
@@ -199,15 +233,11 @@ begin
   values (j_two, fr1, fr1::text || '/' || j_two::text || '-1.pdf') returning id into a3;
   res := res || E'\n' || 'PASS  4a. a verified freelancer applies to open posts';
 
-  perform set_config('request.jwt.claim.sub', fr2::text, true);
-  perform set_config('request.jwt.claims', json_build_object('sub', fr2, 'role', 'authenticated')::text, true);
-  insert into public.job_applications (job_post_id, freelancer_id, resume_path)
-  values (j_open, fr2, fr2::text || '/' || j_open::text || '-1.pdf') returning id into a2;
-  insert into public.job_applications (job_post_id, freelancer_id, resume_path)
-  values (j_two, fr2, fr2::text || '/' || j_two::text || '-1.pdf') returning id into a4;
+  -- The same verified freelancer is refused for the expired post: nothing else is
+  -- wrong with them, so the only reason left is that the post is closed.
   begin
     insert into public.job_applications (job_post_id, freelancer_id, resume_path)
-    values (j_old, fr2, fr2::text || '/' || j_old::text || '-1.pdf');
+    values (j_old, fr1, fr1::text || '/' || j_old::text || '-1.pdf');
     err := 'accepted';
   exception when others then err := sqlerrm;
   end;
