@@ -38,8 +38,11 @@ export default function PostNeedView() {
   const { currentUserId, showToast, suspension } = useOutletContext();
   // Suspended for a posting violation (e.g. spam): the form is replaced by a notice.
   const postingBlocked = isPostingBlocked(suspension);
-  // What is being posted: "project" or "job" ("" = not chosen yet, chosen first).
+  // What is being posted: "project" or "job" ("" = not chosen yet). The client
+  // picks it first and then sees only that type's own form (a project and an
+  // ongoing job are two separate forms, so they never mix on one screen).
   const [jobType, setJobType] = useState("");
+  const pickedType = JOB_TYPES.find((type) => type.value === jobType) || null;
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -76,7 +79,6 @@ export default function PostNeedView() {
   const editing = (editId && posts?.find((p) => p.id === editId)) || null;
   const editingState = editing ? jobState(editing, hiredCount(editing)) : null;
   const formTop = useRef(null);
-  const typeTop = useRef(null);
   // Which job the form was last filled in from.
   const [filledFromId, setFilledFromId] = useState(null);
   if (editing && filledFromId !== editing.id) {
@@ -149,7 +151,7 @@ export default function PostNeedView() {
   // asks again, after a short pause in typing, whenever the text, the category
   // or the chosen skills change (so a tapped skill is replaced by the next best).
   // A slow answer to an older question is ignored (`active`).
-  const canSuggest = title.trim().length >= 3 && description.trim().length >= 10;
+  const canSuggest = Boolean(pickedType) && title.trim().length >= 3 && description.trim().length >= 10;
   useEffect(() => {
     if (postingBlocked || !canSuggest) return undefined;
     let active = true;
@@ -174,9 +176,10 @@ export default function PostNeedView() {
     };
   }, [postingBlocked, canSuggest, title, category, description, skills]);
 
-  // Picking a type also sets how the budget is counted: a one-time project is
-  // per project only; an ongoing job is per day or per month, so a choice made
-  // for the other type no longer fits and the usual one (per month) is used.
+  // Picking a type shows that type's form. It also sets how the budget is
+  // counted: a one-time project is per project only; an ongoing job is per day
+  // or per month, so a choice made for the other type no longer fits and the
+  // usual one (per month) is used. What was typed so far stays (after "Change type").
   const pickType = (type) => {
     setJobType(type.value);
     if (!type.budgetTypes.includes(budgetType)) setBudgetType(type.budgetType);
@@ -223,12 +226,7 @@ export default function PostNeedView() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!currentUserId) return;
-    if (!jobType) {
-      showToast("First choose what you're posting: a one-time project or an ongoing job.");
-      typeTop.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
+    if (!currentUserId || !pickedType) return;
     // The database refuses wrong dates too (job_posts_start_date_check,
     // job_posts_dates_order_check). When editing, a date that is already past
     // and was not changed is fine.
@@ -286,18 +284,27 @@ export default function PostNeedView() {
   };
 
   const inputClass = "form-control bg-secondary bg-opacity-25 border-secondary text-white py-2";
-  // The picked type, and the ways of counting the budget it allows.
-  const pickedType = JOB_TYPES.find((type) => type.value === jobType) || null;
+  // The ways of counting the budget the picked type allows (per project, or per day / per month).
   const budgetChoices = pickedType ? BUDGET_TYPES.filter((type) => pickedType.budgetTypes.includes(type.value)) : [];
+  // The page's title: the picker, then the picked type's own form (or its edit form).
+  const pageHeading = pickedType ? (editing ? pickedType.editHeading : pickedType.heading) : "Post What You Need";
 
   return (
     <section className="dashboard-view active-view">
       <div className="row g-4">
         <div className="col-lg-8">
           <div ref={formTop} className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
-            <h3 className="text-white fw-bold mb-4">
-              <i className={`bi ${editing ? "bi-pencil-square" : "bi-plus-circle"} text-role me-2`}></i> {editing ? "Edit Your Job Post" : "Post What You Need"}
-            </h3>
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+              <h3 className="text-white fw-bold mb-0">
+                <i className={`bi ${editing ? "bi-pencil-square" : "bi-plus-circle"} text-role me-2`}></i> {pageHeading}
+              </h3>
+              {/* Back to the two choices. Not while editing: a post keeps its type. */}
+              {pickedType && !editing && !postingBlocked && (
+                <button type="button" className="btn btn-sm btn-outline-secondary text-white-50 rounded-pill px-3 fw-semibold" onClick={() => setJobType("")}>
+                  <i className="bi bi-arrow-left-right me-1"></i> Change type
+                </button>
+              )}
+            </div>
 
             {postingBlocked && <BlockedNotice suspension={suspension} what="post job listings" />}
 
@@ -315,42 +322,35 @@ export default function PostNeedView() {
               </div>
             )}
 
-            {!postingBlocked && (
-              <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
-                <div ref={typeTop}>
-                  <div id="jobTypeLabel" className="form-label text-white fw-semibold fs-7">What are you posting?</div>
-                  <div className="row g-3" role="radiogroup" aria-labelledby="jobTypeLabel">
-                    {JOB_TYPES.map((type) => {
-                      const picked = jobType === type.value;
-                      return (
-                        <div className="col-sm-6" key={type.value}>
-                          {/* Same look as the Dark / Light choice in Settings > Appearance. */}
-                          <button
-                            type="button"
-                            role="radio"
-                            aria-checked={picked}
-                            className={`mode-choice w-100 h-100 text-start rounded-3 p-3 d-flex align-items-center gap-3${picked ? " is-selected" : ""}`}
-                            onClick={() => pickType(type)}
-                          >
-                            <i className={`bi ${type.icon} fs-4 text-role`}></i>
-                            <span>
-                              <span className="d-block text-white fw-bold fs-7">{type.label}</span>
-                              <span className="d-block text-secondary fs-8">{type.hint}</span>
-                            </span>
-                            {picked && <i className="bi bi-check-circle-fill text-role ms-auto"></i>}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+            {/* Step 1: what are you posting? Two choices; the form for the one picked shows next. */}
+            {!postingBlocked && !pickedType && (
+              <div>
+                <p className="text-white fw-semibold fs-7 mb-2">What are you posting?</p>
+                <div className="row g-3">
+                  {JOB_TYPES.map((type) => (
+                    <div className="col-md-6" key={type.value}>
+                      {/* Same look as the Dark / Light choice in Settings > Appearance. */}
+                      <button type="button" className="mode-choice w-100 h-100 text-start rounded-3 p-4 d-flex flex-column gap-2" onClick={() => pickType(type)}>
+                        <i className={`bi ${type.icon} fs-2 text-role`}></i>
+                        <span className="text-white fw-bold">{type.label}</span>
+                        <span className="text-secondary fs-7">{type.hint}</span>
+                        <span className="text-role fw-semibold fs-7 mt-auto pt-2">{type.heading} <i className="bi bi-arrow-right ms-1"></i></span>
+                      </button>
+                    </div>
+                  ))}
                 </div>
+              </div>
+            )}
 
+            {/* Step 2: the form of the type picked. A project and an ongoing job have their own wording and their own way of counting the money. */}
+            {!postingBlocked && pickedType && (
+              <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
                 <div>
-                  <label className="form-label text-white fw-semibold fs-7">Enter the job title:</label>
+                  <label className="form-label text-white fw-semibold fs-7">{pickedType.titleLabel}</label>
                   <input
                     type="text"
                     className={inputClass}
-                    placeholder="e.g. Hiring a logo designer for our cafe business"
+                    placeholder={pickedType.titlePlaceholder}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
@@ -358,19 +358,19 @@ export default function PostNeedView() {
                 </div>
 
                 <div>
-                  <label className="form-label text-white fw-semibold fs-7">Select job category:</label>
+                  <label className="form-label text-white fw-semibold fs-7">Select category:</label>
                   <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={category} onChange={(e) => setCategory(e.target.value)} required>
-                    <option value="" disabled>Select job category...</option>
+                    <option value="" disabled>Select category...</option>
                     {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="form-label text-white fw-semibold fs-7">Enter job description:</label>
+                  <label className="form-label text-white fw-semibold fs-7">{pickedType.descriptionLabel}</label>
                   <textarea
                     className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
                     rows="5"
-                    placeholder="Describe the project, timeline, and what you're looking for..."
+                    placeholder={pickedType.descriptionPlaceholder}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     required
@@ -443,40 +443,36 @@ export default function PostNeedView() {
                   )}
                 </div>
 
-                {/* Side by side on a laptop, one above the other on a phone. */}
-                <div className="row g-3">
-                  <div className="col-sm-6">
-                    <label htmlFor="jobBudget" className="form-label text-white fw-semibold fs-7">Budget (₱, optional):</label>
+                {/* The money. A project has one price for the whole project (nothing to
+                    choose, so "per project" is just written there); an ongoing job is
+                    paid per day or per month, which the client picks. */}
+                <div>
+                  <label htmlFor="jobBudget" className="form-label text-white fw-semibold fs-7">{pickedType.moneyLabel}</label>
+                  <div className="input-group">
+                    <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50">₱</span>
                     <input
                       id="jobBudget"
                       type="number"
                       min="0"
                       step="1"
                       className={inputClass}
-                      placeholder="e.g. 5000"
+                      placeholder={pickedType.moneyPlaceholder}
                       value={budget}
                       onChange={(e) => setBudget(e.target.value)}
                     />
-                  </div>
-                  <div className="col-sm-6">
-                    <label htmlFor="jobBudgetType" className="form-label text-white fw-semibold fs-7">The budget is counted:</label>
-                    {/* What the type allows: a project is per project only (nothing to
-                        choose, so the box is locked); an ongoing job is per day or per month.
-                        Before a type is picked there is nothing to choose either. */}
-                    <select
-                      id="jobBudgetType"
-                      className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                      value={pickedType ? budgetType : ""}
-                      disabled={!pickedType || budgetChoices.length < 2}
-                      onChange={(e) => setBudgetType(e.target.value)}
-                    >
-                      {!pickedType && <option value="">Choose what you're posting first</option>}
-                      {budgetChoices.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-                    </select>
-                    {pickedType && (
-                      <small className="text-secondary fs-8">
-                        {budgetChoices.length < 2 ? "A one-time project has one price for the whole project." : "An ongoing job is paid per day or per month."}
-                      </small>
+                    {budgetChoices.length < 2 ? (
+                      <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50">per project</span>
+                    ) : (
+                      <select
+                        id="jobBudgetType"
+                        aria-label="Paid per day or per month"
+                        className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2 flex-grow-0"
+                        style={{ width: "9.5rem" }}
+                        value={budgetType}
+                        onChange={(e) => setBudgetType(e.target.value)}
+                      >
+                        {budgetChoices.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+                      </select>
                     )}
                   </div>
                 </div>
@@ -512,7 +508,7 @@ export default function PostNeedView() {
                       onChange={(e) => setDueDate(e.target.value)}
                       required
                     />
-                    <small className="text-secondary fs-8">The day it must be done. After it, the post is hidden from freelancers.</small>
+                    <small className="text-secondary fs-8">{pickedType.dueHint}</small>
                   </div>
                 </div>
 
@@ -536,7 +532,7 @@ export default function PostNeedView() {
 
                 <div className="d-flex flex-wrap gap-2 pt-2">
                   <button type="submit" className="btn btn-gradient-role btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow-role" disabled={submitting}>
-                    {editing ? (submitting ? "Saving..." : "Save changes") : submitting ? "Publishing..." : "Post Job"}
+                    {editing ? (submitting ? "Saving..." : "Save changes") : submitting ? "Publishing..." : pickedType.submit}
                   </button>
                   {editing && (
                     <button type="button" className="btn btn-outline-secondary text-white-50 btn-lg px-4 py-2 rounded-pill fw-bold" disabled={submitting} onClick={stopEditing}>

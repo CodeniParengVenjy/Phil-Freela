@@ -17,11 +17,23 @@ The user asked that Post What You Need (client job posts) ask for:
 
 ## What people see
 
-- Client form, in this order: two cards "One-time Project" / "Ongoing Job"; title;
-  category; description; required skills (AI suggestions as tap-to-add chips);
-  budget amount (optional) counted per project (a One-time Project, locked) or
-  per day / per month (an Ongoing Job); start date and due date (both
-  required); freelancers needed (1 to 10, default 1).
+- The client form is TWO separate forms, not one that changes (the user said
+  "don't combine the job service and project based form", and picked "pick first,
+  then its own form"). Post What You Need opens with two big choices, "One-time
+  Project" and "Ongoing Job", and nothing else. Clicking one shows only that
+  type's form, with a "Change type" button back to the choices (what was typed
+  stays). A post keeps its type: editing it opens its own form with no "Change
+  type".
+  - Post a Project: project title; category; describe the project; required skills
+    (AI suggestions as tap-to-add chips); "Budget for the whole project (₱,
+    optional)" with "per project" written beside it, nothing to choose; start date
+    and due date (both required); freelancers needed (1 to 10, default 1); button
+    "Post Project".
+  - Post a Job: job title; category; describe the job; required skills; "Pay (₱,
+    optional)" with a box for per day or per month ("per month" first); start date
+    and due date (both required, the due date is the last day the person is needed);
+    freelancers needed; button "Post Job".
+  The words of each form live in `JOB_TYPES` in `client/src/lib/jobTerms.js`.
 - A post is Open, Filled or Expired (worked out, never stored, see
   `job_state()` in `database/supabase_job_post_details_schema.sql`):
   - Filled: as many freelancers were hired as it needed.
@@ -45,8 +57,9 @@ The user asked that Post What You Need (client job posts) ask for:
   ONLY (the box is locked), an Ongoing Job is per day or per month ("per month"
   first, no "per project"). The database refuses any other pair
   (`job_posts_type_budget_check`, migration `job_post_details_type_budget_rule`,
-  applied after the form was live). Switching the type in the form changes the
-  basis to one that fits.
+  applied after the form was live). Because the two types now have their own
+  forms, a project form has no choice to make and a job form only offers day or
+  month; "Change type" resets the basis to one that fits.
 - Budget and skills stay optional; the AI only suggests skills, the client decides.
 - Labels: "One-time Project" and "Ongoing Job" (so "Job" is not confused with "job post").
 - Old posts: start = the day they were posted; the 4 that had no due date got

@@ -4,14 +4,52 @@ import { formatDay, todayInManila } from "./projects";
 // Post What You Need, Find Jobs, the job's page and the search results so they
 // always say the same thing.
 
-// What is being posted (job_posts.job_type), and how its budget can be counted:
-// a one-time project has one price for the whole project, an ongoing job is
-// paid per day or per month. `budgetTypes` is what the type allows (the database
-// refuses any other pair, job_posts_type_budget_check) and `budgetType` is the
-// one preselected.
+// What is being posted (job_posts.job_type). Each type has its own form on Post
+// What You Need (the client picks the type first, then sees only that form), so
+// the words of each form are here too.
+// How the budget can be counted: a one-time project has one price for the whole
+// project, an ongoing job is paid per day or per month. `budgetTypes` is what
+// the type allows (the database refuses any other pair,
+// job_posts_type_budget_check) and `budgetType` is the one that starts selected.
 export const JOB_TYPES = [
-  { value: "project", label: "One-time Project", short: "Project", icon: "bi-box-seam-fill", hint: "Work with a clear end result, like a logo, a video or a website.", budgetTypes: ["project"], budgetType: "project" },
-  { value: "job", label: "Ongoing Job", short: "Job", icon: "bi-calendar2-week-fill", hint: "Regular work over days or months, like a virtual assistant.", budgetTypes: ["day", "month"], budgetType: "month" }
+  {
+    value: "project",
+    label: "One-time Project",
+    short: "Project",
+    icon: "bi-box-seam-fill",
+    hint: "Work with a clear end result, like a logo, a video or a website. One price for the whole project.",
+    heading: "Post a Project",
+    editHeading: "Edit Your Project Post",
+    submit: "Post Project",
+    titleLabel: "Project title:",
+    titlePlaceholder: "e.g. Hiring a logo designer for our cafe business",
+    descriptionLabel: "Describe the project:",
+    descriptionPlaceholder: "Describe what you need made, the result you expect, and any examples you like...",
+    moneyLabel: "Budget for the whole project (₱, optional):",
+    moneyPlaceholder: "e.g. 5000",
+    dueHint: "The day the project must be finished. After it, the post is hidden from freelancers.",
+    budgetTypes: ["project"],
+    budgetType: "project"
+  },
+  {
+    value: "job",
+    label: "Ongoing Job",
+    short: "Job",
+    icon: "bi-calendar2-week-fill",
+    hint: "Regular work over days or months, like a virtual assistant. Paid per day or per month.",
+    heading: "Post a Job",
+    editHeading: "Edit Your Job Post",
+    submit: "Post Job",
+    titleLabel: "Job title:",
+    titlePlaceholder: "e.g. Hiring a virtual assistant for our online shop",
+    descriptionLabel: "Describe the job:",
+    descriptionPlaceholder: "Describe the work, the days or hours you need, and what you're looking for...",
+    moneyLabel: "Pay (₱, optional):",
+    moneyPlaceholder: "e.g. 800",
+    dueHint: "The last day you need this person. After it, the post is hidden from freelancers.",
+    budgetTypes: ["day", "month"],
+    budgetType: "month"
+  }
 ];
 
 // What the budget amount counts (job_posts.budget_type).
