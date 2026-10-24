@@ -27,6 +27,7 @@ function saveErrorText(error, editing) {
   if (error.code === "23514") {
     if (text.includes("job_posts_start_date_check")) return "The start date can't be before the day you posted this job.";
     if (text.includes("job_posts_dates_order_check")) return "The due date can't be before the start date.";
+    if (text.includes("job_posts_type_budget_check")) return "A one-time project is counted per project, and an ongoing job per day or per month.";
     if (text.includes("job_posts_due_date_check")) return "The due date can't be in the past.";
     if (text.includes("job_posts_freelancers_needed_check")) return `Freelancers needed must be from 1 to ${MAX_FREELANCERS_NEEDED}.`;
   }
@@ -50,10 +51,10 @@ export default function PostNeedView() {
   const [suggestions, setSuggestions] = useState([]);
   const [suggestState, setSuggestState] = useState("idle");
   const [budget, setBudget] = useState("");
-  // What the budget counts: "project", "day" or "month". It follows the type
-  // until the client picks one themselves.
+  // What the budget counts: "project", "day" or "month". The type decides which
+  // are allowed: a one-time project is per project only, an ongoing job is per
+  // day or per month.
   const [budgetType, setBudgetType] = useState("project");
-  const [budgetTypeChosen, setBudgetTypeChosen] = useState(false);
   // The days the work starts and is due, as "YYYY-MM-DD". Both are required.
   // When the due date passes, the post stops showing to freelancers.
   const [startDate, setStartDate] = useState("");
@@ -90,7 +91,6 @@ export default function PostNeedView() {
     setSkillInput("");
     setBudget(editing.budget ? String(editing.budget) : "");
     setBudgetType(editing.budget_type);
-    setBudgetTypeChosen(true);
     setStartDate(editing.start_date || "");
     setDueDate(editing.due_date || "");
     setFreelancersNeeded(String(editing.freelancers_needed));
@@ -114,7 +114,6 @@ export default function PostNeedView() {
     setSkillInput("");
     setBudget("");
     setBudgetType("project");
-    setBudgetTypeChosen(false);
     setStartDate("");
     setDueDate("");
     setFreelancersNeeded("1");
@@ -175,11 +174,12 @@ export default function PostNeedView() {
     };
   }, [postingBlocked, canSuggest, title, category, description, skills]);
 
-  // Picking a type also preselects how the budget is counted (a project is
-  // paid per project, an ongoing job per month), unless the client already chose.
+  // Picking a type also sets how the budget is counted: a one-time project is
+  // per project only; an ongoing job is per day or per month, so a choice made
+  // for the other type no longer fits and the usual one (per month) is used.
   const pickType = (type) => {
     setJobType(type.value);
-    if (!budgetTypeChosen) setBudgetType(type.budgetType);
+    if (!type.budgetTypes.includes(budgetType)) setBudgetType(type.budgetType);
   };
 
   // Skills handled by the AI, part 2: a skill the client typed is tidied to its
@@ -286,6 +286,9 @@ export default function PostNeedView() {
   };
 
   const inputClass = "form-control bg-secondary bg-opacity-25 border-secondary text-white py-2";
+  // The picked type, and the ways of counting the budget it allows.
+  const pickedType = JOB_TYPES.find((type) => type.value === jobType) || null;
+  const budgetChoices = pickedType ? BUDGET_TYPES.filter((type) => pickedType.budgetTypes.includes(type.value)) : [];
 
   return (
     <section className="dashboard-view active-view">
@@ -457,17 +460,24 @@ export default function PostNeedView() {
                   </div>
                   <div className="col-sm-6">
                     <label htmlFor="jobBudgetType" className="form-label text-white fw-semibold fs-7">The budget is counted:</label>
+                    {/* What the type allows: a project is per project only (nothing to
+                        choose, so the box is locked); an ongoing job is per day or per month.
+                        Before a type is picked there is nothing to choose either. */}
                     <select
                       id="jobBudgetType"
                       className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                      value={budgetType}
-                      onChange={(e) => {
-                        setBudgetType(e.target.value);
-                        setBudgetTypeChosen(true);
-                      }}
+                      value={pickedType ? budgetType : ""}
+                      disabled={!pickedType || budgetChoices.length < 2}
+                      onChange={(e) => setBudgetType(e.target.value)}
                     >
-                      {BUDGET_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+                      {!pickedType && <option value="">Choose what you're posting first</option>}
+                      {budgetChoices.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
                     </select>
+                    {pickedType && (
+                      <small className="text-secondary fs-8">
+                        {budgetChoices.length < 2 ? "A one-time project has one price for the whole project." : "An ongoing job is paid per day or per month."}
+                      </small>
+                    )}
                   </div>
                 </div>
 

@@ -4,11 +4,14 @@ import { formatDay, todayInManila } from "./projects";
 // Post What You Need, Find Jobs, the job's page and the search results so they
 // always say the same thing.
 
-// What is being posted (job_posts.job_type). Picking a type also preselects the
-// way the budget is counted; the client can still change that.
+// What is being posted (job_posts.job_type), and how its budget can be counted:
+// a one-time project has one price for the whole project, an ongoing job is
+// paid per day or per month. `budgetTypes` is what the type allows (the database
+// refuses any other pair, job_posts_type_budget_check) and `budgetType` is the
+// one preselected.
 export const JOB_TYPES = [
-  { value: "project", label: "One-time Project", short: "Project", icon: "bi-box-seam-fill", hint: "Work with a clear end result, like a logo, a video or a website.", budgetType: "project" },
-  { value: "job", label: "Ongoing Job", short: "Job", icon: "bi-calendar2-week-fill", hint: "Regular work over days or months, like a virtual assistant.", budgetType: "month" }
+  { value: "project", label: "One-time Project", short: "Project", icon: "bi-box-seam-fill", hint: "Work with a clear end result, like a logo, a video or a website.", budgetTypes: ["project"], budgetType: "project" },
+  { value: "job", label: "Ongoing Job", short: "Job", icon: "bi-calendar2-week-fill", hint: "Regular work over days or months, like a virtual assistant.", budgetTypes: ["day", "month"], budgetType: "month" }
 ];
 
 // What the budget amount counts (job_posts.budget_type).
