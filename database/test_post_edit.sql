@@ -46,8 +46,8 @@ begin
   -- Made-up posts, added as the database owner (no sign-in rules apply to that).
   insert into public.services (freelancer_id, title, category, description) values (fr, 'Edit test service', 'Design', 'First text.') returning id into svc;
   insert into public.services (freelancer_id, title, category, description) values (fr, 'Edit test service B', 'Design', 'First text.') returning id into svc2;
-  insert into public.job_posts (client_id, title, category, description) values (cl, 'Edit test job', 'Design', 'First text.') returning id into job;
-  insert into public.job_posts (client_id, title, category, description) values (cl, 'Edit test job B', 'Design', 'First text.') returning id into job2;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date) values (cl, 'Edit test job', 'Design', 'First text.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7) returning id into job;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date) values (cl, 'Edit test job B', 'Design', 'First text.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7) returning id into job2;
 
   -- 1. The reports that were already there got their copy (only runs after the schema).
   select count(*) into missing from public.reports r

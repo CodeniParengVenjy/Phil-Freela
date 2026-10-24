@@ -28,8 +28,8 @@ begin
   -- Emails to offline clients are switched off for this test.
   alter table public.job_applications disable trigger email_offline_on_application;
 
-  insert into public.job_posts (client_id, title, category, description) values (cl, 'Resume test job', 'Design', 'Text.') returning id into job;
-  insert into public.job_posts (client_id, title, category, description) values (other, 'Resume test job of someone else', 'Design', 'Text.') returning id into job2;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date) values (cl, 'Resume test job', 'Design', 'Text.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7) returning id into job;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date) values (other, 'Resume test job of someone else', 'Design', 'Text.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7) returning id into job2;
   p1 := fr::text || '/' || job::text || '-1.pdf';
   p2 := fr::text || '/' || job2::text || '-1.pdf';
   insert into public.job_applications (job_post_id, freelancer_id, resume_path) values (job, fr, p1), (job2, fr, p2);

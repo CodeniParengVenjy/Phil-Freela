@@ -34,8 +34,8 @@ begin
     (x, 'Other Blindtest', 'other_blindtest', 'male', 'client', false);
   insert into public.services (freelancer_id, title, category, description)
     values (f, 'Blind test video editing', 'video-editing', 'A test service.') returning id into svc;
-  insert into public.job_posts (client_id, title, category, description)
-    values (c, 'Blind test job', 'video-editing', 'A test job.') returning id into job;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date)
+    values (c, 'Blind test job', 'video-editing', 'A test job.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7) returning id into job;
   insert into public.projects (client_id, freelancer_id, title, status, started_at, due_date, submitted_at, completed_at)
     values (c, f, 'Blind promo video', 'done', now() - interval '5 days', current_date, now() - interval '1 day', now())
     returning id into p1;

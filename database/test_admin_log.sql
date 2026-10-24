@@ -34,8 +34,8 @@ begin
     (c, 'Mark Santos', 'mark_logtest', 'male', 'client', false);
   insert into public.services (freelancer_id, title, category, description) values (f, 'Logo design', 'Design', 'A test service.') returning id into svc;
   insert into public.services (freelancer_id, title, category, description) values (f, 'Poster design', 'Design', 'Another test service.') returning id into svc2;
-  insert into public.job_posts (client_id, title, category, description) values (c, 'Need a logo', 'Design', 'A test job.') returning id into job;
-  insert into public.job_posts (client_id, title, category, description) values (c, 'Need a poster', 'Design', 'Another test job.') returning id into job2;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date) values (c, 'Need a logo', 'Design', 'A test job.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7) returning id into job;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date) values (c, 'Need a poster', 'Design', 'Another test job.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7) returning id into job2;
   insert into public.reports (reporter_id, target_type, target_id, reason) values (c, 'user', f, 'spam') returning id into r1;
   insert into public.reports (reporter_id, target_type, target_id, reason) values (c, 'service', svc, 'scam') returning id into r2;
   insert into public.identity_verifications (user_id, id_type, id_photo_path, selfie_path, face_match, face_distance, selfie_left_path, selfie_right_path, liveness_passed)

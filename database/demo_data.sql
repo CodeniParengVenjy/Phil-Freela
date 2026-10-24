@@ -138,8 +138,11 @@ begin
   ) as s(id, owner, title, category, price, skill, days_ago, description);
 
   -- ===== Job posts =====
-  insert into public.job_posts (client_id, title, category, description, budget, skills, created_at, updated_at)
+  -- Each starts the day it was posted and is due 30 days from today (both dates
+  -- are required, see supabase_job_post_details_schema.sql).
+  insert into public.job_posts (client_id, title, category, description, budget, skills, start_date, due_date, created_at, updated_at)
   select j.owner, j.title, j.category, j.description, j.budget, j.skills,
+    today - j.days_ago, today + 30,
     now() - make_interval(days => j.days_ago), now() - make_interval(days => j.days_ago)
   from (values
     (maria, 'Logo and menu design for a new coffee shop branch', 'graphic-design', 3000, 20, array['Logo design', 'Poster design'],

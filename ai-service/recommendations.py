@@ -186,12 +186,16 @@ def catch_up_profiles(supabase):
 
 def recent_posts(supabase, user_id, want, skip):
     """The newest posts of the wanted kind (not the user's own): used when a
-    new user has too few personal candidates."""
+    new user has too few personal candidates. Job posts that are filled or
+    past their due date are left out (recent_open_jobs, see
+    database/supabase_job_post_details_schema.sql)."""
     if want == "jobs":
-        rows = supabase.table("job_posts").select("id").neq("client_id", user_id).order("created_at", desc=True).limit(RECENT).execute().data
+        rows = supabase.rpc("recent_open_jobs", {"except_user": user_id, "how_many": RECENT}).execute().data
+        ids = [r["job_id"] for r in rows or []]
     else:
         rows = supabase.table("services").select("id").neq("freelancer_id", user_id).order("created_at", desc=True).limit(RECENT).execute().data
-    return [r["id"] for r in rows or [] if r["id"] not in skip]
+        ids = [r["id"] for r in rows or []]
+    return [post_id for post_id in ids if post_id not in skip]
 
 
 def recommend(supabase, user_id):

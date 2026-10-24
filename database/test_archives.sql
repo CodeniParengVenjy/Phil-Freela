@@ -42,7 +42,7 @@ begin
     (u3, 'Ana Garcia', 'ana_archtest', 'female', 'client', false),
     (u4, 'Ben Cruz', 'ben_archtest', 'male', 'client', false),
     (u5, 'Cara Lopez', 'cara_archtest', 'female', 'client', false);
-  insert into public.job_posts (client_id, title, category, description) values (u1, 'Need a logo', 'Design', 'A test job.');
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date) values (u1, 'Need a logo', 'Design', 'A test job.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7);
 
   set local role authenticated;
 
@@ -91,7 +91,7 @@ begin
   select count(*) into n from public.job_posts where client_id = u1;
   res := res || E'\n' || case when n = 1 then 'PASS  ' else 'FAIL  ' end || '3e. the archived person still sees their own job post';
   begin
-    insert into public.job_posts (client_id, title, category, description) values (u1, 'Another job', 'Design', 'Should not post.');
+    insert into public.job_posts (client_id, title, category, description, start_date, due_date) values (u1, 'Another job', 'Design', 'Should not post.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7);
     res := res || E'\nFAIL  3f. an archived account posted a job';
   exception when others then res := res || E'\nPASS  3f. an archived account cannot post a job'; end;
   select count(*) into n from public.archived_users where user_id = u1;
