@@ -986,7 +986,7 @@ body {
   }
 
   .admin-pending-who { flex: 1 1 auto; }
-  .admin-pending-times { flex: 0 0 13rem; }
+  .admin-pending-times { flex: 0 0 15rem; }
   .admin-pending-action { flex: 0 0 11rem; text-align: right; }
 }
 

@@ -14,6 +14,9 @@ function timeAgo(value) {
   return "just now";
 }
 
+// "Oct 21, 2026, 3:39 PM": the exact date and time, in the admin's own time zone.
+const dateTime = (value) => new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+
 // People who signed up with an email but never opened the confirmation link, so
 // they have no profile and can't sign in. admin_pending_users() is a database
 // function that adds their email and sign-up details (only admins can call it).
@@ -156,7 +159,15 @@ export default function AdminPendingView() {
 
                 <div className="admin-pending-times text-white-50 fs-8">
                   <div>Signed up {timeAgo(person.created_at)}</div>
-                  <div>{person.confirmation_sent_at ? `Last email sent ${timeAgo(person.confirmation_sent_at)}` : "No email sent yet"}</div>
+                  <div className="text-white">{dateTime(person.created_at)}</div>
+                  {person.confirmation_sent_at ? (
+                    <>
+                      <div className="mt-2">Last email sent {timeAgo(person.confirmation_sent_at)}</div>
+                      <div className="text-white">{dateTime(person.confirmation_sent_at)}</div>
+                    </>
+                  ) : (
+                    <div className="mt-2">No email sent yet</div>
+                  )}
                 </div>
 
                 <div className="admin-pending-action">
