@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { isSupabaseConfigured, setRememberMe, supabase } from "../../lib/supabaseClient";
-import { MAX_NAME_LENGTH, checkName, checkNameWords, cleanName, dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
+import { MAX_NAME_LENGTH, NO_AUTOFILL, checkName, checkNameWords, cleanName, dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
 import { EMAIL_PATTERN, getPasswordStrengthMessage } from "../../lib/validators";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import { renderGoogleButton } from "../../lib/googleSignIn";
@@ -437,7 +437,7 @@ export default function Login() {
                         className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                         placeholder="e.g. Keanne Obias"
                         maxLength={MAX_NAME_LENGTH}
-                        autoComplete="name"
+                        autoComplete={NO_AUTOFILL}
                         value={form.fullName}
                         onChange={updateField("fullName")}
                         required
@@ -457,7 +457,7 @@ export default function Login() {
                         type="text"
                         className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                         placeholder="keanne_dev"
-                        autoComplete="username"
+                        autoComplete={NO_AUTOFILL}
                         value={form.username}
                         onChange={updateField("username")}
                         required

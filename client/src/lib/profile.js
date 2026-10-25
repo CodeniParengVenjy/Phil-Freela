@@ -20,6 +20,14 @@ export async function getActiveSuspension(userId) {
 // and emoji don't.
 export const MIN_NAME_LENGTH = 2;
 export const MAX_NAME_LENGTH = 50;
+
+// autoComplete value for the Name and Username boxes where a person types a new
+// name. With autoComplete="name" or "username" Chrome offers its saved info
+// there: the saved name with the email under it, or the email itself, and the
+// email ends up as the username. Chrome ignores "off" for those, but a value it
+// doesn't know stops the suggestions.
+export const NO_AUTOFILL = "nope";
+
 const NAME_PATTERN = /^\p{L}[\p{L} .,'’-]*$/u;
 // "www.site.com" is only letters and dots, so links get their own check.
 const LINK_PATTERN = /(www\.|https?:|\.(com|net|org|ph|info|xyz|app|dev)\b)/i;

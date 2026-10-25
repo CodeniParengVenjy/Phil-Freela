@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MAX_NAME_LENGTH, checkName, cleanName, saveDisplayName } from "../../../lib/profile";
+import { MAX_NAME_LENGTH, NO_AUTOFILL, checkName, cleanName, saveDisplayName } from "../../../lib/profile";
 
 // Shown over every dashboard page to someone whose profile has no name (people
 // who signed up before names were required, like @apol). It can't be closed:
@@ -69,7 +69,7 @@ export default function MissingNameDialog({ userId, onSaved, onSignOut }) {
             className={`form-control bg-secondary bg-opacity-25 text-white py-2 ${error ? "border-danger" : "border-secondary"}`}
             placeholder="e.g. Keanne Obias"
             maxLength={MAX_NAME_LENGTH}
-            autoComplete="name"
+            autoComplete={NO_AUTOFILL}
             autoFocus
             value={name}
             onChange={(event) => { setName(event.target.value); setError(""); }}
