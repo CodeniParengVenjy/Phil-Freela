@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "../../../lib/supabaseClient";
-import { budgetText } from "../../../lib/jobTerms";
+import { priceText } from "../../../lib/projectPrice";
 import {
   confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, getQrLink, listProjectPayments,
   markNotReceived, openReceipt, paymentStatuses, recordPayment, watchProjectPayments
@@ -36,7 +35,6 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
   const [qr, setQr] = useState(null);
   // The freelancer's own check: have they saved GCash details? (undefined = loading)
   const [mineSaved, setMineSaved] = useState(undefined);
-  const [budget, setBudget] = useState("");
   const [recording, setRecording] = useState(false);
   // The answer the freelancer is about to give: { id, kind: "confirm" | "not_received" }.
   const [asking, setAsking] = useState(null);
@@ -103,18 +101,9 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     };
   }, [iAmClient, currentUserId]);
 
-  // A project that came from a job post shows the post's budget as a hint.
-  const jobPostId = project.job_post_id;
-  useEffect(() => {
-    if (!iAmClient || !jobPostId) return undefined;
-    let active = true;
-    supabase.from("job_posts").select("budget, budget_type").eq("id", jobPostId).maybeSingle().then(({ data }) => {
-      if (active) setBudget(data ? budgetText(data) : "");
-    });
-    return () => {
-      active = false;
-    };
-  }, [iAmClient, jobPostId]);
+  // The project's agreed price (the Price box above), shown as a hint ("" while
+  // there is none).
+  const agreedPrice = project.price_status === "agreed" ? priceText(project.agreed_amount, project.price_basis) : "";
 
   const copyNumber = async () => {
     try {
@@ -189,7 +178,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
           Pay in your GCash app, then come back and record it here. {qrLink ? "On a computer you can scan the QR with your phone. " : ""}
           Check that the name GCash shows matches the name above before you send.
         </p>
-        {budget && <p className="text-secondary fs-8 mb-2">Job budget: {budget}. The amount is up to you and {otherName}.</p>}
+        {agreedPrice && <p className="text-secondary fs-8 mb-2">Agreed price: {agreedPrice}.</p>}
         <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={() => setRecording(true)}>
           <i className="bi bi-check2-circle me-1"></i> I've paid
         </button>
@@ -310,7 +299,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
         <RecordPaymentDialog
           subtitle={`Paid to ${details?.account_name || otherName} in the GCash app`}
           otherName={otherName}
-          hint={budget ? `Job budget: ${budget}. Enter what you sent.` : undefined}
+          hint={agreedPrice ? `Agreed price: ${agreedPrice}. Enter what you sent.` : undefined}
           submit={handleRecord}
           onClose={() => setRecording(false)}
           onRecorded={handleRecorded}

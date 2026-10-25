@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { hirePriceLine } from "../../../lib/projectPrice";
 import { MAX_PROJECT_NOTE_LENGTH, hireApplicant, todayInManila } from "../../../lib/projects";
 
 // The Hire popup on Projects & Resumes. The client writes a note for the
 // freelancer and picks the due date; Hire starts the project (screen 2).
 // It uses the same look as the delete popup (the role-confirm-* CSS classes).
-// applicant: { applicationId, freelancerName, jobTitle, jobDueDate }, or null
+// applicant: { applicationId, freelancerName, jobTitle, jobDueDate, jobBudget, jobBudgetType }, or null
 // when closed. The parent gives it key={applicationId}, so it starts fresh
 // for each person.
 export default function HireDialog({ applicant, onClose, onHired }) {
@@ -97,6 +98,11 @@ export default function HireDialog({ applicant, onClose, onHired }) {
         <small className="text-secondary fs-8 d-block mb-3">
           {jobDueDate ? "Filled in from your job post. You can change it." : "The day the work should be finished."}
         </small>
+
+        {/* The job post's budget now, which the database copies to the project as its price. */}
+        <p className="text-white-50 fs-8 mb-3" data-hire-price>
+          {hirePriceLine({ budget: applicant.jobBudget, budget_type: applicant.jobBudgetType })}
+        </p>
 
         {error && <p className="text-danger fs-7 mb-3">{error}</p>}
 

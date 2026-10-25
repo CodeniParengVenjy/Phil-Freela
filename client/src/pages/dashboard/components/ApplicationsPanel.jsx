@@ -173,7 +173,7 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
                   <button
                     type="button"
                     className="btn btn-gradient-role text-white rounded-pill px-3 fs-7 fw-bold"
-                    onClick={() => setHireTarget({ applicationId: row.id, freelancerName: name, jobTitle: row.job?.title, jobDueDate: row.job?.due_date })}
+                    onClick={() => setHireTarget({ applicationId: row.id, freelancerName: name, jobTitle: row.job?.title, jobDueDate: row.job?.due_date, jobBudget: row.job?.budget, jobBudgetType: row.job?.budget_type })}
                   >
                     <i className="bi bi-briefcase-fill me-1"></i> Hire
                   </button>

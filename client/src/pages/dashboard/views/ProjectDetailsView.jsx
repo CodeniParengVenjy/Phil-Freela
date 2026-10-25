@@ -8,6 +8,7 @@ import { profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
 import CensoredText from "../../../components/CensoredText";
 import PaymentsSection from "../components/PaymentsSection";
+import ProjectPriceBox from "../components/ProjectPriceBox";
 import ReportDialog from "../components/ReportDialog";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
@@ -40,6 +41,11 @@ export default function ProjectDetailsView() {
       active = false;
     };
   }, [projectId]);
+
+  // Reads the project again (after a price was sent or agreed).
+  const reloadProject = () => getProject(projectId).then((data) => {
+    if (data) setProject(data);
+  });
 
   // Once it's Done, check whether the signed-in user already rated it
   // (screen 4/5 unlock the "Add your ratings and feedback" button), and
@@ -233,6 +239,11 @@ export default function ProjectDetailsView() {
                 <i className="bi bi-clock-history me-2"></i>{formatDay(project.due_date)}{overdue && " (overdue)"}
               </span>
             </div>
+          </div>
+
+          {/* The one price payments will come from (PLAN-transaction-tracking.md). */}
+          <div className="col-12">
+            <ProjectPriceBox project={project} currentUserId={currentUserId} otherName={otherName} showToast={showToast} onChanged={reloadProject} />
           </div>
 
           <div className="col-12">

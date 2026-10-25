@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { MAX_BOOKING_NOTE_LENGTH, createBooking } from "../../../lib/bookings";
+import { bookingPriceLine } from "../../../lib/projectPrice";
 import { todayInManila } from "../../../lib/projects";
 import CensoredText from "../../../components/CensoredText";
 
 // The Book popup. A client says what they need and the date they need it by;
 // "Send booking" asks the freelancer (see lib/bookings.js). It uses the same
 // look as the Hire popup (the role-confirm-* CSS classes).
-// target: { freelancerId, freelancerName, service: { id, title } }, or null
+// target: { freelancerId, freelancerName, service: { id, title, price } }, or null
 // when closed. It only opens from the offer's own page (Service Details), after
 // the client has seen the description, so the service is always known. The
 // parent gives it a key, so it starts empty each time.
@@ -93,9 +94,11 @@ export default function BookDialog({ target, onClose, onBooked }) {
           required
         />
 
-        <p className="text-secondary fs-8 mb-3">
-          {target.freelancerName} gets your request and can accept or decline. If they accept, a project starts. Talk about the price in chat.
+        <p className="text-secondary fs-8 mb-2">
+          {target.freelancerName} gets your request and can accept or decline. If they accept, a project starts.
         </p>
+        {/* The service's price now, which the database copies to the booking. */}
+        <p className="text-white-50 fs-8 mb-3" data-book-price>{bookingPriceLine(target.service.price, target.freelancerName)}</p>
 
         {error && <p className="text-danger fs-7 mb-3">{error}</p>}
 

@@ -158,6 +158,7 @@ export async function getProject(projectId) {
     .from("projects")
     .select(`id, title, note, status, started_at, due_date, completed_at,
       submission_path, submission_link, submission_message, submitted_at,
+      agreed_amount, price_basis, price_status, price_source, price_proposed_by, price_agreed_at,
       job_post_id, client_id, freelancer_id, ${PEOPLE_FIELDS}`)
     .eq("id", projectId)
     .maybeSingle();

@@ -1,9 +1,10 @@
 # GCash payments: plan and progress
 
 Saved 2026-10-25 after the user said "ok". All seven steps are built (2026-10-25).
-The SQL of Steps 1 to 5 is live; Step 7's SQL (`supabase_admin_payments_schema.sql`)
-still has to be run in the Supabase SQL Editor. To continue in a new Claude
-session, say: "Read PLAN-gcash-payments.md and continue from the current step."
+The SQL of every step is live (Step 7's `supabase_admin_payments_schema.sql` was
+applied on 2026-10-25 as the migration `admin_payments`, after trying it with its
+test on the real database: 14 checks, 0 failed, rolled back). To continue in a new
+Claude session, say: "Read PLAN-gcash-payments.md and continue from the current step."
 
 Each step had its own detailed plan before any code; each "result" block says what
 was built and how it was tested.
@@ -503,7 +504,7 @@ old warnings) and build clean. Not tested: the live arrival of a new card or an
 answer (the test holds the realtime socket silent, and shows a new card after a
 reload).
 
-### Step 7: Admin Overview, data and wording (Easy) (BUILT 2026-10-25, its SQL NOT yet run live)
+### Step 7: Admin Overview, data and wording (Easy) (DONE 2026-10-25, SQL applied live later the same day)
 
 1. Database, `database/supabase_admin_payments_schema.sql`: a new function
    `admin_payment_counts()` (instead of widening `admin_transactions()`, so the
@@ -539,8 +540,11 @@ rows by cascade but nothing deletes storage files, for these pictures or for
 any other upload; fixing that is a separate piece of work.)
 
 Tested: `database/test_admin_payments.sql` (14 checks) passed on a PGlite
-stand-in only, because the Supabase connector was offline: **it has not been run
-on the live database, and the schema has not been applied there**. Browser test
+stand-in first (the Supabase connector was offline), then, once the connector was
+back, together with the schema in one rolled-back call on the real database (14
+checks, 0 failed), and the schema was applied live as the migration
+`admin_payments` (checked afterwards: signed-out visitors can't call it, signed-in
+users can). Browser test
 against a pretend Supabase (31 checks, 0 failed): the card with its five numbers,
 order and total, counts only (no peso sign), all zeros, the function missing (the
 card falls back and Bookings, Projects, Job posts and Ratings still load), phone
@@ -548,11 +552,7 @@ width; "Download your data" for a freelancer with two payments and a QR (the
 receipt column is never asked for, no file names in the file), a client with no
 GCash details, a person with no payments; the Terms and Privacy pages (new
 sections present, old "does not process payments" sentences gone, no sideways
-scrolling). Lint (only the two old warnings) and build clean. Not tested: the
-function against the real database.
-
-To finish: run `database/supabase_admin_payments_schema.sql` (then, if wanted,
-`database/test_admin_payments.sql`; it rolls back) in the Supabase SQL Editor.
+scrolling). Lint (only the two old warnings) and build clean.
 
 ## Wording to change when it is built (all done in Step 7 except the last item)
 
@@ -578,9 +578,9 @@ To finish: run `database/supabase_admin_payments_schema.sql` (then, if wanted,
 
 ## Current step
 
-Steps 1 to 7 are built (2026-10-25). The SQL of Steps 1 to 5 is live; Step 7's
-`database/supabase_admin_payments_schema.sql` still has to be run in the Supabase
-SQL Editor (until then the Admin Overview card says "Not set up yet"). What is
-left is the user's own check on the live site with a real GCash app (see above),
-and the Word and PDF defense guide's no-payments lines. Re-check `git log` and
-the live database first: another Claude session works in this folder.
+Steps 1 to 7 are built and their SQL is live (2026-10-25). What is left is the
+user's own check on the live site with a real GCash app (see above), and the Word
+and PDF defense guide's no-payments lines. The follow-up ideas (agreed price,
+payment requests only from a project, history, admin trail, pay-to-unlock) are in
+`PLAN-transaction-tracking.md`. Re-check `git log` and the live database first:
+another Claude session works in this folder.

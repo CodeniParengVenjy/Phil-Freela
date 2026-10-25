@@ -169,12 +169,12 @@ function ServiceDetails({ serviceId }) {
     return (
       <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
         <p className="text-secondary fs-7 mb-0">
-          Read the description above, then send your booking. {freelancerName} can accept or decline it, and if they accept, a project starts. Talk about the price in chat.
+          Read the description above, then send your booking. {freelancerName} can accept or decline it, and if they accept, a project starts.
         </p>
         <button
           type="button"
           className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role flex-shrink-0"
-          onClick={() => setBookTarget({ freelancerId: freelancer.id, freelancerName, service: { id: service.id, title: service.title } })}
+          onClick={() => setBookTarget({ freelancerId: freelancer.id, freelancerName, service: { id: service.id, title: service.title, price: service.price } })}
         >
           <i className="bi bi-calendar-check me-2"></i>Book this offer
         </button>
