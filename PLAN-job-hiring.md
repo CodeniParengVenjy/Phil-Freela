@@ -100,4 +100,22 @@ hire to look at yet; the tests make their own.
    when the API sends them the other way round, statuses and colors, both links,
    a hire without a readable profile, nobody hired, the filled post, a very long
    name, light-mode contrast, no sideways scrolling). Lint and build clean.
-4. Admin Overview: the Hiring card.
+4. DONE (2026-10-25, website): `AdminOverviewView.jsx` has a "Job hiring" part
+   after Transactions: a "Job posts" card (Open / Filled / Expired, "N in total")
+   and an "Applications and hires" card (Applications, Freelancers hired, no "in
+   total" because the two numbers are not parts of one whole), with a link to
+   Listings. It is its own part: if the hiring numbers fail one sentence replaces
+   its cards and everything else stays, and the other way round. `StatusCounts.jsx`
+   got a `showTotal` prop (on by default, so Bookings and Projects are unchanged).
+   Uses `totals` of `admin_job_hiring()`. Browser check against a fake backend,
+   laptop and phone: 18 checks, 0 failed (order of the sections, the numbers, zeros,
+   very big numbers, the Listings link, each part failing on its own, no sideways
+   scrolling). Lint and build clean.
+
+## Not built (optional)
+
+- The admin has no page for a single project, so the trail shows a project's
+  status but cannot link to it.
+- The live database has no hire from a job post yet (the 4 projects came from
+  bookings), so the trail only shows real data after a client hires an applicant.
+  `demo_data.sql` could be given a few hires if the defense needs them.

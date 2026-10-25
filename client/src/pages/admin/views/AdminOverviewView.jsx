@@ -119,17 +119,25 @@ export default function AdminOverviewView() {
   // The best rated freelancers and clients (admin_top_rated()), the top 5 of each.
   const [topRated, setTopRated] = useState(null);
   const [topRatedError, setTopRatedError] = useState("");
+  // Where hiring from job posts stands (admin_job_hiring()): only its totals are
+  // used here; the per-post numbers are for Listings.
+  const [hiringTotals, setHiringTotals] = useState(null);
+  const [hiringError, setHiringError] = useState("");
 
   useEffect(() => {
     let active = true;
 
     (async () => {
-      const [ratingsResult, transactionsResult, topRatedResult] = await Promise.all([
+      const [ratingsResult, transactionsResult, topRatedResult, hiringResult] = await Promise.all([
         supabase.rpc("admin_ratings"),
         supabase.rpc("admin_transactions"),
-        supabase.rpc("admin_top_rated", { p_limit: 5 })
+        supabase.rpc("admin_top_rated", { p_limit: 5 }),
+        supabase.rpc("admin_job_hiring")
       ]);
       if (!active) return;
+
+      if (hiringResult.error) setHiringError("Failed to load the job hiring numbers.");
+      else setHiringTotals(hiringResult.data.totals);
 
       if (ratingsResult.error) setRatingsError("Failed to load the ratings.");
       else setRatings(ratingsResult.data);
@@ -386,6 +394,43 @@ export default function AdminOverviewView() {
                     <div className="text-secondary fs-7">When payments are added, how many there are will show here.</div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Hiring from job posts: its own part, so it shows even if the numbers above fail. */}
+          <div className="mt-4 mb-3">
+            <h3 className="h6 fw-bold text-white mb-0">Job hiring</h3>
+            <p className="text-secondary fs-7 mb-0">
+              How many job posts are open, filled (everyone needed was hired) or expired, and how many freelancers applied and were hired.
+              {" "}Open <Link to="/admin/listings" className="text-white">Listings</Link>, then View a job post to see who was hired from it.
+            </p>
+          </div>
+
+          {hiringError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{hiringError}</div>}
+          {!hiringError && !hiringTotals && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the job hiring numbers...</div>}
+
+          {hiringTotals && (
+            <div className="row g-3">
+              <div className="col-12 col-md-6">
+                <StatusCounts
+                  title="Job posts"
+                  items={[
+                    { label: "Open", value: hiringTotals.open },
+                    { label: "Filled", value: hiringTotals.filled },
+                    { label: "Expired", value: hiringTotals.expired }
+                  ]}
+                />
+              </div>
+              <div className="col-12 col-md-6">
+                <StatusCounts
+                  title="Applications and hires"
+                  showTotal={false}
+                  items={[
+                    { label: "Applications", value: hiringTotals.applications },
+                    { label: "Freelancers hired", value: hiringTotals.hired }
+                  ]}
+                />
               </div>
             </div>
           )}
