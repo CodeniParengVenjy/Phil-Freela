@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { noAutofill } from "../../../lib/profile";
 import {
   checkQrFile, formatGcashNumber, getMyGcash, getQrLink, isValidAccountName, isValidGcashNumber, normalizeGcashNumber,
   removeMyGcash, removeQrFile, saveMyGcash, tidyAccountName, uploadQr
@@ -196,7 +197,7 @@ export default function GcashSettingsForm({ userId, showToast }) {
           <input
             id="gcashName"
             type="text"
-            autoComplete="off"
+            {...noAutofill("gc1")}
             className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
             placeholder="Ana R. Santos"
             value={name}

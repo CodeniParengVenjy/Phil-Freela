@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
+import { noAutofill } from "../../lib/profile";
 import { getPasswordStrengthMessage } from "../../lib/validators";
 import "../../styles/auth.css";
 
@@ -82,11 +83,11 @@ export default function AdminSetup() {
           <form className="d-flex flex-column gap-3" noValidate onSubmit={handleSubmit}>
             <div className="field">
               <label htmlFor="fullName" className="form-label text-white-50 fw-semibold fs-7 mb-1">Name</label>
-              <input id="fullName" type="text" className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" value={form.fullName} onChange={updateField("fullName")} required />
+              <input id="fullName" type="text" {...noAutofill("as1")} className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" value={form.fullName} onChange={updateField("fullName")} required />
             </div>
             <div className="field">
               <label htmlFor="username" className="form-label text-white-50 fw-semibold fs-7 mb-1">Username</label>
-              <input id="username" type="text" className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" value={form.username} onChange={updateField("username")} required />
+              <input id="username" type="text" {...noAutofill("as2")} className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" value={form.username} onChange={updateField("username")} required />
             </div>
             <div className="field">
               <label htmlFor="email" className="form-label text-white-50 fw-semibold fs-7 mb-1">Email Address</label>

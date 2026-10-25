@@ -21,12 +21,15 @@ export async function getActiveSuspension(userId) {
 export const MIN_NAME_LENGTH = 2;
 export const MAX_NAME_LENGTH = 50;
 
-// autoComplete value for the Name and Username boxes where a person types a new
-// name. With autoComplete="name" or "username" Chrome offers its saved info
-// there: the saved name with the email under it, or the email itself, and the
-// email ends up as the username. Chrome ignores "off" for those, but a value it
-// doesn't know stops the suggestions.
-export const NO_AUTOFILL = "nope";
+// Props for a Name or Username box, so Chrome doesn't offer its "Saved info"
+// there: the saved name with the email under it, or the email itself (which
+// ended up as people's usernames). Chrome ignores autoComplete="off" for those.
+// An unknown autoComplete value ("nope") stops it on the sign-up form, but on a
+// form with no other autofill settings (Settings, admin pages) Chrome still
+// guesses from the box's id, so it also gets a `name` that hints at nothing.
+// `key` is any short label, different for each box in a form, that isn't a
+// word like "name" or "user" (tested in Chrome 155 with its Autofill commands).
+export const noAutofill = (key) => ({ autoComplete: "nope", name: `pf-${key}` });
 
 const NAME_PATTERN = /^\p{L}[\p{L} .,'’-]*$/u;
 // "www.site.com" is only letters and dots, so links get their own check.

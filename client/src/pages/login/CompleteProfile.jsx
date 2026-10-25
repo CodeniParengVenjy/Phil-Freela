@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { MAX_NAME_LENGTH, NO_AUTOFILL, checkName, cleanName, dashboardRouteFor, resolvePostAuthRoute } from "../../lib/profile";
+import { MAX_NAME_LENGTH, checkName, cleanName, dashboardRouteFor, resolvePostAuthRoute, noAutofill } from "../../lib/profile";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import "../../styles/auth.css";
 
@@ -158,7 +158,7 @@ export default function CompleteProfile() {
                     className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                     placeholder="e.g. Keanne Obias"
                     maxLength={MAX_NAME_LENGTH}
-                    autoComplete={NO_AUTOFILL}
+                    {...noAutofill("cp1")}
                     value={form.fullName}
                     onChange={updateField("fullName")}
                     required
@@ -176,7 +176,7 @@ export default function CompleteProfile() {
                     className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                     placeholder="keanne_dev"
                     maxLength={MAX_USERNAME_LENGTH}
-                    autoComplete={NO_AUTOFILL}
+                    {...noAutofill("cp2")}
                     value={form.username}
                     onChange={updateField("username")}
                     required

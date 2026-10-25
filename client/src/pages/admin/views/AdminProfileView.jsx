@@ -4,7 +4,7 @@ import { changePassword, checkPasswordChange, getSignInInfo, signOutOtherDevices
 import { linkUserAccount, rememberOtherAccount, switchToOtherAccount, unlinkAccounts } from "../../../lib/accountSwitch";
 import { userEmailSuggestionFor } from "../../../lib/adminEmail";
 import { fetchAdminProfile, saveAdminProfile } from "../../../lib/adminProfile";
-import { MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds } from "../../../lib/profile";
+import { MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, noAutofill } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
 
 const emptyPasswords = { current: "", next: "", confirm: "" };
@@ -196,6 +196,7 @@ export default function AdminProfileView() {
                 <input
                   id="profileName"
                   type="text"
+                  {...noAutofill("ap1")}
                   className="form-control admin-input"
                   value={shownName}
                   onChange={(e) => setNameInput(e.target.value)}
@@ -213,6 +214,7 @@ export default function AdminProfileView() {
                 <input
                   id="profileUsername"
                   type="text"
+                  {...noAutofill("ap2")}
                   className="form-control admin-input"
                   value={shownUsername}
                   onChange={(e) => setUsernameInput(e.target.value)}

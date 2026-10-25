@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline, saveUsername } from "../../../lib/profile";
+import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline, saveUsername, noAutofill } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
 import { COVER_CROP, PICTURE_CROP, checkAvatarFile, fetchCoverPath, removeCover, uploadAvatar, uploadCover } from "../../../lib/avatar";
 import { deleteMyAccount, downloadAsFile, exportMyData } from "../../../lib/privacy";
@@ -374,6 +374,7 @@ export default function SettingsView() {
                     <input
                       id="settingsName"
                       type="text"
+                      {...noAutofill("st1")}
                       className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                       value={shownName}
                       onChange={(e) => setNameInput(e.target.value)}
@@ -392,6 +393,7 @@ export default function SettingsView() {
                     <input
                       id="settingsUsername"
                       type="text"
+                      {...noAutofill("st2")}
                       className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
                       value={shownUsername}
                       onChange={(e) => setUsernameInput(e.target.value)}

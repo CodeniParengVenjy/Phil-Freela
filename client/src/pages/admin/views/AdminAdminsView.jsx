@@ -5,6 +5,7 @@ import { EMAIL_PATTERN } from "../../../lib/validators";
 import { getFriendlyErrorMessage } from "../../../lib/errors";
 import { DEFAULT_ADMIN_PASSWORD } from "../../../lib/adminPassword";
 import { adminEmailFor } from "../../../lib/adminEmail";
+import { noAutofill } from "../../../lib/profile";
 import AdminRoleDialog from "../components/AdminRoleDialog";
 
 const emptyForm = { fullName: "", username: "", email: "" };
@@ -207,11 +208,11 @@ export default function AdminAdminsView() {
           <div className="row g-3">
             <div className="col-12 col-md-6">
               <label htmlFor="newAdminName" className="form-label text-white-50 fs-7 mb-1">Name</label>
-              <input id="newAdminName" type="text" className="form-control admin-input" value={form.fullName} onChange={updateField("fullName")} required />
+              <input id="newAdminName" type="text" {...noAutofill("aa1")} className="form-control admin-input" value={form.fullName} onChange={updateField("fullName")} required />
             </div>
             <div className="col-12 col-md-6">
               <label htmlFor="newAdminUsername" className="form-label text-white-50 fs-7 mb-1">Username</label>
-              <input id="newAdminUsername" type="text" className="form-control admin-input" value={form.username} onChange={updateField("username")} required />
+              <input id="newAdminUsername" type="text" {...noAutofill("aa2")} className="form-control admin-input" value={form.username} onChange={updateField("username")} required />
             </div>
             <div className="col-12 col-md-6">
               <label htmlFor="newAdminEmail" className="form-label text-white-50 fs-7 mb-1">Email Address</label>
