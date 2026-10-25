@@ -27,6 +27,17 @@ export default function PrivacyPolicy() {
           chat, you tick the messages that show the problem. Only the ones you tick are copied, and only our admins can
           read them: the person you report can't, and neither can anyone else.
         </li>
+        <li>
+          GCash payment details (freelancers): the GCash number, the name on the account and, if you add one, a QR picture,
+          saved in Settings. Only you can read your own row. A client sees it only on the page of a project with you, or on
+          a payment card you send in a chat, so they can pay you. It is never on your public profile.
+        </li>
+        <li>
+          Payment records: for a payment made through a project or a chat, the amount, the GCash reference number, the
+          receipt screenshot, and when it was recorded and answered. Only the two people on a payment can read it. The
+          receipt picture is kept in private storage. Admins can read a payment, and open its receipt, only when one of the
+          two people sends it with a report.
+        </li>
         <li>Basic usage information needed to run features like search and "Recommended for you" (for example, which posts you've viewed or messaged about).</li>
         <li>
           Your track record on PhilFreela: the projects you complete (title, finish date, who it was with, and the ratings),
@@ -41,8 +52,8 @@ export default function PrivacyPolicy() {
         relevant freelancers or jobs, verifying identities, and keeping the community safe (reviewing reports and
         enforcing suspensions or bans). Other signed-in users can find your profile by searching for your name or
         username; the search only shows your name, username, role (freelancer or client) and profile picture.
-        PhilFreela does not process any payments -- hiring on this platform is about connecting and messaging, not
-        transactions.
+        PhilFreela does not process, hold or move any money: clients pay freelancers in the GCash app. PhilFreela only
+        records the payments people tell it about, so both sides can see what was sent and what was received.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Consent and transparency</h5>
@@ -73,7 +84,9 @@ export default function PrivacyPolicy() {
         deleted 100 days later (sooner if you successfully appeal), unless an appeal is still pending. If an admin
         archives an account, its data is kept but the account can't be used, and it is permanently deleted 100 days
         later unless an admin restores it. A report you sent, with any chat messages you sent along with it, is
-        removed if you delete your account.
+        removed if you delete your account. Your GCash details are removed with your account, and so are the payment
+        records of the payments you were on. The receipt and QR picture files stay in private storage, where nobody
+        can open them once the record they belong to is gone.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your rights</h5>
@@ -81,7 +94,7 @@ export default function PrivacyPolicy() {
         In Settings, under Privacy &amp; Notifications, you can:
       </p>
       <ul className="text-secondary">
-        <li><strong className="text-white">Review</strong> what's stored about you, and <strong className="text-white">download</strong> a copy of it at any time.</li>
+        <li><strong className="text-white">Review</strong> what's stored about you, and <strong className="text-white">download</strong> a copy of it at any time. The copy includes your payment records and GCash details, but not the receipt pictures.</li>
         <li><strong className="text-white">Update</strong> your profile information yourself, whenever you like.</li>
         <li><strong className="text-white">Delete</strong> your account, which removes your profile, posts, portfolio, and messages permanently. This can't be undone.</li>
       </ul>

@@ -5,8 +5,9 @@
 -- A client books one of a freelancer's services. The freelancer accepts or
 -- declines. An accepted booking starts a project (the same projects table
 -- that Hire uses), so everything after that is the Project pages that
--- already exist: Started, Submitted, Done, then ratings. Like Hire, no money
--- is involved anywhere: a booking has no price.
+-- already exist: Started, Submitted, Done, then ratings. Like Hire, a booking
+-- has no price (a GCash payment is recorded later on the project, see
+-- supabase_payments_schema.sql).
 
 -- ---------------------------------------------------------------------------
 -- The bookings table.

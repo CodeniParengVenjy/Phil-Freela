@@ -6,7 +6,7 @@
 -- profile shows (completed projects, on-time delivery, average rating,
 -- response time, member since) and the list of completed projects, worked out
 -- from the real records. "Completed" means the client marked the project
--- Done; no money is involved anywhere.
+-- Done; payments are not part of any number.
 --
 -- The three functions below run with extra privilege, because other people's
 -- projects and chats are private: the browser can't read them. They only give

@@ -12,8 +12,9 @@ export default function TermsOfService() {
       <h5 className="text-white fw-bold mt-4 mb-2">What PhilFreela is</h5>
       <p className="text-secondary">
         PhilFreela is a platform for Filipino freelancers and clients to find each other, message, and arrange work
-        directly. <strong className="text-white">PhilFreela does not process payments or transactions of any kind</strong> --
-        any payment for work is arranged entirely between the freelancer and client, outside the platform.
+        directly. <strong className="text-white">PhilFreela never holds, moves or guarantees any money.</strong> Clients pay
+        freelancers directly, in their own GCash app, outside the platform. PhilFreela only keeps a record of those
+        payments (see "Payments" below), and it charges no fees.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your account</h5>
@@ -54,6 +55,32 @@ export default function TermsOfService() {
         button on the project, service, or profile, pick "Stolen work / plagiarism", and tell us where the original is.
       </p>
 
+      <h5 className="text-white fw-bold mt-4 mb-2">Payments</h5>
+      <ul className="text-secondary">
+        <li>
+          A freelancer can save a GCash number, the name on the GCash account and, if they like, a GCash QR picture in
+          Settings. A client sees them only on the page of a project with that freelancer, or on the payment card the
+          freelancer sends in a chat. They are not on the public profile.
+        </li>
+        <li>
+          The client pays in their own GCash app, then records the payment on PhilFreela: the amount, the 13-digit GCash
+          reference number and a screenshot of the receipt. The freelancer checks their own GCash and answers Confirm
+          received or Not received. PhilFreela cannot see GCash, so it cannot check, hold, refund or guarantee any
+          payment. The receipt is the client's proof on record, not a check by PhilFreela.
+        </li>
+        <li>Only confirm a payment when the money is in your GCash. Only pay people you trust, and check that the name GCash shows is the name on the payment card.</li>
+        <li>
+          A verified freelancer can ask a person to pay in a chat. Both can see the payment card there, and only the two of
+          them can open the receipt.
+        </li>
+        <li>
+          A payment answered Not received can be sent with a report, so an admin can see the amount, the reference and the
+          receipt. Admins can't read anyone's payments otherwise. Sending a fake or edited receipt, confirming a payment
+          that didn't arrive, or asking for payment for work you won't do can get your account suspended or banned.
+        </li>
+        <li>Payments made outside a project or a chat request are not recorded and are not covered by PhilFreela in any way.</li>
+      </ul>
+
       <h5 className="text-white fw-bold mt-4 mb-2">Ratings</h5>
       <p className="text-secondary">
         Once a project is marked done, both sides can rate each other once, within 14 days. Ratings are blind: your
@@ -78,7 +105,8 @@ export default function TermsOfService() {
       <p className="text-secondary mb-0">
         PhilFreela is a student capstone project built to demonstrate these features, not a commercial service with a
         guaranteed uptime or support team. It's provided as-is, and the project isn't liable for disputes between
-        freelancers and clients, who are responsible for arranging and reviewing their own work and payment.
+        freelancers and clients, who are responsible for arranging and reviewing their own work and payment. Because
+        PhilFreela never holds the money, it cannot recover or refund a payment.
       </p>
     </LegalLayout>
   );

@@ -3,7 +3,8 @@ import { supabase } from "./supabaseClient";
 // Projects, see database/supabase_projects_schema.sql. A project is made when
 // a client hires someone who applied to their job (Projects & Resumes > Hire).
 // Feature 5, Profile transparency and transaction history: a project that
-// both sides confirm as Done is the "completed transaction" (no money).
+// both sides confirm as Done is the "completed transaction". (A GCash payment
+// is a separate record, lib/payments.js, and does not decide whether it counts.)
 // The browser can only READ projects. Every change goes through a database
 // function that checks who is asking and what status the project is in.
 export const MAX_PROJECT_NOTE_LENGTH = 1000;

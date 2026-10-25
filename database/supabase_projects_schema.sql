@@ -4,8 +4,8 @@
 --
 -- Feature 5, Profile transparency and transaction history: a project is made
 -- when a client hires someone who applied to their job. A project that both
--- sides confirm as Done is the "completed transaction" record. No money is
--- involved anywhere.
+-- sides confirm as Done is the "completed transaction" record. A GCash payment
+-- is a separate record (supabase_payments_schema.sql) and does not decide it.
 
 -- ---------------------------------------------------------------------------
 -- Step 1: Required Skills on job posts (shown on the Job Details page).

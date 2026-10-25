@@ -5,7 +5,8 @@ import { todayInManila } from "./projects";
 // a freelancer's services (the Book button), and the freelancer accepts or
 // declines. An accepted booking starts a project, the same kind Hire makes,
 // so it carries on in the Project pages (Started, Submitted, Done, ratings).
-// There is no price: no money is involved anywhere on PhilFreela.
+// There is no price on a booking. Paying is a separate record on the project
+// (lib/payments.js); PhilFreela itself never holds or moves money.
 // The browser can only READ bookings. Every change goes through a database
 // function that checks who is asking and what status the booking is in.
 export const MAX_BOOKING_NOTE_LENGTH = 1000;

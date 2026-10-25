@@ -16,7 +16,7 @@ import { supabase } from "./supabaseClient";
 // straight from the tables their own dashboard already reads, so this adds
 // no new storage or database function.
 export async function exportMyData(userId) {
-  const [profile, verification, services, jobPosts, portfolioItems, applications, projects, bookings, ratingsGiven, ratingsReceived, conversations] =
+  const [profile, verification, services, jobPosts, portfolioItems, applications, projects, bookings, ratingsGiven, ratingsReceived, payments, gcash, conversations] =
     await Promise.all([
       supabase.from("profiles").select("full_name, username, gender, account_type, description, skills, avatar_path, cover_path, email_when_offline, created_at, updated_at").eq("id", userId).maybeSingle(),
       supabase.from("identity_verifications").select("id_type, status, created_at").eq("user_id", userId).order("created_at", { ascending: false }),
@@ -30,6 +30,11 @@ export async function exportMyData(userId) {
       supabase.from("bookings").select("id, title, status, client_id, freelancer_id, due_date, created_at, responded_at").or(`client_id.eq.${userId},freelancer_id.eq.${userId}`),
       supabase.from("project_ratings").select("project_id, stars, feedback, created_at").eq("rater_id", userId),
       supabase.from("project_ratings").select("project_id, stars, feedback, created_at").eq("ratee_id", userId),
+      // GCash payments the person is on (as the one who paid or the one paid),
+      // from projects and from chats. The receipt pictures are left out, like the ID photos.
+      supabase.from("payments").select("id, project_id, conversation_id, client_id, freelancer_id, amount, note, reference_no, status, created_at, answered_at").or(`client_id.eq.${userId},freelancer_id.eq.${userId}`),
+      // The person's own GCash details (a freelancer's number, name and whether a QR is saved).
+      supabase.from("gcash_accounts").select("gcash_number, account_name, qr_path, updated_at").eq("freelancer_id", userId).maybeSingle(),
       messageSummary(userId)
     ]);
 
@@ -38,7 +43,8 @@ export async function exportMyData(userId) {
     about_this_file:
       "Everything PhilFreela has about your account, under the Philippine Data Privacy Act (RA 10173). " +
       "Your government ID photos and face scan are kept only for identity verification and are not included here " +
-      "(only the result is). Messages are summarized, not shown in full, since a message also belongs to the person you sent it to or received it from.",
+      "(only the result is). Messages are summarized, not shown in full, since a message also belongs to the person you sent it to or received it from. " +
+      "Your payment records (amounts and GCash reference numbers) are included; the receipt pictures are not.",
     profile: profile.data,
     identity_verifications: verification.data || [],
     services: services.data || [],
@@ -49,6 +55,10 @@ export async function exportMyData(userId) {
     bookings: bookings.data || [],
     ratings_you_gave: ratingsGiven.data || [],
     ratings_you_received: ratingsReceived.data || [],
+    payments: payments.data || [],
+    gcash_account: gcash.data
+      ? { gcash_number: gcash.data.gcash_number, account_name: gcash.data.account_name, has_qr: Boolean(gcash.data.qr_path), updated_at: gcash.data.updated_at }
+      : null,
     conversations: conversations
   };
 }

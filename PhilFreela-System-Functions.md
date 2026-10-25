@@ -97,7 +97,7 @@ Progress so far is in `HANDOFF-identity-verification.md`.
 
 **Benefit:** Clients make better-informed hiring decisions, and freelancers can judge the reliability of prospective clients.
 
-**Scope:** "Transaction" here means a completed project. The project has no payment or money features.
+**Scope:** "Transaction" here means a completed project. Only completed projects count toward ratings, the on-time rate and profile history. Payment is recorded separately: PhilFreela never holds or moves money. The client pays the freelancer directly in the GCash app and records it (amount, GCash reference number and a receipt screenshot as proof); the freelancer checks their own GCash and confirms or says not received. A payment can be recorded on a project, or from a chat (a payment card the freelancer sends); a payment from a chat adds nothing to profile history. There is no payment gateway, escrow, fee, refund or invoice.
 
 ## 6. Data Privacy Compliance (RA 10173)
 

@@ -1,13 +1,12 @@
 # GCash payments: plan and progress
 
-Saved 2026-10-25 after the user said "ok". Step 1 (database) is built and live;
-Steps 2 to 7 are not started. To continue in a
-new Claude session, say: "Read PLAN-gcash-payments.md and continue from the
-current step."
+Saved 2026-10-25 after the user said "ok". All seven steps are built (2026-10-25).
+The SQL of Steps 1 to 5 is live; Step 7's SQL (`supabase_admin_payments_schema.sql`)
+still has to be run in the Supabase SQL Editor. To continue in a new Claude
+session, say: "Read PLAN-gcash-payments.md and continue from the current step."
 
-Each step gets its own detailed plan, approved by the user, before any code (see
-the steps below: Step 1 has its detail already; the others get theirs when they
-are next).
+Each step had its own detailed plan before any code; each "result" block says what
+was built and how it was tested.
 
 ## Why
 
@@ -504,12 +503,13 @@ old warnings) and build clean. Not tested: the live arrival of a new card or an
 answer (the test holds the realtime socket silent, and shows a new card after a
 reload).
 
-### Step 7: Admin Overview, data and wording (Easy)
+### Step 7: Admin Overview, data and wording (Easy) (BUILT 2026-10-25, its SQL NOT yet run live)
 
-1. Database, `database/supabase_admin_payments_schema.sql`:
-   `admin_transactions()` also returns payments by status (requested, sent,
-   confirmed, not_received, cancelled), archived people left out, counts only,
-   no amounts. Test file `database/test_admin_payments.sql`.
+1. Database, `database/supabase_admin_payments_schema.sql`: a new function
+   `admin_payment_counts()` (instead of widening `admin_transactions()`, so the
+   function that is live now is not touched) returns payments by status
+   (requested, sent, confirmed, not_received, cancelled), archived people left
+   out, counts only, no amounts. Test file `database/test_admin_payments.sql`.
 2. `admin/views/AdminOverviewView.jsx`: the "Payments: Not set up yet" card
    becomes a `StatusCounts` card.
 3. `lib/privacy.js`: "Download your data" includes the person's own payments and
@@ -518,7 +518,43 @@ reload).
    (Feature 5 "Scope"), `PLAN-booking.md`. The Word and PDF study guide in the
    user's OneDrive is not touched: it is listed for the user.
 
-## Wording to change when it is built
+#### Step 7 result (2026-10-25)
+
+Built as planned, except the function is new (`admin_payment_counts()`, admin only
+through `is_admin()`, not callable by signed-out visitors) and the Overview shows
+the "Payments" card with its five numbers and "N in total"; if the function is not
+in the database (or fails) the card keeps the old "Not set up yet" line and the
+rest of the page is unchanged. "Download your data" (`lib/privacy.js`) now has
+`payments` (id, project, chat, both people, amount, note, reference, status, times)
+and `gcash_account` (number, name, whether a QR is saved), never the receipt or
+QR file names; the Settings text and the file's own "about" line say so. Wording:
+Terms (what PhilFreela is, a new Payments section, no warranty), Privacy (GCash
+details and payment records under what we collect, who can read them, when admins
+can, the download, what is kept when an account is deleted), Feature 5 "Scope" in
+`PhilFreela-System-Functions.md`, `PLAN-booking.md`, and the old "no money"
+comments in `bookings.js`, `projects.js`, `profileStats.js` and the three schema
+files. (The Privacy page says the receipt and QR picture files stay in private
+storage after an account is deleted: `delete_my_account()` removes the database
+rows by cascade but nothing deletes storage files, for these pictures or for
+any other upload; fixing that is a separate piece of work.)
+
+Tested: `database/test_admin_payments.sql` (14 checks) passed on a PGlite
+stand-in only, because the Supabase connector was offline: **it has not been run
+on the live database, and the schema has not been applied there**. Browser test
+against a pretend Supabase (31 checks, 0 failed): the card with its five numbers,
+order and total, counts only (no peso sign), all zeros, the function missing (the
+card falls back and Bookings, Projects, Job posts and Ratings still load), phone
+width; "Download your data" for a freelancer with two payments and a QR (the
+receipt column is never asked for, no file names in the file), a client with no
+GCash details, a person with no payments; the Terms and Privacy pages (new
+sections present, old "does not process payments" sentences gone, no sideways
+scrolling). Lint (only the two old warnings) and build clean. Not tested: the
+function against the real database.
+
+To finish: run `database/supabase_admin_payments_schema.sql` (then, if wanted,
+`database/test_admin_payments.sql`; it rolls back) in the Supabase SQL Editor.
+
+## Wording to change when it is built (all done in Step 7 except the last item)
 
 - `client/src/pages/legal/TermsOfService.jsx` (the lines saying PhilFreela does
   not process payments, and that payment is arranged outside the platform): it
@@ -542,6 +578,9 @@ reload).
 
 ## Current step
 
-Step 1 is done. Next: Step 2 (Settings, "GCash Payment"); it needs its own plan
-approved first. Re-check `git log` and the
-live database first: another Claude session works in this folder.
+Steps 1 to 7 are built (2026-10-25). The SQL of Steps 1 to 5 is live; Step 7's
+`database/supabase_admin_payments_schema.sql` still has to be run in the Supabase
+SQL Editor (until then the Admin Overview card says "Not set up yet"). What is
+left is the user's own check on the live site with a real GCash app (see above),
+and the Word and PDF defense guide's no-payments lines. Re-check `git log` and
+the live database first: another Claude session works in this folder.

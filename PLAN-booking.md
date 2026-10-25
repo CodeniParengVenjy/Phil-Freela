@@ -60,7 +60,8 @@ Statuses: Pending, Accepted, Declined, Cancelled.
 - The date can't be in the past (Philippine date, like Hire). A Pending
   booking whose date has already passed can't be accepted; the page shows
   "Date passed" and the client can still cancel it.
-- No money anywhere (project scope): the booking has no price. Price talk
+- The booking has no price (payment is recorded later on the project, see
+  PLAN-gcash-payments.md; the site still never holds money). Price talk
   happens in chat.
 - Declining has no reason box; they explain in chat (like "Request
   changes").

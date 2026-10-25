@@ -4,7 +4,7 @@ import { supabase } from "./supabaseClient";
 // transparency and transaction history), see
 // database/supabase_profiles_schema.sql. "role" is "freelancer" or "client":
 // the numbers only count the projects the person did in that role, and only
-// the ones the client marked Done. No money is involved anywhere.
+// the ones the client marked Done. Payments are not counted in any number.
 
 // One person's numbers, or null when they couldn't be loaded. The row has
 // completed_count, on_time_count (empty for clients), avg_stars, rating_count,

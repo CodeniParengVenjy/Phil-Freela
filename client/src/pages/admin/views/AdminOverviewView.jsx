@@ -123,18 +123,25 @@ export default function AdminOverviewView() {
   // used here; the per-post numbers are for Listings.
   const [hiringTotals, setHiringTotals] = useState(null);
   const [hiringError, setHiringError] = useState("");
+  // How many GCash payments are at each step (admin_payment_counts(): counts only,
+  // no amounts). Null until it has loaded, or when it can't be loaded: the card
+  // then says payments aren't set up yet, and nothing else on the page changes.
+  const [paymentCounts, setPaymentCounts] = useState(null);
 
   useEffect(() => {
     let active = true;
 
     (async () => {
-      const [ratingsResult, transactionsResult, topRatedResult, hiringResult] = await Promise.all([
+      const [ratingsResult, transactionsResult, topRatedResult, hiringResult, paymentsResult] = await Promise.all([
         supabase.rpc("admin_ratings"),
         supabase.rpc("admin_transactions"),
         supabase.rpc("admin_top_rated", { p_limit: 5 }),
-        supabase.rpc("admin_job_hiring")
+        supabase.rpc("admin_job_hiring"),
+        supabase.rpc("admin_payment_counts")
       ]);
       if (!active) return;
+
+      if (!paymentsResult.error) setPaymentCounts(paymentsResult.data);
 
       if (hiringResult.error) setHiringError("Failed to load the job hiring numbers.");
       else setHiringTotals(hiringResult.data.totals);
@@ -383,17 +390,31 @@ export default function AdminOverviewView() {
                   ]}
                 />
               </div>
-              {/* Payments are not built, so this only says where their numbers will go. */}
+              {/* GCash payments: how many are at each step, from projects and chats
+                  together (counts only, no amounts: PhilFreela never holds the money). */}
               <div className="col-12">
-                <div className="admin-card rounded-4 p-3 d-flex align-items-center gap-3">
-                  <span className="admin-stat-icon admin-stat-orange">
-                    <i className="bi bi-cash-coin"></i>
-                  </span>
-                  <div>
-                    <div className="fw-bold text-white">Payments <span className="badge admin-badge-orange rounded-pill fs-8 ms-1">Not set up yet</span></div>
-                    <div className="text-secondary fs-7">When payments are added, how many there are will show here.</div>
+                {paymentCounts ? (
+                  <StatusCounts
+                    title="Payments"
+                    items={[
+                      { label: "Requested", value: paymentCounts.requested },
+                      { label: "Payment sent", value: paymentCounts.sent },
+                      { label: "Confirmed", value: paymentCounts.confirmed },
+                      { label: "Not received", value: paymentCounts.not_received },
+                      { label: "Cancelled", value: paymentCounts.cancelled }
+                    ]}
+                  />
+                ) : (
+                  <div className="admin-card rounded-4 p-3 d-flex align-items-center gap-3">
+                    <span className="admin-stat-icon admin-stat-orange">
+                      <i className="bi bi-cash-coin"></i>
+                    </span>
+                    <div>
+                      <div className="fw-bold text-white">Payments <span className="badge admin-badge-orange rounded-pill fs-8 ms-1">Not set up yet</span></div>
+                      <div className="text-secondary fs-7">How many payments there are at each step will show here.</div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
