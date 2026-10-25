@@ -184,7 +184,7 @@ export default function JobDetailsView() {
       );
     }
     if (accountType !== "freelancer") {
-      return <p className="text-secondary fs-7 mb-0">Only freelancer accounts can apply. Use "Join as Freelancer" at the top to switch.</p>;
+      return <p className="text-secondary fs-7 mb-0">Only freelancer accounts can apply. Use "Switch to Freelancer" in your account menu (top right) to switch.</p>;
     }
     if (isPostingBlocked(suspension)) {
       return <BlockedNotice suspension={suspension} what="apply to jobs" compact />;
@@ -285,9 +285,9 @@ export default function JobDetailsView() {
               <button
                 type="button"
                 className="btn btn-outline-secondary text-white-50 rounded-pill px-3"
-                title="Report this client"
-                aria-label="Report this client"
-                onClick={() => setReportTarget({ type: "user", id: job.client.id, name: clientName })}
+                title="Report this job post"
+                aria-label="Report this job post"
+                onClick={() => setReportTarget({ type: "job_post", id: job.id, name: job.title })}
               >
                 <i className="bi bi-flag-fill"></i>
               </button>

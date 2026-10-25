@@ -380,10 +380,8 @@ export function useDashboardShell() {
   // (what decides which dashboard shell renders), then sends them to their
   // new role's dashboard so the switch is immediately visible.
   //
-  // targetType is optional: the dropdown's single toggle button omits it
-  // (always flips to the other role), while the "Join as Freelancer" /
-  // "Become a Client" top-nav links pass their specific role explicitly so
-  // they perform this same real switch instead of just changing the view.
+  // targetType is optional: the account menu's single toggle omits it (always
+  // flips to the other role); a caller may also name the role to switch to.
   const switchRole = useCallback(async (event, targetType) => {
     event.preventDefault();
     if (!currentUserId) return;

@@ -11,7 +11,6 @@ import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { StarBadge } from "../../../components/StarRating";
 import RecommendationMarks from "../components/RecommendationMarks";
-import ReportDialog from "../components/ReportDialog";
 import CensoredText from "../../../components/CensoredText";
 
 // The pills above the list: all posts, or only one-time projects, or only ongoing jobs.
@@ -32,15 +31,13 @@ const TYPE_FILTERS = [
 // from freelancers (see database/supabase_job_post_details_schema.sql).
 export default function FindJobsView({ withRecommendations = false }) {
   // isAdmin is only set when this page is shown inside the admin panel
-  // (Browse Jobs): admins get a Remove button instead of the chat button.
-  const { openChat, isAdmin, currentUserId, showToast } = useOutletContext();
+  // (Browse Jobs): admins get a Remove button on each row.
+  const { isAdmin } = useOutletContext();
   const [query, setQuery] = useState("");
   // Which kind of work the pills show: "all", "project" or "job".
   const [typeFilter, setTypeFilter] = useState("all");
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState("");
-  // The job post being reported (null = Report popup closed).
-  const [reportTarget, setReportTarget] = useState(null);
   // The AI's picks (lib/useRecommendations.js): job id -> { position, reasons }.
   const recs = useRecommendations(withRecommendations);
   const picked = recs.picked;
@@ -208,35 +205,15 @@ export default function FindJobsView({ withRecommendations = false }) {
                     <i className="bi bi-trash me-1"></i> Remove
                   </button>
                 ) : (
-                  // Side by side on a laptop, one above the other on a phone.
-                  <div className="position-relative z-2 d-flex flex-column flex-sm-row gap-2 flex-shrink-0">
-                    <button
-                      className="btn btn-dark border border-secondary text-orange hover-bg-orange rounded-3 px-3 py-2"
-                      title={`Message ${clientName}`}
-                      aria-label={`Message ${clientName}`}
-                      onClick={() => openChat(job.client?.id)}
-                    >
-                      <i className="bi bi-chat-dots-fill fs-5"></i>
-                    </button>
-                    {job.client?.id !== currentUserId && (
-                      <button
-                        className="btn btn-dark border border-secondary text-secondary rounded-3 px-3 py-2"
-                        title="Report this job post"
-                        aria-label="Report this job post"
-                        onClick={() => setReportTarget({ type: "job_post", id: job.id, name: job.title })}
-                      >
-                        <i className="bi bi-flag fs-5"></i>
-                      </button>
-                    )}
-                  </div>
+                  // No buttons on a row: the whole row opens the job (the arrow
+                  // says so), and the job's page has Apply, Message and Report.
+                  <i className="bi bi-chevron-right text-secondary fs-5 flex-shrink-0" aria-hidden="true"></i>
                 )}
               </div>
             );
           })}
         </div>
       </div>
-
-      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
     </section>
   );
 }

@@ -11,7 +11,6 @@ import OriginalBadge from "../../../components/OriginalBadge";
 import RatingChip from "../../../components/RatingChip";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
-import ReportDialog from "../components/ReportDialog";
 import MediaCarousel from "../components/MediaCarousel";
 import RecommendationMarks from "../components/RecommendationMarks";
 import CensoredText from "../../../components/CensoredText";
@@ -23,8 +22,8 @@ import CensoredText from "../../../components/CensoredText";
 // can't be reached the list is simply the plain newest-first one.
 export default function BrowseServicesView({ withRecommendations = false }) {
   // isAdmin is only set when this page is shown inside the admin panel
-  // (Browse Services): admins get a Remove button instead of Message.
-  const { openChat, isAdmin, currentUserId, showToast } = useOutletContext();
+  // (Browse Services): admins get a Remove button instead of View offer.
+  const { isAdmin } = useOutletContext();
   // The AI's picks (lib/useRecommendations.js): service id -> { position, reasons }.
   const recs = useRecommendations(withRecommendations);
   const picked = recs.picked;
@@ -32,8 +31,6 @@ export default function BrowseServicesView({ withRecommendations = false }) {
   const [query, setQuery] = useState("");
   const [services, setServices] = useState(null);
   const [error, setError] = useState("");
-  // The service being reported (null = Report popup closed).
-  const [reportTarget, setReportTarget] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -205,36 +202,11 @@ export default function BrowseServicesView({ withRecommendations = false }) {
                           <i className="bi bi-trash me-1"></i> Remove
                         </button>
                       ) : (
-                        // In a narrow card (three per row with the menu open) the
-                        // buttons may not fit on one line. flex-grow-1 on View
-                        // offer and Message makes each line fill the card's width
-                        // then, instead of leaving ragged gaps; in a wide card it
-                        // changes nothing.
-                        <div className="d-flex flex-wrap gap-1 ms-auto">
-                          {s.freelancer?.id !== currentUserId && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-dark text-secondary rounded-pill px-2"
-                              title="Report this service"
-                              aria-label="Report this service"
-                              onClick={() => setReportTarget({ type: "service", id: s.id, name: s.title })}
-                            >
-                              <i className="bi bi-flag"></i>
-                            </button>
-                          )}
-                          {/* There is no Book button here: a client books from the
-                              offer's page, after reading its description. */}
-                          <Link to={`/dashboard/service-details/${s.id}`} className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold flex-grow-1">
-                            <i className="bi bi-eye me-1"></i> View offer
-                          </Link>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white flex-grow-1"
-                            onClick={() => openChat(s.freelancer?.id)}
-                          >
-                            <i className="bi bi-chat-dots-fill me-1"></i> Message
-                          </button>
-                        </div>
+                        // The card's one button. Book, Message and Report are on
+                        // the offer's page, after reading its description.
+                        <Link to={`/dashboard/service-details/${s.id}`} className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white ms-auto">
+                          <i className="bi bi-eye me-1"></i> View offer
+                        </Link>
                       )}
                     </div>
                   </div>
@@ -244,8 +216,6 @@ export default function BrowseServicesView({ withRecommendations = false }) {
           })}
         </div>
       </div>
-
-      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
     </section>
   );
 }

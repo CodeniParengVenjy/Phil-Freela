@@ -7,17 +7,17 @@ import Avatar from "../../../components/Avatar";
 import "../dashboard.css";
 import "../theme.css";
 
+// Profile and Settings are not here: they are in the account menu at the top
+// right, and the name card below opens the profile (one way to reach each page).
 const sidebarLinks = [
   { to: "/dashboard-client", end: true, icon: "bi-speedometer2", label: "Dashboard" },
-  { to: "/dashboard/profile", icon: "bi-person-circle", label: "Profile" },
   { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox" },
   { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications" },
   { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings" },
   { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project" },
-  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes" },
+  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes" }
   // (AI Moodboard Matching has no link here: it is the camera button in the
   // search box, see DashboardTopNav.jsx.)
-  { to: "/dashboard/settings", icon: "bi-gear-fill", label: "Settings" }
 ];
 
 // Receives the shared session/toast/preview/chat state as props from
@@ -47,13 +47,13 @@ export default function ClientDashboardLayout({
         <aside className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
           <div className="sidebar-inner d-flex flex-column justify-content-between h-100 py-3 px-2">
             <div className="nav flex-column gap-2">
-              <div className="sidebar-identity">
+              <NavLink to="/dashboard/profile" className="sidebar-identity text-decoration-none" title="My profile">
                 <Avatar path={avatarPath} name={displayName} size={40} />
                 <div className="d-flex flex-column overflow-hidden">
                   <span className="text-white fw-bold fs-7 text-truncate">{displayName}</span>
                   <span className="role-badge">Client</span>
                 </div>
-              </div>
+              </NavLink>
 
               {sidebarLinks.map((link) => {
                 // Live unread counts: messages on Inbox, notifications on Notifications.
@@ -100,15 +100,7 @@ export default function ClientDashboardLayout({
                   Track applications, manage your hires, and keep your project pipeline moving.
                 </p>
               </div>
-              {/* On a phone the two buttons share the row, or stack if they don't fit. */}
-              <div className="d-flex flex-wrap gap-2">
-                <NavLink to="/dashboard/post-need" className="btn btn-outline-role rounded-pill px-3 py-2 fs-7 fw-bold flex-fill text-nowrap">
-                  <i className="bi bi-plus-lg me-1"></i> Post a Project
-                </NavLink>
-                <NavLink to="/dashboard/projects" className="btn btn-gradient-role rounded-pill px-3 py-2 fs-7 fw-bold flex-fill text-nowrap text-white">
-                  <i className="bi bi-folder me-1"></i> View Projects
-                </NavLink>
-              </div>
+              {/* No buttons: Post a Project and Projects & Resumes are in the sidebar. */}
             </div>
           )}
 

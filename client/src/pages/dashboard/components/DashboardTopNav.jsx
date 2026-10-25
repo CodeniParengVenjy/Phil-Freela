@@ -11,8 +11,8 @@ import PictureSearchDialog from "./PictureSearchDialog";
 import SwitchToAdminDialog from "./SwitchToAdminDialog";
 
 // Identical between the freelancer and client dashboards -- brand, search,
-// the three quick links, and the account dropdown -- so both layouts share
-// this instead of each keeping their own copy.
+// and the account dropdown -- so both layouts share this instead of each
+// keeping their own copy.
 export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, onToggleSidebar, onSignOut, onSwitchRole, showToast, openChat }) {
   const isVerified = useVerifiedIds([currentUserId]).has(currentUserId);
   const switchLabel = accountType === "client" ? "Switch to Freelancer" : "Switch to Client";
@@ -158,13 +158,9 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           <NavLink to="/dashboard/search" className="nav-link text-white-50 hover-orange d-md-none" aria-label="Search" title="Search">
             <i className="bi bi-search fs-5"></i>
           </NavLink>
-          {accountType !== "freelancer" && (
-            <a href="/dashboard-freelancer" className="nav-link text-white-50 hover-orange d-none d-lg-block fw-semibold fs-7" onClick={(event) => onSwitchRole(event, "freelancer")}>Join as Freelancer</a>
-          )}
-          {accountType !== "client" && (
-            <a href="/dashboard-client" className="nav-link text-white-50 hover-orange d-none d-lg-block fw-semibold fs-7" onClick={(event) => onSwitchRole(event, "client")}>Become a Client</a>
-          )}
-          <NavLink to="/dashboard/services" className="nav-link text-white-50 hover-orange d-none d-lg-block fw-semibold fs-7">Services</NavLink>
+          {/* (No "Join as Freelancer" / "Become a Client" / "Services" links here:
+              switching roles is in the account menu below, and My Services is a
+              sidebar link for freelancers. One way to reach each thing.) */}
 
           {/* Only for an admin's own user account (linked in the admin's My Profile):
               a button in plain sight on big screens, and an item in the menu below

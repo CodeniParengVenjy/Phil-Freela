@@ -7,14 +7,15 @@ import Avatar from "../../../components/Avatar";
 import "../dashboard.css";
 import "../theme.css";
 
+// Profile and Settings are not here: they are in the account menu at the top
+// right, and the name card below opens the profile (one way to reach each page).
 const sidebarLinks = [
   { to: "/dashboard-freelancer", end: true, icon: "bi-speedometer2", label: "Dashboard" },
-  { to: "/dashboard/profile", icon: "bi-person-circle", label: "Profile" },
+  { to: "/dashboard/services", icon: "bi-briefcase-fill", label: "My Services" },
   { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox" },
   { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications" },
   { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings" },
-  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project" },
-  { to: "/dashboard/settings", icon: "bi-gear-fill", label: "Settings" }
+  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project" }
 ];
 
 // Receives the shared session/toast/preview/chat state as props from
@@ -45,13 +46,13 @@ export default function FreelancerDashboardLayout({
         <aside className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
           <div className="sidebar-inner d-flex flex-column justify-content-between h-100 py-3 px-2">
             <div className="nav flex-column gap-2">
-              <div className="sidebar-identity">
+              <NavLink to="/dashboard/profile" className="sidebar-identity text-decoration-none" title="My profile">
                 <Avatar path={avatarPath} name={displayName} size={40} />
                 <div className="d-flex flex-column overflow-hidden">
                   <span className="text-white fw-bold fs-7 text-truncate">{displayName}</span>
                   <span className="role-badge">Freelancer</span>
                 </div>
-              </div>
+              </NavLink>
 
               {sidebarLinks.map((link) => {
                 // Live counts: messages on Inbox, notifications on Notifications,
@@ -100,15 +101,8 @@ export default function FreelancerDashboardLayout({
                   Manage your freelance portfolio, job proposals, messages, and settings seamlessly.
                 </p>
               </div>
-              {/* On a phone the two buttons share the row, or stack if they don't fit. */}
-              <div className="d-flex flex-wrap gap-2">
-                <NavLink to="/dashboard/services" className="btn btn-outline-role rounded-pill px-3 py-2 fs-7 fw-bold flex-fill text-nowrap">
-                  <i className="bi bi-plus-lg me-1"></i> Post Service
-                </NavLink>
-                <NavLink to="/dashboard/find-jobs" className="btn btn-gradient-role rounded-pill px-3 py-2 fs-7 fw-bold flex-fill text-nowrap text-white">
-                  <i className="bi bi-search me-1"></i> Find Jobs
-                </NavLink>
-              </div>
+              {/* No buttons: this page is already the list of jobs, and the
+                  sidebar has My Services and Project. */}
             </div>
           )}
 

@@ -230,6 +230,11 @@ body.sidebar-collapsed .sidebar-wrapper {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* The card is a link to My Profile. */
+a.sidebar-identity:hover {
+  border-color: var(--accent-role);
+}
+
 .sidebar-identity .role-badge {
   display: inline-block;
   font-size: 0.65rem;
