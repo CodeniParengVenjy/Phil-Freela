@@ -415,3 +415,13 @@ $$;
 
 revoke execute on function public.mark_payment_not_received(uuid) from public, anon;
 grant execute on function public.mark_payment_not_received(uuid) to authenticated;
+
+-- ===========================================================================
+-- Part 2 (added after part 1 was applied, Step 3): live updates
+-- Run it on its own, after part 1.
+-- ===========================================================================
+
+-- So the project page and the chat show the other person's answer without a
+-- reload. Live updates follow the same row level security as a normal read: a
+-- person is only told about payments they can see.
+alter publication supabase_realtime add table public.payments;

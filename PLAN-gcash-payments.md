@@ -238,7 +238,7 @@ sideways scrolling, light mode readable; lint (only the two old warnings in
 `useDashboardShell.js`) and build clean. Not tried against the real database:
 the real storage rules for `gcash-qr` were only tested in SQL (Step 1).
 
-### Step 3: Payments section on the project page (Medium)
+### Step 3: Payments section on the project page (Medium) (DONE 2026-10-25)
 
 1. Database, a small Part 2 at the end of `supabase_payments_schema.sql`:
    `alter publication supabase_realtime add table public.payments`, so the other
@@ -269,6 +269,39 @@ the real storage rules for `gcash-qr` were only tested in SQL (Step 1).
 Test: browser test with a fake backend for both people (record with a receipt, a
 reused reference refused, confirm, not received, record again, loading and
 errors, the freelancer with no details, phone width), lint and build.
+
+#### Step 3 result (2026-10-25)
+
+Built as planned. Database Part 2 (live updates: `payments` added to the
+realtime publication) is at the end of `supabase_payments_schema.sql` and was
+applied live as the migration `payments_realtime` (checked: `payments` is in the
+`supabase_realtime` publication). Website: `lib/payments.js` (pay details, list,
+record, confirm, not received, open receipt, live watch),
+`components/RecordPaymentDialog.jsx`, `components/PaymentsSection.jsx`, a call to
+it at the bottom of `ProjectDetailsView.jsx`, and the icons and "View payment"
+button for the three notification kinds in `lib/notifications.js`. Differences
+from the plan text: the freelancer's answer asks a second question first ("Is
+₱750.00 in your GCash with this reference? You can't change your answer
+afterwards."), because an answer can't be undone; a freelancer with no GCash
+details saved is told so, with a link to Settings.
+
+Tested in a real browser against a pretend Supabase that imitates the database's
+rules (51 checks, 0 failed): the client sees the name, the number and the QR
+through a signed link, Copy number, the job budget hint; the record window (Send
+record off until a screenshot is attached, a GIF and a 6 MB picture refused,
+amount 0 / over 1,000,000 / three decimals / a short reference refused before
+anything is uploaded); a good record sends 1500, the reference without spaces and
+a receipt in the client's own folder; a reused reference shows the database's
+sentence and the uploaded receipt is removed again; Cancel and Escape; View
+receipt opens a signed link in a new tab; after "Not received" the same reference
+is recorded again; a freelancer with no details saved; a list that fails to
+load; the freelancer's Confirm received / Not received with the second question,
+the toast, the refresh and a refusal from the database; phone width and light
+mode with no sideways scrolling; the Notifications page lists the three kinds
+with their icons and "View payment". Lint (only the two old warnings in
+`useDashboardShell.js`) and build clean. Not tested: the live update itself (the
+test holds the realtime socket silent, so only a reload shows the other person's
+answer there; the subscription is the same one the chat uses).
 
 ### Step 4: Report with a payment (Medium)
 

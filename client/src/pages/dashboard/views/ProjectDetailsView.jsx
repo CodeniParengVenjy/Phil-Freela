@@ -7,6 +7,7 @@ import {
 import { profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
 import CensoredText from "../../../components/CensoredText";
+import PaymentsSection from "../components/PaymentsSection";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
 // My Projects or from a project notification. Both people on the project use
@@ -371,6 +372,18 @@ export default function ProjectDetailsView() {
             )}
           </div>
         )}
+
+        {/* Payments (PLAN-gcash-payments.md): the client pays in the GCash app and
+            records it here; the freelancer confirms after checking their own GCash. */}
+        <PaymentsSection
+          project={project}
+          iAmClient={iAmClient}
+          currentUserId={currentUserId}
+          otherName={otherName}
+          otherId={other?.id}
+          showToast={showToast}
+          openChat={openChat}
+        />
       </div>
     </section>
   );

@@ -75,7 +75,11 @@ export const notificationIcons = {
   booking_requested: { icon: "bi-calendar-plus-fill", className: "bg-info text-dark" },
   booking_accepted: { icon: "bi-calendar-check-fill", className: "bg-success text-white" },
   booking_declined: { icon: "bi-calendar-x-fill", className: "bg-danger text-white" },
-  booking_cancelled: { icon: "bi-calendar-minus-fill", className: "bg-secondary text-white" }
+  booking_cancelled: { icon: "bi-calendar-minus-fill", className: "bg-secondary text-white" },
+  // A step in a GCash payment (database/supabase_payments_schema.sql).
+  payment_sent: { icon: "bi-cash-coin", className: "bg-warning text-dark" },
+  payment_confirmed: { icon: "bi-cash-stack", className: "bg-success text-white" },
+  payment_not_received: { icon: "bi-exclamation-circle-fill", className: "bg-danger text-white" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -92,5 +96,8 @@ export const notificationLinkLabels = {
   booking_requested: "Open bookings",
   booking_accepted: "Open project",
   booking_declined: "Open bookings",
-  booking_cancelled: "Open bookings"
+  booking_cancelled: "Open bookings",
+  payment_sent: "View payment",
+  payment_confirmed: "View payment",
+  payment_not_received: "View payment"
 };

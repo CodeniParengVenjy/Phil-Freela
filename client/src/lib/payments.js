@@ -180,3 +180,105 @@ export async function removeMyGcash(userId) {
   }
   return "";
 }
+
+// ---------------------------------------------------------------------------
+// Payments on a project (the Payments section of the project page)
+// ---------------------------------------------------------------------------
+
+// What the database says in plain words (P0001) is shown as it is; any other
+// problem gets a general message.
+const plainMessage = (error, fallback) => (error?.code === "P0001" && error.message ? error.message : fallback);
+
+// Where to send the money, for the client of a project: { data } with the
+// freelancer's { account_name, gcash_number, qr_path }, { data: null } when they
+// have not saved any details yet, or { error }.
+export async function getPayDetails(projectId) {
+  const { data, error } = await supabase.rpc("get_pay_details", { target_project: projectId });
+  if (error) {
+    console.error("Loading where to pay failed:", error);
+    return { error: plainMessage(error, "Couldn't load where to pay. Please try again.") };
+  }
+  return { data: data?.[0] || null };
+}
+
+const PAYMENT_FIELDS = "id, project_id, client_id, freelancer_id, amount, reference_no, receipt_path, status, created_at, answered_at";
+
+// The payments of one project, newest first: { data } or { error }.
+export async function listProjectPayments(projectId) {
+  const { data, error } = await supabase
+    .from("payments")
+    .select(PAYMENT_FIELDS)
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Loading the payments failed:", error);
+    return { error: "Couldn't load the payments. Please try again." };
+  }
+  return { data: data || [] };
+}
+
+// "I've paid". The receipt picture goes up first, then the database records the
+// payment and tells the freelancer; if the database refuses (a reused reference,
+// a wrong amount...), the picture is removed again so no unused file stays.
+// Returns { id } or { error }.
+export async function recordPayment({ userId, projectId, amount, reference, receiptFile }) {
+  const upload = await uploadReceipt(userId, receiptFile);
+  if (upload.error) return { error: upload.error };
+
+  const { data, error } = await supabase.rpc("record_payment", {
+    target_project: projectId,
+    pay_amount: amount,
+    pay_reference: reference,
+    pay_receipt_path: upload.path
+  });
+  if (error) {
+    console.error("Recording the payment failed:", error);
+    await removeReceiptFile(upload.path);
+    return { error: plainMessage(error, "Couldn't record that payment. Please try again.") };
+  }
+  return { id: data };
+}
+
+// The freelancer's answers. Both return "" when done, or a message to show.
+export async function confirmPayment(paymentId) {
+  const { error } = await supabase.rpc("confirm_payment", { target_payment: paymentId });
+  if (error) {
+    console.error("Confirming the payment failed:", error);
+    return plainMessage(error, "Couldn't confirm that payment. Please try again.");
+  }
+  return "";
+}
+
+export async function markNotReceived(paymentId) {
+  const { error } = await supabase.rpc("mark_payment_not_received", { target_payment: paymentId });
+  if (error) {
+    console.error("Answering the payment failed:", error);
+    return plainMessage(error, "Couldn't save that answer. Please try again.");
+  }
+  return "";
+}
+
+// Opens a receipt in a new tab through a link that stops working after 60
+// seconds, like a deliverable. Returns "" or a message.
+export async function openReceipt(path) {
+  const tab = window.open("", "_blank");
+  const { data, error } = await supabase.storage.from(RECEIPT_BUCKET).createSignedUrl(path, 60);
+  if (error || !data?.signedUrl) {
+    tab?.close();
+    return "Couldn't open that receipt. Please try again.";
+  }
+  if (tab) tab.location.href = data.signedUrl;
+  else window.location.href = data.signedUrl;
+  return "";
+}
+
+// Calls onChange whenever a payment of this project is added or answered, so
+// the page shows the other person's answer without a reload. Returns a function
+// that stops listening.
+export function watchProjectPayments(projectId, onChange) {
+  const channel = supabase
+    .channel(`payments:project:${projectId}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `project_id=eq.${projectId}` }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(channel);
+}
