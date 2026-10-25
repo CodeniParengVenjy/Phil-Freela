@@ -129,7 +129,8 @@ New file `database/supabase_pending_users_schema.sql`. No new tables.
 2. "Confirm manually": a super admin button that marks an email confirmed. The
    quickest way to let a tester in when mail won't arrive, but it skips proof
    that they own the address.
-3. Deleting old pending accounts (for example the "gamil.com" one).
+3. Deleting old pending accounts (for example the "gamil.com" one). Added
+   later, see "Delete a pending sign-up" at the end.
 4. A "did you mean gmail.com?" hint on the sign-up form and on this list.
 5. An automatic reminder email after 24 hours.
 6. People who confirmed but have no profile (like Lady Nicole on 2026-10-19).
@@ -211,3 +212,59 @@ Part A, steps 1 to 4: built (2026-10-19).
 
 Part B (the testers' own "Resend my email" page): not built. Waiting for the
 owner's yes.
+
+## Delete a pending sign-up (2026-10-25)
+
+Request from the owner: "can you have a delete button on these, that can
+restart again?" and "remove them here once it's done". Plan approved with
+"ok", plus "add a Cancel" (the pop-up has one).
+
+What it does:
+
+1. Each row has a red **Delete** button under (laptop) or beside (phone)
+   Resend email. It opens a pop-up, "Delete <name>'s sign-up?", with the
+   @username and email, and two buttons: **Cancel** and **Delete**. Cancel,
+   Escape and a click outside close it without deleting; while the delete is
+   running none of them close it.
+2. Delete removes the sign-up (the login in `auth.users`) completely, so the
+   person can press Create Account again from the start with the same email.
+   A green line says "Deleted x. They can sign up again from the start."
+3. The row leaves the list at once; the sidebar number and the Overview card
+   follow. If the person had confirmed a moment ago (or another admin removed
+   them) the row still leaves, with a plain line saying why, and nothing is
+   deleted.
+4. The list now refreshes itself every 30 seconds and when the admin comes
+   back to the browser tab (not while the tab is hidden), so people who
+   confirmed drop off without pressing Refresh. A failed quiet refresh keeps
+   the list on screen; the search text is kept; a Resend wait carries on.
+   A list asked for just before a delete cannot bring the person back (the
+   page remembers who it deleted).
+
+Database: `database/supabase_pending_delete_schema.sql` adds
+`admin_delete_pending_user(target_id)`. Any admin can call it (not only super
+admins: a pending login holds no data and the person can just sign up again;
+making it super-admin only is one line). It repeats the pending rule at the
+moment of deleting (not confirmed, no profile, not an admin) and otherwise
+raises "That person is no longer waiting on a confirmation email." It writes
+one Activity Log line (kind `user_delete`): "<admin> deleted the pending
+sign-up of <name> (<email>)." Everything that points at a login is "on delete
+cascade" (checked on the live database 2026-10-25), so nothing is left behind.
+No new table. Signed-out visitors cannot call it.
+
+Files: `AdminPendingView.jsx`, a few lines in `admin.css`, the new schema file
+and `database/test_pending_delete.sql`.
+
+Status (2026-10-25):
+
+1. Website: built and tested (94 checks in a real browser against a pretend
+   Supabase, laptop and phone, 0 failed; the 124 checks of the first version
+   re-run: the 120 on this page pass; the other 4 are Overview checks that fail
+   on the old pretend backend, which does not know `admin_job_hiring`).
+2. Database: NOT applied. The connector declined the file (it contains a
+   `delete from`, same as Archives), so it must be pasted into the Supabase
+   SQL Editor. The SQL and its test (18 checks) were run on a stand-in Postgres
+   (PGlite) and all pass, but NOT on the live database. Until the file is run
+   the Delete button answers "Delete isn't set up in the database yet".
+3. To finish: run `supabase_pending_delete_schema.sql` in the SQL Editor, then
+   `test_pending_delete.sql` (it ends with an error that carries the PASS/FAIL
+   list and rolls everything back), then push the website.

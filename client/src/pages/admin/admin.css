@@ -978,6 +978,15 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* Resend email and Delete: side by side on a phone, stacked on a wide screen. */
+.admin-pending-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin-pending-buttons .btn { flex: 1 1 auto; }
+
 @media (min-width: 768px) {
   .admin-pending-row {
     flex-direction: row;
@@ -988,6 +997,7 @@ body {
   .admin-pending-who { flex: 1 1 auto; }
   .admin-pending-times { flex: 0 0 15rem; }
   .admin-pending-action { flex: 0 0 11rem; text-align: right; }
+  .admin-pending-buttons { flex-direction: column; }
 }
 
 /* Users > Filters and sorting pop-up: round choice buttons, the orange number on the
