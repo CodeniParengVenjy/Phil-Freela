@@ -7,10 +7,12 @@ import { removeListing } from "../../../lib/adminListings";
 import { byPick, useRecommendations } from "../../../lib/useRecommendations";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { useRatingSummaries } from "../../../lib/ratings";
+import { useFeatureStatus } from "../../../lib/featured";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { StarBadge } from "../../../components/StarRating";
 import RecommendationMarks from "../components/RecommendationMarks";
+import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
 
 // The pills above the list: all posts, or only one-time projects, or only ongoing jobs.
@@ -80,6 +82,8 @@ export default function FindJobsView({ withRecommendations = false }) {
   // Every client's average rating, loaded in one request for the whole list
   // (Feature 5, Profile transparency).
   const ratings = useRatingSummaries((jobs || []).map((job) => job.client?.id));
+  // Which job posts someone paid to feature (and are still running).
+  const featured = useFeatureStatus();
 
   const filtered = useMemo(() => {
     if (!jobs) return [];
@@ -93,6 +97,73 @@ export default function FindJobsView({ withRecommendations = false }) {
     // The AI's picks first, in its order; the rest stay newest first.
     return matching.sort(byPick(picked));
   }, [jobs, query, typeFilter, picked]);
+
+  // Featured posts (PLAN-monetization.md, step 4) move out of the list into their own
+  // row on top, in the same order, after the search and the filters. The admin's
+  // copy of this page stays one plain list.
+  const featuredItems = isAdmin ? [] : filtered.filter((job) => featured.until.has(job.id));
+  const rest = isAdmin ? filtered : filtered.filter((job) => !featured.until.has(job.id));
+
+  // One row of the list. The Featured row and the normal list below it both use it.
+  const renderJob = (job, index, isFeatured) => {
+    const clientName = job.client?.full_name || job.client?.username || "Client";
+    const categoryLabel = getCategory(job.category).label;
+    // The client's public page (admins stay in the admin panel).
+    const clientPage = !isAdmin && job.client?.id ? `/dashboard/clients/${job.client.id}` : undefined;
+    return (
+      // position-relative: the title's link is stretched over the whole
+      // row (Bootstrap's stretched-link), so clicking anywhere on a row
+      // opens the job. The picture, the client's name and the buttons
+      // sit above it (z-2) and keep their own clicks.
+      // (data-tour: the opening tour points at the first row, components/WelcomeGuide.jsx)
+      <div key={job.id} data-tour={index === 0 ? "first-item" : undefined} className={`job-item-card position-relative p-3 p-md-4 rounded-3 bg-dark bg-opacity-50 border ${isFeatured ? "border-warning border-opacity-50" : "border-secondary border-opacity-25"} d-flex align-items-center gap-3 hover-lift`}>
+        {/* The client's own picture; like their name, it opens their public page. */}
+        <div className="position-relative z-2 d-flex flex-shrink-0">
+          <Avatar path={job.client?.avatar_path} name={clientName} size={64} to={clientPage} />
+        </div>
+
+        <div className="flex-grow-1 overflow-hidden">
+          {/* Opens the job's page, where freelancers apply (not in the admin panel). */}
+          <h5 className="text-white fw-bold mb-1 text-break">
+            {isAdmin ? <CensoredText text={job.title} /> : <Link to={`/dashboard/job-details/${job.id}`} className="stretched-link text-white text-decoration-none hover-role"><CensoredText text={job.title} /></Link>}
+          </h5>
+          <div className="position-relative z-2 d-inline-flex flex-wrap align-items-center gap-2 fs-7 mb-2">
+            <span className="text-white-50 text-break">
+              {clientPage
+                ? <Link to={clientPage} className="text-white-50 text-decoration-underline">{clientName}</Link>
+                : clientName}
+              <VerifiedBadge verified={verifiedIds.has(job.client?.id)} showUnverified />
+            </span>
+            {/* The client's average rating from finished projects (nothing until they have one). */}
+            <StarBadge summary={ratings.get(job.client?.id)} />
+          </div>
+          <div className="d-flex flex-wrap align-items-center gap-2 fs-7">
+            {isFeatured && <FeaturedBadge />}
+            {/* text-wrap: a long category name goes to a second line on a phone. */}
+            <span className="badge bg-black text-light text-wrap text-start px-3 py-1 rounded-pill">{categoryLabel}</span>
+            <span className="badge bg-role-subtle text-role px-3 py-1 rounded-pill">{getJobType(job.job_type).short}</span>
+            {budgetText(job) && <span className="text-warning">{budgetText(job)}</span>}
+          </div>
+          {/* When the work starts and is due. */}
+          {datesText(job) && (
+            <p className="text-white-50 fs-8 mb-0 mt-2"><i className="bi bi-calendar-event me-1"></i>{datesText(job)}</p>
+          )}
+          {/* Picked by the AI: marked, with why. */}
+          {picked.has(job.id) && <RecommendationMarks pick={picked.get(job.id)} personalized={recs.personalized} want="jobs" />}
+        </div>
+
+        {isAdmin ? (
+          <button className="btn btn-outline-danger rounded-3 px-3 py-2 fw-bold text-nowrap flex-shrink-0" onClick={() => handleRemove(job)}>
+            <i className="bi bi-trash me-1"></i> Remove
+          </button>
+        ) : (
+          // No buttons on a row: the whole row opens the job (the arrow
+          // says so), and the job's page has Apply, Message and Report.
+          <i className="bi bi-chevron-right text-secondary fs-5 flex-shrink-0" aria-hidden="true"></i>
+        )}
+      </div>
+    );
+  };
 
   return (
     <section className="dashboard-view active-view">
@@ -155,64 +226,10 @@ export default function FindJobsView({ withRecommendations = false }) {
         )}
 
         <div className="d-flex flex-column gap-3">
-          {filtered.map((job, index) => {
-            const clientName = job.client?.full_name || job.client?.username || "Client";
-            const categoryLabel = getCategory(job.category).label;
-            // The client's public page (admins stay in the admin panel).
-            const clientPage = !isAdmin && job.client?.id ? `/dashboard/clients/${job.client.id}` : undefined;
-            return (
-              // position-relative: the title's link is stretched over the whole
-              // row (Bootstrap's stretched-link), so clicking anywhere on a row
-              // opens the job. The picture, the client's name and the buttons
-              // sit above it (z-2) and keep their own clicks.
-              // (data-tour: the opening tour points at the first row, components/WelcomeGuide.jsx)
-              <div key={job.id} data-tour={index === 0 ? "first-item" : undefined} className="job-item-card position-relative p-3 p-md-4 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-3 hover-lift">
-                {/* The client's own picture; like their name, it opens their public page. */}
-                <div className="position-relative z-2 d-flex flex-shrink-0">
-                  <Avatar path={job.client?.avatar_path} name={clientName} size={64} to={clientPage} />
-                </div>
-
-                <div className="flex-grow-1 overflow-hidden">
-                  {/* Opens the job's page, where freelancers apply (not in the admin panel). */}
-                  <h5 className="text-white fw-bold mb-1 text-break">
-                    {isAdmin ? <CensoredText text={job.title} /> : <Link to={`/dashboard/job-details/${job.id}`} className="stretched-link text-white text-decoration-none hover-role"><CensoredText text={job.title} /></Link>}
-                  </h5>
-                  <div className="position-relative z-2 d-inline-flex flex-wrap align-items-center gap-2 fs-7 mb-2">
-                    <span className="text-white-50 text-break">
-                      {clientPage
-                        ? <Link to={clientPage} className="text-white-50 text-decoration-underline">{clientName}</Link>
-                        : clientName}
-                      <VerifiedBadge verified={verifiedIds.has(job.client?.id)} showUnverified />
-                    </span>
-                    {/* The client's average rating from finished projects (nothing until they have one). */}
-                    <StarBadge summary={ratings.get(job.client?.id)} />
-                  </div>
-                  <div className="d-flex flex-wrap align-items-center gap-2 fs-7">
-                    {/* text-wrap: a long category name goes to a second line on a phone. */}
-                    <span className="badge bg-black text-light text-wrap text-start px-3 py-1 rounded-pill">{categoryLabel}</span>
-                    <span className="badge bg-role-subtle text-role px-3 py-1 rounded-pill">{getJobType(job.job_type).short}</span>
-                    {budgetText(job) && <span className="text-warning">{budgetText(job)}</span>}
-                  </div>
-                  {/* When the work starts and is due. */}
-                  {datesText(job) && (
-                    <p className="text-white-50 fs-8 mb-0 mt-2"><i className="bi bi-calendar-event me-1"></i>{datesText(job)}</p>
-                  )}
-                  {/* Picked by the AI: marked, with why. */}
-                  {picked.has(job.id) && <RecommendationMarks pick={picked.get(job.id)} personalized={recs.personalized} want="jobs" />}
-                </div>
-
-                {isAdmin ? (
-                  <button className="btn btn-outline-danger rounded-3 px-3 py-2 fw-bold text-nowrap flex-shrink-0" onClick={() => handleRemove(job)}>
-                    <i className="bi bi-trash me-1"></i> Remove
-                  </button>
-                ) : (
-                  // No buttons on a row: the whole row opens the job (the arrow
-                  // says so), and the job's page has Apply, Message and Report.
-                  <i className="bi bi-chevron-right text-secondary fs-5 flex-shrink-0" aria-hidden="true"></i>
-                )}
-              </div>
-            );
-          })}
+          {featuredItems.length > 0 && <FeaturedHeading />}
+          {featuredItems.map((job, index) => renderJob(job, index, true))}
+          {featuredItems.length > 0 && rest.length > 0 && <hr className="border-secondary opacity-25 my-0" />}
+          {rest.map((job, index) => renderJob(job, featuredItems.length + index, false))}
         </div>
       </div>
     </section>

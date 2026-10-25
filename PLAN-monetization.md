@@ -4,8 +4,9 @@ Saved 2026-10-25 after the user said "ok", "you manage the plan prices" and
 "yes gcash". Step 1 (database) was approved with "ok ok ok" and is built and live
 since 2026-10-25 (migrations promotions_tables and promotions_functions); nothing
 on the website used it until Step 2 (sponsored billboards) and Step 3 (the admin
-Promotions page and the Overview's Earnings), all built the same day. Steps 4 to
-6 are not started, and Step 4 (Featured post, the pay screen people use) is next.
+Promotions page and the Overview's Earnings), all built the same day. Step 4
+(Featured post: the pay screen and the Featured row) was built on 2026-10-25 too.
+Steps 5 and 6 are not started, and Step 5 (Freelancer Pro) is next.
 To continue in a new Claude session, say: "Read PLAN-monetization.md and
 continue from the current step."
 
@@ -133,9 +134,16 @@ automatic.
    mode), lint and build clean. Not tried on the live site: no GCash number was
    put into the live database, so the Waiting banner will show until a super
    admin types the real number in Settings.
-4. **Featured post.** (detail below, approved 2026-10-25 with "ok") "Feature"
-   on My Offers and My Job Posts, the pay screen, the Featured row (max 3,
-   badge) in Browse Services and Find Jobs. 4a = the owner's side, 4b = the row.
+4. **Featured post.** BUILT 2026-10-25 in two commits (detail below, approved
+   with "ok"): "Feature" on My Offers and My Job Posts, the pay screen, the
+   Featured row (max 3, badge) in Browse Services and Find Jobs. 4a = the owner's
+   side (commit 55330f1, 59 browser checks), 4b = the row (37 browser checks).
+   An offer of a freelancer who is not verified yet gets no Feature button
+   (clients can't see it). No GCash number is in the live database, so the pay
+   window says "Payments for Featured posts are not open yet" until a super
+   admin types one in Admin > Site > Promotions > Settings. Not tried on the
+   live site; the Featured row was not tested together with the AI's
+   "Recommended for you" picks (the split happens after the AI's order is set).
 5. **Freelancer Pro.** A Go Pro page with the same pay flow, the Pro badge on
    profile and offers, the offer limit message.
 6. **Wording and demo data.** Update PhilFreela-System-Functions.md (Feature 5
@@ -186,6 +194,14 @@ signed in). A browser can only READ the end dates.
 Testing: a real browser against a pretend backend that applies the database's
 rules (laptop and phone, dark and light), lint and build. Not tried on the live
 site: no GCash number is in the live database yet.
+
+Built as planned, plus: the Feature button is hidden for an offer of a freelancer
+who is not verified and for an account suspended from posting; the pay window
+checks the free spots before it shows the payment details, so nobody pays for a
+spot that is gone; `components/FeaturedMarks.jsx` (the "Featured / Paid placement"
+title and the badge) is shared by both lists; the two list pages build their
+cards through one small function each (`renderService`, `renderJob`) that the
+Featured row and the normal list both call.
 
 ## Step 1 detail: the database
 
