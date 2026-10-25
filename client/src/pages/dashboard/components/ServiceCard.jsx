@@ -12,8 +12,9 @@ const mediaBox = { width: 64, height: 64 };
 // changed it). Pass onDelete to show a Delete button, editTo (a link to the
 // edit form) to show an Edit button, or `to` to make the whole row a link (to
 // the offer's page), and rating ({ count, average }, lib/useServiceRatings.js)
-// to show the average of its ratings next to the category.
-export default function ServiceCard({ service, onDelete, editTo, to, rating }) {
+// to show the average of its ratings next to the category. `footer` is anything
+// to show under the price line (the Feature button and badges in My Offers).
+export default function ServiceCard({ service, onDelete, editTo, to, rating, footer }) {
   const category = getCategory(service.category);
   const cover = itemSlides(service)[0];
   // The picture to show: the photo itself, or a PDF's first page (step 11),
@@ -49,6 +50,7 @@ export default function ServiceCard({ service, onDelete, editTo, to, rating }) {
           {service.price ? `Starting at ₱${Number(service.price).toLocaleString()}` : "Price on request"} • {new Date(service.created_at).toLocaleDateString()}
           {service.updated_at && ` • Edited ${new Date(service.updated_at).toLocaleDateString()}`}
         </p>
+        {footer && <div className="mt-2">{footer}</div>}
       </div>
 
       {(editTo || onDelete) && (

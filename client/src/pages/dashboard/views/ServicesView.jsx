@@ -7,7 +7,10 @@ import { fetchIsVerified } from "../../../lib/verification";
 import { useServiceRatings } from "../../../lib/useServiceRatings";
 import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, addPickedFiles, ownershipPassedMessage, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
+import { useFeatureStatus } from "../../../lib/featured";
 import ServiceCard from "../components/ServiceCard";
+import FeatureControl from "../components/FeatureControl";
+import FeatureDialog from "../components/FeatureDialog";
 import DeletePostDialog from "../components/DeletePostDialog";
 import BlockedNotice from "../components/BlockedNotice";
 import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
@@ -34,6 +37,10 @@ export default function ServicesView() {
   const [services, setServices] = useState(null);
   // The service waiting in the "Delete this service?" pop-up (null = closed).
   const [serviceToDelete, setServiceToDelete] = useState(null);
+  // Which offers are Featured now or have a payment waiting, and the offer in
+  // the "Feature this post" pay window (null = closed).
+  const featured = useFeatureStatus(currentUserId);
+  const [serviceToFeature, setServiceToFeature] = useState(null);
   // What clients rated each of your offers, for the "★ 4.5 (2)" on its row.
   const ratings = useServiceRatings((services || []).map((s) => s.id));
   // Only freelancers with a verified identity can offer services (the
@@ -364,13 +371,44 @@ export default function ServicesView() {
             )}
 
             <div className="d-flex flex-column gap-3">
-              {services?.map((s) => <ServiceCard key={s.id} service={s} editTo={`/dashboard/services?edit=${s.id}`} onDelete={setServiceToDelete} rating={ratings.get(s.id)} />)}
+              {services?.map((s) => (
+                <ServiceCard
+                  key={s.id}
+                  service={s}
+                  editTo={`/dashboard/services?edit=${s.id}`}
+                  onDelete={setServiceToDelete}
+                  rating={ratings.get(s.id)}
+                  footer={(
+                    <FeatureControl
+                      until={featured.until.get(s.id)}
+                      waiting={featured.waiting.has(s.id)}
+                      // Clients only see offers from verified freelancers, so featuring one before that is a waste.
+                      canFeature={isVerified === true && !postingBlocked}
+                      onFeature={() => setServiceToFeature({ kind: "service", id: s.id, title: s.title })}
+                    />
+                  )}
+                />
+              ))}
             </div>
           </div>
         </div>
       </div>
 
       {checkingOwnership && <OwnershipCheckDialog onClose={() => setCheckingOwnership(false)} />}
+
+      {serviceToFeature && (
+        <FeatureDialog
+          target={serviceToFeature}
+          userId={currentUserId}
+          until={featured.until.get(serviceToFeature.id)}
+          onClose={() => setServiceToFeature(null)}
+          onSent={() => {
+            setServiceToFeature(null);
+            featured.reload();
+            showToast("Payment sent. An admin will check it, and you'll get a notification.");
+          }}
+        />
+      )}
 
       <DeletePostDialog
         key={serviceToDelete?.id}

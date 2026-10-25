@@ -4,10 +4,13 @@ import { supabase } from "../../../lib/supabaseClient";
 import { matchSkill, suggestSkills } from "../../../lib/aiService";
 import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
+import { useFeatureStatus } from "../../../lib/featured";
 import { formatDay, todayInManila } from "../../../lib/projects";
 import { BUDGET_TYPES, HIRES_FIELD, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, datesText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import BlockedNotice from "../components/BlockedNotice";
 import DeletePostDialog from "../components/DeletePostDialog";
+import FeatureControl from "../components/FeatureControl";
+import FeatureDialog from "../components/FeatureDialog";
 import HiredFreelancers from "../components/HiredFreelancers";
 import CensoredText from "../../../components/CensoredText";
 
@@ -71,6 +74,10 @@ export default function PostNeedView() {
   const [posts, setPosts] = useState(null);
   // The job waiting in the "Delete this job post?" pop-up (null = closed).
   const [postToDelete, setPostToDelete] = useState(null);
+  // Which job posts are Featured now or have a payment waiting, and the post in
+  // the "Feature this post" pay window (null = closed).
+  const featured = useFeatureStatus(currentUserId);
+  const [postToFeature, setPostToFeature] = useState(null);
 
   // Edit mode: /dashboard/post-need?edit=<job id> (the pencil buttons link
   // here). The form is filled in from that job and "Save changes" updates it
@@ -599,6 +606,15 @@ export default function PostNeedView() {
                     <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-people me-1"></i>{hired} of {p.freelancers_needed} hired</p>
                     {/* Who they are, and a button to each one's project. */}
                     <HiredFreelancers hires={hiresOf(p)} />
+                    {/* Only an open post can be Featured (a filled or expired one is hidden from freelancers anyway). */}
+                    <div className="mt-2">
+                      <FeatureControl
+                        until={featured.until.get(p.id)}
+                        waiting={featured.waiting.has(p.id)}
+                        canFeature={state === "open" && !postingBlocked}
+                        onFeature={() => setPostToFeature({ kind: "job", id: p.id, title: p.title })}
+                      />
+                    </div>
                     {/* Brings a hidden post back: the same form, to pick new dates or more openings. */}
                     {state !== "open" && (
                       <Link to={`/dashboard/post-need?edit=${p.id}`} className="btn btn-sm btn-outline-role rounded-pill px-3 mt-2 fs-8 fw-bold">
@@ -612,6 +628,20 @@ export default function PostNeedView() {
           </div>
         </div>
       </div>
+
+      {postToFeature && (
+        <FeatureDialog
+          target={postToFeature}
+          userId={currentUserId}
+          until={featured.until.get(postToFeature.id)}
+          onClose={() => setPostToFeature(null)}
+          onSent={() => {
+            setPostToFeature(null);
+            featured.reload();
+            showToast("Payment sent. An admin will check it, and you'll get a notification.");
+          }}
+        />
+      )}
 
       <DeletePostDialog
         key={postToDelete?.id}

@@ -84,7 +84,10 @@ export const notificationIcons = {
   payment_requested: { icon: "bi-wallet2", className: "bg-info text-dark" },
   // The price of a project was proposed or agreed (database/supabase_project_price_schema.sql).
   price_proposed: { icon: "bi-tag-fill", className: "bg-info text-dark" },
-  price_agreed: { icon: "bi-tags-fill", className: "bg-success text-white" }
+  price_agreed: { icon: "bi-tags-fill", className: "bg-success text-white" },
+  // An admin answered a Featured post payment (database/supabase_promotions_schema.sql).
+  promotion_approved: { icon: "bi-star-fill", className: "bg-warning text-dark" },
+  promotion_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -107,5 +110,7 @@ export const notificationLinkLabels = {
   payment_not_received: "View payment",
   payment_requested: "Open chat",
   price_proposed: "Open project",
-  price_agreed: "Open project"
+  price_agreed: "Open project",
+  promotion_approved: "Open my posts",
+  promotion_rejected: "Open my posts"
 };

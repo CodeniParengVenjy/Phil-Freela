@@ -17,7 +17,7 @@ export const PROMO_KINDS = {
 
 // A message to show for a failed call: the database's own plain sentence when
 // it raised one (e.g. "This request was already answered."), else a fallback.
-function plainMessage(error, fallback) {
+export function plainMessage(error, fallback) {
   const text = error?.message || "";
   // Technical errors (permission, network, SQL) are not for the admin to read.
   return text && !/^(permission|new row|duplicate|violates|invalid|could not|failed to fetch|TypeError)/i.test(text) ? text : fallback;

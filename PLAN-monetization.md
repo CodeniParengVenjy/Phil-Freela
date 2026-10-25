@@ -133,14 +133,59 @@ automatic.
    mode), lint and build clean. Not tried on the live site: no GCash number was
    put into the live database, so the Waiting banner will show until a super
    admin types the real number in Settings.
-4. **Featured post.** "Feature this" on My Offers and My Job Posts, the pay
-   screen, the Featured row (max 3, badge) in Browse Services and Find Jobs.
+4. **Featured post.** (detail below, approved 2026-10-25 with "ok") "Feature"
+   on My Offers and My Job Posts, the pay screen, the Featured row (max 3,
+   badge) in Browse Services and Find Jobs. 4a = the owner's side, 4b = the row.
 5. **Freelancer Pro.** A Go Pro page with the same pay flow, the Pro badge on
    profile and offers, the offer limit message.
 6. **Wording and demo data.** Update PhilFreela-System-Functions.md (Feature 5
    "Scope" line says "no payment or money features"), the defense study guide and
    the paper's "no payments" line; sample data for the defense (a made-up
    sponsor, one pending request, one approved Featured post).
+
+## Step 4 detail: Featured post (approved 2026-10-25)
+
+No database change: everything it needs is live from Step 1 (`request_promotion`,
+`featured_slots_left`, `is_pro`, `promo_prices`, `site_gcash`, the private
+`promo-receipts` and `promo-qr` buckets, `featured_posts` readable by everyone
+signed in). A browser can only READ the end dates.
+
+4a. The owner pays to feature (own commit):
+1. `lib/featured.js` (new): reads the prices, PhilFreela's GCash row and QR link,
+   whether the person is Pro, their own requests and what is featured now;
+   `sendFeatureRequest` uploads the receipt first, then calls
+   `request_promotion`, and removes the upload if the database refuses (the same
+   pattern as `recordPayment` in `lib/payments.js`).
+2. `components/FeatureDialog.jsx` (new, built like `RecordPaymentDialog.jsx`):
+   pick 3 / 7 / 14 days (Pro members see `pro_price`), PhilFreela's GCash name,
+   number with Copy, QR and the exact amount; then the 13-digit reference and the
+   receipt screenshot (required). The database's plain messages are shown as they
+   are ("All 3 Featured spots are taken right now."). While `site_gcash` is empty
+   it only says "Payments are not open yet".
+3. One small "Feature" button on each offer row (`ServicesView.jsx`, through
+   `ServiceCard.jsx`) and each OPEN job post row (`PostNeedView.jsx`). It is
+   replaced by a badge when it applies: "Featured until <date>" (the button
+   becomes "Extend") or "Waiting for review" (no button).
+4. `lib/notifications.js`: icon and wording for `promotion_approved` and
+   `promotion_rejected` (a rejection shows the admin's reason).
+
+4b. The Featured row (own commit):
+5. Browse Services and Find Jobs (NOT the admin copies, `isAdmin`): the posts
+   whose `featured_until` is still in the future move out of the normal list into
+   a "Featured" row on top, with a star badge and a small "Paid placement" note.
+   It uses the list already loaded, so the usual hiding rules still apply (an
+   unverified freelancer's offer, a filled or expired job).
+6. The row follows the search and the filters (category; one-time or ongoing).
+   "Recommended for you" is not touched: paid posts never get a place in the
+   AI's order. A featured post is not repeated in the normal list below. The row
+   is hidden when nothing is featured.
+7. Nothing runs on a timer: the row compares `featured_until` with now().
+8. Paying again for a post that is already featured extends it and needs no new
+   spot (the database does this).
+
+Testing: a real browser against a pretend backend that applies the database's
+rules (laptop and phone, dark and light), lint and build. Not tried on the live
+site: no GCash number is in the live database yet.
 
 ## Step 1 detail: the database
 
