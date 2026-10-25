@@ -429,6 +429,56 @@ body {
   text-align: right;
 }
 
+/* The Hiring trail (HiringTrail.jsx). The column may shrink below its content
+   (minmax(0, 1fr)), otherwise a long name stretches the rows past the pop-up. */
+.admin-trail-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  padding-left: 0;
+}
+
+/* A row of the trail: picture, who, status. The status may wrap onto two lines
+   so a narrow phone still has room for the name. */
+.admin-trail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+}
+.admin-trail-avatar {
+  width: 36px;
+  height: 36px;
+}
+.admin-trail-status {
+  flex-shrink: 0;
+  max-width: 55%;
+  text-align: right;
+}
+.admin-trail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+/* On a phone the status goes under the name, so the name is not cut short. */
+@media (max-width: 575.98px) {
+  .admin-trail-row {
+    flex-wrap: wrap;
+  }
+  .admin-trail-status {
+    flex: 1 0 100%;
+    max-width: none;
+    text-align: left;
+  }
+  .admin-trail-badges {
+    justify-content: flex-start;
+  }
+}
+
 /* Table view: scrolls inside its box, the header stays on top. */
 .admin-trend-table {
   max-height: 480px;

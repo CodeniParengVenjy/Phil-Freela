@@ -68,7 +68,22 @@ hire to look at yet; the tests make their own.
      live as the migration `admin_job_hiring` (no DROP or DELETE); live now: 11
      posts, 6 open, 5 expired, 1 application, 0 hires; the user number counter was
      not used.
-2. Admin Listings > Job Posts: badge, numbers, filter pills and the Hiring trail in
-   the View pop-up.
+2. DONE (2026-10-25, website): `AdminListingsView.jsx` (Job Posts tab: State and
+   Hiring columns, the budget now says its basis, state pills All / Open / Filled /
+   Expired with counts that work together with the search and the category, a
+   sentence if the hiring numbers can't load while the list keeps working, and in
+   the View pop-up the type, dates, state, "2 of 3 hired - 3 applicants" and the
+   trail), new `admin/components/HiringTrail.jsx` (each applicant: picture or
+   letter, name linking to Admin > Users with the username in the search box,
+   Hired / Applied, the project's status, hire date and due date or applied date,
+   an Archived badge), a few lines in `admin.css`. The admin has no project page
+   to link to (a project is private to its two people), so the trail shows the
+   project's status instead of a link. Browser check against a fake backend,
+   laptop and phone (390px): 57 checks, 0 failed (the 8 columns, every state and
+   its numbers, singular and plural, pills and counts, filter plus search, the
+   filter resetting when you change tab, trail order and fields, the name link,
+   loading, an empty trail, a failed trail, hiring numbers failing, very long names
+   staying inside their rows, no sideways scrolling). The script is not saved in
+   the repo. Lint and build clean.
 3. Client: "Hired freelancers" under each post and on the owner's job page.
 4. Admin Overview: the Hiring card.
