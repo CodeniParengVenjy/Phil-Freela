@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MAX_SCREENSHOTS, checkScreenshot, reasonsFor, reportReasons, sendReport } from "../../../lib/reports";
 import { messageSummary } from "../../../lib/reportMessages";
+import { formatPeso, formatReference } from "../../../lib/payments";
 
 // For "Stolen work", the reporter must say where the original is, in at
 // least this many characters (so "x" or "idk" isn't enough for an admin).
@@ -17,6 +18,8 @@ const MIN_PROOF_LENGTH = 10;
 //           (see lib/reportMessages.js): the messages to list, the ids ticked
 //           to start with, the signed-in person's id (to tell "You" apart) and,
 //           when one message was right-clicked, its id.
+//           From a payment it also has payment: { id, amount, reference_no }: the
+//           popup offers to send that payment (and its receipt) with the report.
 //   onDone(message): called after sending, e.g. to show a toast
 export default function ReportDialog({ target, onClose, onDone }) {
   const [reason, setReason] = useState("");
@@ -27,6 +30,8 @@ export default function ReportDialog({ target, onClose, onDone }) {
   // The chat messages the person changed the ticks of (a Set of ids); null =
   // untouched, so the ticks the popup opened with are used.
   const [changedPicks, setChangedPicks] = useState(null);
+  // The payment box is ticked to start with; false once it is unticked.
+  const [sendPayment, setSendPayment] = useState(true);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const messageListRef = useRef(null);
@@ -38,6 +43,7 @@ export default function ReportDialog({ target, onClose, onDone }) {
     setDetails("");
     setScreenshots([]);
     setChangedPicks(null);
+    setSendPayment(true);
     setError("");
     onClose();
   };
@@ -119,7 +125,9 @@ export default function ReportDialog({ target, onClose, onDone }) {
       screenshots: screenshots.map((s) => s.file),
       // The ticked chat messages, in chat order, and the right-clicked one if it is still ticked.
       messageIds: chat ? chat.messages.filter((m) => picks.has(m.id)).map((m) => m.id) : [],
-      flaggedMessageId: chat?.focusId && picks.has(chat.focusId) ? chat.focusId : null
+      flaggedMessageId: chat?.focusId && picks.has(chat.focusId) ? chat.focusId : null,
+      // The payment, when this report was opened from one and the box is still ticked.
+      paymentId: target.payment && sendPayment ? target.payment.id : null
     });
     setSending(false);
 
@@ -273,6 +281,27 @@ export default function ReportDialog({ target, onClose, onDone }) {
               </button>
             </div>
           </div>
+        )}
+
+        {/* From a payment: send it with the report. Admins can't read anyone's
+            payments, so this is how they see the amount, the reference and the
+            receipt (database/supabase_report_payments_schema.sql). */}
+        {target.payment && (
+          <label className="d-flex align-items-start gap-2 fs-7 cursor-pointer mb-3">
+            <input
+              type="checkbox"
+              className="form-check-input m-0 mt-1 flex-shrink-0"
+              checked={sendPayment}
+              disabled={sending}
+              onChange={(event) => setSendPayment(event.target.checked)}
+            />
+            <span>
+              Send this payment with the report
+              <span className="d-block fs-8 text-white-50">
+                {formatPeso(target.payment.amount)}, reference {formatReference(target.payment.reference_no)}, and its receipt picture. Only admins will see them, not {target.name || "the other person"}.
+              </span>
+            </span>
+          </label>
         )}
 
         {/* Screenshots as proof (optional). Only admins can open them. */}

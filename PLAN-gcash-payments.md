@@ -303,7 +303,7 @@ with their icons and "View payment". Lint (only the two old warnings in
 test holds the realtime socket silent, so only a reload shows the other person's
 answer there; the subscription is the same one the chat uses).
 
-### Step 4: Report with a payment (Medium)
+### Step 4: Report with a payment (Medium) (DONE 2026-10-25)
 
 Database, new file `database/supabase_report_payments_schema.sql`, no DROP or
 DELETE:
@@ -325,6 +325,41 @@ Website:
    `ProjectDetailsView.jsx` holds the dialog.
 4. `admin/views/AdminReportsView.jsx`: a report with a payment shows a box with
    the amount, reference, status, dates and a View receipt link.
+
+#### Step 4 result (2026-10-25)
+
+Built as planned. Database: `database/supabase_report_payments_schema.sql`
+(`reports.payment_id`, the trigger `reports_check_payment`, and the two admin
+read policies on `payments` and on `receipts`) and `database/test_report_payments.sql`,
+applied live as the migration `report_payments` after a rolled-back trial with
+the schema and the test in one call (18 checks, 0 failed, none skipped: a
+stranger can't send someone else's payment, the payment must be with the person
+reported, only a report about a person can carry one, a missing payment is
+refused, a normal report still works, the client and the freelancer can each
+report with the payment, an admin can't read an unreported payment or its
+receipt but can once a report points at it, and still not the other payments of
+the same project, a stranger still can't, the user counter did not move).
+Checked live afterwards: the column, the trigger and both policies exist, the
+trigger function is not callable by signed-in users, nothing was left behind.
+The new query shapes were also checked against the real API with the public key
+(the `payment:payments(...)` embed on reports resolves, and the Step 2 and 3
+queries for `payments`, `gcash_accounts`, `job_posts` and `get_pay_details` too;
+each answered "permission denied" or an empty list, and a made-up column gave
+42703, so the columns are right).
+
+Website: `lib/reports.js` (`paymentId`), `ReportDialog.jsx` (a ticked box "Send
+this payment with the report" when the target has a payment),
+`ProjectDetailsView.jsx` (holds the popup; the Report link in
+`PaymentsSection.jsx` was already there from Step 3) and `AdminReportsView.jsx`
+(a "GCash payment sent with this report" box with the amount, reference, status,
+dates and View receipt). Tested in a real browser against a pretend Supabase
+(21 checks, 0 failed): the Report link only on the "Not received" payment, the
+popup about the other person with the box ticked to start with, what is sent
+(with and without `payment_id`), the database's refusal and "already reported"
+sentences, the freelancer reporting the client, the admin page (the request asks
+for the payment, the box, View receipt in a new tab, a receipt that can't be
+opened, a report without a payment shows no box), phone width; lint (only the
+two old warnings) and build clean.
 
 ### Step 5: Database for payments from a chat (Medium)
 

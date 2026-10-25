@@ -8,6 +8,7 @@ import { useWholePages } from "../../../lib/wholePages";
 import { avatarUrl, coverUrl } from "../../../lib/avatar";
 import { getScreenshotLinks, removeReportedPicture, reportListingTables, reportPictureKinds, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { messageSummary } from "../../../lib/reportMessages";
+import { formatPeso, formatReference, openReceipt, paymentStatuses } from "../../../lib/payments";
 import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields, getViolation } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
@@ -155,6 +156,46 @@ function ReportedChat({ messages, reporterName, reportedName }) {
   );
 }
 
+// The GCash payment the reporter sent with a report about a person (database/
+// supabase_report_payments_schema.sql). Admins can't read anyone's payments; this
+// one payment, and its receipt picture, are readable only because a report points
+// at it. The site cannot see GCash, so the receipt is the reporter's proof on
+// record, not a check.
+function ReportedPayment({ payment, reporterName }) {
+  const [problem, setProblem] = useState("");
+  const status = paymentStatuses[payment.status] || { label: payment.status, className: "bg-secondary text-white" };
+  const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+
+  const viewReceipt = async () => {
+    setProblem(await openReceipt(payment.receipt_path));
+  };
+
+  return (
+    <div className="mb-2">
+      <p className="fs-8 text-white-50 mb-1">
+        <i className="bi bi-cash-coin me-1"></i>
+        GCash payment sent with this report:
+      </p>
+      <div className="rounded-3 border border-warning border-opacity-50 p-2">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <strong className="text-white fs-6">{formatPeso(payment.amount)}</strong>
+          <span className={`badge rounded-pill ${status.className}`}>{status.label}</span>
+        </div>
+        <p className="fs-8 text-white-50 mb-2">
+          Reference <span className="text-white">{formatReference(payment.reference_no)}</span>
+          {" · "}recorded {when(payment.created_at)}
+          {payment.answered_at && <>{" · "}answered {when(payment.answered_at)}</>}
+        </p>
+        <button type="button" className="btn btn-sm btn-outline-light rounded-pill px-3" onClick={viewReceipt}>
+          <i className="bi bi-receipt me-1"></i>View receipt
+        </button>
+        <span className="fs-8 text-white-50 ms-2">The client's screenshot. {reporterName} sent this with the report.</span>
+        {problem && <p className="fs-8 text-danger mb-0 mt-1">{problem}</p>}
+      </div>
+    </div>
+  );
+}
+
 // "During a video call · Sep 29, 2026, 3:10 PM · 4 min" for a report sent
 // from a call. The length counts from when it was answered.
 function callSummary(call) {
@@ -204,7 +245,7 @@ export default function AdminReportsView() {
           .from("reports")
           // report_messages: the chat messages the reporter ticked (empty for most reports).
           // target_title / target_owner_id: a copy of the reported post's title and owner, kept for when the post is gone.
-          .select("id, reporter_id, target_type, target_id, target_title, target_owner_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, report_messages(id, from_reporter, body, attachment_type, attachment_name, is_call, edited, flagged, sent_at), reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
+          .select("id, reporter_id, target_type, target_id, target_title, target_owner_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, report_messages(id, from_reporter, body, attachment_type, attachment_name, is_call, edited, flagged, sent_at), payment:payments(id, amount, reference_no, receipt_path, status, created_at, answered_at), reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
           .order("created_at", { ascending: false })
           .order("sent_at", { referencedTable: "report_messages", ascending: true }),
         supabase.from("user_suspensions").select("user_id, ends_at"),
@@ -496,6 +537,9 @@ export default function AdminReportsView() {
                   reportedName={target?.ownerName || "The reported person"}
                 />
               )}
+
+              {/* A report about a payment: the payment and its receipt. */}
+              {report.payment && <ReportedPayment payment={report.payment} reporterName={report.reporter?.full_name || "The reporter"} />}
 
               {/* The reported picture or cover, as it was when it was reported. */}
               {isPicture && <ReportedPicture report={report} />}

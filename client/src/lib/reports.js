@@ -35,7 +35,11 @@ export function checkScreenshot(file) {
 //           are only sent when there are some, so other reports don't depend on it.
 //   flaggedMessageId: the one message that was right-clicked ("Report Message"),
 //           one of messageIds; the admin's transcript marks it.
-export async function sendReport({ target, reason, details, screenshots = [], messageIds = [], flaggedMessageId = null }) {
+//   paymentId: a GCash payment between the reporter and the person reported, sent
+//           with a report about a person (database/supabase_report_payments_schema.sql).
+//           The database refuses a payment that isn't between the two of them, and
+//           lets an admin read that one payment and its receipt only through the report.
+export async function sendReport({ target, reason, details, screenshots = [], messageIds = [], flaggedMessageId = null, paymentId = null }) {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
   if (!userId) return { error: { message: "Please log in again." } };
@@ -72,7 +76,8 @@ export async function sendReport({ target, reason, details, screenshots = [], me
     reported_path: target.reportedPath || null,
     evidence_paths: paths,
     ...(messageIds.length ? { chat_message_ids: messageIds } : {}),
-    ...(messageIds.length && flaggedMessageId ? { flagged_message_id: flaggedMessageId } : {})
+    ...(messageIds.length && flaggedMessageId ? { flagged_message_id: flaggedMessageId } : {}),
+    ...(paymentId ? { payment_id: paymentId } : {})
   });
   if (error) await removeUploaded();
   return { error };

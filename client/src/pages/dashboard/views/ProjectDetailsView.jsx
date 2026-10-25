@@ -8,6 +8,7 @@ import { profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
 import CensoredText from "../../../components/CensoredText";
 import PaymentsSection from "../components/PaymentsSection";
+import ReportDialog from "../components/ReportDialog";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
 // My Projects or from a project notification. Both people on the project use
@@ -27,6 +28,8 @@ export default function ProjectDetailsView() {
   // this stays null until the database lets it be seen (both sides rated, or
   // the time for rating is over).
   const [theirRating, setTheirRating] = useState(null);
+  // The Report popup for a payment answered "Not received" (null = closed).
+  const [reportTarget, setReportTarget] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -383,8 +386,13 @@ export default function ProjectDetailsView() {
           otherId={other?.id}
           showToast={showToast}
           openChat={openChat}
+          onReport={(payment) => setReportTarget({ type: "user", id: other?.id, name: otherName, payment })}
         />
       </div>
+
+      {/* Reporting the other person about a payment: the popup offers to send the
+          payment (amount, reference and receipt) with the report. */}
+      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
     </section>
   );
 }
