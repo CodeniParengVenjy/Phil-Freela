@@ -38,6 +38,9 @@ const sidebarItems = [
     links: [
       { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements", superAdminOnly: true },
       { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard", superAdminOnly: true },
+      // Fees paid for Featured posts and Freelancer Pro: any admin approves or
+      // rejects them; only a super admin changes the settings inside.
+      { to: "/admin/promotions", icon: "bi-cash-coin", label: "Promotions", badge: "promotions" },
       { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins", superAdminOnly: true },
       { to: "/admin/log", icon: "bi-journal-text", label: "Activity Log" }
     ]
@@ -82,6 +85,8 @@ export default function AdminLayout() {
   // Number shown on the Pending Users link: people who signed up but haven't
   // confirmed their email.
   const [pendingUsers, setPendingUsers] = useState(0);
+  // Number shown on the Promotions link: fee payments waiting for an admin.
+  const [pendingPromotions, setPendingPromotions] = useState(0);
   // Which sidebar groups are open. The group with the current page starts
   // open, and opens again whenever the admin lands on one of its pages.
   const [openGroups, setOpenGroups] = useState(() => new Set([groupOfPath(pathname)].filter(Boolean)));
@@ -105,6 +110,16 @@ export default function AdminLayout() {
       .select("id", { count: "exact", head: true })
       .eq("status", "pending");
     setPendingApprovals(count || 0);
+  }, []);
+
+  // Counts fee payments (Featured posts, Freelancer Pro) waiting for an admin.
+  // The Promotions page calls this after each answer so the badge stays correct.
+  const refreshPendingPromotions = useCallback(async () => {
+    const { count } = await supabase
+      .from("promotions")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    setPendingPromotions(count || 0);
   }, []);
 
   // Counts pending reports (head: true = just the count, no rows). The Reports
@@ -190,12 +205,13 @@ export default function AdminLayout() {
         refreshPendingAppeals();
         refreshPendingFlagged();
         refreshPendingUsers();
+        refreshPendingPromotions();
         if (adminRow.role === "super_admin") refreshPendingApprovals();
       }
     })();
 
     return () => { active = false; };
-  }, [navigate, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingApprovals]);
+  }, [navigate, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingPromotions, refreshPendingApprovals]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -252,6 +268,7 @@ export default function AdminLayout() {
     refreshPendingAppeals();
     refreshPendingFlagged();
     refreshPendingUsers();
+    refreshPendingPromotions();
     return true;
   };
 
@@ -291,6 +308,7 @@ export default function AdminLayout() {
     verifications: { count: pendingVerifications },
     appeals: { count: pendingAppeals },
     flagged: { count: pendingFlagged },
+    promotions: { count: pendingPromotions },
     approvals: { count: pendingApprovals }
   };
   const renderBadge = (count, amber, extra = "") => (
@@ -385,7 +403,7 @@ export default function AdminLayout() {
           <main className="col-12 col-md-9 col-xl-10">
             {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                 to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingApprovals }} />
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingPromotions, refreshPendingApprovals }} />
           </main>
         </div>
       </div>

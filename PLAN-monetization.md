@@ -3,10 +3,11 @@
 Saved 2026-10-25 after the user said "ok", "you manage the plan prices" and
 "yes gcash". Step 1 (database) was approved with "ok ok ok" and is built and live
 since 2026-10-25 (migrations promotions_tables and promotions_functions); nothing
-on the website used it until Step 2 (sponsored billboards), built the same day.
-Steps 3 to 6 are not started, and Step 3 (the admin Promotions page) is next. To
-continue in a new Claude session, say: "Read PLAN-monetization.md and continue
-from the current step."
+on the website used it until Step 2 (sponsored billboards) and Step 3 (the admin
+Promotions page and the Overview's Earnings), all built the same day. Steps 4 to
+6 are not started, and Step 4 (Featured post, the pay screen people use) is next.
+To continue in a new Claude session, say: "Read PLAN-monetization.md and
+continue from the current step."
 
 Each step gets its own detailed plan, approved by the user, before any code.
 
@@ -108,9 +109,30 @@ automatic.
    dark and light (it found a long sponsor name stretching the admin page on a
    phone; fixed with `text-wrap`); lint and build clean. Not tried on the live
    site (no test billboards were posted on the live database).
-3. **Admin Promotions page.** Pending requests with the receipt, Approve / Reject
-   (with a reason), what is running now, PhilFreela's GCash number and QR, the
-   price list, and an Overview "Earnings" card (approved requests and pesos).
+3. **Admin Promotions page.** BUILT 2026-10-25 in two commits. 3a (database):
+   `admin_promo_earnings()` (admin only; `database/supabase_promo_earnings_schema.sql`,
+   test `test_promo_earnings.sql`, 14 checks passed; applied as the migration
+   admin_promo_earnings). 3b (website): Admin > Site > Promotions, visible to every
+   admin with a red number for waiting requests. Tabs: Waiting (oldest first; kind,
+   amount, days, title, the person's link to Users, the reference with Copy, View
+   receipt on a 60-second signed link, Approve with a confirm popup, Reject with a
+   reason of 3 to 200 characters; a request whose offer or job post was removed
+   can only be rejected), Running now (Featured offers and job posts "N of 3
+   spots used", Pro members, ended ones left out), History (last 50, who answered,
+   the reason, the days an approved one ran) and Settings (a super admin sets
+   PhilFreela's GCash number, name and QR picture, and the two prices of each
+   option; other admins see them read-only). A banner on Waiting says nobody can
+   pay while no GCash number is set. The Overview has an Earnings part (earned in
+   total, this month, waiting, where it came from, running now), and the Activity
+   Log labels the new "promotion" entries. Files: `lib/promotions.js`,
+   `AdminPromotionsView.jsx`, `components/PromotionRequestCard.jsx`,
+   `components/PromotionSettings.jsx`, plus small edits to `AdminLayout.jsx`,
+   `App.jsx`, `pageTitles.js`, `AdminLogView.jsx`, `AdminOverviewView.jsx`. Tested
+   in a real browser against a pretend backend that applies the database's rules:
+   59 checks, 0 failed (laptop and phone at 390px; the admin panel has no light
+   mode), lint and build clean. Not tried on the live site: no GCash number was
+   put into the live database, so the Waiting banner will show until a super
+   admin types the real number in Settings.
 4. **Featured post.** "Feature this" on My Offers and My Job Posts, the pay
    screen, the Featured row (max 3, badge) in Browse Services and Find Jobs.
 5. **Freelancer Pro.** A Go Pro page with the same pay flow, the Pro badge on

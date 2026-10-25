@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import { formatPeso } from "../../../lib/payments";
+import { getEarnings } from "../../../lib/promotions";
 import { GrowthChart, GrowthTable } from "../components/GrowthChart";
 import SplitBar from "../components/SplitBar";
 import RatingCard from "../components/RatingCard";
@@ -127,21 +129,29 @@ export default function AdminOverviewView() {
   // no amounts). Null until it has loaded, or when it can't be loaded: the card
   // then says payments aren't set up yet, and nothing else on the page changes.
   const [paymentCounts, setPaymentCounts] = useState(null);
+  // What PhilFreela earned from fees (admin_promo_earnings()). Its own error, so
+  // it never hides the rest of the Overview.
+  const [earnings, setEarnings] = useState(null);
+  const [earningsError, setEarningsError] = useState("");
 
   useEffect(() => {
     let active = true;
 
     (async () => {
-      const [ratingsResult, transactionsResult, topRatedResult, hiringResult, paymentsResult] = await Promise.all([
+      const [ratingsResult, transactionsResult, topRatedResult, hiringResult, paymentsResult, earningsResult] = await Promise.all([
         supabase.rpc("admin_ratings"),
         supabase.rpc("admin_transactions"),
         supabase.rpc("admin_top_rated", { p_limit: 5 }),
         supabase.rpc("admin_job_hiring"),
-        supabase.rpc("admin_payment_counts")
+        supabase.rpc("admin_payment_counts"),
+        getEarnings()
       ]);
       if (!active) return;
 
       if (!paymentsResult.error) setPaymentCounts(paymentsResult.data);
+
+      if (earningsResult.error) setEarningsError(earningsResult.error);
+      else setEarnings(earningsResult.earnings);
 
       if (hiringResult.error) setHiringError("Failed to load the job hiring numbers.");
       else setHiringTotals(hiringResult.data.totals);
@@ -450,6 +460,58 @@ export default function AdminOverviewView() {
                   items={[
                     { label: "Applications", value: hiringTotals.applications },
                     { label: "Freelancers hired", value: hiringTotals.hired }
+                  ]}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* What PhilFreela earns: fees for Featured posts, Freelancer Pro and
+              sponsored billboards. Its own part, so it shows even if the numbers above fail. */}
+          <div className="mt-4 mb-3">
+            <h2 className="h5 fw-bold text-white mb-0">Earnings</h2>
+            <p className="text-secondary fs-7 mb-0">
+              Fees paid to PhilFreela's own GCash (never the money between clients and freelancers).
+              {" "}Answer waiting payments in <Link to="/admin/promotions" className="text-white">Promotions</Link>.
+            </p>
+          </div>
+
+          {earningsError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{earningsError}</div>}
+          {!earningsError && !earnings && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the earnings...</div>}
+
+          {earnings && (
+            <div className="row g-3">
+              <div className="col-12 col-md-6">
+                <StatusCounts
+                  title="Earned"
+                  showTotal={false}
+                  items={[
+                    { label: "In total", value: formatPeso(earnings.total) },
+                    { label: "This month", value: formatPeso(earnings.this_month) },
+                    { label: `Waiting for approval (${earnings.waiting.count})`, value: formatPeso(earnings.waiting.amount) }
+                  ]}
+                />
+              </div>
+              <div className="col-12 col-md-6">
+                <StatusCounts
+                  title="Running now"
+                  showTotal={false}
+                  items={[
+                    { label: "Featured offers", value: earnings.running.featured_offers },
+                    { label: "Featured job posts", value: earnings.running.featured_jobs },
+                    { label: "Pro members", value: earnings.running.pro_members }
+                  ]}
+                />
+              </div>
+              <div className="col-12">
+                <StatusCounts
+                  title="Where it came from"
+                  showTotal={false}
+                  items={[
+                    { label: `Featured offers (${earnings.by_kind.feature_service.count})`, value: formatPeso(earnings.by_kind.feature_service.amount) },
+                    { label: `Featured job posts (${earnings.by_kind.feature_job.count})`, value: formatPeso(earnings.by_kind.feature_job.amount) },
+                    { label: `Freelancer Pro (${earnings.by_kind.pro.count})`, value: formatPeso(earnings.by_kind.pro.amount) },
+                    { label: `Sponsored billboards (${earnings.by_kind.billboard.count})`, value: formatPeso(earnings.by_kind.billboard.amount) }
                   ]}
                 />
               </div>

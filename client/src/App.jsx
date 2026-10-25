@@ -49,6 +49,7 @@ import AdminFlaggedView from "./pages/admin/views/AdminFlaggedView";
 import AdminAnnouncementsView from "./pages/admin/views/AdminAnnouncementsView";
 import AdminApprovalsView from "./pages/admin/views/AdminApprovalsView";
 import AdminBillboardView from "./pages/admin/views/AdminBillboardView";
+import AdminPromotionsView from "./pages/admin/views/AdminPromotionsView";
 import AdminVerificationsView from "./pages/admin/views/AdminVerificationsView";
 import AdminAppealsView from "./pages/admin/views/AdminAppealsView";
 import { usePageTitle } from "./lib/pageTitles";
@@ -125,6 +126,7 @@ function App() {
         <Route path="approvals" element={<AdminApprovalsView />} />
         <Route path="announcements" element={<AdminAnnouncementsView />} />
         <Route path="billboard" element={<AdminBillboardView />} />
+        <Route path="promotions" element={<AdminPromotionsView />} />
         <Route path="browse-services" element={<BrowseServicesView />} />
         <Route path="browse-jobs" element={<FindJobsView />} />
         <Route path="admins" element={<AdminAdminsView />} />

@@ -18,6 +18,7 @@ const ACTIONS = {
   announcement: { label: "Announcement", icon: "bi-megaphone-fill", tone: "orange" },
   flagged: { label: "Flagged content", icon: "bi-images", tone: "warning" },
   listing: { label: "Listing", icon: "bi-grid-fill", tone: "info" },
+  promotion: { label: "Promotion payment", icon: "bi-cash-coin", tone: "success" },
   admin: { label: "Admin", icon: "bi-shield-lock-fill", tone: "orange" },
   user_archive: { label: "Account archived", icon: "bi-archive-fill", tone: "warning" },
   user_restore: { label: "Account restored", icon: "bi-arrow-counterclockwise", tone: "success" },
