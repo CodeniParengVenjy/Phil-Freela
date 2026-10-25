@@ -3,7 +3,8 @@
 Saved 2026-10-25 after the user said "ok", "you manage the plan prices" and
 "yes gcash". Step 1 (database) was approved with "ok ok ok" and is built and live
 since 2026-10-25 (migrations promotions_tables and promotions_functions); nothing
-on the website uses it yet. Steps 2 to 6 are not started, and Step 2 is next. To
+on the website used it until Step 2 (sponsored billboards), built the same day.
+Steps 3 to 6 are not started, and Step 3 (the admin Promotions page) is next. To
 continue in a new Claude session, say: "Read PLAN-monetization.md and continue
 from the current step."
 
@@ -91,10 +92,22 @@ automatic.
 ## Steps
 
 1. **Database for fees.** (detail below) BUILT AND LIVE 2026-10-25.
-2. **Sponsored billboards.** Sponsor name, start and end dates, amount and
-   reference on the admin Billboard form; "Sponsored by ..." on the dashboard;
-   hidden automatically after the end date. Existing billboards have no end date
-   and keep working.
+2. **Sponsored billboards.** BUILT 2026-10-25 (no database change). Admin >
+   Billboard (super admin only) form: First Day (starts as today), Last Day,
+   Sponsor's Name, Paid (P), GCash Reference. The days are whole days in Manila
+   time and the last day is shown in full (the database end is the start of the
+   day after it). A sponsor needs a last day; a welcome message can run with no
+   end. Posted list: Running / Scheduled / Ended / Off badge, "Sponsored by X",
+   the days, what was paid and the reference (admin only), "Change last day"
+   (extend, or remove the end of a non-sponsored one), Switch off, Delete. The
+   user dashboard shows a "Sponsored by X" tag; the database already hides a
+   billboard outside its dates. Files: `lib/billboards.js` (date helpers,
+   `checkSponsorship`, `checkNewEnd`, `billboardState`, `setBillboardEnd`),
+   `AdminBillboardView.jsx`, `DashboardBillboard.jsx`. Tested in a real browser
+   against a pretend table with the database's rules: 47 checks, laptop and phone,
+   dark and light (it found a long sponsor name stretching the admin page on a
+   phone; fixed with `text-wrap`); lint and build clean. Not tried on the live
+   site (no test billboards were posted on the live database).
 3. **Admin Promotions page.** Pending requests with the receipt, Approve / Reject
    (with a reason), what is running now, PhilFreela's GCash number and QR, the
    price list, and an Overview "Earnings" card (approved requests and pesos).

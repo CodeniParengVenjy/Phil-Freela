@@ -6,9 +6,10 @@ const TURN_MS = 8000;
 
 // The billboard on the dashboard home: a welcome message or an advertisement
 // posted by an admin (admin panel > Billboard), with a picture when it has
-// one. The database only sends the ones that are on and meant for this user
-// (lib/billboards.js). With no billboard, nothing is drawn and the dashboard
-// looks the way it did before.
+// one. The database only sends the ones that are on, meant for this user and
+// inside their dates (lib/billboards.js), so a sponsorship disappears by itself
+// after its last day. A sponsored billboard carries a "Sponsored by" tag. With
+// no billboard, nothing is drawn and the dashboard looks the way it did before.
 export default function DashboardBillboard() {
   const [billboards, setBillboards] = useState([]);
   const [index, setIndex] = useState(0);
@@ -59,6 +60,12 @@ export default function DashboardBillboard() {
             </div>
           )}
           <div className="flex-grow-1 min-w-0">
+            {/* A business that paid for this space says so. */}
+            {billboard.sponsor_name && (
+              <span className="badge rounded-pill bg-role-subtle text-role fw-semibold mb-2 text-wrap text-start">
+                <i className="bi bi-megaphone me-1"></i> Sponsored by {billboard.sponsor_name}
+              </span>
+            )}
             <h2 className="h5 text-white fw-bold mb-1 text-break">{billboard.title}</h2>
             {billboard.message && (
               <p className="text-secondary fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }}>{billboard.message}</p>
