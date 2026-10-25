@@ -1,0 +1,53 @@
+/* GCash payments (PLAN-gcash-payments.md): the few styles Bootstrap doesn't have.
+   Kept in its own file so the big dashboard stylesheet is left alone. */
+
+/* A QR picture is always drawn on white with a little margin, so it can be
+   scanned in light and dark mode alike. */
+.pay-qr-tile {
+  width: 132px;
+  height: 132px;
+  flex: none;
+  padding: 6px;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pay-qr-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.pay-qr-empty {
+  width: 132px;
+  height: 132px;
+  flex: none;
+  border-radius: 10px;
+  border: 2px dashed rgba(148, 163, 184, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+/* The small receipt picture in a payment row and in the record window. */
+.pay-receipt-thumb {
+  width: 44px;
+  height: 56px;
+  flex: none;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.15);
+}
+
+/* Reference numbers and phone numbers line up better in a fixed-width face. */
+.pay-mono {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  letter-spacing: 0.02em;
+}

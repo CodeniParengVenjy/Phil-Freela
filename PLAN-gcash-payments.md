@@ -188,53 +188,189 @@ for the notification rule went through the connector with no confirm). Files:
 - Nothing visible changes on the site yet. The functions are `get_pay_details`,
   `record_payment`, `confirm_payment` and `mark_payment_not_received`.
 
-### Step 2: Settings, "GCash Payment" (Easy)
+### Step 2: Settings, "GCash Payment" (Easy) (DONE 2026-10-25)
 
-1. `lib/payments.js` (new): read and save my GCash details, upload the QR.
-2. `views/SettingsView.jsx`: a new sub-menu item "GCash Payment", shown only to
-   freelancers, with the number, the name, the optional QR (Upload QR / Remove)
-   and Save Changes.
+Website only. Nothing new in the database (Step 1 made the table and the bucket).
+
+1. `client/src/lib/payments.js` (new). Shared by every later step:
+   - `normalizeGcashNumber` (turns "0917 123 4567", "+63 917 123 4567" and
+     "9171234567" into 09171234567), `isValidGcashNumber`, `isValidAccountName`
+     (the same rules as the database: 2 to 60 letters with accents, spaces, dots,
+     hyphens and apostrophes, no double spaces), `formatGcashNumber` (0917 123
+     4567), `formatReference` (4021 358 091742), `formatPeso` (₱1,500.00).
+   - `getMyGcash()`, `saveMyGcash({ number, name, qrPath })` (an upsert on the
+     freelancer's own row), `removeMyGcash()`.
+   - QR picture: `checkQrFile(file)` (JPG, PNG or WEBP, 2 MB at most, and the
+     first bytes must match the type, like deliverables do), `uploadQr(userId,
+     file)` (into `gcash-qr/<id>/qr-<time>.<ext>`), `removeQrFile(path)`,
+     `getQrLink(path)` (a link that works for an hour).
+2. `client/src/pages/dashboard/components/GcashSettingsForm.jsx` (new): the number,
+   the name on the account, the optional QR (picture shown, Upload QR, Remove),
+   Save Changes, and a line saying who can see the details. Plain messages for
+   every refusal. The form says "Loading..." until the saved row has loaded, so
+   an empty box can't be saved over the real one.
+3. `views/SettingsView.jsx`: the menu gets "GCash Payment" for freelancers only,
+   and the panel shows the form (small edit; the other tabs are untouched).
+4. `client/src/pages/dashboard/payments.css` (new, imported by the payment
+   components): the few styles Bootstrap doesn't have (the QR tile). The two big
+   shared CSS files are left alone because another session is editing them.
+
+Test: a Node check of the number, name and reference helpers, then a browser
+test with a fake backend (save, refusals, QR pick and remove, loading, a
+client's Settings has no GCash tab, phone width), lint and build.
+
+#### Step 2 result (2026-10-25)
+
+Built as planned: `lib/payments.js`, `components/GcashSettingsForm.jsx`,
+`payments.css` and a small edit of `SettingsView.jsx` (the menu item and the
+panel). The receipt helpers (`checkReceiptFile`, `uploadReceipt`, `getReceiptLink`)
+are already in `lib/payments.js` for Step 3. Tested in a real browser against a
+pretend Supabase that imitates the database's rules (32 checks, 0 failed): empty
+state, a wrong number, a short number, a name with a digit or that looks like a
+link (all refused before anything is sent), a good save with "+63 917 123 4567"
+sent as 09171234567 and the name tidied, a GIF and a 3 MB picture refused, the QR
+previewed and uploaded only on Save into the person's own folder, replacing and
+removing it removes the old file, a save that fails removes the new upload, an
+upload that fails saves nothing, a reload shows what is saved, Remove my GCash
+details (asks first, then removes the row and the QR file), a load that fails
+shows one sentence and no form, a client has no tab, phone width with no
+sideways scrolling, light mode readable; lint (only the two old warnings in
+`useDashboardShell.js`) and build clean. Not tried against the real database:
+the real storage rules for `gcash-qr` were only tested in SQL (Step 1).
 
 ### Step 3: Payments section on the project page (Medium)
 
-1. `lib/payments.js`: pay details, record, confirm, not received, list.
-2. `components/PaymentsSection.jsx` (new) and `components/RecordPaymentDialog.jsx`
-   (new): the Pay via GCash box for the client, the record window (empty state:
-   an "Add screenshot" button and "Attach your receipt screenshot to continue"),
-   the list of records with status badges, and Confirm received / Not received
-   for the freelancer.
-3. `views/ProjectDetailsView.jsx`: render the section.
-4. Notification text for the three new kinds in the notifications list.
+1. Database, a small Part 2 at the end of `supabase_payments_schema.sql`:
+   `alter publication supabase_realtime add table public.payments`, so the other
+   person's answer shows without a reload. Nothing else changes.
+2. `lib/payments.js` adds: `getPayDetails(projectId)`, `listProjectPayments`,
+   `uploadReceipt(userId, file)` (JPG, PNG or WEBP, 5 MB at most, first bytes
+   checked, into `receipts/<id>/<time>.<ext>`), `recordPayment({ projectId, amount,
+   reference, receiptFile })` (uploads, then calls `record_payment`; if that is
+   refused the upload is removed again), `confirmPayment`, `markNotReceived`,
+   `getReceiptLink`, and `paymentStatuses` (label and badge color per status).
+3. `components/RecordPaymentDialog.jsx` (new, used again in Step 6): amount,
+   reference number (spaces allowed), the receipt screenshot with an "Add
+   screenshot" button and its thumbnail. Until a screenshot is attached it says
+   "Attach your receipt screenshot to continue" and Send record stays off.
+4. `components/PaymentsSection.jsx` (new):
+   - client: the Pay via GCash box (name, number with Copy number, QR with the
+     hint to check the name GCash shows), "I've paid", and the list of payments;
+     when the freelancer has no details it says so and points to Message.
+   - freelancer: the list of payments, each with the amount, reference, time,
+     View receipt and, while "Payment sent", Confirm received / Not received.
+   - a small budget hint when the project came from a job post, e.g. "Job budget:
+     ₱5,000 per project" (not enforced).
+   - live updates when the other person answers (realtime on `payments`).
+5. `views/ProjectDetailsView.jsx`: renders the section under the work box.
+6. `lib/notifications.js`: icons and button labels for `payment_sent`,
+   `payment_confirmed` and `payment_not_received`.
+
+Test: browser test with a fake backend for both people (record with a receipt, a
+reused reference refused, confirm, not received, record again, loading and
+errors, the freelancer with no details, phone width), lint and build.
 
 ### Step 4: Report with a payment (Medium)
 
-Not received can end in a Report. A user report can carry one payment (like it
-already carries chat messages): `reports.payment_id`, a check that the payment is
-between the reporter and the person reported, and an admin-only read of the
-record and the receipt through the report. The report popup gets "Attach the
-payment" when opened from a payment; Admin > Reports shows the record and the
-receipt. Details when this step is next.
+Database, new file `database/supabase_report_payments_schema.sql`, no DROP or
+DELETE:
+1. `reports.payment_id` (a payment, set to empty if the payment goes away).
+2. A trigger on insert: a report that carries a payment must be about a person,
+   the reporter must be the client or the freelancer on that payment, and the
+   person reported must be the other one ("That payment isn't between you two").
+3. Admins can read a payment (and open its receipt in `receipts`) only while a
+   report points at it: one policy on `payments`, one on `storage.objects`.
+4. Test file `database/test_report_payments.sql`, rolled back.
+
+Website:
+1. `lib/reports.js` `sendReport` takes `paymentId` and sends `payment_id`.
+2. `components/ReportDialog.jsx`: when the target has a `payment`, a ticked box
+   "Send this payment with the report (amount, reference and receipt). Only
+   admins will see it." Nothing changes for any other report.
+3. `PaymentsSection.jsx`: a Report link on a Not received payment opens the
+   dialog about the other person with that payment attached;
+   `ProjectDetailsView.jsx` holds the dialog.
+4. `admin/views/AdminReportsView.jsx`: a report with a payment shows a box with
+   the amount, reference, status, dates and a View receipt link.
 
 ### Step 5: Database for payments from a chat (Medium)
 
-`payments` gets `conversation_id` (a payment has a project or a conversation,
-exactly one), the statuses `requested` and `cancelled`, and `request_payment`,
-`cancel_payment_request` and a `record_payment` that can answer a request. The
-chat message list gets a payment card kind and the inbox preview "Payment
-request". New notification kind `payment_requested`. Look at the live messages
-and conversations tables first.
+New file `database/supabase_chat_payments_schema.sql`. Applied in two named
+migrations (the part with the constraint swaps first). The live messages table
+has: id, conversation_id, sender_id, body, created_at, edited_at, attachment_url,
+attachment_type, delivered_at, call_id, attachment_name, attachment_size,
+unsent_at, with a rule that a message needs a body or a file, triggers that
+update the inbox preview from `body`, a word filter on `body`, and an edit guard.
+The browser inserts messages itself, so the payment message is protected.
+
+1. `payments` changes: `project_id` may be empty; new `conversation_id` (removed
+   with the chat); exactly one of the two must be set; new `note` (up to 100
+   characters, through the word filter); statuses add `requested` and
+   `cancelled`; `reference_no` and `receipt_path` may be empty only while a
+   payment is `requested` or `cancelled`; `answered_at` stays empty while
+   `requested` or `sent`. One open request per chat (a unique index on the
+   conversation while `requested` or `sent`).
+2. `messages` changes: new `payment_id`; `attachment_type` also allows
+   `payment`; a payment message must have its `payment_id`; the browser can't
+   insert, change or remove a payment message (the insert, update and remove
+   policies are narrowed with `alter policy`, and the edit guard refuses it).
+   The message text is "Payment request: ₱400.00", so the inbox preview and the
+   offline e-mail already work without changing those triggers.
+3. New notification kind `payment_requested` (22 kinds, keeping every kind).
+4. Functions (all `security definer`, signed-in users only):
+   - `request_payment(conversation, amount, note)`: the caller is in the chat,
+     is verified, is not blocked from posting or messaging, has saved GCash
+     details, there is no open request in that chat, the amount is valid; makes
+     the payment as `requested`, writes the chat message, tells the client.
+   - `cancel_payment_request(payment)`: the freelancer, only while `requested`.
+   - `get_request_pay_details(payment)`: only the payer, only while `requested`.
+   - `record_chat_payment(payment, amount, reference, receipt)`: only the payer,
+     only while `requested`; the amount starts as the requested one but can be
+     changed; same checks as `record_payment`; sets `sent`; tells the freelancer.
+   - `confirm_payment` and `mark_payment_not_received` are replaced so they also
+     work for a chat payment (the notification links to the chat, not a project).
+5. The QR policy is widened (`alter policy`) so the payer of a `requested` chat
+   payment can open that freelancer's QR.
+6. Test file `database/test_chat_payments.sql`, rolled back, borrowing an
+   existing chat: every refusal, one open request, the message appears and can't
+   be edited, unsent or removed by the browser, answers, notifications.
 
 ### Step 6: The chat card and the request window (Medium to Hard)
 
-`ChatView.jsx` header button, `RequestPaymentDialog.jsx`, a payment card in the
-message list with the five states, the record window reused.
+1. `lib/payments.js` adds `requestPayment`, `cancelPaymentRequest`,
+   `getRequestPayDetails`, `recordChatPayment`, `listPaymentsByIds`.
+2. `components/PaymentCard.jsx` (new): the five states from the drawings
+   (Requested, Payment sent, Confirmed, Not received, Cancelled), what each
+   person sees and the buttons (I've paid, Cancel request, Confirm received, Not
+   received, Report). It reloads when a payment changes (realtime on `payments`
+   for that chat).
+3. `components/RequestPaymentDialog.jsx` (new): amount, note, a line saying who
+   will see the details; says so and links to Settings when the freelancer has
+   no GCash details.
+4. `RecordPaymentDialog.jsx` gets a variant for a request (amount filled in).
+5. `views/ChatView.jsx`: asks for `payment_id`; draws the card instead of a
+   bubble for a payment message (no right-click menu on it); a "₱ Request
+   payment" button in the header for a verified freelancer who isn't messaging
+   blocked; the Report popup from the card attaches the payment.
+6. `lib/notifications.js`: `payment_requested`.
 
-### Step 7: Admin Overview, wording and data (Easy)
+Test: browser test with a fake backend (request, card for both people, pay and
+record, confirm, not received, cancel, one open request, no GCash details,
+blocked messaging, phone width), lint and build.
 
-1. The Admin Overview "Payments" card shows counts by status (from an extension
-   of `admin_transactions()`; no amounts).
-2. "Download your data" includes payments.
-3. Reword everything that says there is no money (list below).
+### Step 7: Admin Overview, data and wording (Easy)
+
+1. Database, `database/supabase_admin_payments_schema.sql`:
+   `admin_transactions()` also returns payments by status (requested, sent,
+   confirmed, not_received, cancelled), archived people left out, counts only,
+   no amounts. Test file `database/test_admin_payments.sql`.
+2. `admin/views/AdminOverviewView.jsx`: the "Payments: Not set up yet" card
+   becomes a `StatusCounts` card.
+3. `lib/privacy.js`: "Download your data" includes the person's own payments and
+   their own GCash details (never anyone else's).
+4. Wording: `TermsOfService.jsx`, `PrivacyPolicy.jsx`, `PhilFreela-System-Functions.md`
+   (Feature 5 "Scope"), `PLAN-booking.md`. The Word and PDF study guide in the
+   user's OneDrive is not touched: it is listed for the user.
 
 ## Wording to change when it is built
 

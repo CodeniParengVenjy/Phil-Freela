@@ -11,12 +11,15 @@ import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
+import GcashSettingsForm from "../components/GcashSettingsForm";
 
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
 
 export default function SettingsView() {
   const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, setUsername, showToast } = useOutletContext();
   const navigate = useNavigate();
+  // Only freelancers get paid, so only they have the GCash Payment tab.
+  const menuItems = accountType === "freelancer" ? [...subNavItems, "GCash Payment"] : subNavItems;
   const [activeSubNav, setActiveSubNav] = useState("Profile Settings");
   // "Download your data" (feature 6): null = idle, so the button shows its
   // normal label until clicked.
@@ -293,7 +296,7 @@ export default function SettingsView() {
         <div className="row g-4">
           <div className="col-md-4">
             <div className="nav flex-column gap-2">
-              {subNavItems.map((item) => (
+              {menuItems.map((item) => (
                 <button
                   key={item}
                   type="button"
@@ -433,6 +436,13 @@ export default function SettingsView() {
                 <WatermarkSettingsForm userId={currentUserId} username={username} fullName={displayName} showToast={showToast} />
               ) : (
                 <p className="text-secondary fs-7">Only freelancers upload work, so there's nothing to set here.</p>
+              )
+            ) : activeSubNav === "GCash Payment" ? (
+              // Where clients send the money (PLAN-gcash-payments.md). Freelancers only.
+              accountType === "freelancer" && currentUserId ? (
+                <GcashSettingsForm userId={currentUserId} showToast={showToast} />
+              ) : (
+                <p className="text-secondary fs-7">Only freelancers receive payments, so there's nothing to set here.</p>
               )
             ) : activeSubNav === "Appearance" ? (
               currentUserId
