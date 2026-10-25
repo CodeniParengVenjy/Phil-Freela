@@ -45,7 +45,7 @@ export default function GetStartedCard({ userId, accountType }) {
   };
 
   return (
-    <section className="glass-card rounded-4 p-3 p-md-4 mb-3 mb-md-4 border border-secondary border-opacity-25" aria-labelledby="get-started-title">
+    <section data-tour="get-started" className="glass-card rounded-4 p-3 p-md-4 mb-3 mb-md-4 border border-secondary border-opacity-25" aria-labelledby="get-started-title">
       <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
         <div>
           <h2 id="get-started-title" className="h5 text-white fw-bold mb-1">

@@ -155,7 +155,7 @@ export default function FindJobsView({ withRecommendations = false }) {
         )}
 
         <div className="d-flex flex-column gap-3">
-          {filtered.map((job) => {
+          {filtered.map((job, index) => {
             const clientName = job.client?.full_name || job.client?.username || "Client";
             const categoryLabel = getCategory(job.category).label;
             // The client's public page (admins stay in the admin panel).
@@ -165,7 +165,8 @@ export default function FindJobsView({ withRecommendations = false }) {
               // row (Bootstrap's stretched-link), so clicking anywhere on a row
               // opens the job. The picture, the client's name and the buttons
               // sit above it (z-2) and keep their own clicks.
-              <div key={job.id} className="job-item-card position-relative p-3 p-md-4 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-3 hover-lift">
+              // (data-tour: the opening tour points at the first row, components/WelcomeGuide.jsx)
+              <div key={job.id} data-tour={index === 0 ? "first-item" : undefined} className="job-item-card position-relative p-3 p-md-4 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-3 hover-lift">
                 {/* The client's own picture; like their name, it opens their public page. */}
                 <div className="position-relative z-2 d-flex flex-shrink-0">
                   <Avatar path={job.client?.avatar_path} name={clientName} size={64} to={clientPage} />

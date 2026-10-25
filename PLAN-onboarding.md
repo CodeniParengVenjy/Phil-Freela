@@ -34,14 +34,19 @@ Files: DashboardTopNav.jsx, FreelancerDashboardLayout.jsx, ClientDashboardLayout
 - If any one of those can't be loaded the card stays hidden instead of guessing (so nobody is asked for something they already did).
 - New files: `GetStartedCard.jsx` (dashboard/components) and `lib/getStarted.js`; placed under the greeting in both dashboard layouts; a see-through progress track in dashboard.css / theme.css (Bootstrap's own track is solid white, which made an empty bar look like "all done" in the dark theme).
 
-## Step 3: opening guide (done)
+## Step 3: opening guide, a guided tour of the real buttons (done)
 
-- One pop-up with 3 short slides, once for each person in each browser, the first time their dashboard opens; different words for freelancers and clients (`GUIDE_SLIDES` in lib/welcomeGuide.js). Freelancer: get verified first, show your work, find jobs and get booked. Client: find the right freelancer, post what you need, chat and follow the work.
-- Buttons: Skip and Next on slides 1 and 2; the last slide has only "Start", which closes it and leaves the Get started card right behind it. Escape also closes it. No tour library, just a normal pop-up.
-- It never sits on top of the "add your name" pop-up: it waits until the name is saved. It also waits until the dashboard has loaded the profile (the role is known, and a ban or archive redirect has had its chance), so it can't flash up early with the wrong role's words or count as seen.
-- "How PhilFreela works" in the account menu (above Sign out) opens it again from slide 1, on any dashboard page. It is a menu item, not a new visible button. The menu asks the guide to open with a browser event (`openWelcomeGuide()`), so no state is passed through the layouts.
-- "Already seen" is saved in this browser only (`philfreela-welcome-guide-seen-<userId>`), from the moment it is shown. A browser that refuses to keep it (private window) is treated as "seen", so the guide doesn't pop up on every page load; the menu still opens it. Existing accounts see it once too.
-- New files `WelcomeGuide.jsx` and `lib/welcomeGuide.js`; mounted in `DashboardOverlays.jsx` (which now also gets `accountType` from both layouts); one menu item in `DashboardTopNav.jsx`. No database change.
+The first version was a pop-up with three slides (1759e51). That was not what was meant: the guide should point at the actual buttons on the page, like a tour for beginners. It was rebuilt as a tour and the slide version is gone.
+
+- The page goes dim, one real button or box is outlined, and a small note next to it says what it is for. Six steps, in page order, with different words for freelancers and clients (`TOUR_STEPS` in lib/welcomeGuide.js): a welcome in the middle, the side menu, the search box, the account button, the Get started card, and the first job (freelancer) or first service (client).
+- Buttons: Skip and Next (Start tour on the welcome, Done on the last step). Escape also closes it. No tour library: a dimmed overlay, an outline box with a huge shadow, and a note, all in `WelcomeGuide.jsx`.
+- The parts it points at carry a small `data-tour="..."` tag (menu, search box or search icon, account button, Get started card, first row or card). A part that isn't on the page (an empty job list, a hidden card, or the Profile page when the tour is replayed there) is skipped; one that is still loading is waited for (up to 2.5 seconds). "2 of 6" counts only the parts that are on the page.
+- The tour follows the part on every screen frame, so the outline stays on it while the menu slides open, the page scrolls or the window changes size. It opens the side menu for the menu step (it starts closed) and puts it back the way it was; a menu the person had opened stays open. For a part further down it scrolls only the content area (`scrollIntoView` also slid the whole page up under the top bar, so it is not used).
+- The note goes beside a tall part (the menu), otherwise below it, otherwise above, never on top of it. On a phone it is a strip across the bottom (or the top, when the part is in the lower half).
+- The page behind can't be pressed during the tour. It never sits on top of the "add your name" pop-up, and it waits until the dashboard has loaded the profile (the role is known, and a ban or archive redirect has had its chance), so it can't flash up early with the wrong role's words or count as seen.
+- "Take the tour" in the account menu (above Sign out) plays it again from the welcome, on any dashboard page. It is a menu item, not a new visible button. The menu asks the tour to open with a browser event (`openWelcomeGuide()`), so no state is passed through the layouts.
+- "Already seen" is saved in this browser only (`philfreela-tour-seen-<userId>`), from the moment it is shown. It is a new key, so someone who only saw the old slide pop-up gets the tour once. A browser that refuses to keep it (private window) is treated as "seen", so the tour doesn't start on every page load; the menu still plays it. Existing accounts see it once too.
+- Files: `WelcomeGuide.jsx` and `lib/welcomeGuide.js` (rewritten); mounted in `DashboardOverlays.jsx`; a `data-tour` tag in `DashboardTopNav.jsx`, both layouts, `GetStartedCard.jsx`, `FindJobsView.jsx` and `BrowseServicesView.jsx`. No database change.
 
 ## After building
 

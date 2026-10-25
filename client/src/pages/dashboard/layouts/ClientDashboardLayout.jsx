@@ -45,7 +45,7 @@ export default function ClientDashboardLayout({
       <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} openChat={openChat} />
 
       <div className="app-container d-flex">
-        <aside className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
+        <aside data-tour="sidebar" className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
           <div className="sidebar-inner d-flex flex-column justify-content-between h-100 py-3 px-2">
             <div className="nav flex-column gap-2">
               <NavLink to="/dashboard/profile" className="sidebar-identity text-decoration-none" title="My profile">

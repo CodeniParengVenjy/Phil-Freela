@@ -129,7 +129,7 @@ export default function BrowseServicesView({ withRecommendations = false }) {
         )}
 
         <div className="row g-4">
-          {filtered.map((s) => {
+          {filtered.map((s, index) => {
             const meta = getCategory(s.category);
             const freelancerName = s.freelancer?.full_name || s.freelancer?.username || "Freelancer";
             const slides = itemSlides(s);
@@ -138,7 +138,8 @@ export default function BrowseServicesView({ withRecommendations = false }) {
               // and small windows, one on phones. The expand button on each
               // picture still shows it full screen.
               <div className="col-sm-6 col-lg-4" key={s.id}>
-                <div className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
+                {/* (data-tour: the opening tour points at the first card, components/WelcomeGuide.jsx) */}
+                <div data-tour={index === 0 ? "first-item" : undefined} className="glass-card rounded-4 h-100 border border-secondary border-opacity-25 overflow-hidden hover-lift d-flex flex-column">
                   {/* The picture grows with the card (16:10) and shows the
                       whole photo ("contain"): trimming the edges used to cut
                       off the watermark in the photo's corner. It moves to the

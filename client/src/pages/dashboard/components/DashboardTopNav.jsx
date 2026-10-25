@@ -134,7 +134,8 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           </NavLink>
         </div>
 
-        <form className={`d-none d-md-flex mx-auto position-relative search-nav-box${dropping ? " is-dropping" : ""}`} style={{ width: 380 }} role="search" onSubmit={handleSearch}>
+        {/* (data-tour = a part the opening tour points at, components/WelcomeGuide.jsx) */}
+        <form data-tour="search" className={`d-none d-md-flex mx-auto position-relative search-nav-box${dropping ? " is-dropping" : ""}`} style={{ width: 380 }} role="search" onSubmit={handleSearch}>
           <i className="bi bi-search search-icon text-secondary"></i>
           <input
             name="q"
@@ -156,7 +157,7 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
 
         <div className="d-flex align-items-center gap-3">
           {/* Phones have no room for the box: this opens the Search page. */}
-          <NavLink to="/dashboard/search" className="nav-link text-white-50 hover-orange d-md-none" aria-label="Search" title="Search">
+          <NavLink to="/dashboard/search" data-tour="search" className="nav-link text-white-50 hover-orange d-md-none" aria-label="Search" title="Search">
             <i className="bi bi-search fs-5"></i>
           </NavLink>
           {/* (No "Join as Freelancer" / "Become a Client" / "Services" links here:
@@ -173,7 +174,7 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           )}
 
           <div className="dropdown">
-            <button className="btn btn-dark border border-secondary border-opacity-50 rounded-pill d-flex align-items-center gap-2 px-3 py-1 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <button data-tour="account" className="btn btn-dark border border-secondary border-opacity-50 rounded-pill d-flex align-items-center gap-2 px-3 py-1 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
               <Avatar path={avatarPath} name={displayName} size={32} />
               <span className="fw-semibold fs-7 text-truncate d-none d-sm-inline">
                 {displayName}
@@ -187,8 +188,8 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
               {adminLink && (
                 <li><a className="dropdown-item rounded-2 text-white" href="/admin" onClick={handleSwitchToAdmin}><i className="bi bi-shield-lock me-2 text-orange"></i> Switch to admin</a></li>
               )}
-              {/* Opens the opening guide again (components/WelcomeGuide.jsx). */}
-              <li><button type="button" className="dropdown-item rounded-2 text-white" onClick={openWelcomeGuide}><i className="bi bi-question-circle me-2 text-info"></i> How PhilFreela works</button></li>
+              {/* Plays the opening tour again (components/WelcomeGuide.jsx). */}
+              <li><button type="button" className="dropdown-item rounded-2 text-white" onClick={openWelcomeGuide}><i className="bi bi-compass me-2 text-info"></i> Take the tour</button></li>
               <li><hr className="dropdown-divider border-secondary border-opacity-25" /></li>
               <li><a className="dropdown-item rounded-2 text-danger" href="/login" onClick={onSignOut}><i className="bi bi-box-arrow-right me-2"></i> Sign out</a></li>
             </ul>
