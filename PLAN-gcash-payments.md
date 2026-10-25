@@ -361,7 +361,7 @@ for the payment, the box, View receipt in a new tab, a receipt that can't be
 opened, a report without a payment shows no box), phone width; lint (only the
 two old warnings) and build clean.
 
-### Step 5: Database for payments from a chat (Medium)
+### Step 5: Database for payments from a chat (Medium) (DONE 2026-10-25)
 
 New file `database/supabase_chat_payments_schema.sql`. Applied in two named
 migrations (the part with the constraint swaps first). The live messages table
@@ -402,6 +402,44 @@ The browser inserts messages itself, so the payment message is protected.
 6. Test file `database/test_chat_payments.sql`, rolled back, borrowing an
    existing chat: every refusal, one open request, the message appears and can't
    be edited, unsent or removed by the browser, answers, notifications.
+
+#### Step 5 result (2026-10-25)
+
+Built as planned: `database/supabase_chat_payments_schema.sql` and
+`database/test_chat_payments.sql`, applied live as two migrations
+(`chat_payments_tables`: the `payments` and `messages` changes and the 22nd
+notification kind; `chat_payments_rules_and_functions`: the narrowed message
+rules, the edit guard, the wider QR rule and the six functions), after a
+rolled-back trial with the schema and the test in one call (62 checks, 0 failed,
+none skipped).
+
+Decisions made while building it:
+
+- The database does not look at the account type to decide who can request:
+  only a verified person who has GCash details saved, not blocked from posting or
+  messaging. (People switch between client and freelancer, and only a freelancer
+  can save details in the site.) The website shows the button only in
+  freelancer mode.
+- `payments.created_at` is when the payment was recorded: for a chat request,
+  `record_chat_payment` sets it again when the other person records it (the
+  request's own time is the card message's time).
+- The edit guard on `messages` refuses an edit or unsend of a payment card but
+  still lets `mark_messages_delivered()` set `delivered_at` on it (it updates
+  every message the other person received).
+- A not-received chat payment tells the person to "ask them to send a new
+  request" (a project payment still says to record it again).
+- Not covered by the test: removing a payment card from the browser (needs a
+  statement the connector asks a person to confirm). Instead the test checks that
+  the remove rule mentions payment cards, and a live check shows all three
+  message rules do.
+
+Checked live afterwards: the new columns exist on `payments` and `messages`, the
+six functions run for signed-in users and not for a signed-out visitor, 22
+notification kinds, the three message rules mention payment cards, nothing was
+left behind (0 payments, 0 GCash rows, 0 payment cards, 0 files, 0 payment
+notifications), both offline-email triggers are still on, and the user number
+counter did not move. The site that is live now keeps working: nothing creates a
+payment card until Step 6, and an old page would show one as a plain line of text.
 
 ### Step 6: The chat card and the request window (Medium to Hard)
 
