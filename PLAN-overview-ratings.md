@@ -71,3 +71,25 @@ section and the cards keep working.
 
 Add a `payments` count and total to `admin_transactions()` and show them in the
 Payments card in place of "Not set up yet".
+
+## Top rated: who is outstanding (added 2026-10-25)
+
+Under the two rating cards, a "Top rated" part with two lists: **Top freelancers**
+and **Top clients**, five each, best first.
+
+- Each row: place, picture (or a letter circle), name, @username, the average
+  stars and how many ratings it comes from. The count is shown on purpose, so one
+  5-star rating is not mistaken for many.
+- Ranked by average stars, then by number of ratings, then by name.
+- A row opens Admin > Users with the search box already filled with that
+  username (`/admin/users?search=<username>`; the Users page now reads `search`
+  from the address, like it already reads `role`, `verified` and `sort`).
+- Nobody to list says "No rated freelancers yet." / "No rated clients yet.".
+  If only this part fails to load, one sentence replaces it and the rest stays.
+- Database: `admin_top_rated(p_limit)` in `supabase_admin_ratings_schema.sql`,
+  admin-only. Same rules as `admin_ratings()`: only revealed ratings, the role the
+  person had on the project, ratings by or about archived people left out.
+  `p_limit` is kept between 1 and 20. Applied live as the migration
+  `admin_top_rated` (no DROP or DELETE). Test: `database/test_admin_top_rated.sql`.
+- Website: `components/TopRatedList.jsx`, a few lines in `AdminOverviewView.jsx`,
+  `AdminUsersView.jsx` (the `search` address value) and `admin.css`.

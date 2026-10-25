@@ -396,6 +396,39 @@ body {
   border-radius: 5px;
 }
 
+/* A row of the Top rated lists (TopRatedList.jsx): place, picture, who, score. */
+.admin-top-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+.admin-top-row:hover,
+.admin-top-row:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+.admin-top-row:focus-visible {
+  outline: 2px solid #ff8a33;
+  outline-offset: -2px;
+}
+.admin-top-rank {
+  width: 1.2rem;
+  flex-shrink: 0;
+  text-align: center;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.5);
+}
+.admin-top-who {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.admin-top-score {
+  flex-shrink: 0;
+  text-align: right;
+}
+
 /* Table view: scrolls inside its box, the header stays on top. */
 .admin-trend-table {
   max-height: 480px;

@@ -126,3 +126,67 @@ $$;
 
 revoke execute on function public.admin_transactions() from public, anon;
 grant execute on function public.admin_transactions() to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- admin_top_rated(p_limit): who is outstanding. The best rated freelancers and
+-- the best rated clients, each a list (best first) of
+--   { id, full_name, username, avatar_path, average, count }
+-- Ranked by average stars, then by how many ratings it comes from, then by name.
+-- The same rules as admin_ratings(): only revealed ratings count, a rating goes
+-- to the role the person had on that project, and ratings by or about an
+-- archived person are left out. p_limit is kept between 1 and 20 (the page asks
+-- for 5). A person can be on both lists (a rating as a freelancer and another as
+-- a client), each with only the ratings of that role.
+-- ---------------------------------------------------------------------------
+create or replace function public.admin_top_rated(p_limit integer default 5)
+returns json
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  n      integer := least(greatest(coalesce(p_limit, 5), 1), 20);
+  result json;
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can view stats.';
+  end if;
+
+  with shown as (
+    select r.ratee_id, r.stars,
+           case when r.ratee_id = pr.freelancer_id then 'freelancer' else 'client' end as role
+    from public.project_ratings r
+    join public.projects pr on pr.id = r.project_id
+    where public.rating_is_visible(r.project_id)
+      and not exists (select 1 from public.archived_users a where a.user_id in (r.rater_id, r.ratee_id))
+  ),
+  per_person as (
+    select s.ratee_id, s.role, round(avg(s.stars), 2) as average, count(*) as total
+    from shown s
+    group by s.ratee_id, s.role
+  ),
+  ranked as (
+    select pp.role, pp.average, pp.total, p.id, p.full_name, p.username, p.avatar_path,
+           row_number() over (partition by pp.role order by pp.average desc, pp.total desc, p.full_name) as place
+    from per_person pp
+    join public.profiles p on p.id = pp.ratee_id
+  )
+  select json_build_object(
+           'freelancers', coalesce((select json_agg(json_build_object(
+                                'id', id, 'full_name', full_name, 'username', username,
+                                'avatar_path', avatar_path, 'average', average, 'count', total) order by place)
+                              from ranked where role = 'freelancer' and place <= n), '[]'::json),
+           'clients',     coalesce((select json_agg(json_build_object(
+                                'id', id, 'full_name', full_name, 'username', username,
+                                'avatar_path', avatar_path, 'average', average, 'count', total) order by place)
+                              from ranked where role = 'client' and place <= n), '[]'::json)
+         )
+  into result;
+
+  return result;
+end;
+$$;
+
+revoke execute on function public.admin_top_rated(integer) from public, anon;
+grant execute on function public.admin_top_rated(integer) to authenticated;

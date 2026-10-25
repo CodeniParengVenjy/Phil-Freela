@@ -92,7 +92,8 @@ export default function AdminUsersView() {
   // lib/adminRequests.js). A regular admin's Suspend / Ban / Archive is such a request.
   const [requests, setRequests] = useState({});
   const [loadError, setLoadError] = useState("");
-  const [search, setSearch] = useState("");
+  // The search box. The Overview's Top rated names open this page with ?search=<username>.
+  const [search, setSearch] = useState(() => (params.get("search") || "").slice(0, 60));
   const [roleFilter, setRoleFilter] = useState(() => fromAddress("role", ["freelancer", "client"], "all"));
   const [statusFilter, setStatusFilter] = useState(() => fromAddress("status", ["active", "suspended", "banned"], "all"));
   // "all", "verified" or "unverified" (the Verified badge, see lib/verification.js).

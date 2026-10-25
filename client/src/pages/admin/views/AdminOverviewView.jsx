@@ -5,6 +5,7 @@ import { GrowthChart, GrowthTable } from "../components/GrowthChart";
 import SplitBar from "../components/SplitBar";
 import RatingCard from "../components/RatingCard";
 import StatusCounts from "../components/StatusCounts";
+import TopRatedList from "../components/TopRatedList";
 
 // One card per number returned by the admin_stats() database function. Every
 // card opens the page behind its number; the Users ones open the Users page
@@ -115,19 +116,26 @@ export default function AdminOverviewView() {
   const [ratingsError, setRatingsError] = useState("");
   const [transactions, setTransactions] = useState(null);
   const [transactionsError, setTransactionsError] = useState("");
+  // The best rated freelancers and clients (admin_top_rated()), the top 5 of each.
+  const [topRated, setTopRated] = useState(null);
+  const [topRatedError, setTopRatedError] = useState("");
 
   useEffect(() => {
     let active = true;
 
     (async () => {
-      const [ratingsResult, transactionsResult] = await Promise.all([
+      const [ratingsResult, transactionsResult, topRatedResult] = await Promise.all([
         supabase.rpc("admin_ratings"),
-        supabase.rpc("admin_transactions")
+        supabase.rpc("admin_transactions"),
+        supabase.rpc("admin_top_rated", { p_limit: 5 })
       ]);
       if (!active) return;
 
       if (ratingsResult.error) setRatingsError("Failed to load the ratings.");
       else setRatings(ratingsResult.data);
+
+      if (topRatedResult.error) setTopRatedError("Failed to load the top rated.");
+      else setTopRated(topRatedResult.data);
 
       if (transactionsResult.error) setTransactionsError("Failed to load the transactions.");
       else setTransactions(transactionsResult.data);
@@ -314,6 +322,26 @@ export default function AdminOverviewView() {
                   : `${Number(ratings.offers.average).toFixed(1)} out of 5 from ${ratings.offers.count} ${ratings.offers.count === 1 ? "review" : "reviews"}.`}
               </p>
             </>
+          )}
+
+          {/* Who is outstanding: the best rated people, best first. */}
+          <div className="mt-4 mb-3">
+            <h3 className="h6 fw-bold text-white mb-0">Top rated</h3>
+            <p className="text-secondary fs-7 mb-0">The best rated people by average stars, with how many ratings that comes from. Click a name to find them in Users.</p>
+          </div>
+
+          {topRatedError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{topRatedError}</div>}
+          {!topRatedError && !topRated && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the top rated...</div>}
+
+          {topRated && (
+            <div className="row g-3">
+              <div className="col-12 col-md-6">
+                <TopRatedList title="Top freelancers" people={topRated.freelancers} emptyText="No rated freelancers yet." />
+              </div>
+              <div className="col-12 col-md-6">
+                <TopRatedList title="Top clients" people={topRated.clients} emptyText="No rated clients yet." />
+              </div>
+            </div>
           )}
 
           <div className="mt-4 mb-3">
