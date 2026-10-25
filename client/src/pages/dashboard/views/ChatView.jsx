@@ -18,6 +18,9 @@ import ChatAttachment from "../components/ChatAttachment";
 import ChatMedia from "../components/ChatMedia";
 import CensoredText from "../../../components/CensoredText";
 import VoiceRecorder from "../components/VoiceRecorder";
+import PaymentCard from "../components/PaymentCard";
+import RequestPaymentDialog from "../components/RequestPaymentDialog";
+import { listConversationPayments, watchConversationPayments } from "../../../lib/payments";
 
 // Same upload rules as the Post a Service media dropzone.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -40,7 +43,7 @@ function formatRelativeTime(dateString) {
 
 export default function ChatView() {
   const { conversationId } = useParams();
-  const { currentUserId, showToast, refreshUnreadCount, openPreview, suspension } = useOutletContext();
+  const { currentUserId, showToast, refreshUnreadCount, openPreview, suspension, accountType } = useOutletContext();
   // Suspended for a messaging violation (e.g. harassment): they can read this
   // chat, but can't send, forward, or edit messages.
   const messagingBlocked = isMessagingBlocked(suspension);
@@ -48,6 +51,11 @@ export default function ChatView() {
   const [otherProfile, setOtherProfile] = useState(null);
   // The person being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
+  // The payment cards of this chat by payment id, and the "Request payment"
+  // window (PLAN-gcash-payments.md). paymentsKey goes up when a card changed.
+  const [payments, setPayments] = useState({});
+  const [paymentsKey, setPaymentsKey] = useState(0);
+  const [requestOpen, setRequestOpen] = useState(false);
   const [otherLastReadAt, setOtherLastReadAt] = useState(null);
   const [messages, setMessages] = useState(null);
   const [notFound, setNotFound] = useState(false);
@@ -75,7 +83,7 @@ export default function ChatView() {
   const inCall = Boolean(activeCall && activeCall.stage !== "ended");
 
   // The Verified check for the person in this chat and the forward list.
-  const verifiedIds = useVerifiedIds([otherProfile?.id, ...(forwardConversations || []).map((c) => c.otherId)]);
+  const verifiedIds = useVerifiedIds([currentUserId, otherProfile?.id, ...(forwardConversations || []).map((c) => c.otherId)]);
   // "Online" / "Offline 5m ago" under the other person's name.
   const otherStatus = presenceStatus(usePresence([otherProfile?.id]).get(otherProfile?.id));
 
@@ -104,6 +112,24 @@ export default function ChatView() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [contextMenu, forwardMessage]);
 
+  // The payment cards in this chat: read when the chat opens, when a new card
+  // arrives, when one was changed here, and when the other person pays or answers.
+  const paymentCardCount = messages?.filter((m) => m.attachment_type === "payment").length ?? 0;
+  useEffect(() => {
+    if (!conversationId) return undefined;
+    let active = true;
+    const load = async () => {
+      const { data } = await listConversationPayments(conversationId);
+      if (active && data) setPayments(Object.fromEntries(data.map((payment) => [payment.id, payment])));
+    };
+    load();
+    const stop = watchConversationPayments(conversationId, load);
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [conversationId, paymentCardCount, paymentsKey]);
+
   useEffect(() => {
     if (!conversationId || !currentUserId) return;
     let active = true;
@@ -130,7 +156,7 @@ export default function ChatView() {
 
       const { data: messageRows, error: messagesError } = await supabase
         .from("messages")
-        .select("id, sender_id, body, created_at, edited_at, delivered_at, unsent_at, attachment_url, attachment_type, attachment_name, attachment_size, call_id")
+        .select("id, sender_id, body, created_at, edited_at, delivered_at, unsent_at, attachment_url, attachment_type, attachment_name, attachment_size, call_id, payment_id")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
@@ -446,7 +472,11 @@ export default function ChatView() {
   // The other person's public page (their picture and name link to it).
   const otherPath = otherProfile ? profilePath(otherProfile.account_type, otherProfile.id) : null;
   // Call lines and unsent messages don't get the Sent / Delivered / Seen label.
-  const lastMineId = [...(messages || [])].reverse().find((m) => m.sender_id === currentUserId && !m.call_id && !m.unsent_at)?.id;
+  const lastMineId = [...(messages || [])].reverse().find((m) => m.sender_id === currentUserId && !m.call_id && !m.unsent_at && m.attachment_type !== "payment")?.id;
+
+  // The "Request payment" button: only a verified freelancer who can send
+  // messages. (The database checks the rest and says why in plain words.)
+  const canRequestPayment = accountType === "freelancer" && Boolean(otherProfile) && verifiedIds.has(currentUserId) && !messagingBlocked;
 
   // Opens the Report popup with this chat's messages to tick, so admins (who
   // can't read chats) see what happened. From the header flag: the last 10 are
@@ -458,6 +488,19 @@ export default function ChatView() {
       id: otherProfile.id,
       name: recipientName,
       chat: { ...pickReportMessages(messages || [], aroundId), meId: currentUserId, focusId: aroundId }
+    });
+  };
+
+  // The Report button on a payment card answered "Not received": the same popup,
+  // with the payment ready to be sent along with the report (and the last messages
+  // of the chat ticked, like from the header flag).
+  const openPaymentReport = (payment) => {
+    setReportTarget({
+      type: "user",
+      id: otherProfile.id,
+      name: recipientName,
+      payment,
+      chat: { ...pickReportMessages(messages || []), meId: currentUserId, focusId: null }
     });
   };
 
@@ -491,6 +534,17 @@ export default function ChatView() {
             {/* Suspended from messaging: no calls either (the database checks too). */}
             {!messagingBlocked && (
               <>
+                {canRequestPayment && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-role rounded-pill px-2 px-sm-3 me-1 fw-bold"
+                    title="Request payment"
+                    aria-label="Request payment"
+                    onClick={() => setRequestOpen(true)}
+                  >
+                    <i className="bi bi-cash-coin"></i><span className="d-none d-sm-inline ms-1">Request payment</span>
+                  </button>
+                )}
                 <button
                   className="btn btn-sm btn-outline-secondary text-white border-0"
                   title="Voice call"
@@ -552,6 +606,29 @@ export default function ChatView() {
                     <span className="text-white">{m.body}</span>
                     <span>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   </div>
+                </Fragment>
+              );
+            }
+
+            // A payment request card (made by the database, see request_payment()):
+            // it changes as the payment moves, and has no right-click menu.
+            if (m.attachment_type === "payment") {
+              const payment = payments[m.payment_id];
+              return (
+                <Fragment key={m.id}>
+                  {divider}
+                  {payment ? (
+                    <PaymentCard
+                      payment={payment}
+                      currentUserId={currentUserId}
+                      otherName={recipientName}
+                      showToast={showToast}
+                      onChanged={() => setPaymentsKey((n) => n + 1)}
+                      onReport={openPaymentReport}
+                    />
+                  ) : (
+                    <p className="align-self-center text-secondary fs-8 mb-0">{m.body || "Payment request"}</p>
+                  )}
                 </Fragment>
               );
             }
@@ -841,6 +918,20 @@ export default function ChatView() {
       />
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onDone={showToast} />
+
+      {requestOpen && (
+        <RequestPaymentDialog
+          userId={currentUserId}
+          conversationId={conversationId}
+          otherName={recipientName}
+          onClose={() => setRequestOpen(false)}
+          onSent={() => {
+            setRequestOpen(false);
+            setPaymentsKey((n) => n + 1);
+            showToast?.(`Payment request sent to ${recipientName}.`);
+          }}
+        />
+      )}
     </section>
   );
 }

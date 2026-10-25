@@ -201,7 +201,7 @@ export async function getPayDetails(projectId) {
   return { data: data?.[0] || null };
 }
 
-const PAYMENT_FIELDS = "id, project_id, client_id, freelancer_id, amount, reference_no, receipt_path, status, created_at, answered_at";
+const PAYMENT_FIELDS = "id, project_id, conversation_id, client_id, freelancer_id, amount, note, reference_no, receipt_path, status, created_at, answered_at";
 
 // The payments of one project, newest first: { data } or { error }.
 export async function listProjectPayments(projectId) {
@@ -279,6 +279,89 @@ export function watchProjectPayments(projectId, onChange) {
   const channel = supabase
     .channel(`payments:project:${projectId}`)
     .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `project_id=eq.${projectId}` }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(channel);
+}
+
+// ---------------------------------------------------------------------------
+// Payments from a chat (the payment card in a private message)
+// ---------------------------------------------------------------------------
+
+export const MAX_PAYMENT_NOTE_LENGTH = 100;
+
+// "Request payment": the freelancer asks the other person in the chat to pay.
+// The database writes the card into the chat and tells them. Returns { id } or
+// { error } (the database's own sentence for a refusal, like "Add your GCash
+// details in Settings first...").
+export async function requestPayment({ conversationId, amount, note }) {
+  const { data, error } = await supabase.rpc("request_payment", {
+    target_conversation: conversationId,
+    req_amount: amount,
+    req_note: note || null
+  });
+  if (error) {
+    console.error("Requesting the payment failed:", error);
+    return { error: plainMessage(error, "Couldn't send that request. Please try again.") };
+  }
+  return { id: data };
+}
+
+// The freelancer takes a request back before it is paid. "" or a message.
+export async function cancelPaymentRequest(paymentId) {
+  const { error } = await supabase.rpc("cancel_payment_request", { target_payment: paymentId });
+  if (error) {
+    console.error("Cancelling the request failed:", error);
+    return plainMessage(error, "Couldn't cancel that request. Please try again.");
+  }
+  return "";
+}
+
+// Where to pay, for the person asked to pay (same answer as getPayDetails).
+export async function getRequestPayDetails(paymentId) {
+  const { data, error } = await supabase.rpc("get_request_pay_details", { target_payment: paymentId });
+  if (error) {
+    console.error("Loading where to pay failed:", error);
+    return { error: plainMessage(error, "Couldn't load where to pay. Please try again.") };
+  }
+  return { data: data?.[0] || null };
+}
+
+// "I've paid" on a card: the receipt goes up first, then the database records
+// the payment; if it refuses, the picture is removed again. { id } or { error }.
+export async function recordChatPayment({ userId, paymentId, amount, reference, receiptFile }) {
+  const upload = await uploadReceipt(userId, receiptFile);
+  if (upload.error) return { error: upload.error };
+
+  const { error } = await supabase.rpc("record_chat_payment", {
+    target_payment: paymentId,
+    pay_amount: amount,
+    pay_reference: reference,
+    pay_receipt_path: upload.path
+  });
+  if (error) {
+    console.error("Recording the chat payment failed:", error);
+    await removeReceiptFile(upload.path);
+    return { error: plainMessage(error, "Couldn't record that payment. Please try again.") };
+  }
+  return { id: paymentId };
+}
+
+// The payments of one chat: { data } or { error }.
+export async function listConversationPayments(conversationId) {
+  const { data, error } = await supabase.from("payments").select(PAYMENT_FIELDS).eq("conversation_id", conversationId);
+  if (error) {
+    console.error("Loading the chat's payments failed:", error);
+    return { error: "Couldn't load the payment cards. Please try again." };
+  }
+  return { data: data || [] };
+}
+
+// Calls onChange whenever a payment of this chat changes (paid, answered,
+// cancelled). Returns a function that stops listening.
+export function watchConversationPayments(conversationId, onChange) {
+  const channel = supabase
+    .channel(`payments:chat:${conversationId}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `conversation_id=eq.${conversationId}` }, onChange)
     .subscribe();
   return () => supabase.removeChannel(channel);
 }

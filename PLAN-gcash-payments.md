@@ -441,7 +441,7 @@ notifications), both offline-email triggers are still on, and the user number
 counter did not move. The site that is live now keeps working: nothing creates a
 payment card until Step 6, and an old page would show one as a plain line of text.
 
-### Step 6: The chat card and the request window (Medium to Hard)
+### Step 6: The chat card and the request window (Medium to Hard) (DONE 2026-10-25)
 
 1. `lib/payments.js` adds `requestPayment`, `cancelPaymentRequest`,
    `getRequestPayDetails`, `recordChatPayment`, `listPaymentsByIds`.
@@ -463,6 +463,46 @@ payment card until Step 6, and an old page would show one as a plain line of tex
 Test: browser test with a fake backend (request, card for both people, pay and
 record, confirm, not received, cancel, one open request, no GCash details,
 blocked messaging, phone width), lint and build.
+
+#### Step 6 result (2026-10-25)
+
+Built as planned: `lib/payments.js` (request, cancel, where to pay, record on a
+card, list and watch the chat's payments), `components/PaymentCard.jsx`,
+`components/RequestPaymentDialog.jsx`, the `payment_requested` icon and "Open
+chat" button in `lib/notifications.js`, and edits to `views/ChatView.jsx` (it now
+asks for `payment_id`, draws a card instead of a bubble for a payment message with
+no right-click menu, keeps the cards' payments up to date, has the "Request
+payment" button in the header for a verified freelancer who can message, opens
+the Report popup from a card, and keeps a payment card from taking the "Sent /
+Seen" label). `RecordPaymentDialog.jsx` from Step 3 is reused as it is (the
+amount starts as the requested one).
+
+Differences from the plan text: the "Request payment" button is only an icon on a
+phone; the freelancer's "Cancel request" and both answers ask a second question
+first; the Report popup opened from a card also lists the chat's last messages to
+tick, like the header flag does.
+
+Tested in a real browser against a pretend Supabase (51 checks, 0 failed): the
+button for a verified freelancer and not for a client or an unverified freelancer;
+the request window (amount refused when empty, 0 or over 1,000,000, the note stops
+at 100 characters, what is sent, the database's "already has a payment waiting"
+sentence, no saved GCash details: a warning with a link to Settings and Send off);
+the card for the freelancer (Requested, waiting, Cancel request with its question
+and Keep it, Cancelled) and a new request after a cancel; no right-click menu on a
+card; the card for the person asked to pay (name, number, Copy number, QR through
+a signed link, the "only pay people you trust" line, I've paid with the amount
+filled in, Send off until a screenshot is attached, a short reference refused, a
+reused reference refused with the upload removed again, recording with a different
+amount, Payment sent); the freelancer answering (View receipt, the two questions,
+Confirmed, Not received, Report with the payment's id and the chat messages that
+were ticked); the payer seeing Not received and Cancelled; phone width and light
+mode with no sideways scrolling; payments that can't be loaded leave the card's
+text line; the Notifications page shows the new kind with "Open chat". The new
+query shapes and the six function names were checked against the real API with
+the public key (they exist and a made-up column gives 42703). Lint (only the two
+old warnings) and build clean. Not tested: the live arrival of a new card or an
+answer (the test holds the realtime socket silent, and shows a new card after a
+reload).
 
 ### Step 7: Admin Overview, data and wording (Easy)
 
