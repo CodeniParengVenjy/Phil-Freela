@@ -1,0 +1,240 @@
+# Earning plan: sponsored billboards, featured posts, Freelancer Pro
+
+Saved 2026-10-25 after the user said "ok", "you manage the plan prices" and
+"yes gcash". Step 1 (database) was approved with "ok ok ok" and is built and live
+since 2026-10-25 (migrations promotions_tables and promotions_functions); nothing
+on the website uses it yet. Steps 2 to 6 are not started, and Step 2 is next. To
+continue in a new Claude session, say: "Read PLAN-monetization.md and continue
+from the current step."
+
+Each step gets its own detailed plan, approved by the user, before any code.
+
+Page version of the plan (private, opened from the user's Claude account):
+https://claude.ai/artifact/PbWFK7KahKjMpndj5PgvRv
+
+## Why
+
+The user asked how the site can earn. As built it cannot: the GCash payments
+record money between a client and a freelancer, and PhilFreela never touches it.
+So the site earns from things it sells itself, with no commission and no payment
+gateway. Three ways, one shared way to pay.
+
+## Three ways to earn
+
+1. **Sponsored billboards.** A business pays; an admin posts its banner on the
+   dashboard billboard, marked "Sponsored by ...". It has a start date and an end
+   date and stops showing by itself. (The user's "how it lasted" was read as this
+   duration; the user said "ok" to it.) Only admins create them; a sponsor cannot
+   buy one in the app. The admin records the amount and reference on the billboard.
+2. **Featured post.** The owner of a service offer or an open job post pays to
+   appear in a separate, labeled "Featured" row (at most 3 at a time) at the top
+   of Browse Services / Find Jobs for 3, 7 or 14 days.
+3. **Freelancer Pro.** A freelancer pays for 30 days of: a Pro badge, up to 15
+   active offers (free accounts: 3), and half price on featuring.
+
+## How a fee is paid (the same for featured and Pro)
+
+PhilFreela's own GCash number, checked by an admin by hand. No gateway, nothing
+automatic.
+
+1. The person picks what they want and sees PhilFreela's GCash name, number, QR and the price.
+2. They pay in their own GCash app. The site is not part of that step.
+3. They send the 13-digit reference number and a receipt screenshot (required).
+4. An admin checks PhilFreela's own GCash and taps Approve or Reject (a reason is
+   required when rejecting). The person is notified either way.
+5. On Approve the period starts; the end date makes it stop by itself (nothing
+   runs on a timer: every list just compares the end date with now()).
+
+## Not for sale
+
+- The recommendation order ("Recommended for you" stays ranked by ratings,
+  completed projects and response time). Featured posts sit in their own row.
+- Identity verification (eKYC), the verified badge and ratings stay free.
+- Money between users: the site still never touches it.
+
+## Decisions already made (do not ask again)
+
+- Prices (the user said "you manage the plan prices", so these are final unless
+  the user changes them; a super admin can change them in the price table):
+  - Featured: 3 days P49, 7 days P99, 14 days P179. Pro members pay P25 / P50 / P90.
+  - Freelancer Pro: 30 days, P149.
+  - Sponsored billboard: the price is agreed with the sponsor; the admin records it.
+- Payment method: GCash to a PhilFreela number. The number is NOT in the code; a
+  super admin types it into the Promotions page. For the demo a clearly fake
+  number is used until the user gives the real one.
+- Free accounts: 3 active offers, Pro: 15. A freelancer who already has more
+  keeps them and just cannot add more. Live check on 2026-10-25: the most any
+  freelancer has is 3, so nobody is over the limit.
+- Profile view stats are NOT part of Pro (they need a new tracking table and
+  Data Privacy Act care). Left for later.
+- The Review of Related Literature (RRL) was offered; the user has not asked for
+  it yet. Sources found are listed at the end of this file.
+
+## What was found in the live database (2026-10-25)
+
+- `profiles`, `services` and `job_posts` give the signed-in role table-wide UPDATE
+  (guarded only by "your own row"). A new column such as `pro_until` or
+  `featured_until` on those tables would let a person give themselves Pro or a
+  featured spot for free. So the end dates live in their own tables that no
+  browser can write to (`pro_members`, `featured_posts`), written only by the
+  approve function.
+- `dashboard_billboards` only allows updating `is_active` (column grant), so new
+  columns there are safe; `ends_at` is added to the allowed ones so a sponsorship
+  can be extended.
+- `user_notifications` has 22 kinds (the last is `payment_requested`); this adds
+  `promotion_approved` and `promotion_rejected`.
+- `admin_log.action` has no promotion kind; this adds `promotion`.
+- Admin roles are `admin` and `super_admin`. Any admin approves or rejects; only
+  a super admin sets PhilFreela's GCash number and the prices.
+- Live counts: 6 services, 11 job posts, 1 billboard, 11 freelancers, 30 profiles.
+
+## Steps
+
+1. **Database for fees.** (detail below) BUILT AND LIVE 2026-10-25.
+2. **Sponsored billboards.** Sponsor name, start and end dates, amount and
+   reference on the admin Billboard form; "Sponsored by ..." on the dashboard;
+   hidden automatically after the end date. Existing billboards have no end date
+   and keep working.
+3. **Admin Promotions page.** Pending requests with the receipt, Approve / Reject
+   (with a reason), what is running now, PhilFreela's GCash number and QR, the
+   price list, and an Overview "Earnings" card (approved requests and pesos).
+4. **Featured post.** "Feature this" on My Offers and My Job Posts, the pay
+   screen, the Featured row (max 3, badge) in Browse Services and Find Jobs.
+5. **Freelancer Pro.** A Go Pro page with the same pay flow, the Pro badge on
+   profile and offers, the offer limit message.
+6. **Wording and demo data.** Update PhilFreela-System-Functions.md (Feature 5
+   "Scope" line says "no payment or money features"), the defense study guide and
+   the paper's "no payments" line; sample data for the defense (a made-up
+   sponsor, one pending request, one approved Featured post).
+
+## Step 1 detail: the database
+
+New file `database/supabase_promotions_schema.sql`, applied live as the migration
+`promotions`, tested by `database/test_promotions.sql` (rolled back, nothing left
+behind).
+
+Tables (all with row level security on, no insert/update/delete for browsers
+unless stated):
+- `site_gcash`: one row (id is always true) with PhilFreela's gcash_number
+  (09 + 9 digits), account_name, qr_path, updated_at. Signed-in people can read it
+  (they need it to pay); only a super admin can add or change it.
+- `promo_prices`: code (feature_3, feature_7, feature_14, pro_30), label, days,
+  price, pro_price (what a Pro member pays; null for pro_30). Seeded with the
+  prices above. Signed-in people can read; only a super admin can change a price.
+- `promotions`: one row per request. User, kind (feature_service, feature_job,
+  pro), price code, the service or job (kept as null with a saved title if the
+  post is later deleted, so the money record stays), days, amount charged,
+  13-digit reference, receipt path, status (pending / approved / rejected),
+  reject reason, who decided and when, starts_at, ends_at. A reference can be used
+  once (free again after a rejection). One pending request per post / per person
+  at a time. Only the payer and admins can read.
+- `featured_posts`: a service or a job post, and featured_until. Signed-in people
+  can read (that is how lists know what is featured).
+- `pro_members`: user and pro_until. Signed-in people can read (for the badge).
+- `dashboard_billboards` gets: sponsor_name (up to 60), amount, payment_ref
+  (13 digits, optional), starts_at (default now), ends_at (empty = no end, must
+  be after starts_at). The read rule is changed with ALTER POLICY so people only
+  see a billboard between its dates; admins still see all. Admins may extend
+  `ends_at` afterwards.
+
+Storage (both private): `promo-receipts` (5 MB, JPG/PNG/WEBP; a person uploads
+only into their own folder; the uploader and admins can open; an unused upload
+can be removed) and `promo-qr` (2 MB; a super admin uploads; signed-in people
+can open).
+
+Functions (problems are raised with a plain message the page shows as is):
+- `request_promotion(code, service, job, reference, receipt_path)`: checks the
+  person owns the post (a job post must be open) or is a freelancer (for Pro),
+  that a free featured slot exists (3 at a time, counting pending requests; an
+  extension of an already featured post needs no new slot), the reference, the
+  receipt, no other pending request for the same thing; copies the price (Pro
+  members get pro_price); saves it as pending.
+- `approve_promotion(id)`: admin only, row locked, only while pending. Starts at
+  now, or when the current period ends if one is running (so paying again
+  extends it). Writes featured_posts / pro_members, notifies the person, writes
+  the admin log.
+- `reject_promotion(id, reason)`: admin only, reason 3 to 200 characters,
+  notifies the person, writes the admin log.
+- `is_pro(user)` and `featured_slots_left(kind)`: small helpers the pages call.
+- A trigger on `services`: a free account cannot add a 4th offer, Pro can have
+  15. The message says so in plain words.
+
+Small changes to existing rules: two new notification kinds
+(`promotion_approved`, `promotion_rejected`) and one new admin log kind
+(`promotion`), each keeping every kind already live.
+
+Tests, four files (rolled back, nothing left behind; each borrows existing
+accounts, no user numbers used). The connector refuses a very long block and any
+statement that removes rows, so they are split:
+- `test_promotions_1_rules.sql` (run, 28 checks): the shape and grants (a browser
+  cannot write any of the new tables; a signed-out visitor sees nothing), the
+  seeded prices, PhilFreela's GCash row, who can change a price. Ran 27 passed and
+  1 failed because the test named the wrong constraint (`promo_prices_check`);
+  the database did refuse a Pro price above the normal one, and the name is fixed
+  in the file, not re-run.
+- `test_promotions_2_requests.sql` (run, 44 of 44 passed): request rules, the 3
+  spots, approve (7 days, extension adds to the running period, Pro 30 days and
+  the Pro price), reject, notifications and the Activity Log.
+- `test_promotions_3_limits_and_billboards.sql` (run, 25 of 25 passed): the offer
+  limit (free 3, Pro 15, over-limit keeps theirs), billboard dates and sponsor
+  fields, the receipt and QR pictures.
+- `test_promotions_4_removals.sql` (NOT RUN, the connector declined it): removing
+  an offer or a job post after payment keeps the record and ends the Featured
+  spot, nobody removes PhilFreela's GCash row, who can remove a receipt file.
+  Needs to be pasted into the Supabase SQL Editor.
+
+Afterwards a live check: 0 rows left in the new tables, no test offers or
+billboards, no files in the new buckets, user number counter unchanged (38),
+`email_offline_on_notification` enabled again, the 4 prices intact.
+
+Not in Step 1: any page. Nothing on the website changes.
+
+## Findings while building Step 1 (2026-10-25)
+
+- Live billboard rules: only a SUPER admin can post, switch, extend or remove a
+  billboard (an earlier admin-roles change); any admin can read all of them.
+  Step 2 (sponsored billboards) is therefore super-admin work. Approving or
+  rejecting a fee request is for any admin (`is_admin()`), setting PhilFreela's
+  GCash number and the prices is super admin only.
+- All 3 accounts that own offers are currently in the CLIENT role (people switch).
+  A test or a page cannot assume the owner of an offer is a freelancer-account.
+  `request_promotion` checks the account type only for Pro.
+- Connector declines to remember: an `update` with no `where` (even on a
+  one-row table: use `where id`), any `delete from`, and one very long block.
+  `drop constraint` on its own is fine.
+- The email trigger on `user_notifications` is switched off inside each test and
+  comes back with the rollback (checked `tgenabled = 'O'`).
+
+## Related literature found (2026-10-25, for the paper's RRL if the user asks)
+
+Read only abstracts and summaries (the INFORMS pages refused to open); the
+user should read each abstract before citing.
+
+- Gu & Zhu (2021). Trust and disintermediation: Evidence from an online freelance
+  marketplace. Management Science 67(2), 794-807. When trust is high, people
+  bypass the platform to avoid its fees: why a commission would leak here.
+- Joo, Shi & Abhishek (2024). Do sellers benefit from sponsored product listings?
+  Evidence from an online marketplace. Marketing Science 43(4), 817-839. Shoppers
+  prefer organic over sponsored listings in top positions (trust): why Featured
+  is a separate labeled row.
+- Abhishek, Jerath & Sharma (2025). The impact of "retail media" on online
+  marketplaces: Insights from a field experiment. Information Systems Research,
+  DOI 10.1287/isre.2022.0188 (volume and issue not found). More sponsored
+  listings did not change clicks or conversions and added revenue.
+- Tyrvainen & Karjaluoto (2024). Willingness to pay for freemium services:
+  Addressing the differences between monetization strategies. Int. Journal of
+  Information Management 77, 102787. Meta-analysis of 55 studies + 15 interviews.
+- Mantymaki, Islam & Benbasat. What drives subscribing to premium in freemium
+  services? A consumer value-based view of differences between upgrading to and
+  staying with premium. Information Systems Journal 30(2), 295-333, DOI
+  10.1111/isj.12262 (sources show 2019 online; check the final year).
+- Rochet & Tirole (2003). Platform competition in two-sided markets. Journal of
+  the European Economic Association 1(4), 990-1029, DOI 10.1162/154247603322493212.
+- DICT (2022). Philippine Online Freelancing Industry Study, seen only through a
+  NewsBytes.ph report (43.4% under one year in the industry, 42.9% with clients
+  abroad); find the original before citing. Payoneer and GCash report: up to 57%
+  more per hour with both local and foreign clients (secondhand).
+- Not usable: general marketplace revenue models only came from vendor blogs; the
+  "90% of jobs go off-platform" claim could not be confirmed.
+- No paper on how Philippine freelance platforms make money was found: that is
+  the gap PhilFreela fills.
