@@ -105,3 +105,15 @@ export const JOB_STATES = {
 export function hiredCount(job) {
   return job.hired?.[0]?.count || 0;
 }
+
+// Who was hired from a post: one entry per hire (a project started from the
+// post) with the project's status and the freelancer. The owner's queries ask
+// for it next to `hired:projects(count)`; the owner can read their own projects.
+// (projects has two links to profiles, so the freelancer one is named.)
+export const HIRES_FIELD =
+  "hires:projects(id, status, started_at, due_date, freelancer:profiles!projects_freelancer_id_fkey(id, full_name, username, avatar_path))";
+
+// The hires of a post, the earliest hire first.
+export function hiresOf(job) {
+  return [...(job.hires || [])].sort((a, b) => new Date(a.started_at) - new Date(b.started_at));
+}

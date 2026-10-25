@@ -7,13 +7,14 @@ import { isPostingBlocked } from "../../../lib/suspensions";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { MAX_NOTE_LENGTH, applyToJob, getMyApplicationForJob, openResume, withdrawApplication } from "../../../lib/applications";
 import { formatDay } from "../../../lib/projects";
-import { budgetText, getJobType, hiredCount, jobState } from "../../../lib/jobTerms";
+import { HIRES_FIELD, budgetText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { TrustBadge } from "../../../components/TrustRing";
 import BlockedNotice from "../components/BlockedNotice";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import DeletePostDialog from "../components/DeletePostDialog";
+import HiredFreelancers from "../components/HiredFreelancers";
 import ReportDialog from "../components/ReportDialog";
 import CensoredText from "../../../components/CensoredText";
 
@@ -48,9 +49,10 @@ export default function JobDetailsView() {
     Promise.all([
       supabase
         .from("job_posts")
-        // hired:projects(count) is only meaningful to the owner (a freelancer
-        // can only see their own project), so only the owner's view uses it.
-        .select("id, title, category, description, budget, budget_type, job_type, freelancers_needed, skills, start_date, due_date, created_at, updated_at, hired:projects(count), client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)")
+        // hired:projects(count) and hires (who was hired) are only meaningful to
+        // the owner (a freelancer can only see their own project), so only the
+        // owner's view uses them.
+        .select(`id, title, category, description, budget, budget_type, job_type, freelancers_needed, skills, start_date, due_date, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)`)
         .eq("id", jobId)
         .maybeSingle(),
       getMyApplicationForJob(currentUserId, jobId),
@@ -135,6 +137,8 @@ export default function JobDetailsView() {
           <p className="text-secondary fs-7 mb-0">
             This is your job post. {hired} of {job.freelancers_needed} hired so far. Freelancers who apply show up in <Link to="/dashboard/projects" className="text-role fw-bold text-decoration-none">Projects & Resumes</Link>.
           </p>
+          {/* Who was hired from this post, with each one's project. */}
+          <HiredFreelancers hires={hiresOf(job)} showEmpty />
           {/* A filled or expired post is hidden from freelancers: say what brings it back. */}
           {state === "expired" && (
             <p className="text-warning fs-7 mt-2 mb-0">

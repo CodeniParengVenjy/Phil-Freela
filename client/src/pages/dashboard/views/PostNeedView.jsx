@@ -5,9 +5,10 @@ import { matchSkill, suggestSkills } from "../../../lib/aiService";
 import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import { formatDay, todayInManila } from "../../../lib/projects";
-import { BUDGET_TYPES, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, datesText, getJobType, hiredCount, jobState } from "../../../lib/jobTerms";
+import { BUDGET_TYPES, HIRES_FIELD, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, datesText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import BlockedNotice from "../components/BlockedNotice";
 import DeletePostDialog from "../components/DeletePostDialog";
+import HiredFreelancers from "../components/HiredFreelancers";
 import CensoredText from "../../../components/CensoredText";
 
 // The database allows up to 10 skills, each up to 40 characters.
@@ -16,9 +17,10 @@ const MAX_SKILL_LENGTH = 40;
 
 // description and skills are here so the Edit form can be filled in from the list.
 // hired:projects(count) is how many freelancers were hired from the post (the
-// owner can read their own projects), for the Open / Filled badge.
+// owner can read their own projects), for the Open / Filled badge; HIRES_FIELD is
+// who they are, for the "Hired freelancers" list under each post.
 const JOB_COLUMNS =
-  "id, title, category, description, skills, budget, budget_type, job_type, freelancers_needed, start_date, due_date, created_at, updated_at, hired:projects(count)";
+  `id, title, category, description, skills, budget, budget_type, job_type, freelancers_needed, start_date, due_date, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}`;
 
 // The sentence for a save the database refused. 23514 = a table rule was broken;
 // the message names which one.
@@ -595,6 +597,8 @@ export default function PostNeedView() {
                     </p>
                     <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-calendar-event me-1"></i>{datesText(p)}</p>
                     <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-people me-1"></i>{hired} of {p.freelancers_needed} hired</p>
+                    {/* Who they are, and a button to each one's project. */}
+                    <HiredFreelancers hires={hiresOf(p)} />
                     {/* Brings a hidden post back: the same form, to pick new dates or more openings. */}
                     {state !== "open" && (
                       <Link to={`/dashboard/post-need?edit=${p.id}`} className="btn btn-sm btn-outline-role rounded-pill px-3 mt-2 fs-8 fw-bold">

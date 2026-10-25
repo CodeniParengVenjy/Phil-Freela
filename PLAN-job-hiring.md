@@ -85,5 +85,19 @@ hire to look at yet; the tests make their own.
    loading, an empty trail, a failed trail, hiring numbers failing, very long names
    staying inside their rows, no sideways scrolling). The script is not saved in
    the repo. Lint and build clean.
-3. Client: "Hired freelancers" under each post and on the owner's job page.
+3. DONE (2026-10-25, website): new `dashboard/components/HiredFreelancers.jsx`
+   (picture, name linking to their public page, "Hired <date>", the project's
+   status badge and a round button that opens the project; "Freelancer" with no
+   link if a profile can't be read; "Nobody hired yet." on the job page when there
+   is no one), `lib/jobTerms.js` (`HIRES_FIELD`, the query piece
+   `hires:projects(id, status, started_at, due_date, freelancer:profiles!projects_freelancer_id_fkey(...))`,
+   and `hiresOf()`, earliest hire first), `PostNeedView.jsx` (the list under each
+   post in Your Active Listings), `JobDetailsView.jsx` (the owner's box). No
+   database change: the owner can already read their own projects. The query shape
+   was checked against the live API (a wrong relationship name is refused with
+   PGRST200, this one is accepted). Browser check against a fake backend, laptop,
+   phone (390px), dark and light: 30 checks, 0 failed (two hires in the right order
+   when the API sends them the other way round, statuses and colors, both links,
+   a hire without a readable profile, nobody hired, the filled post, a very long
+   name, light-mode contrast, no sideways scrolling). Lint and build clean.
 4. Admin Overview: the Hiring card.
