@@ -230,6 +230,12 @@ body.sidebar-collapsed .sidebar-wrapper {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* The Get started card's progress bar: an empty track that shows in the dark
+   theme too (Bootstrap's own track is white, which looked like "all done"). */
+.get-started-progress {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
 /* The card is a link to My Profile. */
 a.sidebar-identity:hover {
   border-color: var(--accent-role);

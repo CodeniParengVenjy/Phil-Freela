@@ -140,6 +140,10 @@ body.theme-light .sidebar-identity {
   border-color: rgba(15, 23, 42, 0.08);
 }
 
+body.theme-light .get-started-progress {
+  background-color: rgba(15, 23, 42, 0.1);
+}
+
 /* Cards: a soft shadow and a thin grey edge instead of the dark glass look. */
 body.theme-light .glass-card {
   border-color: rgba(15, 23, 42, 0.08);

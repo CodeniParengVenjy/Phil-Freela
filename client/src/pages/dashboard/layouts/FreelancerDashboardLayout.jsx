@@ -3,6 +3,7 @@ import DashboardTopNav from "../components/DashboardTopNav";
 import DashboardOverlays from "../components/DashboardOverlays";
 import SuspensionBanner from "../components/SuspensionBanner";
 import DashboardBillboard from "../components/DashboardBillboard";
+import GetStartedCard from "../components/GetStartedCard";
 import Avatar from "../../../components/Avatar";
 import "../dashboard.css";
 import "../theme.css";
@@ -105,6 +106,9 @@ export default function FreelancerDashboardLayout({
                   sidebar has My Services and Project. */}
             </div>
           )}
+
+          {/* The checklist for a new account: what to do first (hides itself when done). */}
+          {isDashboardHome && <GetStartedCard userId={currentUserId} accountType={accountType} />}
 
           {/* What an admin posted for this user (admin panel > Billboard). */}
           {isDashboardHome && <DashboardBillboard />}

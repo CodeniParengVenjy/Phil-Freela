@@ -24,13 +24,15 @@ Note: the sidebar starts closed on every screen size (the hamburger opens it), s
 
 Files: DashboardTopNav.jsx, FreelancerDashboardLayout.jsx, ClientDashboardLayout.jsx, FindJobsView.jsx, BrowseServicesView.jsx, JobDetailsView.jsx, ServiceDetailsView.jsx, dashboard.css (name card hover), and comments in FreelancerFYPView.jsx, ClientHomepageView.jsx, useDashboardShell.js.
 
-## Step 2: "Get started" card on the dashboard home (next)
+## Step 2: "Get started" card on the dashboard home (done)
 
-- A small card under the greeting, a checklist that ticks itself from real data and disappears when everything is done (plus a small "Hide" kept in the browser).
+- A small card under the greeting, a checklist that ticks itself from real data and disappears when everything is done (plus a small "Hide" kept in this browser only, per person).
 - Only the **next** step has a button; finished and later steps are plain text, so the card adds one button, not five.
-- Freelancer: verify identity, add a description, add skills, add portfolio work, post your first service.
-- Client: add a description, then post a project or message a freelancer.
-- New files: `GetStartedCard.jsx` (dashboard/components) and `lib/getStarted.js` (the checks). Reads existing tables only.
+- Freelancer (in order): verify identity, add a description, add skills, add portfolio work, post your first service. If the ID was sent and is waiting for an admin, that line shows an hourglass with no button and the next step takes the button (waiting is not "done"); if it was not approved the button says "Try again".
+- Client: add a description, then post a project **or** message a freelancer **or** book an offer (any one of them finishes it). Clients are never asked to verify.
+- How each step is worked out (lib/getStarted.js, reading existing tables only, no database change): ID = `is_verified` + the newest `identity_verifications` status; description and skills = the profile; portfolio, services, job posts, bookings = a count of the person's own rows; chats = a count of their `conversations`. A description of only spaces does not count.
+- If any one of those can't be loaded the card stays hidden instead of guessing (so nobody is asked for something they already did).
+- New files: `GetStartedCard.jsx` (dashboard/components) and `lib/getStarted.js`; placed under the greeting in both dashboard layouts; a see-through progress track in dashboard.css / theme.css (Bootstrap's own track is solid white, which made an empty bar look like "all done" in the dark theme).
 
 ## Step 3: opening guide (after step 2)
 
