@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 
-// Shared look for the Terms of Service and Privacy Policy pages: a slim
-// header (so these work for a visitor who isn't signed in yet), the content
-// in a card, and a note that this is a capstone project, not a company.
+// Look of the Terms of Service and Privacy Policy page: a slim header (so it
+// works for a visitor who isn't signed in yet), the content in a card, and a
+// note that this is a capstone project, not a company.
 export default function LegalLayout({ title, updated, children }) {
   return (
     <div className="bg-dark min-vh-100 text-white">

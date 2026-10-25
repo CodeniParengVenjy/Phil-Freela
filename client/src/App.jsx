@@ -7,8 +7,7 @@ import CompleteProfile from "./pages/login/CompleteProfile";
 import VerifyPhone from "./pages/verify-phone/VerifyPhone";
 import AppealPage from "./pages/appeal/AppealPage";
 import ArchivedPage from "./pages/archived/ArchivedPage";
-import TermsOfService from "./pages/legal/TermsOfService";
-import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import TermsAndPrivacy from "./pages/legal/TermsAndPrivacy";
 import DashboardLayout from "./pages/dashboard/layouts/DashboardLayout";
 import DashboardFreelancerRoute from "./pages/dashboard/layouts/DashboardFreelancerRoute";
 import DashboardClientRoute from "./pages/dashboard/layouts/DashboardClientRoute";
@@ -73,8 +72,9 @@ function App() {
       <Route path="/appeal" element={<AppealPage />} />
       {/* Archived accounts can't use anything else (an admin archived them). */}
       <Route path="/archived" element={<ArchivedPage />} />
-      <Route path="/terms" element={<TermsOfService />} />
-      <Route path="/privacy" element={<PrivacyPolicy />} />
+      {/* One page for both; /privacy opens it scrolled to the Privacy Policy part. */}
+      <Route path="/terms" element={<TermsAndPrivacy />} />
+      <Route path="/privacy" element={<TermsAndPrivacy />} />
       <Route path="/dashboard-freelancer" element={<DashboardFreelancerRoute />}>
         <Route index element={<FreelancerFYPView />} />
       </Route>

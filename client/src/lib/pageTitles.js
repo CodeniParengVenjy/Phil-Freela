@@ -10,8 +10,8 @@ const pageTitles = {
   "/complete-profile": "Complete Your Profile",
   "/appeal": "Appeal",
   "/archived": "Account Archived",
-  "/terms": "Terms of Service",
-  "/privacy": "Privacy Policy",
+  "/terms": "Terms of Service and Privacy Policy",
+  "/privacy": "Terms of Service and Privacy Policy",
 
   "/dashboard-freelancer": "Dashboard",
   "/dashboard-client": "Dashboard",
