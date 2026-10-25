@@ -1,11 +1,12 @@
 import CallDialog from "./CallDialog";
 import MissingNameDialog from "./MissingNameDialog";
+import WelcomeGuide from "./WelcomeGuide";
 
 // Identical between the freelancer and client dashboards -- the image
-// preview modal, the role-switch confirmation, the toast notification, and
-// the voice/video call window -- so both layouts share this instead of each
-// keeping their own copy.
-export default function DashboardOverlays({ preview, onClosePreview, toast, onCloseToast, roleConfirm, onResolveRoleConfirm, nameMissing, userId, onNameSaved, onSignOut }) {
+// preview modal, the role-switch confirmation, the toast notification, the
+// opening guide, and the voice/video call window -- so both layouts share this
+// instead of each keeping their own copy.
+export default function DashboardOverlays({ preview, onClosePreview, toast, onCloseToast, roleConfirm, onResolveRoleConfirm, nameMissing, userId, accountType, onNameSaved, onSignOut }) {
   return (
     <>
       {/* Ringing and call screens (the call itself lives in lib/calls.js). */}
@@ -13,6 +14,9 @@ export default function DashboardOverlays({ preview, onClosePreview, toast, onCl
 
       {/* Someone with no name must add one before using the dashboard. */}
       {nameMissing && userId && <MissingNameDialog userId={userId} onSaved={onNameSaved} onSignOut={onSignOut} />}
+
+      {/* How PhilFreela works: opens once for a new person (after the name pop-up, if there is one). */}
+      {userId && <WelcomeGuide userId={userId} accountType={accountType} blocked={nameMissing} />}
 
       {roleConfirm.visible && (
         <div

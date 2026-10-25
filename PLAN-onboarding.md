@@ -34,12 +34,14 @@ Files: DashboardTopNav.jsx, FreelancerDashboardLayout.jsx, ClientDashboardLayout
 - If any one of those can't be loaded the card stays hidden instead of guessing (so nobody is asked for something they already did).
 - New files: `GetStartedCard.jsx` (dashboard/components) and `lib/getStarted.js`; placed under the greeting in both dashboard layouts; a see-through progress track in dashboard.css / theme.css (Bootstrap's own track is solid white, which made an empty bar look like "all done" in the dark theme).
 
-## Step 3: opening guide (after step 2)
+## Step 3: opening guide (done)
 
-- One pop-up with 3 short slides, once, right after signup; different text for freelancers and clients.
-- Buttons: Next and Skip only; the last slide has "Start", which lands on the Get started card.
-- It waits for the "add your name" pop-up (never on top of it). "How PhilFreela works" in the account menu replays it.
-- "Already seen" is saved in the browser. New files `WelcomeGuide.jsx` and `lib/welcomeGuide.js`; mounted in `DashboardOverlays.jsx`. No tour library.
+- One pop-up with 3 short slides, once for each person in each browser, the first time their dashboard opens; different words for freelancers and clients (`GUIDE_SLIDES` in lib/welcomeGuide.js). Freelancer: get verified first, show your work, find jobs and get booked. Client: find the right freelancer, post what you need, chat and follow the work.
+- Buttons: Skip and Next on slides 1 and 2; the last slide has only "Start", which closes it and leaves the Get started card right behind it. Escape also closes it. No tour library, just a normal pop-up.
+- It never sits on top of the "add your name" pop-up: it waits until the name is saved. It also waits until the dashboard has loaded the profile (the role is known, and a ban or archive redirect has had its chance), so it can't flash up early with the wrong role's words or count as seen.
+- "How PhilFreela works" in the account menu (above Sign out) opens it again from slide 1, on any dashboard page. It is a menu item, not a new visible button. The menu asks the guide to open with a browser event (`openWelcomeGuide()`), so no state is passed through the layouts.
+- "Already seen" is saved in this browser only (`philfreela-welcome-guide-seen-<userId>`), from the moment it is shown. A browser that refuses to keep it (private window) is treated as "seen", so the guide doesn't pop up on every page load; the menu still opens it. Existing accounts see it once too.
+- New files `WelcomeGuide.jsx` and `lib/welcomeGuide.js`; mounted in `DashboardOverlays.jsx` (which now also gets `accountType` from both layouts); one menu item in `DashboardTopNav.jsx`. No database change.
 
 ## After building
 
