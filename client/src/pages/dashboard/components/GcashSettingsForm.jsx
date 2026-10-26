@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import GcashNumberInput from "../../../components/GcashNumberInput";
 import { noAutofill } from "../../../lib/profile";
 import {
   formatGcashNumber, getMyGcash, isValidAccountName, isValidGcashNumber, nameInitials, normalizeGcashNumber, removeMyGcash,
@@ -103,16 +104,13 @@ export default function GcashSettingsForm({ userId, showToast }) {
       <form className="d-flex flex-column gap-4" onSubmit={handleSubmit} noValidate>
         <div>
           <label className="form-label text-white-50 fw-semibold fs-7" htmlFor="gcashNumber">GCash number:</label>
-          <input
+          <GcashNumberInput
             id="gcashNumber"
-            type="text"
-            inputMode="tel"
             autoComplete="off"
             className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2 pay-mono"
             placeholder="0917 123 4567"
             value={number}
-            onChange={(event) => setNumber(event.target.value)}
-            maxLength={20}
+            onChange={setNumber}
           />
           <small className="text-secondary fs-8">11 digits, starting with 09.</small>
         </div>

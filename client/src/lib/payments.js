@@ -31,6 +31,21 @@ export function formatGcashNumber(number) {
   return match ? `${match[1]} ${match[2]} ${match[3]}` : number || "";
 }
 
+export const GCASH_NUMBER_DIGITS = 11;
+
+// What a GCash number box keeps as it is typed or pasted: digits only, at most
+// 11, spaced like 0917 123 4567. A pasted +63 917 123 4567 becomes 0917 123 4567.
+// A box that already has 11 digits takes no more (`previous` is what it showed).
+export function typeGcashNumber(typed, previous = "") {
+  let digits = String(typed ?? "").replace(/\D/g, "");
+  if (/^63\d{10}$/.test(digits)) digits = `0${digits.slice(2)}`;
+  if (digits.length > GCASH_NUMBER_DIGITS) {
+    const before = String(previous ?? "").replace(/\D/g, "");
+    digits = before.length === GCASH_NUMBER_DIGITS ? before : digits.slice(0, GCASH_NUMBER_DIGITS);
+  }
+  return [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7)].filter(Boolean).join(" ");
+}
+
 // 4021358091742 -> "4021 358 091742" (the way GCash prints it).
 export function formatReference(reference) {
   const match = /^(\d{4})(\d{3})(\d{6})$/.exec(reference || "");

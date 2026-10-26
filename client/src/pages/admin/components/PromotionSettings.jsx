@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import GcashNumberInput from "../../../components/GcashNumberInput";
 import {
   checkQrFile, formatGcashNumber, formatPeso, isValidAccountName, isValidGcashNumber, normalizeGcashNumber, tidyAccountName
 } from "../../../lib/payments";
@@ -197,7 +198,7 @@ export default function PromotionSettings({ isSuperAdmin, adminId, gcash, prices
             <div className="row g-3">
               <div className="col-12 col-md-5">
                 <label htmlFor="siteGcashNumber" className="form-label text-white-50 fs-7 mb-1">GCash Number</label>
-                <input id="siteGcashNumber" type="text" inputMode="tel" className="form-control admin-input" placeholder="0917 123 4567" value={number} onChange={(event) => setNumber(event.target.value)} disabled={saving} />
+                <GcashNumberInput id="siteGcashNumber" className="form-control admin-input" placeholder="0917 123 4567" value={number} onChange={setNumber} disabled={saving} />
               </div>
               <div className="col-12 col-md-7">
                 <label htmlFor="siteGcashName" className="form-label text-white-50 fs-7 mb-1">Name on the Account</label>
