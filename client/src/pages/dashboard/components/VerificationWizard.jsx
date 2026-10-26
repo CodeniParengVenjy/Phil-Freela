@@ -125,10 +125,11 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
     { label: "Face scan: turned", photo: scan?.right, step: "scan" }
   ];
 
+  // (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx)
   return (
     <div className="d-flex flex-column gap-4">
       {/* Progress: "Step 2 of 5" and a bar. */}
-      <div>
+      <div data-tour="verify-steps">
         <div className="mb-2">
           <span className="text-secondary fs-8 fw-semibold">Step {stepIndex + 1} of {steps.length}</span>
         </div>
@@ -145,16 +146,18 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
         <div className="row g-4">
           <div className={phoneOption ? "col-md-7" : "col-12"}>
             <p className="text-secondary fs-7">Get a <span className="text-white fw-bold">Verified</span> badge by showing a government ID and doing a quick face scan. An admin reviews every request.</p>
-            <label className="form-label text-white fw-semibold fs-7" htmlFor="wizardIdType">Which ID will you use?</label>
-            <select
-              id="wizardIdType"
-              className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
-              value={idType}
-              onChange={(e) => handleTypeChange(e.target.value)}
-            >
-              <option value="" disabled>Choose your ID</option>
-              {ID_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-            </select>
+            <div data-tour="verify-id-type">
+              <label className="form-label text-white fw-semibold fs-7" htmlFor="wizardIdType">Which ID will you use?</label>
+              <select
+                id="wizardIdType"
+                className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                value={idType}
+                onChange={(e) => handleTypeChange(e.target.value)}
+              >
+                <option value="" disabled>Choose your ID</option>
+                {ID_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+              </select>
+            </div>
           </div>
           {phoneOption && <div className="col-md-5">{phoneOption}</div>}
         </div>
@@ -234,7 +237,7 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
       )}
 
       {/* Back / Next (or Submit on the last step). */}
-      <div className="d-flex justify-content-between gap-2">
+      <div data-tour="verify-start" className="d-flex justify-content-between gap-2">
         <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 fw-bold" onClick={() => setStepIndex(stepIndex - 1)} disabled={stepIndex === 0 || submitting}>
           <i className="bi bi-arrow-left me-1"></i> Back
         </button>

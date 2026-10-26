@@ -85,9 +85,10 @@ export default function IdentityVerification() {
     );
   }
 
+  // (data-tour: the opening tour points at the boxes below, components/WelcomeGuide.jsx)
   if (latest?.status === "pending") {
     return (
-      <div className="bg-warning bg-opacity-10 border border-warning border-opacity-50 rounded-3 p-4">
+      <div data-tour="verify-sent" className="bg-warning bg-opacity-10 border border-warning border-opacity-50 rounded-3 p-4">
         <p className="text-warning fw-bold fs-5 mb-1"><i className="bi bi-hourglass-split me-2"></i>Waiting for review</p>
         <p className="text-light-50 fs-7 mb-0">
           You submitted your photos on {formatDate(latest.created_at)}. An admin will check them soon.
@@ -102,7 +103,7 @@ export default function IdentityVerification() {
         <p className="text-danger fw-bold fs-5 mb-1"><i className="bi bi-x-circle-fill me-2"></i>Verification not approved</p>
         {latest.admin_note && <p className="text-light-50 fs-7 mb-1"><span className="fw-bold text-white">Reason:</span> {latest.admin_note}</p>}
         <p className="text-light-50 fs-7 mb-3">You can send new photos.</p>
-        <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={() => setTryingAgain(true)}>
+        <button type="button" data-tour="verify-retry" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={() => setTryingAgain(true)}>
           Try again
         </button>
       </div>

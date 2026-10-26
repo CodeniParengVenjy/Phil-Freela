@@ -122,6 +122,29 @@ Client (about 30 notes):
   identity_verifications row and profiles.created_at are already readable by
   the person).
 
+## Progress
+
+- Step 0 (clients need a verified ID to post): built and pushed (47468dc);
+  its SQL waits for the Supabase SQL Editor.
+- Step 1 (the tour engine, Part 1 and Part 2, both roles): built. Details
+  that were settled while building:
+  - "New account" = the sign-in's own creation time (no request), on or
+    after 2026-10-26 and less than 7 days old, so it doesn't start again
+    months later on a new phone. A private window never starts it by itself.
+  - Saved per person in the browser as philfreela-tour-<id>:
+    { mode: on | paused | waiting | review | done, part, index, shown }.
+    The old "seen" flag (philfreela-tour-seen-<id>) is no longer used.
+  - "Your turn" points at the form's Back / Next row (on a computer without
+    a webcam, at the big QR panel); the tour then hides and comes back by
+    itself when the "Waiting for review" box appears (also when the ID was
+    sent from a phone through the QR code).
+  - The browser's Back button during the tour pauses it (it doesn't pull
+    the person back to the page).
+  - The outline no longer glides between parts: it follows the part on
+    every frame, so it stays on the menu while the menu slides open.
+  - The note can also go to the left of a part, and is placed by its real
+    height.
+
 ## Build order (each one tested, committed and pushed)
 
 1. The tour engine, Part 1 and Part 2 (both roles), new accounts only, the

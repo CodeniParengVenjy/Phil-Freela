@@ -76,7 +76,9 @@ export default function PhoneQrPanel({ userId, onDone, compact = false }) {
   const usesLocalhost = /localhost|127\.0\.0\.1/.test(PUBLIC_APP_URL);
 
   return (
-    <div className={`bg-dark bg-opacity-50 ${compact ? "p-3" : "p-4"} rounded-3 border border-secondary border-opacity-25 text-center`}>
+    // (data-tour: the opening tour points at it, components/WelcomeGuide.jsx. The
+    // full-size panel is where it starts on a computer without a webcam.)
+    <div data-tour={compact ? "verify-phone" : "verify-start"} className={`bg-dark bg-opacity-50 ${compact ? "p-3" : "p-4"} rounded-3 border border-secondary border-opacity-25 text-center`}>
       <p className={`text-white fw-bold ${compact ? "fs-6" : "fs-5"} mb-1`}>
         <i className="bi bi-phone me-2 text-info"></i>{compact ? "Or use your phone" : "Verify with your phone"}
       </p>

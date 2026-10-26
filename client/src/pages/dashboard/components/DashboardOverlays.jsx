@@ -15,7 +15,7 @@ export default function DashboardOverlays({ preview, onClosePreview, toast, onCl
       {/* Someone with no name must add one before using the dashboard. */}
       {nameMissing && userId && <MissingNameDialog userId={userId} onSaved={onNameSaved} onSignOut={onSignOut} />}
 
-      {/* How PhilFreela works: opens once for a new person (after the name pop-up, if there is one). */}
+      {/* The opening tour: opens by itself for a new account (after the name pop-up, if there is one). */}
       {userId && <WelcomeGuide userId={userId} accountType={accountType} blocked={nameMissing} />}
 
       {roleConfirm.visible && (

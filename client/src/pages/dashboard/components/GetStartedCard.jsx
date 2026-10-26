@@ -73,7 +73,8 @@ export default function GetStartedCard({ userId, accountType }) {
                     <p className="text-secondary fs-8 mb-0">{s.hint}</p>
                   </div>
                 </div>
-                <Link to={s.to} className="btn btn-gradient-role btn-sm rounded-pill px-3 fw-bold text-white flex-shrink-0">{s.button}</Link>
+                {/* (data-tour: the opening tour points at the Verify now button, components/WelcomeGuide.jsx) */}
+                <Link to={s.to} data-tour={s.key === "verify" ? "get-started-verify" : undefined} className="btn btn-gradient-role btn-sm rounded-pill px-3 fw-bold text-white flex-shrink-0">{s.button}</Link>
               </li>
             );
           }
