@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  cancelPaymentRequest, confirmPayment, formatGcashNumber, formatPeso, formatReference, getQrLink, getRequestPayDetails,
+  cancelPaymentRequest, confirmPayment, formatGcashNumber, formatPeso, formatReference, getRequestPayDetails,
   markNotReceived, openReceipt, paymentStatuses, recordChatPayment
 } from "../../../lib/payments";
 import RecordPaymentDialog from "./RecordPaymentDialog";
@@ -21,7 +21,6 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
   const status = paymentStatuses[payment.status] || { label: payment.status, className: "bg-secondary text-white" };
   const [details, setDetails] = useState(undefined);
   const [detailsError, setDetailsError] = useState("");
-  const [qr, setQr] = useState(null);
   const [recording, setRecording] = useState(false);
   // The two-step question before an answer or a cancel: "confirm" | "not_received" | "cancel" | null.
   const [asking, setAsking] = useState(null);
@@ -41,19 +40,6 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
       active = false;
     };
   }, [waitingForPayer, payment.id]);
-
-  const qrPath = details?.qr_path;
-  useEffect(() => {
-    if (!qrPath) return undefined;
-    let active = true;
-    getQrLink(qrPath).then((link) => {
-      if (active) setQr({ path: qrPath, link });
-    });
-    return () => {
-      active = false;
-    };
-  }, [qrPath]);
-  const qrLink = qrPath && qr?.path === qrPath ? qr.link : null;
 
   const copyNumber = async () => {
     try {
@@ -125,21 +111,19 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
           )}
           {details && (
             <div className="p-3 rounded-3 bg-secondary bg-opacity-10 border border-secondary border-opacity-25 mb-2">
-              <div className="d-flex flex-wrap align-items-center gap-3">
-                {qrLink && <div className="pay-qr-tile"><img src={qrLink} alt={`${details.account_name}'s GCash QR`} /></div>}
-                <div className="flex-grow-1 min-w-0">
-                  <span className="text-secondary fs-8 d-block">Send to</span>
-                  <strong className="text-white d-block text-break">{details.account_name}</strong>
-                  <span className="pay-mono text-white fs-5 d-block">{formatGcashNumber(details.gcash_number)}</span>
-                  <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 py-1 fs-8 fw-bold mt-2" onClick={copyNumber}>
-                    <i className="bi bi-clipboard me-1"></i> Copy number
-                  </button>
-                </div>
+              <div>
+                <span className="text-secondary fs-8 d-block">Send to</span>
+                <strong className="text-white d-block text-break" data-pay-initials>{details.initials}</strong>
+                <span className="pay-mono text-white fs-5 d-block">{formatGcashNumber(details.gcash_number)}</span>
+                <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 py-1 fs-8 fw-bold mt-2" onClick={copyNumber}>
+                  <i className="bi bi-clipboard me-1"></i> Copy number
+                </button>
               </div>
             </div>
           )}
           <p className="text-secondary fs-8 mb-2">
-            Pay in your GCash app, then tap I've paid. Check that the name GCash shows matches the name above. Only pay people you trust:
+            Pay in your GCash app, then tap I've paid. GCash hides part of the name when you send: the first letters should match
+            these initials{details ? ` (${details.initials})` : ""}. If they don't, don't send. Only pay people you trust:
             PhilFreela can't check or refund this payment.
           </p>
           <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={() => setRecording(true)} disabled={!details}>
@@ -236,7 +220,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
 
       {recording && (
         <RecordPaymentDialog
-          subtitle={`Paid to ${details?.account_name || otherName} in the GCash app`}
+          subtitle={`Paid to ${otherName} in the GCash app`}
           otherName={otherName}
           defaultAmount={String(payment.amount)}
           hint="Filled in from the request. Change it if you sent a different amount."

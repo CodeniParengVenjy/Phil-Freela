@@ -33,8 +33,8 @@ export async function exportMyData(userId) {
       // GCash payments the person is on (as the one who paid or the one paid),
       // from projects and from chats. The receipt pictures are left out, like the ID photos.
       supabase.from("payments").select("id, project_id, conversation_id, client_id, freelancer_id, amount, note, reference_no, status, created_at, answered_at").or(`client_id.eq.${userId},freelancer_id.eq.${userId}`),
-      // The person's own GCash details (a freelancer's number, name and whether a QR is saved).
-      supabase.from("gcash_accounts").select("gcash_number, account_name, qr_path, updated_at").eq("freelancer_id", userId).maybeSingle(),
+      // The person's own GCash details (a freelancer's number and name).
+      supabase.from("gcash_accounts").select("gcash_number, account_name, updated_at").eq("freelancer_id", userId).maybeSingle(),
       messageSummary(userId)
     ]);
 
@@ -57,7 +57,7 @@ export async function exportMyData(userId) {
     ratings_you_received: ratingsReceived.data || [],
     payments: payments.data || [],
     gcash_account: gcash.data
-      ? { gcash_number: gcash.data.gcash_number, account_name: gcash.data.account_name, has_qr: Boolean(gcash.data.qr_path), updated_at: gcash.data.updated_at }
+      ? { gcash_number: gcash.data.gcash_number, account_name: gcash.data.account_name, updated_at: gcash.data.updated_at }
       : null,
     conversations: conversations
   };

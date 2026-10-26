@@ -28,7 +28,6 @@ declare
   notr0     int;
   seq_before bigint;
   seq_after  bigint;
-  b_qr      record;
   b_rc      record;
   pay       record;
 begin
@@ -51,8 +50,7 @@ begin
   rp3 := c::text || '/receipt-3.jpg';
   rp_unused := c::text || '/unused.jpg';
   insert into storage.objects (bucket_id, name) values
-    ('receipts', rp1), ('receipts', rp2), ('receipts', rp3), ('receipts', rp_unused),
-    ('gcash-qr', f::text || '/qr.png');
+    ('receipts', rp1), ('receipts', rp2), ('receipts', rp3), ('receipts', rp_unused);
 
   select count(*) into sent0 from public.user_notifications where user_id = f and type = 'payment_sent';
   select count(*) into conf0 from public.user_notifications where user_id = c and type = 'payment_confirmed';
@@ -107,16 +105,12 @@ begin
   res := res || case when msg is null then 'PASS' else 'FAIL (' || msg || ')' end
          || ' a name with accents, a hyphen and a dot is accepted' || E'\n';
 
-  begin
-    update public.gcash_accounts set qr_path = s::text || '/qr.png' where freelancer_id = f;
-    msg := null;
-  exception when others then msg := sqlerrm;
-  end;
-  res := res || case when msg like '%qr_own_folder%' then 'PASS' else 'FAIL (' || coalesce(msg, 'no error') || ')' end
-         || ' a QR path in someone else''s folder is refused' || E'\n';
+  res := res || case when not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'gcash_accounts' and column_name = 'qr_path')
+                     then 'PASS' else 'FAIL' end
+         || ' there is no QR column any more (supabase_gcash_initials_schema.sql)' || E'\n';
 
   update public.gcash_accounts
-     set account_name = 'Ana R. Santos', qr_path = f::text || '/qr.png'
+     set account_name = 'Ana R. Santos'
    where freelancer_id = f;
 
   -- ---- B. Who can read the GCash details ----------------------------------
@@ -165,12 +159,14 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', c::text, true);
   set local role authenticated;
-  select count(*) into n from public.get_pay_details(pr) d where d.gcash_number = '09171234567' and d.account_name = 'Ana R. Santos';
+  select count(*) into n from public.get_pay_details(pr) d where d.gcash_number = '09171234567' and d.initials = 'A. R. S.';
   res := res || case when n = 1 then 'PASS' else 'FAIL (' || n || ')' end
-         || ' the project''s client gets the freelancer''s number and name' || E'\n';
-  select count(*) into n from public.get_pay_details(pr) d where d.qr_path = f::text || '/qr.png';
+         || ' the project''s client gets the freelancer''s number and the initials of the name' || E'\n';
+  select count(*) into n from public.get_pay_details(pr) d
+   where (select array_agg(k order by k) from jsonb_object_keys(to_jsonb(d)) k) = array['gcash_number', 'initials']
+     and to_jsonb(d)::text not ilike '%Santos%';
   res := res || case when n = 1 then 'PASS' else 'FAIL (' || n || ')' end
-         || ' ... and the QR path' || E'\n';
+         || ' ... and nothing else: not the name, no QR' || E'\n';
   reset role;
 
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
@@ -410,39 +406,28 @@ begin
          || ' after not received, the same reference can be recorded again' || E'\n';
 
   -- ---- G. The private buckets ---------------------------------------------
-  select * into b_qr from storage.buckets where id = 'gcash-qr';
   select * into b_rc from storage.buckets where id = 'receipts';
-  res := res || case when b_qr.public = false and b_qr.file_size_limit = 2097152
-                      and b_qr.allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']
+  res := res || case when not exists (select 1 from storage.buckets where id = 'gcash-qr')
+                          and not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'gcash-qr:%')
                      then 'PASS' else 'FAIL' end
-         || ' gcash-qr is private, 2 MB, JPG/PNG/WEBP' || E'\n';
+         || ' the gcash-qr bucket and its rules are gone (supabase_gcash_initials_schema.sql)' || E'\n';
   res := res || case when b_rc.public = false and b_rc.file_size_limit = 5242880
                       and b_rc.allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']
                      then 'PASS' else 'FAIL' end
          || ' receipts is private, 5 MB, JPG/PNG/WEBP' || E'\n';
 
-  -- who can open the QR picture
+  -- who can open a receipt
   perform set_config('request.jwt.claims', json_build_object('sub', s, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', s::text, true);
   set local role authenticated;
-  select count(*) into n from storage.objects where bucket_id = 'gcash-qr' and name = f::text || '/qr.png';
   select count(*) into n2 from storage.objects where bucket_id = 'receipts' and name = rp1;
-  res := res || case when n = 0 and n2 = 0 then 'PASS' else 'FAIL (' || n || ', ' || n2 || ')' end
-         || ' a stranger cannot open the QR or a receipt' || E'\n';
-  begin
-    insert into storage.objects (bucket_id, name) values ('gcash-qr', f::text || '/other.png');
-    msg := null;
-  exception when others then msg := sqlerrm; end;
-  res := res || case when msg like '%row-level security%' then 'PASS' else 'FAIL (' || coalesce(msg, 'no error') || ')' end
-         || ' a stranger cannot upload a QR into someone else''s folder' || E'\n';
+  res := res || case when n2 = 0 then 'PASS' else 'FAIL (' || n2 || ')' end
+         || ' a stranger cannot open a receipt' || E'\n';
   reset role;
 
   perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', c::text, true);
   set local role authenticated;
-  select count(*) into n from storage.objects where bucket_id = 'gcash-qr' and name = f::text || '/qr.png';
-  res := res || case when n = 1 then 'PASS' else 'FAIL (' || n || ')' end
-         || ' the client of a project with the freelancer can open the QR' || E'\n';
   select count(*) into n from storage.objects where bucket_id = 'receipts' and name = rp1;
   select count(*) into n2 from storage.objects where bucket_id = 'receipts' and name = rp_unused;
   res := res || case when n = 1 and n2 = 1 then 'PASS' else 'FAIL (' || n || ', ' || n2 || ')' end
@@ -468,22 +453,7 @@ begin
   select count(*) into n2 from storage.objects where bucket_id = 'receipts' and name = rp_unused;
   res := res || case when n = 1 and n2 = 0 then 'PASS' else 'FAIL (' || n || ', ' || n2 || ')' end
          || ' the freelancer opens a receipt that is on a payment, not an unused upload' || E'\n';
-  select count(*) into n from storage.objects where bucket_id = 'gcash-qr' and name = f::text || '/qr.png';
-  res := res || case when n = 1 then 'PASS' else 'FAIL (' || n || ')' end
-         || ' the freelancer opens their own QR' || E'\n';
   reset role;
-
-  -- a client with no project with this freelancer cannot open the QR
-  if c2 is not null and c2 <> f
-     and not exists (select 1 from public.projects where client_id = c2 and freelancer_id = f) then
-    perform set_config('request.jwt.claims', json_build_object('sub', c2, 'role', 'authenticated')::text, true);
-    perform set_config('request.jwt.claim.sub', c2::text, true);
-    set local role authenticated;
-    select count(*) into n from storage.objects where bucket_id = 'gcash-qr' and name = f::text || '/qr.png';
-    res := res || case when n = 0 then 'PASS' else 'FAIL (' || n || ')' end
-           || ' a client with no project with this freelancer cannot open the QR' || E'\n';
-    reset role;
-  end if;
 
   -- ---- H. The notification rule keeps the old kinds -----------------------
   begin

@@ -3,8 +3,9 @@ import { shrinkImage } from "./shrinkImage";
 
 // GCash payments, see database/supabase_payments_schema.sql and
 // PLAN-gcash-payments.md. PhilFreela never touches the money: a freelancer saves
-// a GCash number (and an optional QR picture), the client pays in the GCash app
-// and records it here, and the freelancer checks their own GCash and answers.
+// a GCash number and the name on the account (others see only its initials), the
+// client pays in the GCash app and records it here, and the freelancer checks their
+// own GCash and answers.
 // The browser can only READ payments; every change goes through a database
 // function that checks who is asking and what status the payment is in.
 
@@ -46,6 +47,18 @@ export const isValidReference = (reference) => /^\d{13}$/.test(reference);
 export const tidyAccountName = (input) => String(input ?? "").trim().replace(/\s+/g, " ");
 export const isValidAccountName = (name) => /^[A-Za-zÀ-ÖØ-öø-ɏ][A-Za-zÀ-ÖØ-öø-ɏ .'-]{1,59}$/.test(name);
 
+// "Ana R. Santos" -> "A. R. S.": what other people see instead of the name. The
+// same rule as the database (name_initials()): the first letter of every word. The
+// database makes the real one for the client; this one is only the preview in
+// Settings.
+export function nameInitials(name) {
+  return tidyAccountName(name)
+    .split(" ")
+    .filter((word) => /^[A-Za-zÀ-ÖØ-öø-ɏ]/.test(word))
+    .map((word) => `${word[0].toUpperCase()}.`)
+    .join(" ");
+}
+
 export const MAX_PAYMENT_AMOUNT = 1000000;
 
 // 1500 -> "₱1,500.00"
@@ -74,10 +87,9 @@ export const paymentStatuses = {
 };
 
 // ---------------------------------------------------------------------------
-// Pictures: the QR (freelancer) and the receipt (client)
+// The receipt picture (client)
 // ---------------------------------------------------------------------------
 
-const QR_BUCKET = "gcash-qr";
 const RECEIPT_BUCKET = "receipts";
 const PICTURE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MAX_QR_BYTES = 2 * 1024 * 1024;
@@ -91,6 +103,8 @@ function checkPicture(file, maxBytes, what) {
   return "";
 }
 
+// Not used for freelancers any more (they have no QR here). It stays because the
+// earning plan's Admin > Site page checks PhilFreela's own GCash QR with it.
 export const checkQrFile = (file) => checkPicture(file, MAX_QR_BYTES, "your QR picture");
 export const checkReceiptFile = (file) => checkPicture(file, MAX_RECEIPT_BYTES, "your receipt screenshot");
 
@@ -113,12 +127,10 @@ async function uploadPicture(bucket, userId, file, maxSide, prefix) {
   return { path };
 }
 
-export const uploadQr = (userId, file) => uploadPicture(QR_BUCKET, userId, file, 1200, "qr");
 export const uploadReceipt = (userId, file) => uploadPicture(RECEIPT_BUCKET, userId, file, 1600, "receipt");
 
 // If removing an unused file fails it only leaves the file behind, so it is
 // never an error for the person.
-export const removeQrFile = (path) => (path ? supabase.storage.from(QR_BUCKET).remove([path]) : null);
 export const removeReceiptFile = (path) => (path ? supabase.storage.from(RECEIPT_BUCKET).remove([path]) : null);
 
 // A link that opens a private picture for an hour (null when it couldn't be made).
@@ -128,7 +140,6 @@ async function signedLink(bucket, path) {
   return error ? null : data?.signedUrl ?? null;
 }
 
-export const getQrLink = (path) => signedLink(QR_BUCKET, path);
 export const getReceiptLink = (path) => signedLink(RECEIPT_BUCKET, path);
 
 // ---------------------------------------------------------------------------
@@ -140,7 +151,7 @@ export const getReceiptLink = (path) => signedLink(RECEIPT_BUCKET, path);
 export async function getMyGcash(userId) {
   const { data, error } = await supabase
     .from("gcash_accounts")
-    .select("gcash_number, account_name, qr_path")
+    .select("gcash_number, account_name")
     .eq("freelancer_id", userId)
     .maybeSingle();
   if (error) {
@@ -150,16 +161,15 @@ export async function getMyGcash(userId) {
   return { data: data || null };
 }
 
-// Saves the number, the name and the QR path (empty = no QR). Returns "" when
-// saved, or a message to show.
-export async function saveMyGcash(userId, { number, name, qrPath }) {
+// Saves the number and the name. Returns "" when saved, or a message to show.
+export async function saveMyGcash(userId, { number, name }) {
   const normalized = normalizeGcashNumber(number);
   const tidyName = tidyAccountName(name);
   if (!isValidGcashNumber(normalized)) return "Enter your 11-digit GCash number, like 0917 123 4567.";
   if (!isValidAccountName(tidyName)) return "Enter the name on your GCash account: letters, spaces, dots and hyphens only.";
 
   const { error } = await supabase.from("gcash_accounts").upsert(
-    { freelancer_id: userId, gcash_number: normalized, account_name: tidyName, qr_path: qrPath || null },
+    { freelancer_id: userId, gcash_number: normalized, account_name: tidyName },
     { onConflict: "freelancer_id" }
   );
   if (error) {
@@ -190,8 +200,8 @@ export async function removeMyGcash(userId) {
 const plainMessage = (error, fallback) => (error?.code === "P0001" && error.message ? error.message : fallback);
 
 // Where to send the money, for the client of a project: { data } with the
-// freelancer's { account_name, gcash_number, qr_path }, { data: null } when they
-// have not saved any details yet, or { error }.
+// freelancer's { initials, gcash_number } (the database never sends the full name),
+// { data: null } when they have not saved any details yet, or { error }.
 export async function getPayDetails(projectId) {
   const { data, error } = await supabase.rpc("get_pay_details", { target_project: projectId });
   if (error) {

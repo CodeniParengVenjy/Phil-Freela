@@ -576,6 +576,89 @@ scrolling). Lint (only the two old warnings) and build clean.
   phone screens in the pictures are stand-ins, not the real app.
 - After each push, test on the live site (phil-freela.pages.dev).
 
+## Change asked 2026-10-25: no QR upload, name shown as initials (BUILT, its SQL waits for the user to run it)
+
+The user: "remove the qr upload in gcash, just name and number only, if I were to
+recommend, only initials". Why: a real GCash QR can only come from the GCash app,
+PhilFreela can't make one (no official format found, nothing to test with), and
+GCash itself now hides part of a recipient's name when sending money. My reading of
+"only initials": the freelancer still types the name on their GCash account in
+Settings (kept private, only they can read it), and everyone else (the client on
+the project page or the payment card) sees only its initials ("A. R. S.") and the
+number.
+
+Live state checked 2026-10-25: 1 GCash account, none with a QR, 0 files in the
+`gcash-qr` bucket, so nothing is lost.
+
+What people see: Settings > GCash Payment has the number and the name only, and
+says what others will see (the initials and the number, only on a project or a
+payment card with them). The client's pay box and the chat payment card show
+"Send to A. R. S." and the number with Copy number, and "GCash hides part of the
+name when you send. The first letters should match these initials. If they don't,
+don't send: message {name} first." The record window says "Paid to {profile
+name}" (it used the GCash name before).
+
+Database (new `database/supabase_gcash_initials_schema.sql`, test
+`database/test_gcash_initials.sql`):
+
+1. `get_pay_details(project)` and `get_request_pay_details(payment)` are replaced
+   (their answer changes shape, so they are dropped and made again): they return
+   `initials` and `gcash_number`, never the name and never a QR. The initials are
+   worked out in the database, so the full name never reaches another person's
+   browser.
+2. `gcash_accounts.qr_path` (and its folder check) is dropped.
+3. The four `gcash-qr` storage rules are dropped and the empty bucket is removed
+   (an empty one only; if it has files by then, it is left and I say so).
+4. The QR checks in `database/test_payments.sql` and `database/test_chat_payments.sql`
+   are taken out so they still pass when run again.
+
+Website: `lib/payments.js` (the QR upload, remove and link functions go; the saved
+details and the pay details lose `qr_path`; `checkQrFile` STAYS because the earning
+plan's Admin > Site page uses it), `components/GcashSettingsForm.jsx` (QR part
+removed), `components/PaymentsSection.jsx` and `components/PaymentCard.jsx` (no QR,
+initials and the matching hint), `components/RequestPaymentDialog.jsx` (its text),
+`payments.css` (the QR tile styles), `lib/privacy.js` (no `has_qr`), and the
+Terms/Privacy page (QR picture and its storage lines).
+
+Left alone on purpose: PhilFreela's OWN GCash number and QR for fees (the earning
+plan, `site_gcash`, Admin > Site) belong to the other session's feature.
+
+Test: the new SQL test (initials for several names, who may call, no name and no
+QR in the answer, the column, rules and bucket gone, signed-out refused), the two
+older SQL tests re-run, a browser test (Settings, project pay box, chat card, phone
+width, light mode, no QR anywhere, the Terms/Privacy lines), lint and build.
+
+#### Result (2026-10-25)
+
+Built as planned; the user chose to run the SQL file themselves. Why: the database
+tool refuses statements that delete things (DROP FUNCTION, DROP POLICY, DELETE of the
+bucket) and the user chose the clean result over an approach without deletes.
+
+Done and tested: `database/supabase_gcash_initials_schema.sql` and
+`database/test_gcash_initials.sql` (29 checks, 0 failed, on the local stand-in
+only; NOT yet tried on the live database); the QR checks were taken out of
+`database/test_payments.sql` and `database/test_chat_payments.sql` (to be re-run
+live after the schema); the website (`lib/payments.js` without the QR upload, remove
+and link functions and with `nameInitials()`; `GcashSettingsForm.jsx` with the
+number, the name and a live "Others will see only the initials: A. R. S." line;
+`PaymentsSection.jsx` and `PaymentCard.jsx` showing the initials and the "first
+letters should match" hint; "Paid to {PhilFreela name}" in the record window; the
+Request payment window text; the QR styles; `lib/privacy.js`; the Terms and Privacy
+page). Browser test against a pretend Supabase, 31 checks, 0 failed: Settings (no
+QR anywhere, no file box, the initials line for several names, refused number and
+name, save sends only number and name, no storage request, reload, remove, phone
+width), the project pay box (initials, number, Copy number, hint, no name in the box,
+no picture request, the record window, no details saved, phone width, light mode),
+the payer's card in a chat, the Request payment window, the Terms/Privacy lines. Lint
+(only the two old warnings) and build clean. `checkQrFile` stays in `lib/payments.js`
+for the earning plan's own QR (Admin > Site).
+
+To finish: the user runs `database/supabase_gcash_initials_schema.sql` in the
+Supabase SQL Editor; then try `test_gcash_initials.sql`, `test_payments.sql` and
+`test_chat_payments.sql` live (each rolls back), check the live state, and push.
+Until it is run, do NOT push: the old database still answers with `account_name` and
+`qr_path`, which the new page does not read.
+
 ## Current step
 
 Steps 1 to 7 are built and their SQL is live (2026-10-25). What is left is the

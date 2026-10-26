@@ -31,7 +31,6 @@ declare
   rp2        text;
   rp3        text;
   rp_pc      text;
-  qr_file    text;
   txt        text;
   lnk        text;
   before_ts  timestamptz;
@@ -69,9 +68,8 @@ begin
   rp2 := p::text || '/chat-2.jpg';
   rp3 := p::text || '/chat-3.jpg';
   rp_pc := pc::text || '/proj-1.jpg';
-  qr_file := f::text || '/qr.png';
   insert into storage.objects (bucket_id, name) values
-    ('receipts', rp1), ('receipts', rp2), ('receipts', rp3), ('receipts', rp_pc), ('gcash-qr', qr_file);
+    ('receipts', rp1), ('receipts', rp2), ('receipts', rp3), ('receipts', rp_pc);
 
   select count(*) into sent0 from public.user_notifications where user_id = f and type = 'payment_sent';
   select count(*) into conf0 from public.user_notifications where user_id = p and type = 'payment_confirmed';
@@ -97,8 +95,8 @@ begin
          || ' without saved GCash details there is nothing to ask for' || E'\n';
   reset role;
 
-  insert into public.gcash_accounts (freelancer_id, gcash_number, account_name, qr_path)
-    values (f, '09171234567', 'Ana R. Santos', qr_file);
+  insert into public.gcash_accounts (freelancer_id, gcash_number, account_name)
+    values (f, '09171234567', 'Ana R. Santos');
 
   if not public.is_verified(p) then
     perform set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated')::text, true);
@@ -212,12 +210,14 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', p::text, true);
   set local role authenticated;
-  select count(*) into n from public.get_request_pay_details(req1) d where d.gcash_number = '09171234567' and d.account_name = 'Ana R. Santos' and d.qr_path = qr_file;
+  select count(*) into n from public.get_request_pay_details(req1) d where d.gcash_number = '09171234567' and d.initials = 'A. R. S.';
   res := res || case when n = 1 then 'PASS' else 'FAIL (' || n || ')' end
-         || ' the person asked to pay gets the number, the name and the QR' || E'\n';
-  select count(*) into n from storage.objects where bucket_id = 'gcash-qr' and name = qr_file;
+         || ' the person asked to pay gets the number and the initials of the name' || E'\n';
+  select count(*) into n from public.get_request_pay_details(req1) d
+   where (select array_agg(k order by k) from jsonb_object_keys(to_jsonb(d)) k) = array['gcash_number', 'initials']
+     and to_jsonb(d)::text not ilike '%Santos%';
   res := res || case when n = 1 then 'PASS' else 'FAIL (' || n || ')' end
-         || ' ... and can open the QR picture while the request waits' || E'\n';
+         || ' ... and nothing else: not the name, no QR' || E'\n';
   reset role;
 
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
@@ -236,10 +236,9 @@ begin
   exception when others then msg := sqlerrm; end;
   res := res || case when msg like 'Only the person asked to pay%' then 'PASS' else 'FAIL (' || coalesce(msg, 'no error') || ')' end
          || ' a stranger gets no pay details' || E'\n';
-  select count(*) into n from storage.objects where bucket_id = 'gcash-qr' and name = qr_file;
   select count(*) into n2 from public.payments where id = req1;
-  res := res || case when n = 0 and n2 = 0 then 'PASS' else 'FAIL (' || n || ', ' || n2 || ')' end
-         || ' a stranger cannot open the QR or read the request' || E'\n';
+  res := res || case when n2 = 0 then 'PASS' else 'FAIL (' || n2 || ')' end
+         || ' a stranger cannot read the request' || E'\n';
   reset role;
 
   -- ---- E. Recording the payment on the card ------------------------------------

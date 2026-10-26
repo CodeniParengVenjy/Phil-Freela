@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { priceText } from "../../../lib/projectPrice";
 import {
-  confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, getQrLink, listProjectPayments,
+  confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, listProjectPayments,
   markNotReceived, openReceipt, paymentStatuses, recordPayment, watchProjectPayments
 } from "../../../lib/payments";
 import RecordPaymentDialog from "./RecordPaymentDialog";
@@ -13,7 +13,8 @@ const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium"
 // The Payments section of the project page (PLAN-gcash-payments.md). PhilFreela
 // never touches the money: the client pays in the GCash app and records it here,
 // the freelancer checks their own GCash and answers. Both people use it:
-//  - client: where to pay (the freelancer's name, number and QR), "I've paid",
+//  - client: where to pay (the initials of the freelancer's GCash name and their
+//    number), "I've paid",
 //    and the list of payments
 //  - freelancer: the list, with Confirm received / Not received on a payment
 //    that is waiting for their answer
@@ -28,11 +29,10 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
   // Goes up after something changed here, so the list is read again.
   const [reloadKey, setReloadKey] = useState(0);
   // The client's view of where to pay: undefined while loading, null when the
-  // freelancer has saved no details yet, else { account_name, gcash_number, qr_path }.
+  // freelancer has saved no details yet, else { initials, gcash_number } (the
+  // database never sends the full name).
   const [details, setDetails] = useState(undefined);
   const [detailsError, setDetailsError] = useState("");
-  // The QR link, kept with the file it is for: { path, link }.
-  const [qr, setQr] = useState(null);
   // The freelancer's own check: have they saved GCash details? (undefined = loading)
   const [mineSaved, setMineSaved] = useState(undefined);
   const [recording, setRecording] = useState(false);
@@ -75,19 +75,6 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
       active = false;
     };
   }, [iAmClient, projectId]);
-
-  const qrPath = details?.qr_path;
-  useEffect(() => {
-    if (!qrPath) return undefined;
-    let active = true;
-    getQrLink(qrPath).then((link) => {
-      if (active) setQr({ path: qrPath, link });
-    });
-    return () => {
-      active = false;
-    };
-  }, [qrPath]);
-  const qrLink = qrPath && qr?.path === qrPath ? qr.link : null;
 
   // The freelancer is told when nobody can pay them yet.
   useEffect(() => {
@@ -163,20 +150,17 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     return (
       <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 mb-3">
         <h5 className="text-white fw-bold fs-6 mb-3">Pay via GCash</h5>
-        <div className="d-flex flex-wrap align-items-center gap-3">
-          {qrLink && <div className="pay-qr-tile"><img src={qrLink} alt={`${details.account_name}'s GCash QR`} /></div>}
-          <div className="flex-grow-1 min-w-0">
-            <span className="text-secondary fs-8 d-block">Send to</span>
-            <strong className="text-white d-block text-break">{details.account_name}</strong>
-            <span className="pay-mono text-white fs-5 d-block">{formatGcashNumber(details.gcash_number)}</span>
-            <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 py-1 fs-8 fw-bold mt-2" onClick={copyNumber}>
-              <i className="bi bi-clipboard me-1"></i> Copy number
-            </button>
-          </div>
+        <div>
+          <span className="text-secondary fs-8 d-block">Send to</span>
+          <strong className="text-white d-block text-break" data-pay-initials>{details.initials}</strong>
+          <span className="pay-mono text-white fs-5 d-block">{formatGcashNumber(details.gcash_number)}</span>
+          <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 py-1 fs-8 fw-bold mt-2" onClick={copyNumber}>
+            <i className="bi bi-clipboard me-1"></i> Copy number
+          </button>
         </div>
         <p className="text-secondary fs-8 mt-3 mb-2">
-          Pay in your GCash app, then come back and record it here. {qrLink ? "On a computer you can scan the QR with your phone. " : ""}
-          Check that the name GCash shows matches the name above before you send.
+          Pay in your GCash app, then come back and record it here. GCash hides part of the name when you send: the first
+          letters should match these initials ({details.initials}). If they don't, don't send. Message {otherName} first.
         </p>
         {agreedPrice && <p className="text-secondary fs-8 mb-2">Agreed price: {agreedPrice}.</p>}
         <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={() => setRecording(true)}>
@@ -297,7 +281,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
 
       {recording && (
         <RecordPaymentDialog
-          subtitle={`Paid to ${details?.account_name || otherName} in the GCash app`}
+          subtitle={`Paid to ${otherName} in the GCash app`}
           otherName={otherName}
           hint={agreedPrice ? `Agreed price: ${agreedPrice}. Enter what you sent.` : undefined}
           submit={handleRecord}

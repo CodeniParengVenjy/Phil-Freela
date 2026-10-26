@@ -91,9 +91,9 @@ function TermsOfService() {
       <h5 className="text-white fw-bold mt-4 mb-2">Payments</h5>
       <ul className="text-secondary">
         <li>
-          A freelancer can save a GCash number, the name on the GCash account and, if they like, a GCash QR picture in
-          Settings. A client sees them only on the page of a project with that freelancer, or on the payment card the
-          freelancer sends in a chat. They are not on the public profile.
+          A freelancer can save a GCash number and the name on the GCash account in Settings. A client sees the number
+          and only the initials of the name, and only on the page of a project with that freelancer or on the payment
+          card the freelancer sends in a chat. They are not on the public profile.
         </li>
         <li>
           The client pays in their own GCash app, then records the payment on PhilFreela: the amount, the 13-digit GCash
@@ -174,9 +174,9 @@ function PrivacyPolicy() {
           read them: the person you report can't, and neither can anyone else.
         </li>
         <li>
-          GCash payment details (freelancers): the GCash number, the name on the account and, if you add one, a QR picture,
-          saved in Settings. Only you can read your own row. A client sees it only on the page of a project with you, or on
-          a payment card you send in a chat, so they can pay you. It is never on your public profile.
+          GCash payment details (freelancers): the GCash number and the name on the account, saved in Settings. Only you
+          can read your own name. A client sees only your number and the initials of your name, on the page of a project
+          with you or on a payment card you send in a chat, so they can pay you. They are never on your public profile.
         </li>
         <li>
           Payment records: for a payment made through a project or a chat, the amount, the GCash reference number, the
@@ -231,8 +231,8 @@ function PrivacyPolicy() {
         archives an account, its data is kept but the account can't be used, and it is permanently deleted 100 days
         later unless an admin restores it. A report you sent, with any chat messages you sent along with it, is
         removed if you delete your account. Your GCash details are removed with your account, and so are the payment
-        records of the payments you were on. The receipt and QR picture files stay in private storage, where nobody
-        can open them once the record they belong to is gone.
+        records of the payments you were on. The receipt picture files stay in private storage, where nobody can open
+        them once the record they belong to is gone.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your rights</h5>

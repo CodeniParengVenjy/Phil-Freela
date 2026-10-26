@@ -5,8 +5,8 @@ import { MAX_PAYMENT_NOTE_LENGTH, getMyGcash, parseAmount, requestPayment } from
 
 // "Request payment" in a chat (PLAN-gcash-payments.md): the freelancer asks the
 // other person to pay, with an amount and a short note. The database writes a
-// payment card into the chat; the other person sees the freelancer's name, GCash
-// number and QR on that card, and nobody else does. The parent mounts it only
+// payment card into the chat; the other person sees the initials of the freelancer's
+// GCash name and the GCash number on that card, and nobody else does. The parent mounts it only
 // while it is open, so every opening starts empty.
 //   userId: the freelancer (to check that they have saved GCash details)
 //   otherName: the person asked to pay
@@ -118,7 +118,7 @@ export default function RequestPaymentDialog({ userId, conversationId, otherName
 
         <p className="text-secondary fs-8 mb-3">
           <i className="bi bi-shield-lock me-1"></i>
-          {otherName} will see your name, GCash number and QR on the card. Nobody else can see them. Only one request can be open in a chat at a time.
+          {otherName} will see your GCash number and the initials of your name on the card. Nobody else can see them. Only one request can be open in a chat at a time.
         </p>
 
         {error && <p className="text-danger fs-7 mb-3" role="alert">{error}</p>}

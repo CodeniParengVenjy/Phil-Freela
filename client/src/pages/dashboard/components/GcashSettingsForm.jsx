@@ -1,35 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { noAutofill } from "../../../lib/profile";
 import {
-  checkQrFile, formatGcashNumber, getMyGcash, getQrLink, isValidAccountName, isValidGcashNumber, normalizeGcashNumber,
-  removeMyGcash, removeQrFile, saveMyGcash, tidyAccountName, uploadQr
+  formatGcashNumber, getMyGcash, isValidAccountName, isValidGcashNumber, nameInitials, normalizeGcashNumber, removeMyGcash,
+  saveMyGcash, tidyAccountName
 } from "../../../lib/payments";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import "../payments.css";
 
-// Settings > GCash Payment (freelancers only). The number, the name on the GCash
-// account and an optional QR picture. Clients who have a project with this
-// freelancer see them on the project's page so they can pay in the GCash app;
-// nobody else can (database/supabase_payments_schema.sql). PhilFreela never
-// handles the money.
+// Settings > GCash Payment (freelancers only). The number and the name on the
+// GCash account. The name stays private (only you can read it): a client who has a
+// project with you, or who you ask for payment in a chat, sees only its initials and
+// the number, so they can pay you in the GCash app; nobody else can see even that
+// (database/supabase_gcash_initials_schema.sql). PhilFreela never handles the money.
 export default function GcashSettingsForm({ userId, showToast }) {
   // undefined while loading, null when nothing is saved yet, else the saved row.
   const [saved, setSaved] = useState(undefined);
   const [loadError, setLoadError] = useState("");
   const [number, setNumber] = useState("");
   const [name, setName] = useState("");
-  // A QR picked but not saved yet, its temporary preview link, and "Remove" pressed.
-  const [qrFile, setQrFile] = useState(null);
-  const [qrPreview, setQrPreview] = useState(null);
-  const [qrRemoved, setQrRemoved] = useState(false);
-  // The link that shows the saved QR, kept with the file it is for:
-  // { path, link }, where link is null when it couldn't be made.
-  const [qrLink, setQrLink] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -48,47 +40,6 @@ export default function GcashSettingsForm({ userId, showToast }) {
     };
   }, [userId]);
 
-  // The saved QR is private, so it is shown through a link that expires.
-  const savedQrPath = saved?.qr_path;
-  useEffect(() => {
-    if (!savedQrPath) return undefined;
-    let active = true;
-    getQrLink(savedQrPath).then((link) => {
-      if (active) setQrLink({ path: savedQrPath, link });
-    });
-    return () => {
-      active = false;
-    };
-  }, [savedQrPath]);
-  const savedQrLink = savedQrPath && qrLink?.path === savedQrPath ? qrLink.link : null;
-
-  // Frees the temporary preview when it is replaced or the form closes.
-  useEffect(() => () => {
-    if (qrPreview) URL.revokeObjectURL(qrPreview);
-  }, [qrPreview]);
-
-  const handlePick = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = ""; // so picking the same file again still works
-    if (!file) return;
-    const problem = checkQrFile(file);
-    if (problem) {
-      setError(problem);
-      return;
-    }
-    setError("");
-    setQrFile(file);
-    setQrPreview(URL.createObjectURL(file));
-    setQrRemoved(false);
-  };
-
-  const handleRemoveQr = () => {
-    setQrFile(null);
-    setQrPreview(null);
-    setQrRemoved(true);
-    setError("");
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (saving || saved === undefined) return;
@@ -106,45 +57,22 @@ export default function GcashSettingsForm({ userId, showToast }) {
 
     setSaving(true);
     setError("");
-
-    // A new QR is uploaded first; if the details can't be saved after that, the
-    // upload is removed again so no unused file is left behind.
-    let newPath = null;
-    if (qrFile) {
-      const upload = await uploadQr(userId, qrFile);
-      if (upload.error) {
-        setSaving(false);
-        setError(upload.error);
-        return;
-      }
-      newPath = upload.path;
-    }
-    const qrPath = qrFile ? newPath : qrRemoved ? null : saved?.qr_path || null;
-
-    const problem = await saveMyGcash(userId, { number: normalized, name: tidyName, qrPath });
+    const problem = await saveMyGcash(userId, { number: normalized, name: tidyName });
+    setSaving(false);
     if (problem) {
-      if (newPath) await removeQrFile(newPath);
-      setSaving(false);
       setError(problem);
       return;
     }
-    // The old picture isn't needed any more.
-    if (saved?.qr_path && saved.qr_path !== qrPath) await removeQrFile(saved.qr_path);
 
-    setSaved({ gcash_number: normalized, account_name: tidyName, qr_path: qrPath });
+    setSaved({ gcash_number: normalized, account_name: tidyName });
     setNumber(formatGcashNumber(normalized));
     setName(tidyName);
-    setQrFile(null);
-    setQrPreview(null);
-    setQrRemoved(false);
-    setSaving(false);
     showToast("GCash details saved.");
   };
 
   const handleRemoveAll = async () => {
     setRemoving(true);
     const problem = await removeMyGcash(userId);
-    if (!problem && saved?.qr_path) await removeQrFile(saved.qr_path);
     setRemoving(false);
     setConfirmRemove(false);
     if (problem) {
@@ -154,25 +82,22 @@ export default function GcashSettingsForm({ userId, showToast }) {
     setSaved(null);
     setNumber("");
     setName("");
-    setQrFile(null);
-    setQrPreview(null);
-    setQrRemoved(false);
     showToast("Your GCash details were removed.");
   };
 
   if (loadError) return <p className="text-danger fs-7">{loadError}</p>;
   if (saved === undefined) return <p className="text-secondary fs-7">Loading your GCash details...</p>;
 
-  // What the QR box shows: the picked picture, else the saved one (unless it was removed).
-  const shownQr = qrPreview || (qrRemoved ? null : savedQrLink);
-  const hasQr = Boolean(qrFile || (!qrRemoved && saved?.qr_path));
+  // What other people will see instead of the name, as it is typed.
+  const tidyName = tidyAccountName(name);
+  const initials = isValidAccountName(tidyName) ? nameInitials(tidyName) : "";
 
   return (
     <>
       <p className="text-secondary fs-7 mb-4">
-        Clients who have a project with you see these details, so they can pay you in the GCash app. They are not shown on
-        your public profile. PhilFreela never handles the money: you are paid straight into your GCash, and you confirm each
-        payment yourself.
+        A client who has a project with you, or who you ask for payment in a chat, sees your GCash number and only the
+        initials of your name, so they can pay you in the GCash app. They are not shown on your public profile. PhilFreela
+        never handles the money: you are paid straight into your GCash, and you confirm each payment yourself.
       </p>
 
       <form className="d-flex flex-column gap-4" onSubmit={handleSubmit} noValidate>
@@ -204,38 +129,11 @@ export default function GcashSettingsForm({ userId, showToast }) {
             onChange={(event) => setName(event.target.value)}
             maxLength={60}
           />
-          <small className="text-secondary fs-8">Clients compare it with the name GCash shows before they send.</small>
-        </div>
-
-        <div>
-          <span className="form-label text-white-50 fw-semibold fs-7 d-block">GCash QR (optional):</span>
-          <div className="d-flex flex-wrap align-items-center gap-3">
-            {shownQr ? (
-              <div className="pay-qr-tile"><img src={shownQr} alt="Your GCash QR" /></div>
-            ) : (
-              <div className="pay-qr-empty text-secondary fs-8">
-                {hasQr ? "Loading your QR..." : "No QR yet"}
-              </div>
-            )}
-            <div className="d-flex flex-column gap-2">
-              <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/webp" className="d-none" onChange={handlePick} />
-              <div className="d-flex flex-wrap gap-2">
-                <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => fileInputRef.current?.click()} disabled={saving}>
-                  {hasQr ? "Replace QR" : "Upload QR"}
-                </button>
-                {hasQr && (
-                  <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 py-2 fs-7" onClick={handleRemoveQr} disabled={saving}>
-                    Remove
-                  </button>
-                )}
-              </div>
-              <small className="text-secondary fs-8" style={{ maxWidth: 320 }}>
-                Save your QR from your GCash app and upload the picture. JPG, PNG or WebP, 2 MB at most. PhilFreela only shows
-                the picture; it doesn't read it.
-              </small>
-              {(qrFile || qrRemoved) && <small className="text-warning fs-8">Save Changes to keep this.</small>}
-            </div>
-          </div>
+          <small className="text-secondary fs-8 d-block" data-initials-preview>
+            {initials
+              ? <>Others will see only the initials: <strong className="text-white">{initials}</strong></>
+              : "Others will see only the initials of this name, never the name itself."}
+          </small>
         </div>
 
         {error && <p className="text-danger fs-7 mb-0" role="alert">{error}</p>}
