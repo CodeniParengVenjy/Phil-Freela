@@ -13,6 +13,10 @@ import { fetchIsVerified, fetchLatestVerification } from "./verification";
 // says what it is for.
 
 export const VERIFY_PAGE = "/dashboard/verify-identity";
+const SERVICES = "/dashboard/services";
+const PROJECTS = "/dashboard/projects";
+const PROFILE = "/dashboard/profile";
+const SETTINGS = "/dashboard/settings";
 
 // Every note:
 //   page:    where it is shown: "home" (the dashboard home of the person's
@@ -63,9 +67,51 @@ export const TOUR = {
     ],
     verify: verifyNotes("An admin checks your ID soon, and you'll get a notification. The rest of the tour (posting your first service, finding jobs, getting paid) starts once you're verified."),
     retry: retryNotes,
+    // Each page starts with a note on its link in the side menu (page: null, so
+    // it shows on whatever page the person is on), and Next opens the page.
     full: [
       { page: null, target: null, title: "You're verified!", text: "Your Verified badge is on. Now the full tour: posting your first service, finding jobs, bookings, projects, payments and your settings. It takes about 5 minutes.", next: "Start", skip: "Later" },
-      { page: "home", target: "account", title: "That's the tour!", text: "You can play it again any time: open this menu and choose Take the tour.", next: "Done" }
+
+      { page: null, target: "menu-services", menu: true, title: "My Services", text: "This is where you post what you offer and keep your offers. Next opens it." },
+      { page: SERVICES, target: "service-title", scroll: true, title: "Service title", text: "Say what you do in a few words, like \"Video editing for ads and reels\". It's the first thing clients read." },
+      { page: SERVICES, target: "service-category", scroll: true, title: "Category", text: "Pick the kind of work. Clients browse offers by category, and it helps the AI show your offer to the right clients." },
+      { page: SERVICES, target: "service-description", scroll: true, title: "Description", text: "Tell clients what they get: what's included, how long it takes and how many revisions. Bad words are hidden automatically." },
+      { page: SERVICES, target: "service-skill", scroll: true, title: "Skill", text: "The main skill this offer needs. It helps clients and the AI find you." },
+      { page: SERVICES, target: "service-price", scroll: true, title: "Starting price", text: "The lowest price you'd take, in pesos. Clients see it on your offer's card." },
+      { page: SERVICES, target: "service-media", scroll: true, title: "Photos, videos and documents", text: "Show samples of your work as a slideshow. Your files get an invisible watermark that proves they're yours. Mark a file as Promo when it's an ad." },
+      { page: SERVICES, target: "service-publish", scroll: true, title: "Upload & Publish", text: "When it's ready, press this and clients can find your offer. A free account can have 3 offers, Freelancer Pro up to 15." },
+      { page: SERVICES, target: "service-list", scroll: true, title: "Your offers", text: "Your offers show here. Edit or delete them any time, or pay to Feature one so it shows first." },
+      { page: SERVICES, target: "service-check-file", scroll: true, title: "Found your work somewhere?", text: "Check a picture, video or text you found online: PhilFreela reads its hidden watermark and shows whose work it is." },
+
+      { page: null, target: "menu-home", menu: true, title: "Dashboard: jobs", text: "Your dashboard lists jobs from clients, the ones that fit you first. Next opens it." },
+      { page: "home", target: "jobs-search", scroll: true, title: "Search the jobs", text: "Type to narrow the list by job title, client or category." },
+      { page: "home", target: "jobs-filter", scroll: true, title: "Projects or jobs", text: "A project is one piece of work for one price; a job is ongoing work paid per day or per month. Pick one to see only those." },
+      { page: "home", target: "first-item", optional: true, scroll: true, title: "Open a job", text: "Tap a job to read it. On its page you apply with your resume (a PDF), message the client, or report the post." },
+
+      { page: null, target: "menu-bookings", menu: true, title: "Bookings", text: "When a client books one of your offers, the request comes here. Next opens it." },
+      { page: "/dashboard/bookings", target: "bookings", scroll: true, title: "Booking requests", text: "Accept or decline each request. An accepted booking becomes a project. The number on the menu shows how many are waiting." },
+
+      { page: null, target: "menu-projects", menu: true, title: "Project", text: "Your applications and the work you were hired for. Next opens it." },
+      { page: PROJECTS, target: "applications", scroll: true, title: "My Applications", text: "The jobs you applied to, and whether the client hired you." },
+      { page: PROJECTS, target: "projects", scroll: true, title: "My Projects", text: "Work you were hired for. Open one to see the agreed price and due date, send your work, ask for payment by GCash and, at the end, see the client's rating." },
+
+      { page: null, target: "menu-inbox", menu: true, title: "Inbox", text: "Your chats with clients. Next opens it." },
+      { page: "/dashboard/inbox", target: "inbox", scroll: true, title: "Chats", text: "Open a chat to talk with a client: send files and voice messages, make a voice or video call, or ask for payment. New messages show a red number on the menu." },
+
+      { page: null, target: "menu-notifications", menu: true, title: "Notifications", text: "Bookings, hires, payments, your ID check and news from PhilFreela. Next opens it." },
+      { page: "/dashboard/notifications", target: "notifications", scroll: true, title: "Your notifications", text: "Each one says what happened and takes you to the right page. The number on the menu shows the ones you haven't seen." },
+
+      { page: null, target: "account", title: "Your profile and settings", text: "Both are in this menu: My Profile and Account Settings. Next opens your profile." },
+      { page: PROFILE, target: "profile-description", scroll: true, title: "Your profile", text: "This is what clients see about you. Your description is written in Settings; a clear one helps the AI match you with jobs." },
+      { page: PROFILE, target: "profile-skills", scroll: true, title: "Skills", text: "Add your skills here. They show on your profile and help the AI suggest you for jobs." },
+      { page: PROFILE, target: "profile-portfolio", scroll: true, title: "Portfolio", text: "Add your best past work. Clients choose freelancers by it, and your files get your watermark." },
+      { page: PROFILE, target: "profile-performance", scroll: true, title: "Your numbers", text: "Completed projects, on-time delivery, your rating and how fast you reply, all from real projects and chats." },
+
+      { page: SETTINGS, target: "settings-tabs", scroll: true, title: "Settings", text: "Profile Settings: your name, picture, cover and description. Account Security: your password. Watermark Settings: the mark on your files. Appearance: dark or light, and your color. Privacy & Notifications: emails and your data." },
+      { page: SETTINGS, target: "settings-gcash", scroll: true, title: "GCash Payment", text: "Add your GCash number so clients know where to pay you. PhilFreela never holds your money." },
+      { page: SETTINGS, target: "settings-pro", scroll: true, title: "Freelancer Pro", text: "₱149 for 30 days, paid online: up to 15 offers, a gold Pro badge by your name, and half-price Featured posts." },
+
+      { page: "home", target: "account", title: "That's the tour!", text: "You know your way around now. Play this tour again any time: open this menu and choose Take the tour.", next: "Done" }
     ]
   },
   client: {

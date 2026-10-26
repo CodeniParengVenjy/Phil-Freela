@@ -32,8 +32,9 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
 
   const today = todayInManila();
 
+  // (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx)
   return (
-    <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100">
+    <div data-tour="projects" className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100">
       <h4 className="text-white fw-bold mb-3"><i className="bi bi-kanban-fill text-warning me-2"></i> My Projects</h4>
       <p className="text-secondary fs-7 mb-4">
         {isFreelancer ? "Jobs you were hired for. Open one to see the details." : "Freelancers you hired. Open one to see how it's going."}

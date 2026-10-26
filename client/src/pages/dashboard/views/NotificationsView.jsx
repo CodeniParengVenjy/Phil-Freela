@@ -60,7 +60,8 @@ export default function NotificationsView() {
   return (
     <section className="dashboard-view active-view">
       <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
-        <h3 className="text-white fw-bold mb-4"><i className="bi bi-bell-fill text-warning me-2"></i> Notifications</h3>
+        {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+        <h3 data-tour="notifications" className="text-white fw-bold mb-4"><i className="bi bi-bell-fill text-warning me-2"></i> Notifications</h3>
 
         {loadError && <p className="text-secondary text-center mb-0">{loadError}</p>}
         {!loadError && items === null && <p className="text-secondary text-center mb-0">Loading notifications...</p>}

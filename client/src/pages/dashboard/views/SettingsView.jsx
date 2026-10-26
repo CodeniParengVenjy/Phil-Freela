@@ -15,6 +15,8 @@ import GcashSettingsForm from "../components/GcashSettingsForm";
 import ProSettings from "../components/ProSettings";
 
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
+// The tabs the opening tour points at by name (components/WelcomeGuide.jsx).
+const TOUR_TABS = { "GCash Payment": "settings-gcash", "Freelancer Pro": "settings-pro" };
 
 export default function SettingsView() {
   const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, setUsername, showToast } = useOutletContext();
@@ -302,11 +304,13 @@ export default function SettingsView() {
 
         <div className="row g-4">
           <div className="col-md-4">
-            <div className="nav flex-column gap-2">
+            {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+            <div data-tour="settings-tabs" className="nav flex-column gap-2">
               {menuItems.map((item) => (
                 <button
                   key={item}
                   type="button"
+                  data-tour={TOUR_TABS[item]}
                   className={`btn text-start fw-semibold py-2 px-3 rounded-3 ${activeSubNav === item ? "bg-role text-white" : "text-white-50 hover-role"}`}
                   onClick={() => setActiveSubNav(item)}
                 >

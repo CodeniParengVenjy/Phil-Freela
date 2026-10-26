@@ -53,7 +53,8 @@ export default function ProfileView() {
 
               <h2 className="fw-bold text-white mb-4">{displayName}</h2>
 
-              <div className="text-start bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary border-opacity-25 mb-4">
+              {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+              <div data-tour="profile-description" className="text-start bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary border-opacity-25 mb-4">
                 <h5 className="text-white fw-bold mb-2"><i className="bi bi-text-paragraph text-orange me-2"></i> Description</h5>
                 {description === undefined && <p className="text-secondary fs-7 mb-0">Loading...</p>}
                 {description === null && <p className="text-secondary fs-7 mb-0">Couldn't load your description.</p>}
@@ -69,21 +70,21 @@ export default function ProfileView() {
 
               {/* Only freelancers have skills: saved on their profile, and shown on their public page too. */}
               {accountType === "freelancer" && currentUserId && (
-                <div className="text-start mb-4">
+                <div data-tour="profile-skills" className="text-start mb-4">
                   <SkillsBox userId={currentUserId} showToast={showToast} />
                 </div>
               )}
 
               {/* The projects the client marked Done, in the role you have now (Feature 5). */}
               {currentUserId && (
-                <div className="text-start mb-4">
+                <div data-tour="profile-completed" className="text-start mb-4">
                   <CompletedProjects userId={currentUserId} role={accountType} />
                 </div>
               )}
 
               {/* Only freelancers have a portfolio. */}
               {accountType === "freelancer" && currentUserId && (
-                <div className="text-start">
+                <div data-tour="profile-portfolio" className="text-start">
                   <PortfolioSection freelancerId={currentUserId} ownerName={username} isOwner />
                 </div>
               )}
@@ -93,7 +94,9 @@ export default function ProfileView() {
 
         <div className="col-lg-4">
           {/* Real numbers from your projects, ratings and chats (Feature 5). */}
-          <PerformanceBox userId={currentUserId} role={accountType} className="mb-4" />
+          <div data-tour="profile-performance">
+            <PerformanceBox userId={currentUserId} role={accountType} className="mb-4" />
+          </div>
 
           <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
             <h5 className="text-white fw-bold mb-3"><i className="bi bi-shield-check text-success me-2"></i> Verifications</h5>

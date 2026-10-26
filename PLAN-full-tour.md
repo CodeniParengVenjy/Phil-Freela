@@ -144,6 +144,17 @@ Client (about 30 notes):
     every frame, so it stays on the menu while the menu slides open.
   - The note can also go to the left of a part, and is placed by its real
     height.
+- Step 2 (Part 3 for freelancers): built, 33 notes ("Full tour · 2 of 32";
+  the job row is optional, it is skipped when there is no job): My Services
+  (menu link, then title, category, description, skill, starting price,
+  photos/videos, Upload & Publish, your offers, Check a file I found), the
+  dashboard's jobs (menu link, search, Projects / Jobs, the first job),
+  Bookings, Project (My Applications, My Projects), Inbox, Notifications,
+  the account menu, Profile (description, skills, portfolio, your numbers),
+  Settings (the tab list, GCash Payment, Freelancer Pro), and the end.
+  A part too tall for the note to fit beside it (My Projects and Your
+  numbers on a phone) is outlined only down to the note, so the note never
+  sits on what is outlined.
 
 ## Build order (each one tested, committed and pushed)
 

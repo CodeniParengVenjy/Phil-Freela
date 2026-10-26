@@ -10,13 +10,14 @@ import "../theme.css";
 
 // Profile and Settings are not here: they are in the account menu at the top
 // right, and the name card below opens the profile (one way to reach each page).
+// tour: the name the opening tour points at (components/WelcomeGuide.jsx).
 const sidebarLinks = [
-  { to: "/dashboard-freelancer", end: true, icon: "bi-speedometer2", label: "Dashboard" },
-  { to: "/dashboard/services", icon: "bi-briefcase-fill", label: "My Services" },
-  { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox" },
-  { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications" },
-  { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings" },
-  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project" }
+  { to: "/dashboard-freelancer", end: true, icon: "bi-speedometer2", label: "Dashboard", tour: "menu-home" },
+  { to: "/dashboard/services", icon: "bi-briefcase-fill", label: "My Services", tour: "menu-services" },
+  { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox", tour: "menu-inbox" },
+  { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications", tour: "menu-notifications" },
+  { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings", tour: "menu-bookings" },
+  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project", tour: "menu-projects" }
 ];
 
 // Receives the shared session/toast/preview/chat state as props from
@@ -70,6 +71,7 @@ export default function FreelancerDashboardLayout({
                     key={link.to}
                     to={link.to}
                     end={link.end}
+                    data-tour={link.tour}
                     className={({ isActive }) => `sidebar-pill-btn${isActive ? " active" : ""}`}
                   >
                     <i className={`bi ${link.icon}`}></i>

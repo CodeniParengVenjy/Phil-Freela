@@ -185,8 +185,9 @@ export default function FindJobsView({ withRecommendations = false }) {
           )}
         </div>
 
-        {/* Filters the list below as you type (job title, client or category). */}
-        <div className="position-relative search-nav-box mb-3 mb-md-4">
+        {/* Filters the list below as you type (job title, client or category).
+            (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+        <div data-tour="jobs-search" className="position-relative search-nav-box mb-3 mb-md-4">
           <i className="bi bi-search search-icon text-secondary"></i>
           <input
             type="search"
@@ -199,7 +200,7 @@ export default function FindJobsView({ withRecommendations = false }) {
         </div>
 
         {/* Only one-time projects, or only ongoing jobs. */}
-        <div className="d-flex flex-wrap gap-2 mb-3 mb-md-4" role="group" aria-label="Type of work">
+        <div data-tour="jobs-filter" className="d-flex flex-wrap gap-2 mb-3 mb-md-4" role="group" aria-label="Type of work">
           {TYPE_FILTERS.map((filter) => (
             <button
               key={filter.value}

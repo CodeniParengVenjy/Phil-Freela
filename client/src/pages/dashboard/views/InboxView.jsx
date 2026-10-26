@@ -78,7 +78,8 @@ export default function InboxView() {
   return (
     <section className="dashboard-view active-view">
       <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+        <div data-tour="inbox" className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
           <div>
             <h3 className="text-white fw-bold mb-1"><i className="bi bi-inbox-fill text-role me-2"></i> Inbox</h3>
             <p className="text-secondary fs-7 mb-0">Your direct conversations with clients and freelancers.</p>

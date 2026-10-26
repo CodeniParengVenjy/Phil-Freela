@@ -70,6 +70,23 @@ function notePosition(hole, vw, vh, noteHeight) {
   return { left: clamp((vw - NOTE_WIDTH) / 2, 12, vw), bottom: 16 };
 }
 
+// A part too tall for the note to fit beside it (a strip across a phone, or the
+// last-resort spot at the bottom of a laptop) would end up under the note. The
+// outline then stops just above the note (or starts just below it), so the note
+// never covers what is outlined; the rest of the part stays dimmed.
+function clearOfNote(hole, pos, vw, vh, noteHeight) {
+  const top = pos.top ?? vh - pos.bottom - noteHeight;
+  const bottom = top + noteHeight;
+  const left = pos.left;
+  const right = pos.right !== undefined ? vw - pos.right : pos.left + NOTE_WIDTH;
+  const holeBottom = hole.top + hole.height;
+  const underNote = hole.left < right && left < hole.left + hole.width && hole.top < bottom && top < holeBottom;
+  if (!underNote) return hole;
+  if (top - NOTE_GAP - hole.top >= 40) return { ...hole, height: top - NOTE_GAP - hole.top };
+  if (holeBottom - bottom - NOTE_GAP >= 40) return { ...hole, top: bottom + NOTE_GAP, height: holeBottom - bottom - NOTE_GAP };
+  return hole;
+}
+
 const sameView = (a, b) => a.key === b.key && a.vw === b.vw && a.vh === b.vh && a.loading === b.loading && a.noteHeight === b.noteHeight
   && (a.rect === b.rect || (a.rect && b.rect && a.rect.left === b.rect.left && a.rect.top === b.rect.top && a.rect.width === b.rect.width && a.rect.height === b.rect.height));
 
@@ -333,6 +350,9 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
   // The outline around the part (null for a card in the middle, or while the part is still loading).
   const rect = note.target ? view.rect : null;
   const hole = rect && { left: rect.left - OUTLINE_PAD, top: rect.top - OUTLINE_PAD, width: rect.width + OUTLINE_PAD * 2, height: rect.height + OUTLINE_PAD * 2 };
+  // Where the note goes, and the outline kept out from under it.
+  const pos = hole && notePosition(hole, view.vw, view.vh, view.noteHeight);
+  const outline = hole && clearOfNote(hole, pos, view.vw, view.vh, view.noteHeight);
   const phone = view.vw < PHONE_WIDTH;
   const middle = !note.target;
   const text = typeof note.text === "function" ? note.text({ adminNote: status?.adminNote || "" }) : note.text;
@@ -375,15 +395,15 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
   // screen, or, for a note the person answers by pressing the outlined part,
   // everything around that part.
   const cover = { position: "fixed", zIndex: 1350, background: "transparent" };
-  const blockers = note.click && hole ? (
+  const blockers = note.click && outline ? (
     <>
-      <div aria-hidden="true" style={{ ...cover, left: 0, top: 0, right: 0, height: Math.max(0, hole.top) }}></div>
-      <div aria-hidden="true" style={{ ...cover, left: 0, top: hole.top + hole.height, right: 0, bottom: 0 }}></div>
-      <div aria-hidden="true" style={{ ...cover, left: 0, top: hole.top, width: Math.max(0, hole.left), height: hole.height }}></div>
-      <div aria-hidden="true" style={{ ...cover, left: hole.left + hole.width, top: hole.top, right: 0, height: hole.height }}></div>
+      <div aria-hidden="true" style={{ ...cover, left: 0, top: 0, right: 0, height: Math.max(0, outline.top) }}></div>
+      <div aria-hidden="true" style={{ ...cover, left: 0, top: outline.top + outline.height, right: 0, bottom: 0 }}></div>
+      <div aria-hidden="true" style={{ ...cover, left: 0, top: outline.top, width: Math.max(0, outline.left), height: outline.height }}></div>
+      <div aria-hidden="true" style={{ ...cover, left: outline.left + outline.width, top: outline.top, right: 0, height: outline.height }}></div>
     </>
   ) : (
-    <div aria-hidden="true" style={{ ...cover, inset: 0, background: hole ? "transparent" : "rgba(0,0,0,0.72)" }}></div>
+    <div aria-hidden="true" style={{ ...cover, inset: 0, background: outline ? "transparent" : "rgba(0,0,0,0.72)" }}></div>
   );
 
   return (
@@ -393,12 +413,12 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
       {/* The outline: a box over the part, with a huge shadow that dims everything
           else. No slide animation: it is moved on every screen frame, so it stays
           exactly on a part that moves (the menu sliding open). */}
-      {hole && (
+      {outline && (
         <div
           aria-hidden="true"
           style={{
             position: "fixed", zIndex: 1351, pointerEvents: "none",
-            left: hole.left, top: hole.top, width: hole.width, height: hole.height,
+            left: outline.left, top: outline.top, width: outline.width, height: outline.height,
             borderRadius: 14, border: "2px solid var(--accent-role)",
             boxShadow: "0 0 0 9999px rgba(0,0,0,0.72)"
           }}
@@ -420,7 +440,7 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
           aria-modal="true"
           aria-labelledby="tourTitle"
           className="role-confirm-card bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-3 p-sm-4 text-start"
-          style={{ position: "fixed", zIndex: 1352, ...(phone ? {} : { width: NOTE_WIDTH }), ...notePosition(hole, view.vw, view.vh, view.noteHeight) }}
+          style={{ position: "fixed", zIndex: 1352, ...(phone ? {} : { width: NOTE_WIDTH }), ...pos }}
         >
           {noteBody}
         </div>

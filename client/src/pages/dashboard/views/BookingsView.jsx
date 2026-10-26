@@ -199,7 +199,8 @@ export default function BookingsView() {
   return (
     <section className="dashboard-view active-view">
       <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25 max-w-950 mx-auto">
-        <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+        {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+        <div data-tour="bookings" className="d-flex flex-wrap align-items-center gap-2 mb-1">
           <h3 className="text-white fw-bold mb-0">
             <i className="bi bi-calendar-check-fill text-role me-2"></i> {isFreelancer ? "Booking Requests" : "My Bookings"}
           </h3>

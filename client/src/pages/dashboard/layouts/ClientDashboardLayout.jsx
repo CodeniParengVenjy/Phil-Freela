@@ -10,13 +10,14 @@ import "../theme.css";
 
 // Profile and Settings are not here: they are in the account menu at the top
 // right, and the name card below opens the profile (one way to reach each page).
+// tour: the name the opening tour points at (components/WelcomeGuide.jsx).
 const sidebarLinks = [
-  { to: "/dashboard-client", end: true, icon: "bi-speedometer2", label: "Dashboard" },
-  { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox" },
-  { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications" },
-  { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings" },
-  { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project" },
-  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes" }
+  { to: "/dashboard-client", end: true, icon: "bi-speedometer2", label: "Dashboard", tour: "menu-home" },
+  { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox", tour: "menu-inbox" },
+  { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications", tour: "menu-notifications" },
+  { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings", tour: "menu-bookings" },
+  { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project", tour: "menu-post" },
+  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes", tour: "menu-projects" }
   // (AI Moodboard Matching has no link here: it is the camera button in the
   // search box, see DashboardTopNav.jsx.)
 ];
@@ -69,6 +70,7 @@ export default function ClientDashboardLayout({
                     key={link.to}
                     to={link.to}
                     end={link.end}
+                    data-tour={link.tour}
                     className={({ isActive }) => `sidebar-pill-btn${isActive ? " active" : ""}`}
                   >
                     <i className={`bi ${link.icon}`}></i>

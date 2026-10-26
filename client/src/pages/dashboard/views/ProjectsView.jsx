@@ -45,7 +45,8 @@ export default function ProjectsView() {
       <div className="row g-4">
         {isFreelancer && (
           <div className="col-12">
-            <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
+            {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+            <div data-tour="published-services" className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
               <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-start gap-3 mb-4">
                 <div>
                   <h4 className="text-white fw-bold mb-1"><i className="bi bi-grid-fill text-role me-2"></i> My Published Services</h4>

@@ -259,7 +259,8 @@ export default function ServicesView() {
               <h3 className="text-white fw-bold mb-0">
                 <i className={`bi ${editing ? "bi-pencil-square" : "bi-plus-circle"} text-orange me-2`}></i> {editing ? "Edit Your Service" : "Post a Service Offered"}
               </h3>
-              <button type="button" className="btn btn-sm btn-outline-info rounded-pill px-3 fs-8 fw-bold" onClick={() => setCheckingOwnership(true)}>
+              {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+              <button type="button" data-tour="service-check-file" className="btn btn-sm btn-outline-info rounded-pill px-3 fs-8 fw-bold" onClick={() => setCheckingOwnership(true)}>
                 <i className="bi bi-shield-check me-1"></i> Check a file I found
               </button>
             </div>
@@ -295,7 +296,7 @@ export default function ServicesView() {
 
             {isVerified && !postingBlocked && (
               <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
-                <div>
+                <div data-tour="service-title">
                   <label className="form-label text-white fw-semibold fs-7">Service Title:</label>
                   <input
                     type="text"
@@ -307,7 +308,7 @@ export default function ServicesView() {
                   />
                 </div>
 
-                <div>
+                <div data-tour="service-category">
                   <label className="form-label text-white fw-semibold fs-7">Select services category:</label>
                   <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={category} onChange={(e) => setCategory(e.target.value)} required>
                     <option value="" disabled>Select services...</option>
@@ -315,7 +316,7 @@ export default function ServicesView() {
                   </select>
                 </div>
 
-                <div>
+                <div data-tour="service-description">
                   <label className="form-label text-white fw-semibold fs-7">Enter Services Description:</label>
                   <textarea
                     className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
@@ -328,7 +329,7 @@ export default function ServicesView() {
                   <small className="text-secondary fs-8 d-block mt-1">Bad words are hidden automatically.</small>
                 </div>
 
-                <div>
+                <div data-tour="service-skill">
                   <label className="form-label text-white fw-semibold fs-7">Specify skills:</label>
                   <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={skill} onChange={(e) => setSkill(e.target.value)}>
                     <option value="" disabled>Specify skills...</option>
@@ -336,7 +337,7 @@ export default function ServicesView() {
                   </select>
                 </div>
 
-                <div>
+                <div data-tour="service-price">
                   <label className="form-label text-white fw-semibold fs-7">Starting Price (₱):</label>
                   <input
                     type="number"
@@ -356,7 +357,7 @@ export default function ServicesView() {
                 )}
 
                 {!editing && (
-                <div>
+                <div data-tour="service-media">
                   <label className="form-label text-white fw-semibold fs-7">Upload photos, videos or documents for a slideshow (optional):</label>
                   <SlidePicker
                     items={slideItems}
@@ -384,7 +385,7 @@ export default function ServicesView() {
                       Cancel
                     </button>
                   )}
-                  <button type="submit" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting || atLimit}>
+                  <button type="submit" data-tour="service-publish" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting || atLimit}>
                     {editing ? (submitting ? "Saving..." : "Save changes") : submitting ? progress || "Publishing..." : "Upload & Publish"}
                   </button>
                 </div>
@@ -394,7 +395,7 @@ export default function ServicesView() {
         </div>
 
         <div className="col-lg-4">
-          <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
+          <div data-tour="service-list" className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
             <h5 className="text-white fw-bold mb-3 d-flex flex-wrap align-items-baseline gap-2">
               <span><i className="bi bi-grid-fill text-warning me-2"></i> Your Active Services</span>
               {offerLimit !== null && offerCount !== null && (

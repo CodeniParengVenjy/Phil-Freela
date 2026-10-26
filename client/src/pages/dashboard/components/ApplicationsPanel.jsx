@@ -71,8 +71,9 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
     return `${name} ${row.job?.title || ""}`.toLowerCase().includes(q);
   });
 
+  // (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx)
   return (
-    <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100">
+    <div data-tour="applications" className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100">
       <h4 className="text-white fw-bold mb-3">
         <i className="bi bi-file-earmark-person-fill text-info me-2"></i> {isFreelancer ? "My Applications" : "Applications & Resumes"}
       </h4>
