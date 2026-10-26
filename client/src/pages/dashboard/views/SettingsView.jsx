@@ -3,7 +3,7 @@ import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom
 import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline, saveUsername, noAutofill } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
 import { COVER_CROP, PICTURE_CROP, checkAvatarFile, fetchCoverPath, removeCover, uploadAvatar, uploadCover } from "../../../lib/avatar";
-import { deleteMyAccount, downloadAsFile, exportMyData } from "../../../lib/privacy";
+import { deleteMyAccount } from "../../../lib/privacy";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
 import ImageCropDialog from "../../../components/ImageCropDialog";
@@ -30,9 +30,6 @@ export default function SettingsView() {
   const wantedTab = searchParams.get("tab");
   const [pickedTab, setActiveSubNav] = useState(null);
   const activeSubNav = pickedTab ?? (menuItems.includes(wantedTab) ? wantedTab : "Profile Settings");
-  // "Download your data" (feature 6): null = idle, so the button shows its
-  // normal label until clicked.
-  const [exporting, setExporting] = useState(false);
   // "Delete your account": typing the username unlocks the real button, so
   // nobody deletes an account with one accidental click.
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -145,17 +142,6 @@ export default function SettingsView() {
     }
     setAvailableForWork(on);
     showToast(on ? "You're available for work again." : "You're marked as not available. Clients can't send new bookings.");
-  };
-
-  const handleExportData = async () => {
-    setExporting(true);
-    try {
-      const data = await exportMyData(currentUserId);
-      downloadAsFile(data, `philfreela-data-${username || currentUserId}.json`);
-    } catch {
-      showToast("Couldn't put your data together. Please try again.");
-    }
-    setExporting(false);
   };
 
   const handleDeleteAccount = async () => {
@@ -507,20 +493,6 @@ export default function SettingsView() {
                     </fieldset>
                   )}
                 </div>
-
-                {/* Feature 6, Data Privacy Compliance (RA 10173): "review" and
-                    "download" your own data. */}
-                <hr className="border-secondary border-opacity-25 my-4" />
-                <h6 className="text-white fw-bold mb-1">Your data</h6>
-                <p className="text-secondary fs-8 mb-3">
-                  Download everything PhilFreela has about your account -- your profile, posts, portfolio, payment records,
-                  the fees you paid PhilFreela, and a summary of your activity -- as one file. See our{" "}
-                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover-orange">Privacy Policy</a>{" "}
-                  for what this does and doesn't include.
-                </p>
-                <button type="button" className="btn btn-outline-role rounded-pill px-4 py-2 fw-bold" onClick={handleExportData} disabled={exporting || !currentUserId}>
-                  {exporting ? "Preparing your file..." : <><i className="bi bi-download me-2"></i>Download your data</>}
-                </button>
 
                 {/* "Removal": deleting your own account. Typing the username
                     is the confirmation step, so this can't happen by accident. */}

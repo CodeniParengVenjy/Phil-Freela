@@ -268,12 +268,12 @@ function PrivacyPolicy() {
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your rights</h5>
       <p className="text-secondary">
-        In Settings, under Privacy &amp; Notifications, you can:
+        You can:
       </p>
       <ul className="text-secondary">
-        <li><strong className="text-white">Review</strong> what's stored about you, and <strong className="text-white">download</strong> a copy of it at any time. The copy includes your payment records, your GCash details and the fees you paid PhilFreela, but not the receipt pictures.</li>
+        <li><strong className="text-white">Review</strong> what's stored about you on your own Profile, Settings and dashboard pages. If you want a copy of it, ask the project's developer (see Questions below).</li>
         <li><strong className="text-white">Update</strong> your profile information yourself, whenever you like.</li>
-        <li><strong className="text-white">Delete</strong> your account, which removes your profile, posts, portfolio, and messages permanently. This can't be undone.</li>
+        <li><strong className="text-white">Delete</strong> your account in Settings, under Privacy &amp; Notifications, which removes your profile, posts, portfolio, and messages permanently. This can't be undone.</li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Questions</h5>
