@@ -7,8 +7,10 @@ import { SLIDES_SELECT, isOriginalWork, itemSlides } from "../../../lib/slides";
 import { fetchProfileStats, formatReplyTime } from "../../../lib/profileStats";
 import { fetchServiceReviews, summarizeReviews } from "../../../lib/serviceReviews";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import { useProIds } from "../../../lib/pro";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import ProBadge from "../../../components/ProBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import OriginalBadge, { ORIGINAL_EXPLANATION } from "../../../components/OriginalBadge";
 import RatingChip from "../../../components/RatingChip";
@@ -100,6 +102,8 @@ function ServiceDetails({ serviceId }) {
   }, [serviceKey]);
 
   const verifiedIds = useVerifiedIds([freelancerId]);
+  // Whether the freelancer has Freelancer Pro right now (the gold Pro badge by their name).
+  const proIds = useProIds();
 
   // Back goes to wherever they came from (Browse Services, a search, a
   // freelancer's page). Opened from a pasted link there is nothing to go back
@@ -200,6 +204,7 @@ function ServiceDetails({ serviceId }) {
                   ? <Link to={freelancerPath} className="text-white fw-semibold text-decoration-none hover-role">{freelancerName}</Link>
                   : <span className="text-white fw-semibold">{freelancerName}</span>}
                 <VerifiedBadge verified={verifiedIds.has(freelancer?.id)} />
+                <ProBadge pro={proIds.has(freelancer?.id)} />
               </span>
               {/* Their Trust score: their average rating from finished projects (Feature 5, transparency). */}
               <TrustBadge userId={freelancer?.id} />

@@ -6,7 +6,7 @@ since 2026-10-25 (migrations promotions_tables and promotions_functions); nothin
 on the website used it until Step 2 (sponsored billboards) and Step 3 (the admin
 Promotions page and the Overview's Earnings), all built the same day. Step 4
 (Featured post: the pay screen and the Featured row) was built on 2026-10-25 too.
-Step 5 (Freelancer Pro) is planned and being built from 2026-10-26; Step 6 is not started.
+Step 5 (Freelancer Pro) was built on 2026-10-26; Step 6 (wording and demo data) is not started.
 To continue in a new Claude session, say: "Read PLAN-monetization.md and
 continue from the current step."
 
@@ -144,10 +144,16 @@ automatic.
    admin types one in Admin > Site > Promotions > Settings. Not tried on the
    live site; the Featured row was not tested together with the AI's
    "Recommended for you" picks (the split happens after the AI's order is set).
-5. **Freelancer Pro.** (detail below, approved 2026-10-26 with "ok") A Freelancer
-   Pro tab in Settings (no new menu button) with the same pay flow, the offer
-   limit message in My Offers, the Pro badge on Browse Services, the offer page
-   and the public profile. 5a = buying Pro, 5b = the offer limit, 5c = the badge.
+5. **Freelancer Pro.** BUILT 2026-10-26 in three commits (detail below, approved
+   with "ok"): a Freelancer Pro tab in Settings (no new menu button) with the same
+   pay flow, the offer limit message in My Offers, the Pro badge on Browse
+   Services, the offer page and the public profile. 5a = buying Pro (1183d08, 44
+   browser checks), 5b = the offer limit (a2a694b, 27 checks), 5c = the badge (20
+   checks). The Feature pay window was renamed PromoPayDialog and serves both.
+   The badge uses one request for "who is Pro now" per page (`useProIds`), not one
+   per card. Not tried on the live site: no GCash number is in the live database,
+   so the Go Pro window says "not open yet" until a super admin types one in
+   Admin > Site > Promotions > Settings.
 6. **Wording and demo data.** Update PhilFreela-System-Functions.md (Feature 5
    "Scope" line says "no payment or money features"), the defense study guide and
    the paper's "no payments" line; sample data for the defense (a made-up
@@ -257,6 +263,14 @@ Testing: a real browser against a pretend backend that applies the database's
 rules (laptop and phone, dark and light), lint and build; the Featured window's
 59 checks run again. Not tried on the live site: no GCash number is in the live
 database yet.
+
+Built as planned, plus: the Pro status is only trusted once it was read (a Pro
+member with 15 offers never sees the free-account notice for a moment, and if it
+cannot be read nothing is guessed); an account with more offers than the free
+limit (its Pro ended) keeps them and is told it cannot add another; the database's
+own sentence is now shown when it refuses an offer (it used to read "Couldn't
+publish that service"); `components/ProBadge.jsx` was made in 5a because the Pro
+tab shows it too.
 
 ## Step 1 detail: the database
 

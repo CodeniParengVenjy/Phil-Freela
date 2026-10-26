@@ -7,10 +7,12 @@ import { byPick, useRecommendations } from "../../../lib/useRecommendations";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { useServiceRatings } from "../../../lib/useServiceRatings";
 import { useFeatureStatus } from "../../../lib/featured";
+import { useProIds } from "../../../lib/pro";
 import { SLIDES_SELECT, isOriginalWork, itemSlides } from "../../../lib/slides";
 import OriginalBadge from "../../../components/OriginalBadge";
 import RatingChip from "../../../components/RatingChip";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import ProBadge from "../../../components/ProBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
 import MediaCarousel from "../components/MediaCarousel";
 import RecommendationMarks from "../components/RecommendationMarks";
@@ -68,6 +70,8 @@ export default function BrowseServicesView({ withRecommendations = false }) {
   const ratings = useServiceRatings((services || []).map((s) => s.id));
   // Which offers someone paid to feature (and are still running).
   const featured = useFeatureStatus();
+  // Which freelancers have Freelancer Pro right now (the gold Pro badge by their name).
+  const proIds = useProIds();
 
   const filtered = useMemo(() => {
     if (!services) return [];
@@ -150,6 +154,7 @@ export default function BrowseServicesView({ withRecommendations = false }) {
                 </Link>
               ) : freelancerName}
               <VerifiedBadge verified={verifiedIds.has(s.freelancer?.id)} />
+              <ProBadge pro={proIds.has(s.freelancer?.id)} />
             </p>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
               <span className="fw-bold text-role fs-7">
