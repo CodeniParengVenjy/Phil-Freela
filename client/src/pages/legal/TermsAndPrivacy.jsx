@@ -54,7 +54,7 @@ function TermsOfService() {
       <h5 className="text-white fw-bold mt-4 mb-2">Your account</h5>
       <ul className="text-secondary">
         <li>You're responsible for the accuracy of your profile and for keeping your login secure.</li>
-        <li>Freelancers must pass identity verification before posting a service, so clients know they're dealing with a real person.</li>
+        <li>Freelancers must pass identity verification before posting a service, and clients before posting a project or job, so both sides know they're dealing with a real person.</li>
         <li>One account per person. Accounts found to be fake are banned.</li>
       </ul>
 
@@ -184,7 +184,7 @@ function PrivacyPolicy() {
         <li>Account info: your name, username, email, gender, and the password you set (stored by our login provider in hashed form -- we never see or store it as plain text).</li>
         <li>Profile info you choose to add: a profile description, a profile picture, and, for freelancers, your portfolio and services.</li>
         <li>
-          Identity verification (freelancers): a government ID and a short face scan, used only to confirm you're a real
+          Identity verification (freelancers and clients): a government ID and a short face scan, used only to confirm you're a real
           person. This counts as sensitive personal information under RA 10173, so it's kept in a storage area no one but
           our review system can open, and never shown to other users -- they only see whether you're verified.
         </li>

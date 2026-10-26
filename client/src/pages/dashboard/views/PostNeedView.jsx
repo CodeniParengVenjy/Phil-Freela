@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { matchSkill, suggestSkills } from "../../../lib/aiService";
 import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
+import { fetchIsVerified } from "../../../lib/verification";
 import { useFeatureStatus } from "../../../lib/featured";
 import { formatDay, todayInManila } from "../../../lib/projects";
 import { BUDGET_TYPES, HIRES_FIELD, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, datesText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
@@ -43,6 +44,11 @@ export default function PostNeedView() {
   const { currentUserId, showToast, suspension } = useOutletContext();
   // Suspended for a posting violation (e.g. spam): the form is replaced by a notice.
   const postingBlocked = isPostingBlocked(suspension);
+  // Only clients with a verified identity can post, the same as freelancers
+  // and their services (the database refuses it too, "job_posts: clients can
+  // insert own"). null while checking; false = the form is replaced by a
+  // "Verify your identity" notice.
+  const [isVerified, setIsVerified] = useState(null);
   // What is being posted: "project" or "job" ("" = not chosen yet). The client
   // picks it first and then sees only that type's own form (a project and an
   // ongoing job are two separate forms, so they never mix on one screen).
@@ -137,6 +143,17 @@ export default function PostNeedView() {
   };
 
   useEffect(() => {
+    if (!currentUserId) return undefined;
+    let active = true;
+    fetchIsVerified(currentUserId).then((result) => {
+      if (active) setIsVerified(result);
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
     if (!currentUserId) return;
     let active = true;
 
@@ -162,7 +179,7 @@ export default function PostNeedView() {
   // A slow answer to an older question is ignored (`active`).
   const canSuggest = Boolean(pickedType) && title.trim().length >= 3 && description.trim().length >= 10;
   useEffect(() => {
-    if (postingBlocked || !canSuggest) return undefined;
+    if (postingBlocked || !isVerified || !canSuggest) return undefined;
     let active = true;
 
     const timer = setTimeout(async () => {
@@ -183,7 +200,7 @@ export default function PostNeedView() {
       active = false;
       clearTimeout(timer);
     };
-  }, [postingBlocked, canSuggest, title, category, description, skills]);
+  }, [postingBlocked, isVerified, canSuggest, title, category, description, skills]);
 
   // Picking a type shows that type's form. It also sets how the budget is
   // counted: a one-time project is per project only; an ongoing job is per day
@@ -235,7 +252,7 @@ export default function PostNeedView() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!currentUserId || !pickedType) return;
+    if (!currentUserId || !pickedType || !isVerified) return;
     // The database refuses wrong dates too (job_posts_start_date_check,
     // job_posts_dates_order_check). When editing, a date that is already past
     // and was not changed is fine.
@@ -297,6 +314,8 @@ export default function PostNeedView() {
   const budgetChoices = pickedType ? BUDGET_TYPES.filter((type) => pickedType.budgetTypes.includes(type.value)) : [];
   // The page's title: the picker, then the picked type's own form (or its edit form).
   const pageHeading = pickedType ? (editing ? pickedType.editHeading : pickedType.heading) : "Post What You Need";
+  // The choice and the form show only for a verified client who isn't blocked from posting.
+  const canPost = !postingBlocked && isVerified === true;
 
   return (
     <section className="dashboard-view active-view">
@@ -308,7 +327,7 @@ export default function PostNeedView() {
                 <i className={`bi ${editing ? "bi-pencil-square" : "bi-plus-circle"} text-role me-2`}></i> {pageHeading}
               </h3>
               {/* Back to the two choices. Not while editing: a post keeps its type. */}
-              {pickedType && !editing && !postingBlocked && (
+              {pickedType && !editing && canPost && (
                 <button type="button" className="btn btn-sm btn-outline-secondary text-white-50 rounded-pill px-3 fw-semibold" onClick={() => setJobType("")}>
                   <i className="bi bi-arrow-left-right me-1"></i> Change type
                 </button>
@@ -317,14 +336,30 @@ export default function PostNeedView() {
 
             {postingBlocked && <BlockedNotice suspension={suspension} what="post job listings" />}
 
+            {!postingBlocked && isVerified === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+
+            {!postingBlocked && isVerified === false && (
+              <div className="text-center py-4">
+                <i className="bi bi-shield-lock text-warning" style={{ fontSize: "2.75rem" }}></i>
+                <h5 className="text-white fw-bold mt-3 mb-2">Verify your identity to post projects</h5>
+                <p className="text-secondary fs-7 mb-4 mx-auto" style={{ maxWidth: 460 }}>
+                  To keep freelancers safe, only clients with a verified identity can post projects and jobs.
+                  It takes a few minutes: a photo of your government ID and a quick face scan.
+                </p>
+                <Link to="/dashboard/verify-identity" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white">
+                  <i className="bi bi-patch-check me-1"></i> Verify now
+                </Link>
+              </div>
+            )}
+
             {/* A filled or expired post is hidden from freelancers: say what brings it back. */}
-            {!postingBlocked && editingState === "expired" && (
+            {canPost && editingState === "expired" && (
               <div className="alert alert-warning fs-7 py-2 mb-3" role="status">
                 <i className="bi bi-hourglass-bottom me-1"></i> This post expired on {formatDay(editing.due_date)}, so freelancers can't see it or apply.
                 Pick new dates to show it again.
               </div>
             )}
-            {!postingBlocked && editingState === "filled" && (
+            {canPost && editingState === "filled" && (
               <div className="alert alert-info fs-7 py-2 mb-3" role="status">
                 <i className="bi bi-people-fill me-1"></i> You hired {hiredCount(editing)} of the {editing.freelancers_needed} freelancer{editing.freelancers_needed === 1 ? "" : "s"} you needed, so this post is hidden from freelancers.
                 Raise "Freelancers needed" to show it again.
@@ -332,7 +367,7 @@ export default function PostNeedView() {
             )}
 
             {/* Step 1: what are you posting? Two choices; the form for the one picked shows next. */}
-            {!postingBlocked && !pickedType && (
+            {canPost && !pickedType && (
               <div>
                 <p className="text-white fw-semibold fs-7 mb-2">What are you posting?</p>
                 <div className="row g-3">
@@ -352,7 +387,7 @@ export default function PostNeedView() {
             )}
 
             {/* Step 2: the form of the type picked. A project and an ongoing job have their own wording and their own way of counting the money. */}
-            {!postingBlocked && pickedType && (
+            {canPost && pickedType && (
               <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
                 <div>
                   <label className="form-label text-white fw-semibold fs-7">{pickedType.titleLabel}</label>
@@ -611,7 +646,7 @@ export default function PostNeedView() {
                       <FeatureControl
                         until={featured.until.get(p.id)}
                         waiting={featured.waiting.has(p.id)}
-                        canFeature={state === "open" && !postingBlocked}
+                        canFeature={state === "open" && canPost}
                         onFeature={() => setPostToFeature({ kind: "job", id: p.id, title: p.title })}
                       />
                     </div>

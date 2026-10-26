@@ -71,7 +71,9 @@ text model `ai-service/text_embedder.py` (all-MiniLM-L6-v2) is shared.
 
 ## 4. eKYC User Verification
 
-**Purpose:** Confirm that freelancers are real people registering under their own identity.
+**Purpose:** Confirm that freelancers and clients are real people registering under their own identity.
+
+**Who must verify (decided 2026-10-26):** both roles. A freelancer needs an approved ID to post a service, apply to a job or ask for payment; a client needs one to post a project or job. Without it, people can still browse, message, and (clients) book services. The rule is in the database, not only on the page (`database/supabase_client_verify_schema.sql` for clients). New accounts are guided through it by the opening tour (`PLAN-full-tour.md`).
 
 **Flow (during freelancer registration)**
 
@@ -134,5 +136,5 @@ These are not yet defined in the paper:
 
 - **Collaborative filtering:** what interaction data it uses and how its results combine with content-based filtering.
 - **Ranking weights:** the factors are listed, but there's no formula or weighting.
-- **Client verification:** eKYC is described for freelancers only, but profile transparency shows clients' verification status too.
+- **Client verification:** decided on 2026-10-26: clients verify too, and need it to post a project or job (see section 4). The paper's eKYC section still describes freelancers only.
 - **eKYC data handling:** how ID images, selfies, and face data are stored and secured, and how long they're kept. Government ID details count as sensitive personal information under RA 10173.

@@ -22,6 +22,32 @@ async function countOf(query) {
 const countMine = (table, column, userId) =>
   countOf(supabase.from(table).select("id", { count: "exact", head: true }).eq(column, userId));
 
+// What each role can't do until the ID is approved (the database refuses it):
+// freelancers can't post services or apply to jobs, clients can't post projects.
+const VERIFY_WORDS = {
+  freelancer: {
+    hint: "Needed to post services and apply to jobs.",
+    waiting: "An admin will check it soon. Until then you can't post services or apply to jobs."
+  },
+  client: {
+    hint: "Needed to post a project. Freelancers trust a verified client more, too.",
+    waiting: "An admin will check it soon. Until then you can't post a project, but you can message freelancers and book their services."
+  }
+};
+
+// The ID check: not sent yet, waiting for an admin, or sent back.
+function verifyStep(accountType, verified, latest) {
+  const words = VERIFY_WORDS[accountType];
+  const status = latest.data?.status ?? "none";
+  if (status === "pending") {
+    return step("verify", "Your ID is waiting for review", words.waiting, "/dashboard/verify-identity", "View status", verified, true);
+  }
+  if (status === "rejected" && !verified) {
+    return step("verify", "Your ID was not approved", "Send it again, with a clear photo of your ID.", "/dashboard/verify-identity", "Try again", false);
+  }
+  return step("verify", "Verify your identity", words.hint, "/dashboard/verify-identity", "Verify now", verified);
+}
+
 // The steps for this person's role, in the order to do them, or null when
 // something couldn't be loaded (the card then stays hidden instead of asking
 // for things the person may already have done).
@@ -37,16 +63,8 @@ export async function fetchGetStartedSteps(userId, accountType) {
     ]);
     if (latest.error || description === null || skills === null || portfolio === null || services === null) return null;
 
-    // The ID check: not sent yet, waiting for an admin, or sent back.
-    const status = latest.data?.status ?? "none";
-    const verifyStep = status === "pending"
-      ? step("verify", "Your ID is waiting for review", "An admin will check it soon. Until then you can't post services or apply to jobs.", "/dashboard/verify-identity", "View status", verified, true)
-      : status === "rejected" && !verified
-        ? step("verify", "Your ID was not approved", "Send it again, with a clear photo of your ID.", "/dashboard/verify-identity", "Try again", false)
-        : step("verify", "Verify your identity", "Needed to post services and apply to jobs.", "/dashboard/verify-identity", "Verify now", verified);
-
     return [
-      verifyStep,
+      verifyStep(accountType, verified, latest),
       step("description", "Write a short description about yourself", "Clients and the AI use it to match you with work.", "/dashboard/settings", "Add description", description.trim() !== ""),
       step("skills", "Add your skills", "They show on your profile and help the AI match you with jobs.", "/dashboard/profile", "Add skills", skills.length > 0),
       step("portfolio", "Add a piece of your work to your portfolio", "Clients choose freelancers by their past work.", "/dashboard/profile", "Add work", portfolio > 0),
@@ -54,16 +72,20 @@ export async function fetchGetStartedSteps(userId, accountType) {
     ];
   }
 
-  // A client: tell about yourself, then do one real thing (post, chat or book).
-  const [description, posts, chats, bookings] = await Promise.all([
+  // A client: verify (needed to post), tell about yourself, then do one real
+  // thing (post, chat or book).
+  const [verified, latest, description, posts, chats, bookings] = await Promise.all([
+    fetchIsVerified(userId),
+    fetchLatestVerification(userId),
     fetchDescription(userId),
     countMine("job_posts", "client_id", userId),
     countOf(supabase.from("conversations").select("id", { count: "exact", head: true }).or(`user_a.eq.${userId},user_b.eq.${userId}`)),
     countMine("bookings", "client_id", userId)
   ]);
-  if (description === null || posts === null || chats === null || bookings === null) return null;
+  if (latest.error || description === null || posts === null || chats === null || bookings === null) return null;
 
   return [
+    verifyStep(accountType, verified, latest),
     step("description", "Write a short description about yourself", "It helps the AI recommend freelancers that fit what you need.", "/dashboard/settings", "Add description", description.trim() !== ""),
     step("first", "Post a project, or message a freelancer", "Tell freelancers what you need, or open a service below and message the person.", "/dashboard/post-need", "Post a Project", posts + chats + bookings > 0)
   ];
