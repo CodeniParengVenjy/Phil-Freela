@@ -1,4 +1,4 @@
-z# PhilFreela — System Functions (everything except watermarking)
+# PhilFreela — System Functions (everything except watermarking)
 
 Web-based freelancing platform for Filipino freelancers and clients (capstone project). This file summarizes the platform's core functions: what each does, how it works, and the technology behind it.
 
@@ -19,6 +19,7 @@ The paper lists HTML/CSS/JavaScript + Bootstrap 5, PHP, MySQL, Python AI modules
 | Frontend | React 19 + Vite, Bootstrap 5 (`client/`), live on Cloudflare Pages (phil-freela.pages.dev) |
 | Backend and database | Supabase (Postgres, Auth, Storage, row-level security; pgvector is enabled) |
 | AI modules | Python FastAPI service (`ai-service/`), live on Vercel's free plan; the website reaches it at `/ai` |
+| Online payment (PhilFreela's own Freelancer Pro fee only) | Xendit Payment Sessions (GCash, Maya, QR Ph) through two Supabase Edge Functions (`supabase/functions/pro-checkout`, `xendit-webhook`); test mode until the business is verified |
 
 ## Feature summary
 
@@ -97,7 +98,7 @@ Progress so far is in `HANDOFF-identity-verification.md`.
 
 **Benefit:** Clients make better-informed hiring decisions, and freelancers can judge the reliability of prospective clients.
 
-**Scope:** "Transaction" here means a completed project. Only completed projects count toward ratings, the on-time rate and profile history. Payment is recorded separately: PhilFreela never holds or moves money. The client pays the freelancer directly in the GCash app and records it (amount, GCash reference number and a receipt screenshot as proof); the freelancer checks their own GCash and confirms or says not received. A payment can be recorded on a project, or from a chat (a payment card the freelancer sends); a payment from a chat adds nothing to profile history. There is no payment gateway, escrow, fee, refund or invoice.
+**Scope:** "Transaction" here means a completed project. Only completed projects count toward ratings, the on-time rate and profile history. Payment is recorded separately: PhilFreela never holds or moves money. The client pays the freelancer directly in the GCash app and records it (amount, GCash reference number and a receipt screenshot as proof); the freelancer checks their own GCash and confirms or says not received. A payment can be recorded on a project, or from a chat (a payment card the freelancer sends); a payment from a chat adds nothing to profile history. Between clients and freelancers there is still no payment gateway, escrow, commission, refund or invoice. PhilFreela's own fees for its own services are separate: see "How PhilFreela earns" below.
 
 ## 6. Data Privacy Compliance (RA 10173)
 
@@ -112,6 +113,18 @@ Progress so far is in `HANDOFF-identity-verification.md`.
 | Data minimization | Only data needed for platform operations and verification is collected |
 | Limited sharing | No sharing with third parties without consent, unless required by law or legal authorities |
 | User rights | Users can review, update, or request removal of their personal information |
+
+## How PhilFreela earns (not one of the paper's numbered features)
+
+Added 2026-10-25/26 (plan: `PLAN-monetization.md`). PhilFreela never takes a cut of the money between clients and freelancers; it earns only from things it sells itself.
+
+| What | Price | How it is paid |
+|---|---|---|
+| Sponsored billboard on the dashboards | agreed with the sponsor | paid to PhilFreela directly; a super admin posts the banner with its dates, marked "Sponsored by ...", and records the amount |
+| Featured post (an offer or an open job post, in a separate labeled row of at most 3) | 3 / 7 / 14 days: ₱49 / ₱99 / ₱179 (Pro members ₱25 / ₱50 / ₱90) | GCash to PhilFreela's own number with the reference and a receipt; an admin checks PhilFreela's GCash and approves |
+| Freelancer Pro (15 offers instead of 3, a Pro badge, half-price Featured) | ₱149 for 30 days | online on Xendit's checkout page (GCash, Maya or QR Ph); Pro starts by itself once Xendit confirms the payment; test mode (pretend money) until the business is verified |
+
+Paid placement never changes the "Recommended for you" order (Feature 1 ranks by credibility): Featured posts sit in their own labeled row. Admins see every fee in Admin > Site > Promotions and the totals on the Overview (test-mode payments are left out).
 
 ---
 
