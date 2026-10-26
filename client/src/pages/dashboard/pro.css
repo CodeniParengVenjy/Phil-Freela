@@ -1,0 +1,95 @@
+/* Settings > Freelancer Pro: the Free and Pro plan cards side by side
+   (ProSettings.jsx). The Pro card uses the person's own accent color
+   (--accent-role), so it follows their role, the color they picked and
+   light/dark mode like the rest of the dashboard. */
+
+.pro-plan-card {
+  position: relative;
+  border-radius: 1.25rem;
+  padding: 1.75rem 1.5rem 1.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background-color: rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* The plan you pay for stands out: an accent border, a soft accent wash at the
+   top and a glow. */
+.pro-plan-card-pro {
+  border: 2px solid var(--accent-role);
+  background-image: linear-gradient(165deg, var(--accent-role-subtle) 0%, transparent 65%);
+  box-shadow: 0 10px 30px var(--accent-role-glow);
+}
+
+.pro-plan-card:hover {
+  transform: translateY(-3px);
+}
+
+/* "Best value" on the Pro card, sitting on its top edge. */
+.pro-plan-ribbon {
+  position: absolute;
+  top: 0;
+  right: 1.25rem;
+  transform: translateY(-50%);
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-on);
+  background: linear-gradient(135deg, var(--accent-role) 0%, var(--accent-role-2) 100%);
+  box-shadow: 0 4px 12px var(--accent-role-glow);
+}
+
+.pro-plan-price {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* The thin line under the price, like a pricing table. */
+.pro-plan-rule {
+  width: 3.5rem;
+  height: 3px;
+  border-radius: 3px;
+  margin: 1rem 0 1.25rem;
+  background-color: rgba(148, 163, 184, 0.45);
+}
+
+.pro-plan-card-pro .pro-plan-rule {
+  background: linear-gradient(90deg, var(--accent-role) 0%, var(--accent-role-2) 100%);
+}
+
+.pro-plan-features li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.pro-plan-features li + li {
+  margin-top: 0.75rem;
+}
+
+.pro-plan-features i {
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pro-plan-card {
+    transition: none;
+  }
+
+  .pro-plan-card:hover {
+    transform: none;
+  }
+}
+
+/* Light mode: the Free card is a light grey panel instead of a dark one. */
+body.theme-light .pro-plan-card {
+  background-color: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+body.theme-light .pro-plan-card-pro {
+  border-color: var(--accent-role);
+  box-shadow: 0 10px 26px var(--accent-role-subtle);
+}

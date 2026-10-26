@@ -325,6 +325,8 @@ Secrets (Supabase > Edge Functions > Secrets, set by the user, never in chat or
 code): XENDIT_SECRET_KEY, XENDIT_WEBHOOK_TOKEN. Webhook URL to set in Xendit:
 https://rpopftzrrhuzjxzwobvl.supabase.co/functions/v1/xendit-webhook
 
+LIVE AND WORKING 2026-10-26: migration online_pro_payments, functions pro-checkout and xendit-webhook (v2 accepts Xendit's page id as "id" or "payment_session_id"; Xendit's webhook test was answered 200, so the token matches), website cd85ae4 + b4fb40b. The user's first real test-mode payment went through on the live site: Xendit's page, back to "Payment received", Pro until Nov 25, 2026, 2 of 15 offers. On the user's request the Pro tab was then redesigned as two pricing cards, Free and Pro, with ticks, crosses and one button each (pro.css).
+
 Parts: (1) database, (2) the two Edge Functions in supabase/functions/ (no
 outside packages, so they are tested here with Node against a pretend Xendit),
 (3) website: Go Pro goes to the checkout, the return message, (4) admin History
