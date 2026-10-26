@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   PART_NAMES, TOUR, VERIFY_PAGE, canKeepTour, fetchAccountCreatedAt, fetchTourStatus, fitsPerson,
-  isNewAccount, loadTour, nextPart, onOpenWelcomeGuide, pagePath, saveTour
+  isNewAccount, loadTour, markPausedThisVisit, nextPart, pagePath, pausedThisVisit, saveTour
 } from "../../../lib/welcomeGuide";
 
 // How the note and the outline are laid out (in pixels).
@@ -96,7 +96,7 @@ const sameView = (a, b) => a.key === b.key && a.vw === b.vw && a.vh === b.vh && 
 //               (null = the tour isn't showing)
 //   lastDrawn:  the note last on screen ("part:index"). If the person leaves its
 //               page by themselves (the browser's Back button), the tour pauses
-//               instead of pulling them back.
+//               until the next visit instead of pulling them back.
 let menuBefore = null;
 let lastDrawn = null;
 
@@ -114,8 +114,12 @@ let lastDrawn = null;
 export default function WelcomeGuide({ userId, accountType, blocked }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  // Where the person is in the tour, as saved (lib/welcomeGuide.js).
-  const [tour, setTourState] = useState(() => (userId ? loadTour(userId) : null));
+  // Where the person is in the tour, as saved (lib/welcomeGuide.js). A tour
+  // paused by Later or the browser's Back button goes on at the next visit.
+  const [tour, setTourState] = useState(() => {
+    const saved = userId ? loadTour(userId) : null;
+    return saved?.mode === "paused" && !pausedThisVisit(userId) ? { ...saved, mode: "on" } : saved;
+  });
   const tourRef = useRef(tour);
   // The person's ID status: undefined = not read yet, null = it couldn't be read.
   const [status, setStatus] = useState(undefined);
@@ -177,17 +181,13 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
     return () => { active = false; };
   }, [userId, accountType, needsStatus, status, setTour]);
 
-  // "Take the tour" in the account menu: go on where it was paused, otherwise
-  // start again from the welcome.
-  useEffect(() => onOpenWelcomeGuide(() => {
-    const now = tourRef.current;
-    lastDrawn = null;
-    if (now?.mode === "paused") setTour({ ...now, mode: "on" });
-    else setTour({ mode: "on", part: "welcome", index: 0, shown: [] });
-  }), [setTour]);
-
-  // Skip (or Escape): pause here; the account menu goes on from this note.
-  const pause = useCallback(() => setTour({ ...tourRef.current, mode: "paused" }), [setTour]);
+  // Skip (or Escape): the end of the tour; it doesn't come back.
+  const skip = useCallback(() => setTour({ ...tourRef.current, mode: "done" }), [setTour]);
+  // Later (and the browser's Back button): paused until the next visit.
+  const later = useCallback(() => {
+    markPausedThisVisit(userId);
+    setTour({ ...tourRef.current, mode: "paused" });
+  }, [userId, setTour]);
 
   // The end of a part: the next part, or wait for the admin (after the ID was
   // sent), or done.
@@ -209,11 +209,11 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
   useEffect(() => {
     if (!running) return undefined;
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") pause();
+      if (event.key === "Escape") skip();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [running, pause]);
+  }, [running, skip]);
 
   // The side menu: remember whether it was open, open it for a note that
   // points into it, and put it back the way it was afterwards.
@@ -262,7 +262,7 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
 
       // Another page: open the note's page, unless the person just left it.
       if (want && pathname !== want) {
-        if (lastDrawn === key) return pause();
+        if (lastDrawn === key) return later();
         if (!navigated) {
           navigated = true;
           navigate(want);
@@ -329,7 +329,7 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
     // Starts again for each note (key), page and ID status; the rest stays the same meanwhile.
-  }, [running, key, pathname, accountType, verified, note, notes, index, goTo, pause, finishPart, navigate, setTour]);
+  }, [running, key, pathname, accountType, verified, note, notes, index, goTo, later, finishPart, navigate, setTour]);
 
   if (!running || !note || view.key !== key) return null;
 
@@ -365,7 +365,7 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
     <button type="button" className="btn btn-gradient-role rounded-pill w-100 py-2 fw-bold text-white" autoFocus onClick={goNext}>{nextLabel}</button>
   ) : (
     <div className="d-flex align-items-center justify-content-between gap-2">
-      <button type="button" className="btn btn-link text-white-50 text-decoration-none fw-semibold px-0" onClick={pause}>{note.skip || "Skip"}</button>
+      <button type="button" className="btn btn-link text-white-50 text-decoration-none fw-semibold px-0" onClick={note.later ? later : skip}>{note.skip || "Skip"}</button>
       <div className="d-flex align-items-center gap-2">
         {back !== null && (
           <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 py-2 fw-semibold" onClick={goBack}>Back</button>
@@ -384,7 +384,7 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
       </p>
       {middle && (
         <div className="role-confirm-icon bg-role-subtle text-role rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: 64, height: 64 }}>
-          <i className={`bi ${tour.part === "full" ? "bi-patch-check-fill" : tour.part === "retry" ? "bi-arrow-repeat" : "bi-stars"} fs-3`}></i>
+          <i className={`bi ${note.icon || (tour.part === "full" ? "bi-patch-check-fill" : tour.part === "retry" ? "bi-arrow-repeat" : "bi-stars")} fs-3`}></i>
         </div>
       )}
       <h5 id="tourTitle" className="fw-bold mb-2">{note.title}</h5>

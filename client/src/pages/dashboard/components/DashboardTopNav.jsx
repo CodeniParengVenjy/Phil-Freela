@@ -4,7 +4,6 @@ import { dashboardRouteFor } from "../../../lib/profile";
 import { fetchMyLink, switchToOtherAccount } from "../../../lib/accountSwitch";
 import { PICTURE_TYPES, checkPicture } from "../../../lib/pictureSearch";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
-import { openWelcomeGuide } from "../../../lib/welcomeGuide";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import AccentLogo from "./AccentLogo";
@@ -188,8 +187,6 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
               {adminLink && (
                 <li><a className="dropdown-item rounded-2 text-white" href="/admin" onClick={handleSwitchToAdmin}><i className="bi bi-shield-lock me-2 text-orange"></i> Switch to admin</a></li>
               )}
-              {/* Plays the opening tour again (components/WelcomeGuide.jsx). */}
-              <li><button type="button" className="dropdown-item rounded-2 text-white" onClick={openWelcomeGuide}><i className="bi bi-compass me-2 text-info"></i> Take the tour</button></li>
               <li><hr className="dropdown-divider border-secondary border-opacity-25" /></li>
               <li><a className="dropdown-item rounded-2 text-danger" href="/login" onClick={onSignOut}><i className="bi bi-box-arrow-right me-2"></i> Sign out</a></li>
             </ul>

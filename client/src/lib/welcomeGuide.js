@@ -36,6 +36,9 @@ const SETTINGS = "/dashboard/settings";
 //   optional: true = often not on the page (Try again, the phone QR code), so
 //            it is left out of the "2 of 6" count.
 //   next, skip: other words for the Next and Skip buttons.
+//   later:   true = that button means "not now": the note comes back at the
+//            person's next visit (Skip itself ends the tour).
+//   icon:    the icon of a card in the middle, when not the part's own.
 // A note whose part isn't on the page (an empty list, a hidden card) is skipped.
 
 const verifyNotes = (sentText) => [
@@ -51,7 +54,7 @@ const retryNotes = [
   {
     page: null, target: null, title: "Your ID was not approved",
     text: ({ adminNote }) => `${adminNote ? `The admin wrote: "${adminNote}". ` : ""}You can send it again with clearer photos, and the tour will guide you.`,
-    next: "Try again", skip: "Later"
+    next: "Try again", skip: "Later", later: true
   }
 ];
 
@@ -62,7 +65,7 @@ export const TOUR = {
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post services, find jobs, handle bookings and projects, and get paid. You can skip it any time.", next: "Start tour" },
       { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Every part of PhilFreela is here: My Services, Inbox, Notifications, Bookings and Project. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to look for jobs, services or people, then press Enter." },
-      { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between freelancer and client, signing out, and this tour (Take the tour) are in this menu." },
+      { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between freelancer and client, and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
       { page: "home", target: "get-started-verify", when: "unverified", scroll: true, title: "First step: verify your identity", text: "Freelancers must be verified before they can post a service or apply to a job. It takes about 3 minutes: a photo of a government ID and a quick face scan.", next: "Let's verify" }
     ],
@@ -71,7 +74,7 @@ export const TOUR = {
     // Each page starts with a note on its link in the side menu (page: null, so
     // it shows on whatever page the person is on), and Next opens the page.
     full: [
-      { page: null, target: null, title: "You're verified!", text: "Your Verified badge is on. Now the full tour: posting your first service, finding jobs, bookings, projects, payments and your settings. It takes about 5 minutes.", next: "Start", skip: "Later" },
+      { page: null, target: null, title: "You're verified!", text: "Your Verified badge is on. Now the full tour: posting your first service, finding jobs, bookings, projects, payments and your settings. It takes about 5 minutes.", next: "Start", skip: "Later", later: true },
 
       { page: null, target: "menu-services", menu: true, title: "My Services", text: "This is where you post what you offer and keep your offers. Next opens it." },
       { page: SERVICES, target: "service-title", scroll: true, title: "Service title", text: "Say what you do in a few words, like \"Video editing for ads and reels\". It's the first thing clients read." },
@@ -112,7 +115,7 @@ export const TOUR = {
       { page: SETTINGS, target: "settings-gcash", scroll: true, title: "GCash Payment", text: "Add your GCash number so clients know where to pay you. PhilFreela never holds your money." },
       { page: SETTINGS, target: "settings-pro", scroll: true, title: "Freelancer Pro", text: "₱149 for 30 days, paid online: up to 15 offers, a gold Pro badge by your name, and half-price Featured posts." },
 
-      { page: "home", target: "account", title: "That's the tour!", text: "You know your way around now. Play this tour again any time: open this menu and choose Take the tour.", next: "Done" }
+      { page: "home", target: null, icon: "bi-flag-fill", title: "That's the tour!", text: "You know your way around PhilFreela now. Good luck with your first client!", next: "Done" }
     ]
   },
   client: {
@@ -121,14 +124,14 @@ export const TOUR = {
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post a project, book services, hire freelancers and pay them. You can skip it any time.", next: "Start tour" },
       { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Every part of PhilFreela is here: Inbox, Notifications, Bookings, Post a Project, and Projects & Resumes. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to find freelancers and services, then press Enter. On a computer, the camera button lets you search with a picture." },
-      { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between client and freelancer, signing out, and this tour (Take the tour) are in this menu." },
+      { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between client and freelancer, and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
       { page: "home", target: "get-started-verify", when: "unverified", scroll: true, title: "First step: verify your identity", text: "Clients must be verified before they can post a project, and freelancers trust a verified client more. It takes about 3 minutes: a photo of a government ID and a quick face scan.", next: "Let's verify" }
     ],
     verify: verifyNotes("An admin checks your ID soon, and you'll get a notification. The rest of the tour (posting a project, hiring freelancers, paying them) starts once you're verified."),
     retry: retryNotes,
     full: [
-      { page: null, target: null, title: "You're verified!", text: "Your Verified badge is on. Now the full tour: posting your first project, finding and booking freelancers, hiring, paying, and your settings. It takes about 5 minutes.", next: "Start", skip: "Later" },
+      { page: null, target: null, title: "You're verified!", text: "Your Verified badge is on. Now the full tour: posting your first project, finding and booking freelancers, hiring, paying, and your settings. It takes about 5 minutes.", next: "Start", skip: "Later", later: true },
 
       { page: null, target: "menu-post", menu: true, title: "Post a Project", text: "This is where you tell freelancers what you need. Next opens it." },
       { page: POST, target: "post-type", click: true, scroll: true, title: "What are you posting?", text: "A project is one piece of work for one price. A job is ongoing work, paid per day or per month. Press one to see its form; nothing is posted until you press the button at the end." },
@@ -167,7 +170,7 @@ export const TOUR = {
 
       { page: SETTINGS, target: "settings-tabs", scroll: true, title: "Settings", text: "Profile Settings: your name, picture, cover and description. Account Security: your password. Watermark Settings: the mark on your files. Appearance: dark or light, and your color. Privacy & Notifications: emails and your data." },
 
-      { page: "home", target: "account", title: "That's the tour!", text: "You know your way around now. Play this tour again any time: open this menu and choose Take the tour.", next: "Done" }
+      { page: "home", target: null, icon: "bi-flag-fill", title: "That's the tour!", text: "You know your way around PhilFreela now. Good luck with your first hire!", next: "Done" }
     ]
   }
 };
@@ -192,7 +195,7 @@ export const pagePath = (page, accountType) => (page === "home" ? (accountType =
 
 // It opens by itself only for NEW accounts: made on or after the day this tour
 // was added, and less than a week ago (so it doesn't start again months later
-// on a new phone). Older accounts can play it from the account menu.
+// on a new phone). Older accounts don't get it.
 export const TOUR_START = "2026-10-26T00:00:00+08:00";
 export const NEW_ACCOUNT_DAYS = 7;
 
@@ -218,10 +221,11 @@ export async function fetchTourStatus(userId) {
 // Where the person is in the tour, kept in this browser only (a per-person
 // convenience, nothing is saved in the database):
 //   { mode, part, index, shown }
-//   mode:  "on" (showing the note at part/index), "paused" (Skip; the account
-//          menu goes on from there), "waiting" (hidden until the note's
-//          waitFor part shows up), "review" (the ID was sent, waiting for an
-//          admin; checked on every dashboard page) or "done"
+//   mode:  "on" (showing the note at part/index), "paused" (Later, or the
+//          browser's Back button: it goes on at the next visit), "waiting"
+//          (hidden until the note's waitFor part shows up), "review" (the ID
+//          was sent, waiting for an admin; checked on every dashboard page) or
+//          "done" (finished, or Skip)
 //   shown: the notes of this part shown so far, for the Back button
 // The copy in memory keeps it across page changes even when the browser won't
 // keep it (a private window).
@@ -244,7 +248,7 @@ export function saveTour(userId, tour) {
 }
 
 // A browser that can't keep the tour (a private window) never starts it by
-// itself, or it would start again on every visit; the account menu still plays it.
+// itself, or it would start again on every visit.
 export function canKeepTour() {
   try {
     localStorage.setItem("philfreela-tour-check", "1");
@@ -255,16 +259,17 @@ export function canKeepTour() {
   }
 }
 
-// The account menu is in another component, so it asks the tour to open with
-// a browser event instead of sharing state through every layout.
-const OPEN_EVENT = "philfreela-open-guide";
+// "Later" (and leaving the tour's page with the browser's Back button) pauses
+// the tour until the person's next visit. This flag is kept for this browser
+// tab only (sessionStorage), so the tour stays away for the rest of the visit
+// and goes on when PhilFreela is opened again in a new tab or window. If the
+// browser won't keep it, the tour stays paused.
+const laterKey = (userId) => `philfreela-tour-later-${userId}`;
 
-export function openWelcomeGuide() {
-  window.dispatchEvent(new Event(OPEN_EVENT));
+export function pausedThisVisit(userId) {
+  try { return sessionStorage.getItem(laterKey(userId)) === "1"; } catch { return true; }
 }
 
-// Listens for that request; returns the function that stops listening.
-export function onOpenWelcomeGuide(handler) {
-  window.addEventListener(OPEN_EVENT, handler);
-  return () => window.removeEventListener(OPEN_EVENT, handler);
+export function markPausedThisVisit(userId) {
+  try { sessionStorage.setItem(laterKey(userId), "1"); } catch { /* the tour stays paused */ }
 }

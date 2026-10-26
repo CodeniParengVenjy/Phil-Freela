@@ -70,7 +70,7 @@ Freelancer (about 34 notes):
 - Profile (from the account menu): description, skills, portfolio, the
   performance box.
 - Settings (from the account menu): the tab list, GCash Payment, Freelancer Pro.
-- End: the account button, "play this tour again from here."
+- End: "That's the tour!", a card on the dashboard home.
 
 Client (about 30 notes):
 - Post a Project: the two choices (the client clicks one, the tour waits),
@@ -88,14 +88,16 @@ Client (about 30 notes):
 
 - New accounts only: it opens by itself only for accounts made on or after
   the day this goes live (profiles.created_at, already readable). Older
-  accounts never get it by itself; "Take the tour" in the account menu still
-  plays it for anyone.
+  accounts never get it. (Changed 2026-10-27: the user asked to remove "Take
+  the tour" from the account menu, so there is no way to play it by hand.)
 - Where the person is in the tour (part and note) is kept in this browser, per
   person, so it goes on after a page change or a reload. Which part fits is
   worked out from real data (verified? ID waiting?), so on another phone or
   laptop it still knows not to teach posting before the ID is approved.
-- Buttons on each note: Skip, Back, Next. Skip pauses; "Take the tour" goes on
-  from where it stopped (from the start once it was finished). Escape = Skip.
+- Buttons on each note: Skip, Back, Next. Skip (or Escape) ends the tour for
+  good. "Later" on the "You're verified!" and "not approved" cards, and
+  leaving the tour's page with the browser's Back button, pause it until the
+  next visit (a new tab or window); it then goes on where it stopped.
 - The tour explains each field but never posts anything for the person (no
   test posts). The only notes that wait for a click are the Post a Project
   choice (the form only appears after one is picked) and Verify's "Your turn".
