@@ -154,7 +154,7 @@ automatic.
    per card. Not tried on the live site: no GCash number is in the live database,
    so the Go Pro window says "not open yet" until a super admin types one in
    Admin > Site > Promotions > Settings.
-6. **Wording and demo data.** Update PhilFreela-System-Functions.md (Feature 5
+6. **Wording and demo data.** PARTLY DONE 2026-10-26: PhilFreela-System-Functions.md (ade26b1: Scope line + "How PhilFreela earns" + Xendit in the tech stack), the Terms and Privacy page and "Download your data" (7a5b445: "charges no fees" gone, a "PhilFreela's own fees" section, Xendit under limited sharing, fee records in the download). STILL OPEN, waiting for the user: the Word/PDF defense study guide and the paper (outside the repo, in OneDrive) and demo data on the live site (needs an explicit ok: it would show to real users). Original step: Update PhilFreela-System-Functions.md (Feature 5
    "Scope" line says "no payment or money features"), the defense study guide and
    the paper's "no payments" line; sample data for the defense (a made-up
    sponsor, one pending request, one approved Featured post).
