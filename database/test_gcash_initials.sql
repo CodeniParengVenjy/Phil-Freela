@@ -72,9 +72,12 @@ begin
      and to_jsonb(d)::text not ilike '%Santos%' and to_jsonb(d)::text not ilike '%Ana%';
   res := res || case when n = 1 then 'PASS' else 'FAIL (' || n || ')' end
          || ' ... and nothing else: not the name, no QR' || E'\n';
-  select count(*) into n from public.gcash_accounts;
+  -- Only other people's rows count: the client may have saved GCash details of
+  -- their own from a time they were a freelancer, and everyone can read their own
+  -- (on the live database on 2026-10-26 the borrowed client had exactly that).
+  select count(*) into n from public.gcash_accounts where freelancer_id <> pc;
   res := res || case when n = 0 then 'PASS' else 'FAIL (' || n || ')' end
-         || ' the client still cannot read the GCash table itself' || E'\n';
+         || ' the client cannot read anyone else''s GCash details' || E'\n';
   reset role;
 
   perform set_config('request.jwt.claims', json_build_object('sub', pf, 'role', 'authenticated')::text, true);
