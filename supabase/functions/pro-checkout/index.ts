@@ -10,7 +10,7 @@
 // Only a signed-in person can call it, and only for their own payment. The
 // price comes from the database's price list, never from the browser, and
 // nothing personal is sent to Xendit (only the amount and our payment's id).
-import { CORS, db, env, isTestKey, isUuid, json, settleCheckout, whoIsAsking, xendit } from "../_shared/payments.ts";
+import { CORS, db, env, isTestKey, isUuid, json, sessionIdOf, settleCheckout, whoIsAsking, xendit } from "../_shared/payments.ts";
 
 const SITE_URL = env("SITE_URL") || "https://phil-freela.pages.dev";
 
@@ -46,7 +46,7 @@ export async function handle(req: Request): Promise<Response> {
 
     // 2. Xendit makes the payment page. It sends the person back to the Pro tab.
     const back = `${SITE_URL}/dashboard/settings?tab=Freelancer%20Pro&checkout=${started.id}`;
-    let session: { payment_session_id: string; payment_link_url: string };
+    let session: { payment_session_id?: string; id?: string; payment_link_url?: string };
     try {
       session = await xendit("POST", "/sessions", {
         reference_id: started.id,
@@ -63,12 +63,17 @@ export async function handle(req: Request): Promise<Response> {
     } catch {
       return json({ error: "Couldn't open the payment page. Please try again." }, 502);
     }
+    const sessionId = sessionIdOf(session);
+    if (!sessionId || !session.payment_link_url) {
+      console.error("Xendit's answer had no page id or address:", JSON.stringify(session));
+      return json({ error: "Couldn't open the payment page. Please try again." }, 502);
+    }
 
     // 3. Remember which Xendit page it is (with the service role: the browser can't write this).
     try {
       await db(`online_checkouts?id=eq.${started.id}`, {
         method: "PATCH",
-        body: { session_id: session.payment_session_id, checkout_url: session.payment_link_url, test_mode: isTestKey(secretKey) }
+        body: { session_id: sessionId, checkout_url: session.payment_link_url, test_mode: isTestKey(secretKey) }
       });
     } catch (error) {
       console.error("Saving the Xendit page failed:", error);

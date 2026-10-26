@@ -98,6 +98,12 @@ export async function whoIsAsking(req: Request): Promise<{ id: string; token: st
 
 type Checkout = { id: string; status: string; session_id: string | null };
 
+// Xendit's own id for a payment page (ps-...). Its docs call it
+// payment_session_id, but the webhook test it sent on 2026-10-26 called it id,
+// so both names are accepted.
+export const sessionIdOf = (session: { payment_session_id?: string; id?: string } | null | undefined): string =>
+  session?.payment_session_id || session?.id || "";
+
 // Asks Xendit how a payment page stands and acts on it. Nothing is ever given
 // because of what a message SAYS: only what Xendit answers here counts. A
 // COMPLETED page that really is ours is recorded once (finish_online_checkout
@@ -108,7 +114,7 @@ export async function settleCheckout(checkout: Checkout) {
   if (checkout.status !== "open" || !checkout.session_id) return { status: checkout.status };
 
   const session = await xendit("GET", `/sessions/${encodeURIComponent(checkout.session_id)}`);
-  if (session?.reference_id !== checkout.id || session?.payment_session_id !== checkout.session_id) {
+  if (session?.reference_id !== checkout.id || sessionIdOf(session) !== checkout.session_id) {
     throw new Error("Xendit's page does not belong to this payment.");
   }
 
@@ -118,7 +124,7 @@ export async function settleCheckout(checkout: Checkout) {
       method: "POST",
       body: {
         p_checkout: checkout.id,
-        p_payment_id: session.payment_id || session.payment_request_id || session.payment_session_id,
+        p_payment_id: session.payment_id || session.payment_request_id || sessionIdOf(session),
         p_amount: session.amount,
         p_test: isTestKey(env("XENDIT_SECRET_KEY"))
       }

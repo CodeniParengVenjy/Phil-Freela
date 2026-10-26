@@ -7,7 +7,7 @@
 // Deployed WITHOUT the sign-in check (Xendit has no PhilFreela account); it
 // checks Xendit's x-callback-token instead. Even then the message itself is
 // never trusted: settleCheckout asks Xendit again before anything is given.
-import { db, env, isUuid, json, settleCheckout } from "../_shared/payments.ts";
+import { db, env, isUuid, json, sessionIdOf, settleCheckout } from "../_shared/payments.ts";
 
 // Compares every character, so how long it takes says nothing about the token.
 function sameText(a: string, b: string): boolean {
@@ -35,7 +35,7 @@ export async function handle(req: Request): Promise<Response> {
   const rows = await db(`online_checkouts?id=eq.${data.reference_id}&select=id,status,session_id`);
   const checkout = rows?.[0];
   // Not one of our pages, or a different Xendit page than the one we opened.
-  if (!checkout || checkout.session_id !== data.payment_session_id) return json({ ok: true, ignored: true });
+  if (!checkout || checkout.session_id !== sessionIdOf(data)) return json({ ok: true, ignored: true });
 
   try {
     const result = await settleCheckout(checkout);
