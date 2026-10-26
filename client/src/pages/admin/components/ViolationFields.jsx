@@ -7,8 +7,6 @@ import { BAN_DELETE_DAYS, formatEndDate, restrictionText } from "../../../lib/su
 // what the penalty will be before they confirm.
 export default function ViolationFields({ kind, fields, setFields }) {
   const update = (changes) => setFields((prev) => ({ ...prev, ...changes }));
-  // Fake profile is ban only, so the Suspend pop-up doesn't offer it.
-  const options = kind === "ban" ? violations : violations.filter((v) => !v.banOnly);
   const isOther = fields.violation === "other";
   const penalty = buildPenalty(kind, fields);
 
@@ -26,7 +24,7 @@ export default function ViolationFields({ kind, fields, setFields }) {
         {/* Placeholder only: disabled, so it can't be picked again once a violation is chosen. */}
         <option value="" disabled>Choose a violation...</option>
         {/* Just the name; the line below the form shows the penalty. */}
-        {options.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+        {violations.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
       </select>
 
       {kind === "suspend" && isOther && (

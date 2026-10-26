@@ -338,11 +338,9 @@ export default function AdminReportsView() {
     setAction({ kind, report, target });
     setNote("");
     // Start with the violation the user was reported for (the report reasons
-    // and violations share the same values), unless it's ban only and this
-    // is a suspension.
+    // and violations share the same values).
     const reported = getViolation(report.reason);
-    const fits = reported && (kind === "ban" || !reported.banOnly);
-    setFields({ ...emptyViolationFields, violation: fits ? reported.value : "" });
+    setFields({ ...emptyViolationFields, violation: reported ? reported.value : "" });
     setMessage({ text: "", type: "" });
   };
 

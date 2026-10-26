@@ -98,8 +98,6 @@ export const reportReasons = [
   { value: "scam", label: "Scam / Fraud" },
   { value: "inappropriate", label: "Inappropriate content" },
   { value: "harassment", label: "Harassment" },
-  // notFor: a comment on an offer isn't a profile.
-  { value: "fake_profile", label: "Fake profile", notFor: ["service_review"] },
   // Someone else's work posted as their own (PLAN-stolen-work.md). This is
   // how work taken from outside PhilFreela gets caught: the copy check only
   // knows what was posted here. needsDetails: the reporter must say where the

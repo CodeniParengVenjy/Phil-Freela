@@ -55,7 +55,7 @@ function TermsOfService() {
       <ul className="text-secondary">
         <li>You're responsible for the accuracy of your profile and for keeping your login secure.</li>
         <li>Freelancers must pass identity verification before posting a service, and clients before posting a project or job, so both sides know they're dealing with a real person.</li>
-        <li>One account per person. Accounts found to be fake are banned.</li>
+        <li>One account per person. Your face scan is checked against the other accounts, and a face already used on another account is flagged to an admin.</li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your name</h5>
