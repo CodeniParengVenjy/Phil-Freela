@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline, saveUsername, noAutofill } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
 import { COVER_CROP, PICTURE_CROP, checkAvatarFile, fetchCoverPath, removeCover, uploadAvatar, uploadCover } from "../../../lib/avatar";
@@ -12,15 +12,22 @@ import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
 import GcashSettingsForm from "../components/GcashSettingsForm";
+import ProSettings from "../components/ProSettings";
 
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
 
 export default function SettingsView() {
   const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, setUsername, showToast } = useOutletContext();
   const navigate = useNavigate();
-  // Only freelancers get paid, so only they have the GCash Payment tab.
-  const menuItems = accountType === "freelancer" ? [...subNavItems, "GCash Payment"] : subNavItems;
-  const [activeSubNav, setActiveSubNav] = useState("Profile Settings");
+  // Only freelancers get paid and can go Pro, so only they have the GCash Payment and Freelancer Pro tabs.
+  const menuItems = accountType === "freelancer" ? [...subNavItems, "GCash Payment", "Freelancer Pro"] : subNavItems;
+  // A link can open a tab: /dashboard/settings?tab=Freelancer Pro (the offer limit
+  // notice in My Offers does). It is worked out here, not copied into state, because
+  // the account type (and so the freelancer-only tabs) may arrive after the page opens.
+  const [searchParams] = useSearchParams();
+  const wantedTab = searchParams.get("tab");
+  const [pickedTab, setActiveSubNav] = useState(null);
+  const activeSubNav = pickedTab ?? (menuItems.includes(wantedTab) ? wantedTab : "Profile Settings");
   // "Download your data" (feature 6): null = idle, so the button shows its
   // normal label until clicked.
   const [exporting, setExporting] = useState(false);
@@ -445,6 +452,13 @@ export default function SettingsView() {
                 <GcashSettingsForm userId={currentUserId} showToast={showToast} />
               ) : (
                 <p className="text-secondary fs-7">Only freelancers receive payments, so there's nothing to set here.</p>
+              )
+            ) : activeSubNav === "Freelancer Pro" ? (
+              // The fee PhilFreela earns from freelancers (PLAN-monetization.md, Step 5). Freelancers only.
+              accountType === "freelancer" && currentUserId ? (
+                <ProSettings userId={currentUserId} showToast={showToast} />
+              ) : (
+                <p className="text-secondary fs-7">Only freelancers can go Pro, so there's nothing to set here.</p>
               )
             ) : activeSubNav === "Appearance" ? (
               currentUserId

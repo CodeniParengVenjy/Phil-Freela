@@ -10,7 +10,7 @@ import SlidePicker from "../components/SlidePicker";
 import { useFeatureStatus } from "../../../lib/featured";
 import ServiceCard from "../components/ServiceCard";
 import FeatureControl from "../components/FeatureControl";
-import FeatureDialog from "../components/FeatureDialog";
+import PromoPayDialog from "../components/PromoPayDialog";
 import DeletePostDialog from "../components/DeletePostDialog";
 import BlockedNotice from "../components/BlockedNotice";
 import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
@@ -397,7 +397,7 @@ export default function ServicesView() {
       {checkingOwnership && <OwnershipCheckDialog onClose={() => setCheckingOwnership(false)} />}
 
       {serviceToFeature && (
-        <FeatureDialog
+        <PromoPayDialog
           target={serviceToFeature}
           userId={currentUserId}
           until={featured.until.get(serviceToFeature.id)}

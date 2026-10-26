@@ -6,7 +6,7 @@ since 2026-10-25 (migrations promotions_tables and promotions_functions); nothin
 on the website used it until Step 2 (sponsored billboards) and Step 3 (the admin
 Promotions page and the Overview's Earnings), all built the same day. Step 4
 (Featured post: the pay screen and the Featured row) was built on 2026-10-25 too.
-Steps 5 and 6 are not started, and Step 5 (Freelancer Pro) is next.
+Step 5 (Freelancer Pro) is planned and being built from 2026-10-26; Step 6 is not started.
 To continue in a new Claude session, say: "Read PLAN-monetization.md and
 continue from the current step."
 
@@ -144,8 +144,10 @@ automatic.
    admin types one in Admin > Site > Promotions > Settings. Not tried on the
    live site; the Featured row was not tested together with the AI's
    "Recommended for you" picks (the split happens after the AI's order is set).
-5. **Freelancer Pro.** A Go Pro page with the same pay flow, the Pro badge on
-   profile and offers, the offer limit message.
+5. **Freelancer Pro.** (detail below, approved 2026-10-26 with "ok") A Freelancer
+   Pro tab in Settings (no new menu button) with the same pay flow, the offer
+   limit message in My Offers, the Pro badge on Browse Services, the offer page
+   and the public profile. 5a = buying Pro, 5b = the offer limit, 5c = the badge.
 6. **Wording and demo data.** Update PhilFreela-System-Functions.md (Feature 5
    "Scope" line says "no payment or money features"), the defense study guide and
    the paper's "no payments" line; sample data for the defense (a made-up
@@ -202,6 +204,59 @@ spot that is gone; `components/FeaturedMarks.jsx` (the "Featured / Paid placemen
 title and the badge) is shared by both lists; the two list pages build their
 cards through one small function each (`renderService`, `renderJob`) that the
 Featured row and the normal list both call.
+
+## Step 5 detail: Freelancer Pro (approved 2026-10-26)
+
+Pro = 3 things, nothing more (the user asked "the things that pro have than
+regular accounts" and kept the three): up to 15 offers (free: 3), a gold "Pro"
+pill by the name, and half-price Featured (P25 / P50 / P90 instead of P49 / P99 /
+P179). P149 for 30 days; paying again before it ends adds 30 more days. Not part
+of Pro: the "Recommended for you" order, verification, ratings, profile view
+stats. Ideas looked at and left out: more files per offer or per portfolio item
+(10 now, needs a database change too), a higher new-chat limit (a spam guard, not
+for sale).
+
+No database change: everything is live from Step 1 (`request_promotion('pro_30')`,
+`approve_promotion` extends a running Pro, `is_pro`, `pro_members` readable by
+everyone signed in, the `limit_offers` trigger on `services`: 3 free, 15 Pro).
+
+5a. Buying Pro (own commit):
+1. `lib/pro.js` (new): the limits (3 and 15), `useProStatus(userId)` (until when,
+   or a payment waiting, reload) and `useProIds(ids)` (which of these people are
+   Pro right now, like `useVerifiedIds`).
+2. The Feature pay window becomes reusable instead of copied: `FeatureDialog.jsx`
+   is renamed `PromoPayDialog.jsx` and gets a Pro mode (no day picker, one option:
+   30 days P149; same GCash block, reference and receipt; "Payments are not open
+   yet" while no GCash number is saved). The Feature window behaves exactly as
+   before (its 59 browser checks are run again).
+3. `components/ProSettings.jsx` (new) = the new "Freelancer Pro" tab in Settings,
+   freelancers only: status ("Free" or "Pro until <date>"), "N of 3 (or 15) offers
+   used", what Pro gives with the real Featured prices, and one button: Go Pro,
+   Extend, or the "Waiting for review" badge.
+4. `SettingsView.jsx` can open a tab from a link: `/dashboard/settings?tab=Freelancer Pro`.
+
+5b. The offer limit (own commit):
+5. `ServicesView.jsx`: "2 of 3 offers" in the list heading.
+6. At the limit the form shows a notice ("You have 3 of 3 offers. Go Pro for up to
+   15." with a link to the Pro tab) and Upload & Publish is off; editing existing
+   offers still works. A free account that is over 3 (Pro ended) keeps its offers.
+7. If the database refuses anyway (two tabs open), the toast shows the database's
+   own sentence instead of "Couldn't publish that service".
+
+5c. The Pro badge (own commit):
+8. `components/ProBadge.jsx` (new): a small gold "Pro" pill, text not just an icon.
+   Next to the freelancer's name in Browse Services cards, the offer page and the
+   freelancer's public profile. Clients never get it; an ended Pro shows nothing.
+
+Defaults: Pro ending changes nothing for existing offers; no cancel button
+(payments are final, a wrong one is rejected by an admin who refunds by hand
+outside the site); a client who switches to a freelancer account keeps any Pro
+they paid for.
+
+Testing: a real browser against a pretend backend that applies the database's
+rules (laptop and phone, dark and light), lint and build; the Featured window's
+59 checks run again. Not tried on the live site: no GCash number is in the live
+database yet.
 
 ## Step 1 detail: the database
 

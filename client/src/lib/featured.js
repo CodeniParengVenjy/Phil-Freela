@@ -9,7 +9,8 @@ import { plainMessage } from "./promotions";
 // post sits in a separate "Featured" row (at most 3) at the top of Browse
 // Services / Find Jobs until its end date. The browser can only READ the end
 // dates (featured_posts); the request itself goes through the database function
-// request_promotion, which checks who is asking.
+// request_promotion, which checks who is asking. Freelancer Pro (lib/pro.js,
+// Step 5) is paid the same way, so sendPromoRequest and getPromoPrices serve both.
 
 // The 3 options, in the order they are shown. The codes are in the promo_prices table.
 export const FEATURE_CODES = ["feature_3", "feature_7", "feature_14"];
@@ -19,12 +20,13 @@ export function formatFeatureDate(iso) {
   return new Date(iso).toLocaleDateString("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric", year: "numeric" });
 }
 
-// The prices (what a Pro member pays is pro_price). Returns { prices } or { error }.
-export async function getFeaturePrices() {
+// The prices of some options, shortest first (what a Pro member pays for a
+// Featured post is pro_price). Returns { prices } or { error }.
+export async function getPromoPrices(codes) {
   const { data, error } = await supabase
     .from("promo_prices")
     .select("code, label, days, price, pro_price")
-    .in("code", FEATURE_CODES)
+    .in("code", codes)
     .order("days", { ascending: true });
   return error || !data?.length ? { error: "Couldn't load the prices. Please try again." } : { prices: data };
 }
@@ -80,9 +82,10 @@ export function useFeatureStatus(userId) {
 // "I've paid": the receipt picture goes up first (redrawn as a plain JPEG, which
 // also checks it really is a picture), then the database records the request
 // as waiting. If the database refuses (a reused reference, no free spot, ...)
-// the upload is removed again. `target` is { serviceId } or { jobId }.
+// the upload is removed again. `target` is { serviceId } or { jobId } for a
+// Featured post, and { } for Freelancer Pro (it is for the account, not a post).
 // Returns { error } or {}.
-export async function sendFeatureRequest({ userId, code, target, reference, receiptFile }) {
+export async function sendPromoRequest({ userId, code, target, reference, receiptFile }) {
   let picture;
   try {
     picture = await shrinkImage(receiptFile, 1600);
@@ -104,7 +107,7 @@ export async function sendFeatureRequest({ userId, code, target, reference, rece
     p_receipt_path: path
   });
   if (error) {
-    console.error("Sending the Featured request failed:", error);
+    console.error("Sending the payment request failed:", error);
     // Not an error for the person if this fails: it only leaves the file behind.
     await supabase.storage.from("promo-receipts").remove([path]);
     return { error: plainMessage(error, "Couldn't send your payment. Please try again.") };

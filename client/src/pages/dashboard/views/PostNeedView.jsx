@@ -10,7 +10,7 @@ import { BUDGET_TYPES, HIRES_FIELD, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDE
 import BlockedNotice from "../components/BlockedNotice";
 import DeletePostDialog from "../components/DeletePostDialog";
 import FeatureControl from "../components/FeatureControl";
-import FeatureDialog from "../components/FeatureDialog";
+import PromoPayDialog from "../components/PromoPayDialog";
 import HiredFreelancers from "../components/HiredFreelancers";
 import CensoredText from "../../../components/CensoredText";
 
@@ -630,7 +630,7 @@ export default function PostNeedView() {
       </div>
 
       {postToFeature && (
-        <FeatureDialog
+        <PromoPayDialog
           target={postToFeature}
           userId={currentUserId}
           until={featured.until.get(postToFeature.id)}

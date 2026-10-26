@@ -7,7 +7,7 @@ import { formatFeatureDate } from "../../../lib/featured";
 //   canFeature: false hides the button (an offer clients can't see yet, a post
 //               that is not open, a suspended account), because paying for a
 //               post nobody can see would be a waste
-//   onFeature:  opens FeatureDialog
+//   onFeature:  opens PromoPayDialog
 export default function FeatureControl({ until, waiting, canFeature, onFeature }) {
   if (!until && !waiting && !canFeature) return null;
   return (
