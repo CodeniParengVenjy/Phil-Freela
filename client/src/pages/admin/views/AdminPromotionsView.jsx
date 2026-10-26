@@ -143,7 +143,7 @@ export default function AdminPromotionsView() {
     <section>
       <h1 className="h4 fw-bold mb-1">Promotions</h1>
       <p className="text-white-50 fs-7 mb-3">
-        Fees people pay PhilFreela for a Featured post or Freelancer Pro. They pay PhilFreela's own GCash and send the reference and a receipt. Check your GCash, then approve or reject.
+        Fees people pay PhilFreela. A Featured post is paid to PhilFreela's own GCash with a reference and a receipt: check your GCash, then approve or reject. Freelancer Pro is paid online on Xendit and starts by itself; it shows up in History.
       </p>
 
       <div className="d-flex flex-wrap gap-2 mb-3" role="tablist" aria-label="Promotions">
@@ -277,10 +277,14 @@ export default function AdminPromotionsView() {
             {answered?.map((request) => {
               const approved = request.status === "approved";
               const kind = PROMO_KINDS[request.kind];
+              // Paid on Xendit's page (Freelancer Pro): no reference, receipt or admin.
+              const online = request.method === "online";
               return (
                 <div key={request.id} className="admin-card rounded-4 p-3">
                   <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                    <span className={`badge fw-normal ${approved ? "bg-success" : "bg-danger"}`}>{approved ? "Approved" : "Rejected"}</span>
+                    <span className={`badge fw-normal ${approved ? "bg-success" : "bg-danger"}`}>{online ? "Paid online" : approved ? "Approved" : "Rejected"}</span>
+                    {/* Paid with Xendit's test keys: pretend money, left out of Earnings. */}
+                    {online && request.test_mode && <span className="badge bg-warning text-dark fw-normal">TEST</span>}
                     <span className="badge bg-info text-dark fw-normal">{kind.label}</span>
                     <span className="fw-bold text-white">{formatPeso(request.amount)}</span>
                     <span className="text-white-50 fs-8 ms-auto">{new Date(request.decided_at).toLocaleString()}</span>
@@ -293,7 +297,9 @@ export default function AdminPromotionsView() {
                     ) : "a removed account"}
                   </div>
                   <div className="text-white-50 fs-8">
-                    Reference {formatReference(request.reference_no)} · answered by {request.decider?.full_name || "a removed admin"}
+                    {online
+                      ? <>Paid on Xendit · payment {request.provider_payment_id}</>
+                      : <>Reference {formatReference(request.reference_no)} · answered by {request.decider?.full_name || "a removed admin"}</>}
                     {approved && request.starts_at && request.ends_at && <> · ran from {formatDay(request.starts_at)} to {formatDay(new Date(request.ends_at).getTime() - 1)}</>}
                   </div>
                   {!approved && request.reject_reason && <div className="fs-7 text-white-50 mt-1">Reason: {request.reject_reason}</div>}

@@ -456,7 +456,7 @@ export default function SettingsView() {
             ) : activeSubNav === "Freelancer Pro" ? (
               // The fee PhilFreela earns from freelancers (PLAN-monetization.md, Step 5). Freelancers only.
               accountType === "freelancer" && currentUserId ? (
-                <ProSettings userId={currentUserId} showToast={showToast} />
+                <ProSettings userId={currentUserId} />
               ) : (
                 <p className="text-secondary fs-7">Only freelancers can go Pro, so there's nothing to set here.</p>
               )

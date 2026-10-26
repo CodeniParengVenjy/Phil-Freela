@@ -3,29 +3,25 @@ import { createPortal } from "react-dom";
 import CensoredText from "../../../components/CensoredText";
 import { checkReceiptFile, formatGcashNumber, formatPeso, isValidReference, normalizeReference } from "../../../lib/payments";
 import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft, sendPromoRequest } from "../../../lib/featured";
-import { PRO_CODE } from "../../../lib/pro";
 import { getSiteGcash, getSiteQrLink } from "../../../lib/promotions";
 import "../payments.css";
 
-// The pay window for a fee PhilFreela earns (PLAN-monetization.md): "Feature this
-// post" (Step 4: the owner of an offer or an open job post pays for 3, 7 or 14
-// days in the Featured row) and "Go Pro" (Step 5: Freelancer Pro, 30 days). The
-// person sees PhilFreela's own GCash and the exact amount, pays in the GCash app
-// (the site is not part of that), then sends the 13-digit reference and the
-// receipt screenshot. An admin checks PhilFreela's GCash by hand and approves.
+// "Feature this post" (PLAN-monetization.md, Step 4): the owner of an offer or
+// an open job post pays for 3, 7 or 14 days in the Featured row. The person
+// sees PhilFreela's own GCash and the exact amount, pays in the GCash app (the
+// site is not part of that), then sends the 13-digit reference and the receipt
+// screenshot. An admin checks PhilFreela's GCash by hand and approves.
+// (Freelancer Pro is paid online instead: ProSettings, "Paying for Pro online".)
 // The parent mounts it only while it is open, so every opening starts empty.
-//   target: { kind: "service" | "job", id, title } for a Featured post, or
-//           { kind: "pro" } for Freelancer Pro (one option, no day picker).
-//   until:  the end date (ISO text) when the post is already Featured, or the
-//           person is already Pro, else empty. Paying again adds the days after
-//           it (and a Featured post needs no new spot).
+//   target: { kind: "service" | "job", id, title }
+//   until:  the end date (ISO text) when the post is already Featured, else empty.
+//           Paying again adds the days after it and needs no new spot.
 //   onSent(): called after the request was saved.
 export default function PromoPayDialog({ target, userId, until, onClose, onSent }) {
-  const buyingPro = target.kind === "pro";
   // undefined while loading, { error } when something could not be loaded,
   // else { prices, gcash, qr, isPro, slots }.
   const [info, setInfo] = useState(undefined);
-  const [code, setCode] = useState(buyingPro ? PRO_CODE : "feature_7");
+  const [code, setCode] = useState("feature_7");
   const [reference, setReference] = useState("");
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -36,15 +32,12 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
 
   useEffect(() => {
     let active = true;
-    const forPro = target.kind === "pro";
     (async () => {
-      // Pro has one price and no spots to count; a Featured post has a price for
-      // each length, a lower one for Pro members, and 3 spots per list.
       const [priceResult, gcashResult, isPro, slots] = await Promise.all([
-        getPromoPrices(forPro ? [PRO_CODE] : FEATURE_CODES),
+        getPromoPrices(FEATURE_CODES),
         getSiteGcash(),
-        forPro ? Promise.resolve(false) : getIsPro(userId),
-        forPro ? Promise.resolve(null) : getSlotsLeft(target.kind)
+        getIsPro(userId),
+        getSlotsLeft(target.kind)
       ]);
       if (!active) return;
       if (priceResult.error || gcashResult.error) {
@@ -77,8 +70,6 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
   const priceOf = (option) => (info?.isPro && option.pro_price != null ? option.pro_price : option.price);
   const chosen = info?.prices?.find((option) => option.code === code);
   const amount = chosen ? priceOf(chosen) : null;
-  // Only a Featured post has a choice of lengths. The steps are numbered from what is shown.
-  const hasChoice = (info?.prices?.length ?? 0) > 1;
 
   const copyNumber = async () => {
     try {
@@ -122,7 +113,7 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
     const result = await sendPromoRequest({
       userId,
       code,
-      target: buyingPro ? {} : target.kind === "service" ? { serviceId: target.id } : { jobId: target.id },
+      target: target.kind === "service" ? { serviceId: target.id } : { jobId: target.id },
       reference: cleanReference,
       receiptFile: file
     });
@@ -137,10 +128,8 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
   // Why the form is not shown (null = show it).
   let blocked = null;
   if (info?.error) blocked = info.error;
-  else if (info && !info.gcash) blocked = `Payments for ${buyingPro ? "Freelancer Pro" : "Featured posts"} are not open yet. Please try again later.`;
+  else if (info && !info.gcash) blocked = "Payments for Featured posts are not open yet. Please try again later.";
   else if (info && info.slots === 0 && !until) blocked = "All 3 Featured spots are taken right now. Try again when one ends.";
-
-  const untilText = until ? formatFeatureDate(until) : "";
 
   return createPortal(
     <div
@@ -163,13 +152,9 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
         noValidate
       >
         <h5 id="promo-dialog-title" className="fw-bold mb-1">
-          {buyingPro
-            ? <><i className="bi bi-gem text-warning me-2"></i>{until ? "Extend Freelancer Pro" : "Go Pro"}</>
-            : <><i className="bi bi-star-fill text-warning me-2"></i>{until ? "Extend your Featured post" : "Feature this post"}</>}
+          <i className="bi bi-star-fill text-warning me-2"></i>{until ? "Extend your Featured post" : "Feature this post"}
         </h5>
-        <p className="text-secondary fs-7 mb-3 text-break">
-          {buyingPro ? "Up to 15 offers, a Pro badge by your name, and half-price Featured posts." : <CensoredText text={target.title} />}
-        </p>
+        <p className="text-secondary fs-7 mb-3 text-break"><CensoredText text={target.title} /></p>
 
         {info === undefined && <p className="text-secondary fs-7 mb-3">Loading...</p>}
 
@@ -185,52 +170,37 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
         {info && !blocked && (
           <>
             <p className="text-white-50 fs-7 mb-3">
-              {buyingPro ? (
-                <>
-                  Pro lasts 30 days.
-                  {until
-                    ? <> You are Pro until <strong className="text-white">{untilText}</strong>; the days you pay for now are added after that.</>
-                    : " Pay again before it ends and the days are added after it."}
-                </>
-              ) : (
-                <>
-                  A Featured post sits in its own row at the top of {target.kind === "service" ? "Browse Services" : "Find Jobs"}, marked as a paid placement.
-                  {until && <> It is Featured until <strong className="text-white">{untilText}</strong>; the days you pay for now are added after that.</>}
-                </>
-              )}
+              A Featured post sits in its own row at the top of {target.kind === "service" ? "Browse Services" : "Find Jobs"}, marked as a paid placement.
+              {until && <> It is Featured until <strong className="text-white">{formatFeatureDate(until)}</strong>; the days you pay for now are added after that.</>}
             </p>
 
-            {hasChoice && (
-              <>
-                <span className="form-label text-white-50 fw-semibold fs-7 d-block">1. Choose how long</span>
-                <div className="d-flex flex-wrap gap-2 mb-3" role="radiogroup" aria-label="How long">
-                  {info.prices.map((option) => {
-                    const selected = option.code === code;
-                    const discounted = info.isPro && option.pro_price != null;
-                    return (
-                      <button
-                        key={option.code}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        className={`btn flex-grow-1 rounded-3 fw-bold py-2 fs-7 d-flex flex-column ${selected ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`}
-                        onClick={() => setCode(option.code)}
-                        disabled={sending}
-                      >
-                        <span>{option.days} days</span>
-                        <span className="fs-8">
-                          {formatPeso(priceOf(option))}
-                          {discounted && <s className="ms-1 opacity-75">{formatPeso(option.price)}</s>}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {info.isPro && info.prices.some((option) => option.pro_price != null) && <p className="text-success fs-8 mb-3"><i className="bi bi-patch-check-fill me-1"></i>Pro price.</p>}
-              </>
-            )}
+            <span className="form-label text-white-50 fw-semibold fs-7 d-block">1. Choose how long</span>
+            <div className="d-flex flex-wrap gap-2 mb-3" role="radiogroup" aria-label="How long">
+              {info.prices.map((option) => {
+                const selected = option.code === code;
+                const discounted = info.isPro && option.pro_price != null;
+                return (
+                  <button
+                    key={option.code}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={`btn flex-grow-1 rounded-3 fw-bold py-2 fs-7 d-flex flex-column ${selected ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`}
+                    onClick={() => setCode(option.code)}
+                    disabled={sending}
+                  >
+                    <span>{option.days} days</span>
+                    <span className="fs-8">
+                      {formatPeso(priceOf(option))}
+                      {discounted && <s className="ms-1 opacity-75">{formatPeso(option.price)}</s>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {info.isPro && <p className="text-success fs-8 mb-3"><i className="bi bi-patch-check-fill me-1"></i>Pro price.</p>}
 
-            <span className="form-label text-white-50 fw-semibold fs-7 d-block">{hasChoice ? "2." : "1."} Pay in your GCash app</span>
+            <span className="form-label text-white-50 fw-semibold fs-7 d-block">2. Pay in your GCash app</span>
             <div className="p-3 rounded-3 bg-black bg-opacity-25 border border-secondary border-opacity-25 mb-3">
               <p className="mb-2 fs-7">Send exactly <strong className="text-warning fs-6">{formatPeso(amount)}</strong> to PhilFreela:</p>
               <p className="mb-1 text-break fw-semibold">{info.gcash.account_name}</p>
@@ -241,10 +211,10 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
                 </button>
               </div>
               {info.qr && <img src={info.qr} alt="PhilFreela's GCash QR code" className="d-block mt-3 rounded-3 bg-white p-1" style={{ maxWidth: 180, width: "100%" }} />}
-              <p className="text-secondary fs-8 mb-0 mt-2">This is PhilFreela's own GCash. It is the only one that gets {buyingPro ? "Pro" : "Featured"} fees.</p>
+              <p className="text-secondary fs-8 mb-0 mt-2">This is PhilFreela's own GCash. It is the only one that gets Featured fees.</p>
             </div>
 
-            <span className="form-label text-white-50 fw-semibold fs-7 d-block">{hasChoice ? "3." : "2."} Send us your receipt</span>
+            <span className="form-label text-white-50 fw-semibold fs-7 d-block">3. Send us your receipt</span>
             <label htmlFor="featureReference" className="form-label text-white-50 fw-semibold fs-8 mb-1">GCash reference no.</label>
             <input
               id="featureReference"
@@ -276,7 +246,7 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
             <small className="text-secondary fs-8 d-block mb-2">JPG, PNG or WebP, 5 MB at most. Only you and the PhilFreela admins can open it.</small>
             {!file && <p className="text-warning fs-8 mb-2">Attach your receipt screenshot to continue.</p>}
 
-            <p className="text-secondary fs-8 mb-0">An admin checks PhilFreela's GCash by hand, then {buyingPro ? "your Pro starts" : "your post goes live"}. You'll get a notification either way.</p>
+            <p className="text-secondary fs-8 mb-0">An admin checks PhilFreela's GCash by hand, then your post goes live. You'll get a notification either way.</p>
 
             {error && <p className="text-danger fs-7 mt-3 mb-0" role="alert">{error}</p>}
 

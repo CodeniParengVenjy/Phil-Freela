@@ -272,6 +272,65 @@ own sentence is now shown when it refuses an offer (it used to read "Couldn't
 publish that service"); `components/ProBadge.jsx` was made in 5a because the Pro
 tab shows it too.
 
+## Paying for Pro online (Xendit), asked 2026-10-26
+
+The user said Pro "must have a payment": asked what that meant, they chose "Pay
+inside the site" (a real checkout page, Pro starts by itself, no admin check).
+PayMongo was the first pick, but its sign-up page was paused ("We're making
+sign-up even better... check back soon"), so the user chose Xendit (a payment
+company registered with the BSP as a payment system operator, PCI DSS Level 1 by
+its own help center) and created an account on 2026-10-26. Test mode works right
+after sign-up with no documents; real money needs Xendit's business
+verification (up to 14 days). Fees only on real payments. Allowed channels:
+GCash, Maya and QR Ph (cards cost about ₱20 on ₱149, so they are left out).
+
+This changes the old "no gateway" rule for PhilFreela's OWN Pro fee only. Money
+between clients and freelancers stays the GCash record. Featured posts keep the
+GCash + receipt + admin check flow for now. For Pro the checkout REPLACES the
+GCash + receipt way (one clear way to pay; the Pro mode of PromoPayDialog goes).
+
+How it works:
+1. Settings > Freelancer Pro > Go Pro calls the Edge Function `pro-checkout`
+   (action start). It checks who is asking, calls `start_online_checkout('pro_30')`
+   as that person (freelancer account, not suspended, price from the price list),
+   creates a Xendit Payment Session (POST https://api.xendit.co/sessions,
+   session_type PAY, mode PAYMENT_LINK, PHP, PH, channels GCASH / PAYMAYA / QRPH,
+   reference_id = our checkout id, no personal data sent) and returns its
+   payment_link_url. The browser goes to Xendit's page.
+2. The person pays on Xendit's page (test mode: pretend money).
+3. Xendit sends them back to /dashboard/settings?tab=Freelancer Pro&checkout=<id>.
+   The tab asks `pro-checkout` (action confirm), which asks Xendit
+   (GET /sessions/{id}) whether the session is COMPLETED; if so it calls
+   `finish_online_checkout` (server only): records the payment once, starts or
+   extends Pro, sends the notification.
+4. Xendit also calls the Edge Function `xendit-webhook`
+   (payment_session.completed / expired, header x-callback-token checked against
+   the secret XENDIT_WEBHOOK_TOKEN). It never trusts the message alone: it asks
+   Xendit for the session again before giving Pro. So closing the tab early still
+   gives Pro, and a fake message gives nothing.
+5. Admin > Promotions > History shows "Paid online (Xendit)" with Xendit's
+   payment id and a TEST badge for test-mode payments; nothing to approve. Test
+   payments are left out of Earnings so the totals stay true.
+
+Database (`database/supabase_online_pro_schema.sql`): `promotions` gets `method`
+(gcash | online), `provider_payment_id` and `test_mode`; `reference_no` and
+`receipt_path` may be empty for an online payment (a check keeps them required
+for GCash). New table `online_checkouts` (one row per payment page opened; the
+payer and admins can read, nobody writes from the browser). Functions
+`start_online_checkout` (signed-in people) and `finish_online_checkout`
+(service role only, locked row, idempotent, amount and test/live must match).
+`admin_promo_earnings()` leaves test payments out.
+
+Secrets (Supabase > Edge Functions > Secrets, set by the user, never in chat or
+code): XENDIT_SECRET_KEY, XENDIT_WEBHOOK_TOKEN. Webhook URL to set in Xendit:
+https://rpopftzrrhuzjxzwobvl.supabase.co/functions/v1/xendit-webhook
+
+Parts: (1) database, (2) the two Edge Functions in supabase/functions/ (no
+outside packages, so they are tested here with Node against a pretend Xendit),
+(3) website: Go Pro goes to the checkout, the return message, (4) admin History
+and Earnings. Nothing goes live (migration, functions) until the user says ok;
+then one real test-mode payment on the live site.
+
 ## Step 1 detail: the database
 
 New file `database/supabase_promotions_schema.sql`, applied live as the migration

@@ -1,23 +1,50 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import ProBadge from "../../../components/ProBadge";
 import { FEATURE_CODES, formatFeatureDate, getPromoPrices } from "../../../lib/featured";
-import { FREE_OFFERS, PRO_CODE, PRO_OFFERS, countMyOffers, useProStatus } from "../../../lib/pro";
-import PromoPayDialog from "./PromoPayDialog";
+import { FREE_OFFERS, PRO_CODE, PRO_OFFERS, confirmProCheckout, countMyOffers, startProCheckout, useProStatus } from "../../../lib/pro";
 
 // Settings > Freelancer Pro (PLAN-monetization.md, Step 5), freelancers only:
 // where the person stands (Free or Pro until a date, how many offers they have),
-// what Pro gives, and the one button that buys it. The payment itself is the
-// shared pay window (PromoPayDialog): GCash to PhilFreela, the reference and a
-// receipt, then an admin approves. Pro is for the account: people who pay again
-// before it ends get the days added after the current end.
+// what Pro gives, and the one button that buys it. Pro is paid online
+// ("Paying for Pro online (Xendit)"): Go Pro goes to Xendit's own payment page
+// (GCash, Maya or QR Ph), and Xendit sends the person back here with
+// ?checkout=<id>; this tab then asks whether the payment went through. Paying
+// again before Pro ends adds the days after the current end.
 const peso = (amount) => `₱${Number(amount).toLocaleString()}`;
 
-export default function ProSettings({ userId, showToast }) {
+// How long to keep asking after coming back: a payment can take a few seconds
+// to be confirmed by Xendit.
+const CHECKS = 6;
+const CHECK_EVERY_MS = 2500;
+
+// What to say after coming back from Xendit's page.
+const RESULTS = {
+  checking: { className: "border-secondary", icon: "spinner", text: "Checking your payment with Xendit..." },
+  paid: { className: "border-success", icon: "bi-check-circle-fill text-success", text: "Payment received. Thank you! You are now a Freelancer Pro." },
+  open: { className: "border-warning", icon: "bi-hourglass-split text-warning", text: "We haven't received the payment yet. If you paid, it can take a minute." },
+  expired: { className: "border-warning", icon: "bi-clock-history text-warning", text: "That payment page expired before it was paid. Nothing was charged. You can try again." },
+  canceled: { className: "border-secondary", icon: "bi-x-circle text-secondary", text: "You left the payment page. Nothing was charged." }
+};
+
+export default function ProSettings({ userId }) {
   const pro = useProStatus(userId);
+  const reloadPro = pro.reload;
   // The price list by code, and how many offers there are now (null while loading or if it failed).
   const [prices, setPrices] = useState(null);
   const [offers, setOffers] = useState(null);
-  const [paying, setPaying] = useState(false);
+  // Going to Xendit's page: true while it is being opened; a sentence if it couldn't be.
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState("");
+
+  // Back from Xendit's page: /dashboard/settings?tab=Freelancer Pro&checkout=<id>
+  // (and &canceled=1 when they left without paying).
+  const [searchParams] = useSearchParams();
+  const checkoutId = searchParams.get("checkout");
+  const canceled = searchParams.get("canceled") === "1";
+  // The answer about that payment (null while asking), and a counter that asks again.
+  const [answer, setAnswer] = useState(null);
+  const [round, setRound] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -32,6 +59,56 @@ export default function ProSettings({ userId, showToast }) {
     };
   }, [userId]);
 
+  useEffect(() => {
+    if (!checkoutId || canceled) return undefined;
+    let active = true;
+    (async () => {
+      // Ask a few times: Xendit may need a few seconds to confirm a payment.
+      for (let check = 0; check < CHECKS; check++) {
+        const result = await confirmProCheckout(checkoutId);
+        if (!active) return;
+        if (result.error) {
+          setAnswer({ state: "error", text: result.error });
+          return;
+        }
+        if (result.status !== "open") {
+          setAnswer({ state: result.status });
+          if (result.status === "paid") reloadPro();
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, CHECK_EVERY_MS));
+        if (!active) return;
+      }
+      setAnswer({ state: "open" });
+    })();
+    return () => {
+      active = false;
+    };
+  }, [checkoutId, canceled, round, reloadPro]);
+
+  const checkAgain = () => {
+    setAnswer(null);
+    setRound((value) => value + 1);
+  };
+
+  const goPro = async () => {
+    setOpening(true);
+    setOpenError("");
+    const result = await startProCheckout();
+    if (result.error) {
+      setOpening(false);
+      setOpenError(result.error);
+      return;
+    }
+    // Xendit's own page. It sends the person back here when they are done.
+    window.location.assign(result.url);
+  };
+
+  // What happened on Xendit's page (nothing to say if they didn't come from there).
+  let shown = null;
+  if (checkoutId) shown = canceled ? { state: "canceled" } : answer ?? { state: "checking" };
+  const result = shown && (shown.state === "error" ? { className: "border-danger", icon: "bi-exclamation-circle-fill text-danger", text: shown.text } : RESULTS[shown.state]);
+
   const limit = pro.until ? PRO_OFFERS : FREE_OFFERS;
   let offersText = "";
   if (pro.loaded && offers !== null) {
@@ -45,6 +122,20 @@ export default function ProSettings({ userId, showToast }) {
 
   return (
     <div className="d-flex flex-column gap-4">
+      {result && (
+        <div className={`p-3 rounded-3 border ${result.className} d-flex flex-wrap align-items-center gap-2`} role="status">
+          {result.icon === "spinner"
+            ? <span className="spinner-border spinner-border-sm text-secondary" aria-hidden="true"></span>
+            : <i className={`bi ${result.icon}`}></i>}
+          <span className="text-white fs-7 flex-grow-1">{result.text}</span>
+          {(shown.state === "open" || shown.state === "error") && (
+            <button type="button" className="btn btn-sm btn-outline-secondary text-white-50 rounded-pill px-3 fs-8 fw-bold" onClick={checkAgain}>
+              Check again
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="p-3 rounded-3 bg-black bg-opacity-25 border border-secondary border-opacity-25">
         <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
           {pro.until ? (
@@ -89,31 +180,20 @@ export default function ProSettings({ userId, showToast }) {
       <div>
         <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
           {!pro.waiting && (
-            <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={() => setPaying(true)} disabled={!pro.loaded}>
-              <i className="bi bi-gem me-2"></i>{pro.until ? "Extend Pro" : "Go Pro"}
+            <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={goPro} disabled={!pro.loaded || opening}>
+              {opening
+                ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Opening the payment page...</>
+                : <><i className="bi bi-gem me-2"></i>{pro.until ? "Extend Pro" : "Go Pro"}</>}
             </button>
           )}
           {proPrice && <span className="text-white fw-bold">{peso(proPrice.price)} <span className="text-white-50 fw-normal fs-7">for {proPrice.days} days</span></span>}
         </div>
+        {openError && <p className="text-danger fs-7 mb-2" role="alert">{openError}</p>}
         <small className="text-secondary fs-8 d-block">
-          Pay again before it ends and the days are added after it.
-          Pro is paid to PhilFreela's own GCash and checked by an admin; what your clients pay you still goes straight to you.
+          You pay on Xendit's secure page with GCash, Maya or QR Ph; PhilFreela never sees your payment details.
+          Pay again before Pro ends and the days are added after it. What your clients pay you still goes straight to you.
         </small>
       </div>
-
-      {paying && (
-        <PromoPayDialog
-          target={{ kind: "pro" }}
-          userId={userId}
-          until={pro.until}
-          onClose={() => setPaying(false)}
-          onSent={() => {
-            setPaying(false);
-            pro.reload();
-            showToast("Payment sent. An admin will check it, and you'll get a notification.");
-          }}
-        />
-      )}
     </div>
   );
 }

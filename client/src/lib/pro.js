@@ -70,6 +70,44 @@ export function useProIds() {
   return proIds;
 }
 
+// ---------------------------------------------------------------------------
+// Paying for Pro online (PLAN-monetization.md, "Paying for Pro online (Xendit)").
+// The Edge Function pro-checkout (supabase/functions/pro-checkout) opens a page
+// on Xendit, a payment company, where the person pays with GCash, Maya or QR
+// Ph; PhilFreela never sees those details. Xendit sends them back to the Pro tab
+// with ?checkout=<id>, and Pro starts once Xendit confirms the payment.
+// ---------------------------------------------------------------------------
+
+// The sentence the function sent back ({ error: "..." }), or the fallback.
+async function functionError(error, fallback) {
+  try {
+    const body = await error?.context?.json();
+    if (body?.error) return body.error;
+  } catch {
+    // The answer was not the function's own (no connection, for example).
+  }
+  return fallback;
+}
+
+// "Go Pro": returns { url } (Xendit's payment page, for the browser to go to) or { error }.
+export async function startProCheckout() {
+  const fallback = "Couldn't open the payment page. Please try again.";
+  const { data, error } = await supabase.functions.invoke("pro-checkout", { body: { action: "start" } });
+  // 404: the function is not on the server yet, so paying online isn't open.
+  if (error?.context?.status === 404) return { error: "Paying online is not open yet. Please try again later." };
+  if (error) return { error: await functionError(error, fallback) };
+  return data?.url ? { url: data.url } : { error: fallback };
+}
+
+// Back from Xendit's page: asks whether that payment went through. Returns
+// { status: "paid" | "open" | "expired" | "canceled" } or { error }.
+export async function confirmProCheckout(checkoutId) {
+  const fallback = "Couldn't check the payment. Please try again.";
+  const { data, error } = await supabase.functions.invoke("pro-checkout", { body: { action: "confirm", checkout: checkoutId } });
+  if (error) return { error: await functionError(error, fallback) };
+  return data?.status ? { status: data.status } : { error: fallback };
+}
+
 // How many offers a person has now, or null when it could not be counted.
 export async function countMyOffers(userId) {
   const { count, error } = await supabase.from("services").select("id", { count: "exact", head: true }).eq("freelancer_id", userId);

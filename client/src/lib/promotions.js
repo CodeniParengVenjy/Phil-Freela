@@ -27,7 +27,7 @@ export function plainMessage(error, fallback) {
 // The requests
 // ---------------------------------------------------------------------------
 
-const REQUEST_FIELDS = "id, user_id, kind, price_code, service_id, job_id, target_title, days, amount, reference_no, receipt_path, status, reject_reason, created_at, decided_at, starts_at, ends_at, person:profiles!promotions_user_id_fkey(id, full_name, username), decider:admins!promotions_decided_by_fkey(full_name)";
+const REQUEST_FIELDS = "id, user_id, kind, price_code, service_id, job_id, target_title, days, amount, reference_no, receipt_path, method, provider_payment_id, test_mode, status, reject_reason, created_at, decided_at, starts_at, ends_at, person:profiles!promotions_user_id_fkey(id, full_name, username), decider:admins!promotions_decided_by_fkey(full_name)";
 
 // The requests nobody has answered, the oldest first (the one that has waited longest).
 export function getWaitingRequests() {

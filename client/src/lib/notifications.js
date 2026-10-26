@@ -111,6 +111,7 @@ export const notificationLinkLabels = {
   payment_requested: "Open chat",
   price_proposed: "Open project",
   price_agreed: "Open project",
-  promotion_approved: "Open my posts",
-  promotion_rejected: "Open my posts"
+  // A Featured post links to My Offers / My Job Posts, Freelancer Pro to its Settings tab.
+  promotion_approved: "View details",
+  promotion_rejected: "View details"
 };
