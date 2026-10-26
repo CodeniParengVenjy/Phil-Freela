@@ -45,9 +45,10 @@ function TermsOfService() {
       <h5 className="text-white fw-bold mt-4 mb-2">What PhilFreela is</h5>
       <p className="text-secondary">
         PhilFreela is a platform for Filipino freelancers and clients to find each other, message, and arrange work
-        directly. <strong className="text-white">PhilFreela never holds, moves or guarantees any money.</strong> Clients pay
+        directly. <strong className="text-white">PhilFreela never holds, moves or guarantees the money between clients and freelancers.</strong> Clients pay
         freelancers directly, in their own GCash app, outside the platform. PhilFreela only keeps a record of those
-        payments (see "Payments" below), and it charges no fees.
+        payments (see "Payments" below) and never takes a cut of them. It only charges for its own extras: Featured
+        posts, Freelancer Pro and sponsored billboards (see "PhilFreela's own fees" below).
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your account</h5>
@@ -112,6 +113,26 @@ function TermsOfService() {
           that didn't arrive, or asking for payment for work you won't do can get your account suspended or banned.
         </li>
         <li>Payments made outside a project or a chat request are not recorded and are not covered by PhilFreela in any way.</li>
+      </ul>
+
+      <h5 className="text-white fw-bold mt-4 mb-2">PhilFreela's own fees</h5>
+      <ul className="text-secondary">
+        <li>
+          <strong className="text-white">Featured post:</strong> the owner of an offer or an open job post can pay to show it in a
+          separate row marked "Featured" at the top of Browse Services or Find Jobs, for 3, 7 or 14 days. It is paid in your
+          own GCash app to PhilFreela's GCash number shown on the page, and you send the reference number and a receipt
+          screenshot. An admin checks PhilFreela's GCash and approves it, or rejects it with a reason; you are told either
+          way. If a payment you really sent is rejected, send it again with the right details, or ask an admin to return it.
+        </li>
+        <li>
+          <strong className="text-white">Freelancer Pro:</strong> 30 days of up to 15 offers instead of 3, a Pro badge by your name,
+          and half-price Featured posts. It is paid on the checkout page of Xendit, a payment company, with GCash, Maya or
+          QR Ph, and it starts by itself once Xendit confirms the payment. Paying again before it ends adds the days after
+          the current end. When Pro ends, the offers you have stay, but you can't add more than 3. While PhilFreela is a
+          student project, Pro runs in Xendit's test mode: no real money is charged.
+        </li>
+        <li><strong className="text-white">Sponsored billboards:</strong> businesses arrange these with PhilFreela directly. They are always marked "Sponsored by ...".</li>
+        <li>Paying for any of these never changes the "Recommended for you" order, which stays based on ratings, completed projects and response time.</li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Ratings</h5>
@@ -184,6 +205,12 @@ function PrivacyPolicy() {
           receipt picture is kept in private storage. Admins can read a payment, and open its receipt, only when one of the
           two people sends it with a report.
         </li>
+        <li>
+          Fees you pay PhilFreela: for a Featured post, the amount, the GCash reference number and the receipt screenshot
+          (only you and PhilFreela's admins can open the receipt); for Freelancer Pro, the amount, when you paid, and
+          Xendit's payment number. The GCash, Maya or QR Ph details you use for Pro are typed on Xendit's own page, and
+          PhilFreela never sees them.
+        </li>
         <li>Basic usage information needed to run features like search and "Recommended for you" (for example, which posts you've viewed or messaged about).</li>
         <li>
           Your track record on PhilFreela: the projects you complete (title, finish date, who it was with, and the ratings),
@@ -198,8 +225,9 @@ function PrivacyPolicy() {
         relevant freelancers or jobs, verifying identities, and keeping the community safe (reviewing reports and
         enforcing suspensions or bans). Other signed-in users can find your profile by searching for your name or
         username; the search only shows your name, username, role (freelancer or client) and profile picture.
-        PhilFreela does not process, hold or move any money: clients pay freelancers in the GCash app. PhilFreela only
-        records the payments people tell it about, so both sides can see what was sent and what was received.
+        PhilFreela does not process, hold or move the money between clients and freelancers: clients pay freelancers in
+        the GCash app, and PhilFreela only records the payments people tell it about, so both sides can see what was sent
+        and what was received. The only money PhilFreela takes is its own fees (see "PhilFreela's own fees" in Part 1).
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Consent and transparency</h5>
@@ -220,8 +248,11 @@ function PrivacyPolicy() {
       <p className="text-secondary">
         We don't sell or share your data with outside companies. Your information is only handled by the services that
         run PhilFreela itself: our database and file storage provider, and the separate service that runs our AI
-        features (search, recommendations, moodboard matching, and identity verification). We'd only share information
-        with authorities if required by law.
+        features (search, recommendations, moodboard matching, and identity verification). When you pay for Freelancer
+        Pro, you pay on the page of Xendit, a payment company registered with the Bangko Sentral ng Pilipinas: PhilFreela
+        sends Xendit only the amount and a payment number of its own, never your name or email, and what you type on
+        Xendit's page is covered by Xendit's own privacy policy. We'd only share information with authorities if
+        required by law.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">How long we keep it</h5>
@@ -231,8 +262,8 @@ function PrivacyPolicy() {
         archives an account, its data is kept but the account can't be used, and it is permanently deleted 100 days
         later unless an admin restores it. A report you sent, with any chat messages you sent along with it, is
         removed if you delete your account. Your GCash details are removed with your account, and so are the payment
-        records of the payments you were on. The receipt picture files stay in private storage, where nobody can open
-        them once the record they belong to is gone.
+        records of the payments you were on, and the records of the fees you paid PhilFreela. The receipt picture files
+        stay in private storage, where nobody can open them once the record they belong to is gone.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your rights</h5>
@@ -240,7 +271,7 @@ function PrivacyPolicy() {
         In Settings, under Privacy &amp; Notifications, you can:
       </p>
       <ul className="text-secondary">
-        <li><strong className="text-white">Review</strong> what's stored about you, and <strong className="text-white">download</strong> a copy of it at any time. The copy includes your payment records and GCash details, but not the receipt pictures.</li>
+        <li><strong className="text-white">Review</strong> what's stored about you, and <strong className="text-white">download</strong> a copy of it at any time. The copy includes your payment records, your GCash details and the fees you paid PhilFreela, but not the receipt pictures.</li>
         <li><strong className="text-white">Update</strong> your profile information yourself, whenever you like.</li>
         <li><strong className="text-white">Delete</strong> your account, which removes your profile, posts, portfolio, and messages permanently. This can't be undone.</li>
       </ul>

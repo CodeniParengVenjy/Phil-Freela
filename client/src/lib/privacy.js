@@ -16,7 +16,7 @@ import { supabase } from "./supabaseClient";
 // straight from the tables their own dashboard already reads, so this adds
 // no new storage or database function.
 export async function exportMyData(userId) {
-  const [profile, verification, services, jobPosts, portfolioItems, applications, projects, bookings, ratingsGiven, ratingsReceived, payments, gcash, conversations] =
+  const [profile, verification, services, jobPosts, portfolioItems, applications, projects, bookings, ratingsGiven, ratingsReceived, payments, gcash, fees, onlinePages, pro, conversations] =
     await Promise.all([
       supabase.from("profiles").select("full_name, username, gender, account_type, description, skills, avatar_path, cover_path, email_when_offline, created_at, updated_at").eq("id", userId).maybeSingle(),
       supabase.from("identity_verifications").select("id_type, status, created_at").eq("user_id", userId).order("created_at", { ascending: false }),
@@ -35,6 +35,12 @@ export async function exportMyData(userId) {
       supabase.from("payments").select("id, project_id, conversation_id, client_id, freelancer_id, amount, note, reference_no, status, created_at, answered_at").or(`client_id.eq.${userId},freelancer_id.eq.${userId}`),
       // The person's own GCash details (a freelancer's number and name).
       supabase.from("gcash_accounts").select("gcash_number, account_name, updated_at").eq("freelancer_id", userId).maybeSingle(),
+      // Fees the person paid PhilFreela itself (Featured posts, Freelancer Pro;
+      // PLAN-monetization.md). The receipt pictures are left out here too.
+      supabase.from("promotions").select("id, kind, price_code, target_title, days, amount, method, reference_no, provider_payment_id, test_mode, status, reject_reason, created_at, decided_at, starts_at, ends_at").eq("user_id", userId).order("created_at", { ascending: false }),
+      // Pro payment pages opened on Xendit, paid or not.
+      supabase.from("online_checkouts").select("id, price_code, days, amount, test_mode, status, created_at, paid_at").eq("user_id", userId).order("created_at", { ascending: false }),
+      supabase.from("pro_members").select("pro_until").eq("user_id", userId).maybeSingle(),
       messageSummary(userId)
     ]);
 
@@ -44,7 +50,7 @@ export async function exportMyData(userId) {
       "Everything PhilFreela has about your account, under the Philippine Data Privacy Act (RA 10173). " +
       "Your government ID photos and face scan are kept only for identity verification and are not included here " +
       "(only the result is). Messages are summarized, not shown in full, since a message also belongs to the person you sent it to or received it from. " +
-      "Your payment records (amounts and GCash reference numbers) are included; the receipt pictures are not.",
+      "Your payment records (amounts and GCash reference numbers) and the fees you paid PhilFreela (Featured posts, Freelancer Pro) are included; the receipt pictures are not.",
     profile: profile.data,
     identity_verifications: verification.data || [],
     services: services.data || [],
@@ -59,6 +65,9 @@ export async function exportMyData(userId) {
     gcash_account: gcash.data
       ? { gcash_number: gcash.data.gcash_number, account_name: gcash.data.account_name, updated_at: gcash.data.updated_at }
       : null,
+    fees_paid_to_philfreela: fees.data || [],
+    online_payment_pages: onlinePages.data || [],
+    freelancer_pro_until: pro.data?.pro_until ?? null,
     conversations: conversations
   };
 }

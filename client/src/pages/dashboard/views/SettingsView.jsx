@@ -510,7 +510,7 @@ export default function SettingsView() {
                 <h6 className="text-white fw-bold mb-1">Your data</h6>
                 <p className="text-secondary fs-8 mb-3">
                   Download everything PhilFreela has about your account -- your profile, posts, portfolio, payment records,
-                  and a summary of your activity -- as one file. See our{" "}
+                  the fees you paid PhilFreela, and a summary of your activity -- as one file. See our{" "}
                   <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover-orange">Privacy Policy</a>{" "}
                   for what this does and doesn't include.
                 </p>
