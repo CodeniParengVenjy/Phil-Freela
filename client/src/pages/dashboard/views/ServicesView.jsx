@@ -8,6 +8,8 @@ import { useServiceRatings } from "../../../lib/useServiceRatings";
 import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, addPickedFiles, ownershipPassedMessage, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import { useFeatureStatus } from "../../../lib/featured";
+import { FREE_OFFERS, PRO_OFFERS, useProStatus } from "../../../lib/pro";
+import { plainMessage } from "../../../lib/promotions";
 import ServiceCard from "../components/ServiceCard";
 import FeatureControl from "../components/FeatureControl";
 import PromoPayDialog from "../components/PromoPayDialog";
@@ -41,6 +43,11 @@ export default function ServicesView() {
   // the "Feature this post" pay window (null = closed).
   const featured = useFeatureStatus(currentUserId);
   const [serviceToFeature, setServiceToFeature] = useState(null);
+  // How many offers this account may have: 3 free, 15 while Pro (the database
+  // enforces it too, see lib/pro.js). null until the Pro status was read, so a Pro
+  // member never sees "limit reached" for a moment.
+  const pro = useProStatus(currentUserId);
+  const offerLimit = pro.loaded ? (pro.until ? PRO_OFFERS : FREE_OFFERS) : null;
   // What clients rated each of your offers, for the "★ 4.5 (2)" on its row.
   const ratings = useServiceRatings((services || []).map((s) => s.id));
   // Only freelancers with a verified identity can offer services (the
@@ -56,6 +63,11 @@ export default function ServicesView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const editId = searchParams.get("edit");
   const editing = (editId && services?.find((s) => s.id === editId)) || null;
+  // At the limit nothing more can be added (changing an offer is still fine).
+  // Someone whose Pro ended with more offers than the free limit keeps them but
+  // cannot add another.
+  const offerCount = services?.length ?? null;
+  const atLimit = !editing && offerLimit !== null && offerCount !== null && offerCount >= offerLimit;
   const formTop = useRef(null);
   // Which service the form was last filled in from.
   const [filledFromId, setFilledFromId] = useState(null);
@@ -176,6 +188,7 @@ export default function ServicesView() {
       await handleSaveEdit();
       return;
     }
+    if (atLimit) return;
     setSubmitting(true);
 
     // 1. Save the service itself. Its photos and videos are added next.
@@ -194,7 +207,8 @@ export default function ServicesView() {
 
     if (error) {
       setSubmitting(false);
-      showToast("Couldn't publish that service. Please try again.");
+      // The database's own sentence when it refused for the offer limit (two tabs open, Pro just ended).
+      showToast(plainMessage(error, "Couldn't publish that service. Please try again."));
       return;
     }
 
@@ -225,6 +239,16 @@ export default function ServicesView() {
       showToast([live, passed, heldBack].filter(Boolean).join(" "));
     }
   };
+
+  // What to tell someone who is at the limit (null = nothing).
+  let limitNotice = null;
+  if (atLimit) {
+    limitNotice = offerLimit === PRO_OFFERS
+      ? `You have reached the limit of ${PRO_OFFERS} offers. Delete one to add another.`
+      : offerCount > offerLimit
+        ? `You have ${offerCount} offers. A free account can add up to ${FREE_OFFERS}, so you can't add another until you have fewer, or go Pro. The ones you have stay.`
+        : `You have ${offerCount} of ${offerLimit} offers. Go Pro to have up to ${PRO_OFFERS}.`;
+  }
 
   return (
     <section className="dashboard-view active-view">
@@ -257,6 +281,17 @@ export default function ServicesView() {
             )}
 
             {isVerified && postingBlocked && <BlockedNotice suspension={suspension} what="post services" />}
+
+            {isVerified && !postingBlocked && limitNotice && (
+              <div className="p-3 rounded-3 bg-warning bg-opacity-10 border border-warning border-opacity-50 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <span className="text-white fs-7"><i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>{limitNotice}</span>
+                {offerLimit === FREE_OFFERS && (
+                  <Link to="/dashboard/settings?tab=Freelancer%20Pro" className="btn btn-sm btn-outline-warning rounded-pill px-3 fs-8 fw-bold">
+                    <i className="bi bi-gem me-1"></i> Go Pro
+                  </Link>
+                )}
+              </div>
+            )}
 
             {isVerified && !postingBlocked && (
               <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
@@ -349,7 +384,7 @@ export default function ServicesView() {
                       Cancel
                     </button>
                   )}
-                  <button type="submit" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting}>
+                  <button type="submit" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting || atLimit}>
                     {editing ? (submitting ? "Saving..." : "Save changes") : submitting ? progress || "Publishing..." : "Upload & Publish"}
                   </button>
                 </div>
@@ -360,7 +395,14 @@ export default function ServicesView() {
 
         <div className="col-lg-4">
           <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
-            <h5 className="text-white fw-bold mb-3"><i className="bi bi-grid-fill text-warning me-2"></i> Your Active Services</h5>
+            <h5 className="text-white fw-bold mb-3 d-flex flex-wrap align-items-baseline gap-2">
+              <span><i className="bi bi-grid-fill text-warning me-2"></i> Your Active Services</span>
+              {offerLimit !== null && offerCount !== null && (
+                <small className={`fs-8 fw-semibold ${offerCount >= offerLimit ? "text-warning" : "text-secondary"}`} title="The offers you have, and how many your account can have">
+                  {offerCount} of {offerLimit} offers
+                </small>
+              )}
+            </h5>
 
             {services === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
             {services !== null && services.length === 0 && <p className="text-secondary fs-7 mb-0">You haven't posted a service yet.</p>}
