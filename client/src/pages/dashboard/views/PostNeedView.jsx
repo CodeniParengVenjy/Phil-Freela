@@ -367,8 +367,9 @@ export default function PostNeedView() {
             )}
 
             {/* Step 1: what are you posting? Two choices; the form for the one picked shows next. */}
+            {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
             {canPost && !pickedType && (
-              <div>
+              <div data-tour="post-type">
                 <p className="text-white fw-semibold fs-7 mb-2">What are you posting?</p>
                 <div className="row g-3">
                   {JOB_TYPES.map((type) => (
@@ -389,7 +390,7 @@ export default function PostNeedView() {
             {/* Step 2: the form of the type picked. A project and an ongoing job have their own wording and their own way of counting the money. */}
             {canPost && pickedType && (
               <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
-                <div>
+                <div data-tour="post-title">
                   <label className="form-label text-white fw-semibold fs-7">{pickedType.titleLabel}</label>
                   <input
                     type="text"
@@ -401,7 +402,7 @@ export default function PostNeedView() {
                   />
                 </div>
 
-                <div>
+                <div data-tour="post-category">
                   <label className="form-label text-white fw-semibold fs-7">Select category:</label>
                   <select className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2" value={category} onChange={(e) => setCategory(e.target.value)} required>
                     <option value="" disabled>Select category...</option>
@@ -409,7 +410,7 @@ export default function PostNeedView() {
                   </select>
                 </div>
 
-                <div>
+                <div data-tour="post-description">
                   <label className="form-label text-white fw-semibold fs-7">{pickedType.descriptionLabel}</label>
                   <textarea
                     className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
@@ -422,7 +423,7 @@ export default function PostNeedView() {
                   <small className="text-secondary fs-8 d-block mt-1">Bad words are hidden automatically.</small>
                 </div>
 
-                <div>
+                <div data-tour="post-skills">
                   <label htmlFor="skillInput" className="form-label text-white fw-semibold fs-7">Required skills (optional, up to {MAX_SKILLS}):</label>
                   {skills.length > 0 && (
                     <div className="d-flex flex-wrap gap-2 mb-2">
@@ -490,7 +491,7 @@ export default function PostNeedView() {
                 {/* The money. A project has one price for the whole project (nothing to
                     choose, so "per project" is just written there); an ongoing job is
                     paid per day or per month, which the client picks. */}
-                <div>
+                <div data-tour="post-budget">
                   <label htmlFor="jobBudget" className="form-label text-white fw-semibold fs-7">{pickedType.moneyLabel}</label>
                   <div className="input-group">
                     <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50">₱</span>
@@ -521,7 +522,7 @@ export default function PostNeedView() {
                   </div>
                 </div>
 
-                <div className="row g-3">
+                <div data-tour="post-dates" className="row g-3">
                   <div className="col-sm-6">
                     <label htmlFor="jobStartDate" className="form-label text-white fw-semibold fs-7">Start date:</label>
                     <input
@@ -557,7 +558,7 @@ export default function PostNeedView() {
                 </div>
 
                 <div className="row g-3">
-                  <div className="col-sm-6">
+                  <div data-tour="post-needed" className="col-sm-6">
                     <label htmlFor="jobFreelancersNeeded" className="form-label text-white fw-semibold fs-7">Freelancers needed:</label>
                     <input
                       id="jobFreelancersNeeded"
@@ -575,7 +576,7 @@ export default function PostNeedView() {
                 </div>
 
                 <div className="d-flex flex-wrap gap-2 pt-2">
-                  <button type="submit" className="btn btn-gradient-role btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow-role" disabled={submitting}>
+                  <button type="submit" data-tour="post-submit" className="btn btn-gradient-role btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow-role" disabled={submitting}>
                     {editing ? (submitting ? "Saving..." : "Save changes") : submitting ? "Publishing..." : pickedType.submit}
                   </button>
                   {editing && (
@@ -590,7 +591,7 @@ export default function PostNeedView() {
         </div>
 
         <div className="col-lg-4">
-          <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
+          <div data-tour="post-list" className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
             <h5 className="text-white fw-bold mb-3"><i className="bi bi-grid-fill text-warning me-2"></i> Your Active Listings</h5>
 
             {posts === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}

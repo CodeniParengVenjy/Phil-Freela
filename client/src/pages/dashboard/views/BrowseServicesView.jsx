@@ -204,7 +204,8 @@ export default function BrowseServicesView({ withRecommendations = false }) {
           </div>
         </div>
 
-        <div className="d-flex flex-column flex-md-row gap-2 gap-md-3 mb-3 mb-md-4">
+        {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+        <div data-tour="services-filter" className="d-flex flex-column flex-md-row gap-2 gap-md-3 mb-3 mb-md-4">
           <select
             className="category-filter form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
             value={category}

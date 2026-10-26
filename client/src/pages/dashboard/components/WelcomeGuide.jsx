@@ -339,9 +339,12 @@ export default function WelcomeGuide({ userId, accountType, blocked }) {
   const position = Math.max(1, notes.slice(0, tour.index + 1).filter((n) => fitsPerson(n, verified) && !n.optional).length);
   const hasLater = notes.some((n, i) => i > tour.index && fitsPerson(n, verified));
   const last = !hasLater && !nextPart(tour.part, verified);
+  // Back: the note shown before this one, but never one the person answered by
+  // pressing (its part is gone once pressed, like the Project / Job choice).
   const shown = tour.shown || [];
-  const back = shown.length >= 2 ? shown[shown.length - 2] : null;
-  const goBack = () => setTour({ ...tour, mode: "on", index: back, shown: shown.slice(0, -2) });
+  const earlier = shown.slice(0, -1).filter((i) => !notes[i]?.click);
+  const back = earlier.length ? earlier[earlier.length - 1] : null;
+  const goBack = () => setTour({ ...tour, mode: "on", index: back, shown: shown.slice(0, shown.lastIndexOf(back)) });
   const goNext = () => {
     if (note.waitFor) setTour({ ...tour, mode: "waiting" });
     else goTo(tour.index + 1);

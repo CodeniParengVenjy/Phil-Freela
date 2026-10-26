@@ -155,6 +155,26 @@ Client (about 30 notes):
   A part too tall for the note to fit beside it (My Projects and Your
   numbers on a phone) is outlined only down to the note, so the note never
   sits on what is outlined.
+- Step 3 (Part 3 for clients): built, 31 notes ("Full tour · 2 of 29"; the
+  camera note is on computers only and the first offer is optional): Post a
+  Project (menu link; "What are you posting?", which the client answers by
+  pressing Project or Job inside the outline; title, category, description,
+  skills with the AI's ideas, budget, dates, freelancers needed, the post
+  button, your posts), the dashboard's services (menu link, category and
+  search, search with a picture, the first offer), Bookings, Projects &
+  Resumes (applications and resumes, My projects: price, work, recording the
+  GCash payment, Done, rating), Inbox, Notifications, the account menu,
+  Profile (description, completed projects, your numbers), Settings, and the
+  end. Back never returns to a note the person answered by pressing (the
+  choice is gone once pressed); it goes to the note before it.
+
+## What is left
+
+- Run database/supabase_client_verify_schema.sql in the Supabase SQL Editor
+  (the connector was offline), then database/test_client_verify.sql.
+- One try on the live site with a brand-new account (it needs a real sign-up
+  and an admin to approve the ID).
+- The paper's eKYC section still says freelancers only.
 
 ## Build order (each one tested, committed and pushed)
 

@@ -14,6 +14,7 @@ import { fetchIsVerified, fetchLatestVerification } from "./verification";
 
 export const VERIFY_PAGE = "/dashboard/verify-identity";
 const SERVICES = "/dashboard/services";
+const POST = "/dashboard/post-need";
 const PROJECTS = "/dashboard/projects";
 const PROFILE = "/dashboard/profile";
 const SETTINGS = "/dashboard/settings";
@@ -128,7 +129,45 @@ export const TOUR = {
     retry: retryNotes,
     full: [
       { page: null, target: null, title: "You're verified!", text: "Your Verified badge is on. Now the full tour: posting your first project, finding and booking freelancers, hiring, paying, and your settings. It takes about 5 minutes.", next: "Start", skip: "Later" },
-      { page: "home", target: "account", title: "That's the tour!", text: "You can play it again any time: open this menu and choose Take the tour.", next: "Done" }
+
+      { page: null, target: "menu-post", menu: true, title: "Post a Project", text: "This is where you tell freelancers what you need. Next opens it." },
+      { page: POST, target: "post-type", click: true, scroll: true, title: "What are you posting?", text: "A project is one piece of work for one price. A job is ongoing work, paid per day or per month. Press one to see its form; nothing is posted until you press the button at the end." },
+      { page: POST, target: "post-title", scroll: true, title: "Title", text: "Say what you need in a few words, like \"Logo for my bakery\". It's the first thing freelancers read." },
+      { page: POST, target: "post-category", scroll: true, title: "Category", text: "The kind of work. Freelancers look for jobs by category, and it helps the AI show your post to the right people." },
+      { page: POST, target: "post-description", scroll: true, title: "Description", text: "Explain the work: what you need, what you'll give the freelancer, and what the result should be. Bad words are hidden automatically." },
+      { page: POST, target: "post-skills", scroll: true, title: "Skills", text: "The skills the work needs. Once there is a title and a description, the AI suggests skills: press one to add it." },
+      { page: POST, target: "post-budget", scroll: true, title: "Budget", text: "How much you'll pay, in pesos: for the whole project, or per day or per month for a job. Leave it empty to agree on it with the freelancer." },
+      { page: POST, target: "post-dates", scroll: true, title: "Dates", text: "When the work starts and when it's due. After the due date, the post stops showing to freelancers." },
+      { page: POST, target: "post-needed", scroll: true, title: "Freelancers needed", text: "How many people you want to hire. Once you've hired that many, the post is hidden from freelancers." },
+      { page: POST, target: "post-submit", scroll: true, title: "Post it", text: "When it's ready, press this and freelancers can find your post and send you their resumes." },
+      { page: POST, target: "post-list", scroll: true, title: "Your posts", text: "Your posts show here: open, filled or expired. Edit, delete or reopen them, see who you hired, or pay to Feature one so it shows first." },
+
+      { page: null, target: "menu-home", menu: true, title: "Dashboard: services", text: "Your dashboard lists freelancers' services, the ones that fit you first. Next opens it." },
+      { page: "home", target: "services-filter", scroll: true, title: "Find a service", text: "Pick a category or type a word to narrow the list." },
+      { page: "home", target: "search-picture", optional: true, title: "Search with a picture", text: "Press the camera, or drop a picture on the search box, and the AI finds freelancers whose work looks like it." },
+      { page: "home", target: "first-item", optional: true, scroll: true, title: "Open an offer", text: "Press View offer to read about a service. On its page you book it, message the freelancer, or report it." },
+
+      { page: null, target: "menu-bookings", menu: true, title: "Bookings", text: "The services you booked. Next opens it." },
+      { page: "/dashboard/bookings", target: "bookings", scroll: true, title: "My bookings", text: "Each booking waits for the freelancer to accept it, and then it becomes a project. You can cancel one that is still waiting." },
+
+      { page: null, target: "menu-projects", menu: true, title: "Projects & Resumes", text: "The people who applied to your posts, and the work you hired them for. Next opens it." },
+      { page: PROJECTS, target: "applications", scroll: true, title: "Applications & resumes", text: "Freelancers who applied to your posts. Open a resume, message the person, or hire them." },
+      { page: PROJECTS, target: "projects", scroll: true, title: "My projects", text: "The freelancers you hired. Open one to see the agreed price and the work they send, record your GCash payment, mark it done and rate the freelancer." },
+
+      { page: null, target: "menu-inbox", menu: true, title: "Inbox", text: "Your chats with freelancers. Next opens it." },
+      { page: "/dashboard/inbox", target: "inbox", scroll: true, title: "Chats", text: "Open a chat to talk with a freelancer: send files and voice messages, or make a voice or video call. New messages show a red number on the menu." },
+
+      { page: null, target: "menu-notifications", menu: true, title: "Notifications", text: "Applications, bookings, payments, your ID check and news from PhilFreela. Next opens it." },
+      { page: "/dashboard/notifications", target: "notifications", scroll: true, title: "Your notifications", text: "Each one says what happened and takes you to the right page. The number on the menu shows the ones you haven't seen." },
+
+      { page: null, target: "account", title: "Your profile and settings", text: "Both are in this menu: My Profile and Account Settings. Next opens your profile." },
+      { page: PROFILE, target: "profile-description", scroll: true, title: "Your profile", text: "This is what freelancers see about you. Your description is written in Settings; it also helps the AI recommend freelancers for you." },
+      { page: PROFILE, target: "profile-completed", scroll: true, title: "Completed projects", text: "The projects you marked done. They show freelancers that you're a real client who finishes work." },
+      { page: PROFILE, target: "profile-performance", scroll: true, title: "Your numbers", text: "From real projects and chats: projects done, the ratings freelancers gave you, and how fast you reply." },
+
+      { page: SETTINGS, target: "settings-tabs", scroll: true, title: "Settings", text: "Profile Settings: your name, picture, cover and description. Account Security: your password. Watermark Settings: the mark on your files. Appearance: dark or light, and your color. Privacy & Notifications: emails and your data." },
+
+      { page: "home", target: "account", title: "That's the tour!", text: "You know your way around now. Play this tour again any time: open this menu and choose Take the tour.", next: "Done" }
     ]
   }
 };

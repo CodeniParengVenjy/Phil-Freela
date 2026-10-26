@@ -148,7 +148,7 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           {canScanPictures && (
             <>
               <input ref={pictureInputRef} type="file" className="d-none" accept={PICTURE_TYPES.join(",")} onChange={handlePicturePick} />
-              <button type="button" className="search-scan-button" title="Search by picture" aria-label="Search by picture" onClick={() => pictureInputRef.current?.click()}>
+              <button type="button" data-tour="search-picture" className="search-scan-button" title="Search by picture" aria-label="Search by picture" onClick={() => pictureInputRef.current?.click()}>
                 <i className="bi bi-camera"></i>
               </button>
             </>
