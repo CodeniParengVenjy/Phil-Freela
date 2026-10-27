@@ -63,7 +63,7 @@ export const TOUR = {
     welcome: [
       { page: "home", target: null, when: "unverified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step. First a quick look at your dashboard, then we'll verify your identity together. Once you're verified, it shows you how to post your first service, find jobs and get paid. You can skip it any time.", next: "Start tour" },
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post services, find jobs, handle bookings and projects, and get paid. You can skip it any time.", next: "Start tour" },
-      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: My Services, Bookings, Project and Freelancer Pro. The menu button at the top left opens and closes it." },
+      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: My Services, Bookings, Project and Premium. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to look for jobs, services or people, then press Enter." },
       { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between freelancer and client, and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
@@ -83,7 +83,7 @@ export const TOUR = {
       { page: SERVICES, target: "service-skill", scroll: true, title: "Skill", text: "The main skill this offer needs. It helps clients and the AI find you." },
       { page: SERVICES, target: "service-price", scroll: true, title: "Starting price", text: "The lowest price you'd take, in pesos. Clients see it on your offer's card." },
       { page: SERVICES, target: "service-media", scroll: true, title: "Photos, videos and documents", text: "Show samples of your work as a slideshow. Your files get an invisible watermark that proves they're yours. Mark a file as Promo when it's an ad." },
-      { page: SERVICES, target: "service-publish", scroll: true, title: "Upload & Publish", text: "When it's ready, press this and clients can find your offer. A free account can have 3 offers, Freelancer Pro up to 15." },
+      { page: SERVICES, target: "service-publish", scroll: true, title: "Upload & Publish", text: "When it's ready, press this and clients can find your offer. A free account can have 3 offers, Premium up to 15." },
       { page: SERVICES, target: "service-list", scroll: true, title: "Your offers", text: "Your offers show here. Edit or delete them any time, or pay to Feature one so it shows first." },
       { page: SERVICES, target: "service-check-file", scroll: true, title: "Found your work somewhere?", text: "Check a picture, video or text you found online: PhilFreela reads its hidden watermark and shows whose work it is." },
 
@@ -115,8 +115,8 @@ export const TOUR = {
       { page: SETTINGS, target: "settings-tabs", scroll: true, title: "Settings", text: "Profile Settings: your name, picture, cover and description. Account Security: your password. Watermark Settings: the mark on your files. Appearance: dark or light, and your color. Privacy & Notifications: emails and your data." },
       { page: SETTINGS, target: "settings-gcash", scroll: true, title: "GCash Payment", text: "Add your GCash number so clients know where to pay you. PhilFreela never holds your money." },
 
-      { page: null, target: "menu-pro", menu: true, title: "Freelancer Pro", text: "More offers and a gold Pro badge, if you want them. Next opens it." },
-      { page: "/dashboard/pro", target: "pro-plan", scroll: true, title: "Free or Pro", text: "Free stays free. Pro is ₱149 for 30 days, paid online with GCash, Maya or QR Ph: up to 15 offers instead of 3, a gold Pro badge by your name, and half-price Featured posts." },
+      { page: null, target: "menu-pro", menu: true, title: "Premium", text: "More offers, a free Featured post every month and a gold Premium badge, if you want them. Next opens it." },
+      { page: "/dashboard/pro", target: "pro-plan", scroll: true, title: "Free or Premium", text: "Free stays free. Premium is ₱149 for 30 days, paid online with GCash, Maya or QR Ph: up to 15 offers instead of 3, a free Featured post every month, view counts, bigger chat files, your own watermark look, and a gold Premium badge." },
 
       { page: "home", target: null, icon: "bi-flag-fill", title: "That's the tour!", text: "You know your way around PhilFreela now. Good luck with your first client!", next: "Done" }
     ]
@@ -125,7 +125,7 @@ export const TOUR = {
     welcome: [
       { page: "home", target: null, when: "unverified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step. First a quick look at your dashboard, then we'll verify your identity together. Once you're verified, it shows you how to post a project, hire freelancers and pay them. You can skip it any time.", next: "Start tour" },
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post a project, book services, hire freelancers and pay them. You can skip it any time.", next: "Start tour" },
-      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: Bookings, Post a Project, and Projects & Resumes. The menu button at the top left opens and closes it." },
+      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: Bookings, Post a Project, Projects & Resumes and Premium. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to find freelancers and services, then press Enter. On a computer, the camera button lets you search with a picture." },
       { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between client and freelancer, and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
@@ -173,6 +173,9 @@ export const TOUR = {
       { page: PROFILE, target: "profile-performance", scroll: true, title: "Your numbers", text: "From real projects and chats: projects done, the ratings freelancers gave you, and how fast you reply." },
 
       { page: SETTINGS, target: "settings-tabs", scroll: true, title: "Settings", text: "Profile Settings: your name, picture, cover and description. Account Security: your password. Watermark Settings: the mark on your files. Appearance: dark or light, and your color. Privacy & Notifications: emails and your data." },
+
+      { page: null, target: "menu-pro", menu: true, title: "Premium", text: "A free Featured job post every month and a gold Premium badge, if you want them. Next opens it." },
+      { page: "/dashboard/pro", target: "pro-plan", scroll: true, title: "Free or Premium", text: "Free stays free. Premium is ₱149 for 30 days, paid online with GCash, Maya or QR Ph: a free Featured post every month, half-price ones after, view counts on your posts, bigger chat files, the two-color look, and a gold Premium badge." },
 
       { page: "home", target: null, icon: "bi-flag-fill", title: "That's the tour!", text: "You know your way around PhilFreela now. Good luck with your first hire!", next: "Done" }
     ]

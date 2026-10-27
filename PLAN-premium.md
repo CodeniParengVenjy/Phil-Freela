@@ -130,8 +130,14 @@ ranking (Featured posts stay in their own labelled row).
   its Xendit link; the home page thanks a sponsor who comes back. The website
   asks the function { action: "version" } first: the function deployed today
   doesn't know it, so until the user deploys pro-checkout and xendit-webhook
-  the pay window keeps the GCash steps and the link choice stays off. Still to
-  do: on Post a Project the free Featured and the view counts, and
-  the tour's words (both wait for the other session's edits of those files);
-  Featured paid on Xendit and the admin's billboard link (wait for Step 2's
-  deploy).
+  the pay window keeps the GCash steps and the link choice stays off.
+- Step 3/5, 2026-10-28: Post a Project got the same Premium perks as My
+  Services (Feature free on an open post, "N views" on every post, from the
+  layout's isPro), and the tour says Premium: the freelancer's four notes, and
+  clients get a Premium menu note and a "Free or Premium" note after Settings
+  (31 counted notes; the freelancer's stay 33). Committed with only my own
+  lines of PostNeedView.jsx and welcomeGuide.js: the other session still has
+  uncommitted changes in both (the AI-filled skills, see PLAN-ai-skills.md).
+  Still to do: the user deploys pro-checkout and xendit-webhook (turns on
+  Featured and billboards on Xendit) and runs the gradient SQL
+  (database/supabase_premium_gradient_schema.sql).

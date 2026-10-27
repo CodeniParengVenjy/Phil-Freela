@@ -6,6 +6,7 @@ import { categories, getCategory } from "../../../lib/categories";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import { fetchIsVerified } from "../../../lib/verification";
 import { useFeatureStatus } from "../../../lib/featured";
+import { claimFreeFeature, getFreeFeature, useMyViews } from "../../../lib/pro";
 import { formatDay, todayInManila } from "../../../lib/projects";
 import { BUDGET_TYPES, HIRES_FIELD, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, datesText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import BlockedNotice from "../components/BlockedNotice";
@@ -41,7 +42,7 @@ function saveErrorText(error, editing) {
 }
 
 export default function PostNeedView() {
-  const { currentUserId, showToast, suspension } = useOutletContext();
+  const { currentUserId, showToast, suspension, isPro } = useOutletContext();
   // Suspended for a posting violation (e.g. spam): the form is replaced by a notice.
   const postingBlocked = isPostingBlocked(suspension);
   // Only clients with a verified identity can post, the same as freelancers
@@ -84,6 +85,33 @@ export default function PostNeedView() {
   // the "Feature this post" pay window (null = closed).
   const featured = useFeatureStatus(currentUserId);
   const [postToFeature, setPostToFeature] = useState(null);
+  // Premium's perks on this list: how many people opened each post, and the free
+  // Featured post every 30 days ({ available } once read; null otherwise).
+  const views = useMyViews(currentUserId);
+  const [freeFeature, setFreeFeature] = useState(null);
+  const [freeRound, setFreeRound] = useState(0);
+  useEffect(() => {
+    if (!currentUserId || !isPro) return undefined;
+    let active = true;
+    getFreeFeature().then((result) => {
+      if (active) setFreeFeature(result);
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentUserId, isPro, freeRound]);
+
+  // Uses the free Featured post on one job post (the database checks it again).
+  const featureForFree = async (post) => {
+    const result = await claimFreeFeature({ job: post.id });
+    if (result.error) {
+      showToast(result.error);
+      return;
+    }
+    showToast(`"${post.title}" is Featured for 3 days, free with Premium.`);
+    featured.reload();
+    setFreeRound((n) => n + 1);
+  };
 
   // Edit mode: /dashboard/post-need?edit=<job id> (the pencil buttons link
   // here). The form is filled in from that job and "Save changes" updates it
@@ -649,6 +677,9 @@ export default function PostNeedView() {
                         waiting={featured.waiting.has(p.id)}
                         canFeature={state === "open" && canPost}
                         onFeature={() => setPostToFeature({ kind: "job", id: p.id, title: p.title })}
+                        free={isPro ? freeFeature : null}
+                        onUseFree={() => featureForFree(p)}
+                        views={views.loaded && views.premium ? views.jobs.get(p.id) ?? 0 : undefined}
                       />
                     </div>
                     {/* Brings a hidden post back: the same form, to pick new dates or more openings. */}
