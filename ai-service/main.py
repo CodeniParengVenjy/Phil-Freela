@@ -1372,12 +1372,13 @@ class SkillSuggestRequest(BaseModel):
 @app.post("/skills/suggest")
 def suggest_job_skills(body: SkillSuggestRequest, authorization: str | None = Header(default=None)):
     """The skills a job post's title and description call for, best first, as
-    standard names: {"skills": ["Logo Design", ...]}. Too little text to read
-    gives an empty list, not an error."""
+    standard names: {"skills": ["Logo Design", ...], "more": ["Brand Identity", ...]}.
+    The website fills in "skills" by itself and shows "more" to tap. Too
+    little text to read gives empty lists, not an error."""
     get_user_id(authorization)
     title = " ".join(body.title.split())[:150]
     description = " ".join(body.description.split())[:2000]
-    return {"skills": suggest_skills(title, body.category, description, have=body.have[:20])}
+    return suggest_skills(title, body.category, description, have=body.have[:20])
 
 
 class SkillMatchRequest(BaseModel):

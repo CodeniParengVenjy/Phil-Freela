@@ -192,16 +192,20 @@ export async function searchListings(query) {
 }
 
 // Post What You Need: the skills a job post's title and description call for,
-// best first, as standard names (["Logo Design", "Brand Identity"]). `have` are
-// the skills already on the post, which aren't suggested again. Too little text
-// gives []. See ai-service/skills.py.
-export async function suggestSkills({ title, category, description, have = [] }) {
+// best first, as standard names: { skills, more }. `skills` are the ones the AI
+// is sure of (the form fills them in by itself), `more` other ideas to tap
+// ({ skills: ["Logo Design"], more: ["Brand Identity"] }). Too little text gives
+// two empty lists. See ai-service/skills.py.
+export async function suggestSkills({ title, category, description }) {
   const body = await request("/skills/suggest", {
     method: "POST",
     headers: { ...(await authHeader()), "Content-Type": "application/json" },
-    body: JSON.stringify({ title, category, description, have })
+    body: JSON.stringify({ title, category, description })
   });
-  return body.skills || [];
+  // An AI service that isn't updated yet answers with `skills` only, and those
+  // aren't sure enough to be filled in by themselves: they are just ideas to tap.
+  if (!Array.isArray(body.more)) return { skills: [], more: body.skills || [] };
+  return { skills: body.skills || [], more: body.more };
 }
 
 // Tidies one skill the client typed: the standard name when it is the same skill

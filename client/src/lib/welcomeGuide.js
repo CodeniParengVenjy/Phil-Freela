@@ -141,7 +141,7 @@ export const TOUR = {
       { page: POST, target: "post-title", scroll: true, title: "Title", text: "Say what you need in a few words, like \"Logo for my bakery\". It's the first thing freelancers read." },
       { page: POST, target: "post-category", scroll: true, title: "Category", text: "The kind of work. Freelancers look for jobs by category, and it helps the AI show your post to the right people." },
       { page: POST, target: "post-description", scroll: true, title: "Description", text: "Explain the work: what you need, what you'll give the freelancer, and what the result should be. Bad words are hidden automatically." },
-      { page: POST, target: "post-skills", scroll: true, title: "Skills", text: "The skills the work needs. Once there is a title and a description, the AI suggests skills: press one to add it." },
+      { page: POST, target: "post-skills", scroll: true, title: "Skills", text: "The skills the work needs. The AI reads your title and description and fills them in by itself (the ones with a star). Remove one that doesn't fit, press another of its ideas, or type your own." },
       { page: POST, target: "post-budget", scroll: true, title: "Budget", text: "How much you'll pay, in pesos: for the whole project, or per day or per month for a job. Leave it empty to agree on it with the freelancer." },
       { page: POST, target: "post-dates", scroll: true, title: "Dates", text: "When the work starts and when it's due. After the due date, the post stops showing to freelancers." },
       { page: POST, target: "post-needed", scroll: true, title: "Freelancers needed", text: "How many people you want to hire. Once you've hired that many, the post is hidden from freelancers." },

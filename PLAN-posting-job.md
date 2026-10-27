@@ -140,6 +140,8 @@ The user asked that Post What You Need (client job posts) ask for:
    a fake AI service, laptop and phone: 171 checks in total with the earlier ones.
    Goes live when the push is deployed (the Vercel AI service redeploys from
    main; until then the form just says the AI ideas aren't available).
+   2026-10-27: the AI now FILLS IN the skills it is sure of by itself, and is
+   more accurate; see PLAN-ai-skills.md.
 
 ## Later (optional)
 

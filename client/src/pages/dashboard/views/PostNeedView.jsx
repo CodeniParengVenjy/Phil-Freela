@@ -19,6 +19,10 @@ import CensoredText from "../../../components/CensoredText";
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
 const MAX_SKILL_LENGTH = 40;
+const NO_AI_ANSWER = { skills: [], more: [] };
+
+// Whether a list of skills has this one, in any capitalization.
+const hasSkill = (list, name) => list.some((s) => s.toLowerCase() === name.toLowerCase());
 
 // description and skills are here so the Edit form can be filled in from the list.
 // hired:projects(count) is how many freelancers were hired from the post (the
@@ -58,12 +62,16 @@ export default function PostNeedView() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
-  // Required skills, shown as chips on the job page (e.g. "Video Editing").
-  const [skills, setSkills] = useState([]);
+  // Required skills, shown as chips on the job page (e.g. "Video Editing"). The
+  // AI fills them in (see `skills` below); these are the ones the client added
+  // (typed, or tapped from the AI's other ideas) and the ones they removed.
+  const [ownSkills, setOwnSkills] = useState([]);
+  const [removedSkills, setRemovedSkills] = useState([]);
   const [skillInput, setSkillInput] = useState("");
-  // The AI's skill ideas for what's written so far (tap one to add it), and
-  // whether it is working ("loading") or couldn't be reached ("offline").
-  const [suggestions, setSuggestions] = useState([]);
+  // The AI's answer for what's written so far: `skills` it is sure of (filled
+  // in by themselves) and `more` ideas to tap. suggestState: "idle" (not asked
+  // yet), "loading", "done" or "offline" (the AI couldn't be reached).
+  const [aiAnswer, setAiAnswer] = useState(NO_AI_ANSWER);
   const [suggestState, setSuggestState] = useState("idle");
   const [budget, setBudget] = useState("");
   // What the budget counts: "project", "day" or "month". The type decides which
@@ -132,7 +140,10 @@ export default function PostNeedView() {
     setTitle(editing.title);
     setCategory(editing.category);
     setDescription(editing.description);
-    setSkills(editing.skills || []);
+    setOwnSkills(editing.skills || []);
+    setRemovedSkills([]);
+    setAiAnswer(NO_AI_ANSWER);
+    setSuggestState("idle");
     setSkillInput("");
     setBudget(editing.budget ? String(editing.budget) : "");
     setBudgetType(editing.budget_type);
@@ -155,7 +166,10 @@ export default function PostNeedView() {
     setTitle("");
     setCategory("");
     setDescription("");
-    setSkills([]);
+    setOwnSkills([]);
+    setRemovedSkills([]);
+    setAiAnswer(NO_AI_ANSWER);
+    setSuggestState("idle");
     setSkillInput("");
     setBudget("");
     setBudgetType("project");
@@ -201,10 +215,9 @@ export default function PostNeedView() {
   }, [currentUserId]);
 
   // Skills handled by the AI (ai-service/skills.py), part 1: once there is a
-  // title and a description to read, it suggests the skills the job needs. It
-  // asks again, after a short pause in typing, whenever the text, the category
-  // or the chosen skills change (so a tapped skill is replaced by the next best).
-  // A slow answer to an older question is ignored (`active`).
+  // title and a description to read, it works out the skills the job needs.
+  // It reads them again, after a short pause in typing, whenever the text or
+  // the category change. A slow answer to an older question is ignored (`active`).
   const canSuggest = Boolean(pickedType) && title.trim().length >= 3 && description.trim().length >= 10;
   useEffect(() => {
     if (postingBlocked || !isVerified || !canSuggest) return undefined;
@@ -213,13 +226,13 @@ export default function PostNeedView() {
     const timer = setTimeout(async () => {
       setSuggestState("loading");
       try {
-        const names = await suggestSkills({ title, category, description, have: skills });
+        const answer = await suggestSkills({ title, category, description });
         if (!active) return;
-        setSuggestions(names);
-        setSuggestState("idle");
+        setAiAnswer(answer);
+        setSuggestState("done");
       } catch {
         if (!active) return;
-        setSuggestions([]);
+        setAiAnswer(NO_AI_ANSWER);
         setSuggestState("offline");
       }
     }, 900);
@@ -228,7 +241,22 @@ export default function PostNeedView() {
       active = false;
       clearTimeout(timer);
     };
-  }, [postingBlocked, isVerified, canSuggest, title, category, description, skills]);
+  }, [postingBlocked, isVerified, canSuggest, title, category, description]);
+
+  // The AI fills in the skills it is sure of by itself, except the ones the
+  // client removed. An old post opened for editing keeps its saved skills
+  // until its text changes: until then the AI's skills are only ideas to tap.
+  const textUnchanged = Boolean(editing) && title === editing.title && category === editing.category && description === editing.description;
+  const aiFills = canSuggest && !textUnchanged;
+  // The skills on the post: the client's own, then the AI's (at most MAX_SKILLS in all).
+  const withAiSkills = (own) => {
+    const fill = aiFills ? aiAnswer.skills.filter((name) => !hasSkill(own, name) && !hasSkill(removedSkills, name)) : [];
+    return [...own, ...fill].slice(0, MAX_SKILLS);
+  };
+  const skills = withAiSkills(ownSkills);
+  // The AI's other ideas (and the ones the client removed, so a removal can be
+  // undone with a tap), shown only while there is enough text to read.
+  const aiIdeas = canSuggest ? [...aiAnswer.skills, ...aiAnswer.more].filter((name) => !hasSkill(skills, name)) : [];
 
   // Picking a type shows that type's form. It also sets how the budget is
   // counted: a one-time project is per project only; an ongoing job is per day
@@ -246,37 +274,43 @@ export default function PostNeedView() {
   const tidySkill = async (typed) => {
     const standard = await matchSkill(typed);
     if (!standard || standard === typed) return;
-    setSkills((prev) => {
+    setOwnSkills((prev) => {
       if (!prev.includes(typed)) return prev; // the client already removed it
-      // Already there under the standard name: just drop the repeat.
-      if (prev.some((s) => s.toLowerCase() === standard.toLowerCase())) return prev.filter((s) => s !== typed);
+      // Already there under the standard name: just drop the repeat. (Only the
+      // OTHER chips count: "react" is the same as "React" and becomes it.)
+      if (hasSkill(prev.filter((s) => s !== typed), standard)) return prev.filter((s) => s !== typed);
       return prev.map((s) => (s === typed ? standard : s));
     });
   };
 
   // Adds the typed skill (or several, split by commas) as chips, skipping
-  // blanks and repeats. Returns the new list, so Post Listing can use it
-  // right away (a skill typed without pressing Enter isn't lost). A skill the
-  // AI suggested already has its standard name, so it isn't tidied again.
+  // blanks and skills already on the post. Returns the client's new list, so
+  // Post Listing can use it right away (a skill typed without pressing Enter
+  // isn't lost). A skill the AI found already has its standard name, so it
+  // isn't tidied again.
   const addSkills = (text, { tidy = true } = {}) => {
-    const next = [...skills];
+    const next = [...ownSkills];
     const added = [];
     for (const part of text.split(",")) {
       const skill = part.trim().slice(0, MAX_SKILL_LENGTH).trim();
-      const isRepeat = next.some((s) => s.toLowerCase() === skill.toLowerCase());
-      if (skill && !isRepeat && next.length < MAX_SKILLS) {
+      const onPost = withAiSkills(next);
+      if (skill && !hasSkill(onPost, skill) && onPost.length < MAX_SKILLS) {
         next.push(skill);
         added.push(skill);
       }
     }
-    setSkills(next);
+    setOwnSkills(next);
     setSkillInput("");
     if (tidy) added.forEach(tidySkill);
     return next;
   };
 
-  // The AI's ideas that aren't chosen yet, shown only while there is enough text to read.
-  const shownSuggestions = canSuggest ? suggestions.filter((name) => !skills.some((s) => s.toLowerCase() === name.toLowerCase())) : [];
+  // Removes a chip. The AI won't fill that skill in again on this form (it
+  // stays among its ideas, to tap if it was a mistake).
+  const removeSkill = (name) => {
+    setOwnSkills((prev) => prev.filter((s) => s !== name));
+    setRemovedSkills((prev) => [...prev, name]);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -299,7 +333,7 @@ export default function PostNeedView() {
       return;
     }
     setSubmitting(true);
-    const finalSkills = skillInput.trim() ? addSkills(skillInput) : skills;
+    const finalSkills = skillInput.trim() ? withAiSkills(addSkills(skillInput)) : skills;
 
     const fields = {
       title: title.trim(),
@@ -451,29 +485,55 @@ export default function PostNeedView() {
                   <small className="text-secondary fs-8 d-block mt-1">Bad words are hidden automatically.</small>
                 </div>
 
+                {/* Required skills: the AI reads the title and description and fills
+                    them in by itself (the chips with a star). The client can remove
+                    one, tap one of the AI's other ideas, or type their own. */}
                 <div data-tour="post-skills">
-                  <label htmlFor="skillInput" className="form-label text-white fw-semibold fs-7">Required skills (optional, up to {MAX_SKILLS}):</label>
+                  <label htmlFor="skillInput" className="form-label text-white fw-semibold fs-7">Required skills (filled in by the AI, up to {MAX_SKILLS}):</label>
                   {skills.length > 0 && (
                     <div className="d-flex flex-wrap gap-2 mb-2">
-                      {skills.map((skill) => (
-                        <span key={skill} className="badge bg-role text-white rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 fw-semibold">
-                          {skill}
-                          <button
-                            type="button"
-                            className="btn-close btn-close-white"
-                            style={{ fontSize: "0.55rem" }}
-                            aria-label={`Remove ${skill}`}
-                            onClick={() => setSkills((prev) => prev.filter((s) => s !== skill))}
-                          ></button>
-                        </span>
-                      ))}
+                      {skills.map((skill) => {
+                        const byAi = !hasSkill(ownSkills, skill);
+                        return (
+                          <span
+                            key={skill}
+                            className="badge bg-role text-white rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 fw-semibold"
+                            title={byAi ? "Filled in by the AI" : undefined}
+                          >
+                            {byAi && <i className="bi bi-stars" aria-hidden="true"></i>}
+                            {skill}
+                            {byAi && <span className="visually-hidden"> (filled in by the AI)</span>}
+                            <button
+                              type="button"
+                              className="btn-close btn-close-white"
+                              style={{ fontSize: "0.55rem" }}
+                              aria-label={`Remove ${skill}`}
+                              onClick={() => removeSkill(skill)}
+                            ></button>
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
+                  {/* What the AI is doing, one line at a time. */}
+                  <small className="text-secondary fs-8 d-block mb-2" aria-live="polite">
+                    {canSuggest && suggestState === "loading" ? (
+                      <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Reading your description for skills...</>
+                    ) : canSuggest && suggestState === "offline" ? (
+                      <><i className="bi bi-robot me-1"></i>The AI can't be reached right now. You can type the skills yourself.</>
+                    ) : canSuggest && suggestState === "done" && aiAnswer.skills.length + aiAnswer.more.length === 0 ? (
+                      <><i className="bi bi-robot me-1"></i>The AI found no skills in your description. Add more details about the work, or type the skills yourself.</>
+                    ) : !canSuggest && skills.length === 0 ? (
+                      <><i className="bi bi-stars text-role me-1"></i>Write the title and the description first: the AI reads them and fills in the skills.</>
+                    ) : skills.some((skill) => !hasSkill(ownSkills, skill)) ? (
+                      <><i className="bi bi-stars text-role me-1"></i>Filled in by the AI from your description. Remove any that don't fit.</>
+                    ) : null}
+                  </small>
                   <input
                     id="skillInput"
                     type="text"
                     className={inputClass}
-                    placeholder={skills.length >= MAX_SKILLS ? "You've added the most skills allowed." : "Type a skill and press Enter, e.g. Video Editing"}
+                    placeholder={skills.length >= MAX_SKILLS ? "You've added the most skills allowed." : "Add a skill yourself and press Enter, e.g. Video Editing"}
                     value={skillInput}
                     disabled={skills.length >= MAX_SKILLS}
                     // A comma (typed or pasted) turns what's written into chips.
@@ -486,32 +546,20 @@ export default function PostNeedView() {
                       }
                     }}
                   />
-                  {/* The AI reads the title and description and suggests skills; tap one to add it. */}
-                  {skills.length < MAX_SKILLS && canSuggest && (suggestState !== "idle" || shownSuggestions.length > 0) && (
-                    <div className="d-flex flex-wrap align-items-center gap-2 mt-2" aria-live="polite">
-                      {suggestState === "loading" && (
-                        <small className="text-secondary fs-8">
-                          <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Reading your description for skills...
-                        </small>
-                      )}
-                      {suggestState === "offline" && (
-                        <small className="text-secondary fs-8"><i className="bi bi-robot me-1"></i>AI skill ideas aren't available right now. You can type the skills yourself.</small>
-                      )}
-                      {suggestState !== "offline" && shownSuggestions.length > 0 && (
-                        <>
-                          <small className="text-secondary fs-8"><i className="bi bi-stars text-role me-1"></i>AI suggests:</small>
-                          {shownSuggestions.map((name) => (
-                            <button
-                              key={name}
-                              type="button"
-                              className="btn btn-sm btn-outline-role rounded-pill px-3 fs-8 fw-semibold"
-                              onClick={() => addSkills(name, { tidy: false })}
-                            >
-                              <i className="bi bi-plus-lg me-1"></i>{name}
-                            </button>
-                          ))}
-                        </>
-                      )}
+                  {/* The AI's other ideas; tap one to add it. */}
+                  {skills.length < MAX_SKILLS && suggestState !== "offline" && aiIdeas.length > 0 && (
+                    <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
+                      <small className="text-secondary fs-8"><i className="bi bi-stars text-role me-1"></i>{aiFills ? "Other skills the AI found:" : "The AI suggests:"}</small>
+                      {aiIdeas.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className="btn btn-sm btn-outline-role rounded-pill px-3 fs-8 fw-semibold"
+                          onClick={() => addSkills(name, { tidy: false })}
+                        >
+                          <i className="bi bi-plus-lg me-1"></i>{name}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
