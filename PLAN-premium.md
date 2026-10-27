@@ -138,6 +138,19 @@ ranking (Featured posts stay in their own labelled row).
   (31 counted notes; the freelancer's stay 33). Committed with only my own
   lines of PostNeedView.jsx and welcomeGuide.js: the other session still has
   uncommitted changes in both (the AI-filled skills, see PLAN-ai-skills.md).
-  Still to do: the user deploys pro-checkout and xendit-webhook (turns on
-  Featured and billboards on Xendit) and runs the gradient SQL
+  Still to do: the user's first test boost, deploying xendit-webhook (so
+  billboard payments are recorded by themselves) and the gradient SQL
   (database/supabase_premium_gradient_schema.sql).
+- 2026-10-28: pro-checkout v4 is DEPLOYED (through the Supabase connector,
+  after the user said "go"; verify_jwt off as before, files
+  pro-checkout/index.ts + _shared/payments.ts like v3). Checked: the function
+  starts (pre-flight 200 with CORS, GET 404, unsigned POST 401, only those four
+  requests in the logs, no errors); the database functions it calls exist live
+  with the same parameter names (start_feature_checkout, finish_online_checkout,
+  the billboard pair); prices feature_3/7/14 = 49/99/179 (Premium 25/50/90).
+  Not yet tried with a real sign-in: the user's first boost in Xendit test mode.
+  xendit-webhook is still v2: it already records Featured payments (it only
+  calls finish_online_checkout), and billboard payments can be recorded with
+  "Check payment" until it is updated. To roll back, redeploy the old files
+  (git show da89147~1:supabase/functions/pro-checkout/index.ts and
+  _shared/payments.ts).
