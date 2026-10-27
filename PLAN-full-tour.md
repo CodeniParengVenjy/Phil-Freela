@@ -126,8 +126,12 @@ Client (about 30 notes):
 
 ## Progress
 
-- Step 0 (clients need a verified ID to post): built and pushed (47468dc);
-  its SQL waits for the Supabase SQL Editor.
+- Step 0 (clients need a verified ID to post): built and pushed (47468dc).
+  Its SQL is live since 2026-10-27 (migration client_verify_to_post), after
+  a rolled-back trial of the rule with database/test_client_verify.sql on
+  the live database: 6 checks, 0 failed, nothing left behind. On that day
+  2 of the 19 clients were verified, and 7 of the 11 job posts came from
+  clients who are not (they stay up).
 - Step 1 (the tour engine, Part 1 and Part 2, both roles): built. Details
   that were settled while building:
   - "New account" = the sign-in's own creation time (no request), on or
@@ -172,8 +176,6 @@ Client (about 30 notes):
 
 ## What is left
 
-- Run database/supabase_client_verify_schema.sql in the Supabase SQL Editor
-  (the connector was offline), then database/test_client_verify.sql.
 - One try on the live site with a brand-new account (it needs a real sign-up
   and an admin to approve the ID).
 - The paper's eKYC section still says freelancers only.
