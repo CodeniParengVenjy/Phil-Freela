@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { getMyAnnouncements } from "../../../lib/announcements";
-import { getMyNotifications, getNotificationsSeenAt, markNotificationsSeen, notificationIcons } from "../../../lib/notifications";
+import { getMyNotifications, getNotificationsSeenAt, markNotificationsSeen, mergeNotifications, notificationIcons } from "../../../lib/notifications";
 import NotificationDialog from "../components/NotificationDialog";
 
 export default function NotificationsView() {
@@ -37,12 +37,7 @@ export default function NotificationsView() {
         return;
       }
 
-      // Announcements have no type, so they're marked here to get their own
-      // icon. "from" is the sender line under each item.
-      const merged = [
-        ...announcementsResult.data.map((a) => ({ ...a, key: `announcement-${a.id}`, type: "announcement", from: "PhilFreela Admin" })),
-        ...notificationsResult.data.map((n) => ({ ...n, key: `notification-${n.id}`, from: "PhilFreela" }))
-      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const merged = mergeNotifications(announcementsResult.data, notificationsResult.data);
 
       // Keep the time from the first load, so the "New" tags don't vanish
       // the moment this page marks everything as read.

@@ -63,7 +63,7 @@ export const TOUR = {
     welcome: [
       { page: "home", target: null, when: "unverified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step. First a quick look at your dashboard, then we'll verify your identity together. Once you're verified, it shows you how to post your first service, find jobs and get paid. You can skip it any time.", next: "Start tour" },
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post services, find jobs, handle bookings and projects, and get paid. You can skip it any time.", next: "Start tour" },
-      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Every part of PhilFreela is here: My Services, Inbox, Notifications, Bookings, Project and Freelancer Pro. The menu button at the top left opens and closes it." },
+      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: My Services, Bookings, Project and Freelancer Pro. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to look for jobs, services or people, then press Enter." },
       { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between freelancer and client, and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
@@ -99,11 +99,12 @@ export const TOUR = {
       { page: PROJECTS, target: "applications", scroll: true, title: "My Applications", text: "The jobs you applied to, and whether the client hired you." },
       { page: PROJECTS, target: "projects", scroll: true, title: "My Projects", text: "Work you were hired for. Open one to see the agreed price and due date, send your work, ask for payment by GCash and, at the end, see the client's rating." },
 
-      { page: null, target: "menu-inbox", menu: true, title: "Inbox", text: "Your chats with clients. Next opens it." },
-      { page: "/dashboard/inbox", target: "inbox", scroll: true, title: "Chats", text: "Open a chat to talk with a client: send files and voice messages, make a voice or video call, or ask for payment. New messages show a red number on the menu." },
+      // The chat icon and the bell are in the top bar, so no side menu here.
+      { page: null, target: "topbar-messages", title: "Messages", text: "Your chats with clients. A red number here shows new messages, and pressing it lists your latest chats. Next opens your Inbox." },
+      { page: "/dashboard/inbox", target: "inbox", scroll: true, title: "Chats", text: "Open a chat to talk with a client: send files and voice messages, make a voice or video call, or ask for payment." },
 
-      { page: null, target: "menu-notifications", menu: true, title: "Notifications", text: "Bookings, hires, payments, your ID check and news from PhilFreela. Next opens it." },
-      { page: "/dashboard/notifications", target: "notifications", scroll: true, title: "Your notifications", text: "Each one says what happened and takes you to the right page. The number on the menu shows the ones you haven't seen." },
+      { page: null, target: "topbar-notifications", title: "Notifications", text: "Bookings, hires, payments, your ID check and news from PhilFreela. A red number here shows the new ones, and pressing it lists the latest. Next opens all of them." },
+      { page: "/dashboard/notifications", target: "notifications", scroll: true, title: "Your notifications", text: "Each one says what happened and takes you to the right page." },
 
       { page: null, target: "account", title: "Your profile and settings", text: "Both are in this menu: My Profile and Account Settings. Next opens your profile." },
       { page: PROFILE, target: "profile-description", scroll: true, title: "Your profile", text: "This is what clients see about you. Your description is written in Settings; a clear one helps the AI match you with jobs." },
@@ -124,7 +125,7 @@ export const TOUR = {
     welcome: [
       { page: "home", target: null, when: "unverified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step. First a quick look at your dashboard, then we'll verify your identity together. Once you're verified, it shows you how to post a project, hire freelancers and pay them. You can skip it any time.", next: "Start tour" },
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post a project, book services, hire freelancers and pay them. You can skip it any time.", next: "Start tour" },
-      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Every part of PhilFreela is here: Inbox, Notifications, Bookings, Post a Project, and Projects & Resumes. The menu button at the top left opens and closes it." },
+      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: Bookings, Post a Project, and Projects & Resumes. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to find freelancers and services, then press Enter. On a computer, the camera button lets you search with a picture." },
       { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between client and freelancer, and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
@@ -159,11 +160,12 @@ export const TOUR = {
       { page: PROJECTS, target: "applications", scroll: true, title: "Applications & resumes", text: "Freelancers who applied to your posts. Open a resume, message the person, or hire them." },
       { page: PROJECTS, target: "projects", scroll: true, title: "My projects", text: "The freelancers you hired. Open one to see the agreed price and the work they send, record your GCash payment, mark it done and rate the freelancer." },
 
-      { page: null, target: "menu-inbox", menu: true, title: "Inbox", text: "Your chats with freelancers. Next opens it." },
-      { page: "/dashboard/inbox", target: "inbox", scroll: true, title: "Chats", text: "Open a chat to talk with a freelancer: send files and voice messages, or make a voice or video call. New messages show a red number on the menu." },
+      // The chat icon and the bell are in the top bar, so no side menu here.
+      { page: null, target: "topbar-messages", title: "Messages", text: "Your chats with freelancers. A red number here shows new messages, and pressing it lists your latest chats. Next opens your Inbox." },
+      { page: "/dashboard/inbox", target: "inbox", scroll: true, title: "Chats", text: "Open a chat to talk with a freelancer: send files and voice messages, or make a voice or video call." },
 
-      { page: null, target: "menu-notifications", menu: true, title: "Notifications", text: "Applications, bookings, payments, your ID check and news from PhilFreela. Next opens it." },
-      { page: "/dashboard/notifications", target: "notifications", scroll: true, title: "Your notifications", text: "Each one says what happened and takes you to the right page. The number on the menu shows the ones you haven't seen." },
+      { page: null, target: "topbar-notifications", title: "Notifications", text: "Applications, bookings, payments, your ID check and news from PhilFreela. A red number here shows the new ones, and pressing it lists the latest. Next opens all of them." },
+      { page: "/dashboard/notifications", target: "notifications", scroll: true, title: "Your notifications", text: "Each one says what happened and takes you to the right page." },
 
       { page: null, target: "account", title: "Your profile and settings", text: "Both are in this menu: My Profile and Account Settings. Next opens your profile." },
       { page: PROFILE, target: "profile-description", scroll: true, title: "Your profile", text: "This is what freelancers see about you. Your description is written in Settings; it also helps the AI recommend freelancers for you." },

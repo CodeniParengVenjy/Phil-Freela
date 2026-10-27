@@ -28,3 +28,14 @@ export function timeDividerLabel(dateString) {
   if (daysAgo < 7) return `${date.toLocaleDateString("en-US", { weekday: "long" })} ${time}`;
   return `${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} ${time}`;
 }
+
+// The short time in the top bar's lists (the bell and the chat icon):
+// "now", "5m", "3h", "6d", then the date ("Oct 3").
+export function shortTimeAgo(dateString) {
+  const minutes = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000);
+  if (!(minutes >= 1)) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)}h`;
+  if (minutes < 7 * 24 * 60) return `${Math.floor(minutes / (24 * 60))}d`;
+  return new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}

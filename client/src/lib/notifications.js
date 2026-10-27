@@ -17,7 +17,18 @@ export function getMyNotifications() {
     .order("created_at", { ascending: false });
 }
 
-// The last time the user opened their Notifications page.
+// Admin announcements and the user's own notifications in one list, newest
+// first (the Notifications page and the bell in the top bar). Announcements
+// have no type, so they're marked here to get their own icon. "from" is the
+// sender line under each item.
+export function mergeNotifications(announcements, notifications) {
+  return [
+    ...announcements.map((a) => ({ ...a, key: `announcement-${a.id}`, type: "announcement", from: "PhilFreela Admin" })),
+    ...notifications.map((n) => ({ ...n, key: `notification-${n.id}`, from: "PhilFreela" }))
+  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
+// The last time the user opened their Notifications page (or the bell's list).
 export async function getNotificationsSeenAt(userId) {
   const { data } = await supabase
     .from("profiles")

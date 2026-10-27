@@ -29,8 +29,9 @@ export function useDashboardShell() {
   // Where the signed-in user's profile picture is in the avatars bucket
   // ("" = no picture). Settings updates it after an upload.
   const [avatarPath, setAvatarPath] = useState("");
+  // Number on the chat icon in the top bar: messages not read yet.
   const [unreadCount, setUnreadCount] = useState(0);
-  // Number on the Notifications link: announcements and the user's own
+  // Number on the bell in the top bar: announcements and the user's own
   // notifications not read yet.
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   // The user's suspension while it's in effect (null = none). Pages use it

@@ -12,12 +12,12 @@ import "../theme.css";
 
 // Profile and Settings are not here: they are in the account menu at the top
 // right, and the name card below opens the profile (one way to reach each page).
+// Inbox and Notifications aren't either: they are the chat icon and the bell
+// in the top bar.
 // tour: the name the opening tour points at (components/WelcomeGuide.jsx).
 const sidebarLinks = [
   { to: "/dashboard-freelancer", end: true, icon: "bi-speedometer2", label: "Dashboard", tour: "menu-home" },
   { to: "/dashboard/services", icon: "bi-briefcase-fill", label: "My Services", tour: "menu-services" },
-  { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox", tour: "menu-inbox" },
-  { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications", tour: "menu-notifications" },
   { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings", tour: "menu-bookings" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project", tour: "menu-projects" },
   // Freelancer Pro's own page (it used to be a Settings tab).
@@ -50,7 +50,7 @@ export default function FreelancerDashboardLayout({
 
   return (
     <div className="bg-dark text-light">
-      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} />
+      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} unreadMessages={unreadCount} unreadNotifications={unreadNotifications} onNotificationsRead={refreshUnreadNotifications} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} />
 
       <div className="app-container d-flex">
         <aside data-tour="sidebar" className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
@@ -68,17 +68,11 @@ export default function FreelancerDashboardLayout({
               </NavLink>
 
               {sidebarLinks.map((link) => {
-                // Live counts: messages on Inbox, notifications on Notifications,
-                // booking requests waiting for an answer on Bookings.
-                const isInbox = link.to === "/dashboard/inbox";
-                const count = isInbox ? unreadCount
-                  : link.to === "/dashboard/notifications" ? unreadNotifications
-                  : link.to === "/dashboard/bookings" ? pendingBookings
-                  : 0;
+                // Live count: booking requests waiting for an answer on Bookings.
+                const count = link.to === "/dashboard/bookings" ? pendingBookings : 0;
                 // Freelancer Pro says "Active" while the person has it.
                 const isProLink = link.to === "/dashboard/pro";
                 const badge = isProLink ? (isPro ? "Active" : null) : count > 0 ? String(count) : null;
-                const badgeClass = isInbox ? "bg-danger" : "bg-warning text-dark";
                 return (
                   <NavLink
                     key={link.to}
@@ -89,7 +83,7 @@ export default function FreelancerDashboardLayout({
                   >
                     <i className={`bi ${link.icon}`}></i>
                     <span>{link.label}</span>
-                    {badge && <span className={`badge ${badgeClass} rounded-pill ms-auto`}>{badge}</span>}
+                    {badge && <span className="badge bg-warning text-dark rounded-pill ms-auto">{badge}</span>}
                   </NavLink>
                 );
               })}

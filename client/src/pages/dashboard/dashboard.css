@@ -148,6 +148,142 @@ svg.logo-img {
   z-index: 5;
 }
 
+/* The bell and the chat icon in the top bar (TopNavIconMenu.jsx): round
+   buttons with a red number, and a list that drops down under each. The top
+   bar stays dark in light mode too (theme.css, part 2), and so do these lists,
+   like the account menu beside them. --topbar-icon is the accent color as it
+   reads on a dark background (the menu icon uses it too). */
+.topbar-icon-btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.topbar-icon-btn:hover,
+.topbar-icon-btn:focus-visible,
+.topbar-icon-btn.show {
+  color: var(--topbar-icon);
+  border-color: var(--topbar-icon);
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+/* The red number on the icon's top right corner. */
+.topbar-count {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 2px solid #090a0f;
+  border-radius: 10px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* The list: the site's navy, 360px wide. (Two classes, so these settings win
+   over Bootstrap's dark menu colors.) */
+.dropdown-menu.topbar-panel {
+  --bs-dropdown-bg: #151b2b;
+  --bs-dropdown-link-color: #fff;
+  --bs-dropdown-link-hover-color: #fff;
+  --bs-dropdown-link-hover-bg: rgba(255, 255, 255, 0.07);
+  --bs-dropdown-link-active-color: #fff;
+  --bs-dropdown-link-active-bg: rgba(255, 255, 255, 0.1);
+  width: 360px;
+  margin-top: 10px !important;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* The items scroll inside the list when the screen is short. */
+.topbar-panel-list {
+  max-height: min(430px, calc(100vh - var(--navbar-h) - 130px));
+  max-height: min(430px, calc(100dvh - var(--navbar-h) - 130px));
+  overflow-y: auto;
+}
+
+/* One notification or chat: the icon or picture, two lines, the time. */
+.topbar-panel-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  white-space: normal;
+}
+
+.topbar-panel-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-panel-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding-top: 2px;
+}
+
+/* The dot on a new notification or an unread chat. */
+.topbar-new-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--topbar-icon);
+}
+
+.dropdown-menu.topbar-panel .topbar-panel-all {
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--topbar-icon);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Phones: the list spans the screen (8px from each edge) instead of hanging
+   off its left side. The top bar is the box it is placed in (its blur makes
+   it one), and the bar spans the screen too. */
+@media (max-width: 575.98px) {
+  .topbar-icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .dropdown-menu.topbar-panel {
+    position: fixed !important;
+    top: var(--navbar-h) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto;
+    margin-top: 4px !important;
+  }
+}
+
 .avatar-circle-sm {
   width: 32px;
   height: 32px;

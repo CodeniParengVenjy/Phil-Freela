@@ -9,11 +9,13 @@ import Avatar from "../../../components/Avatar";
 import AccentLogo from "./AccentLogo";
 import PictureSearchDialog from "./PictureSearchDialog";
 import SwitchToAdminDialog from "./SwitchToAdminDialog";
+import TopNavNotifications from "./TopNavNotifications";
+import TopNavMessages from "./TopNavMessages";
 
 // Identical between the freelancer and client dashboards -- brand, search,
-// and the account dropdown -- so both layouts share this instead of each
-// keeping their own copy.
-export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, onToggleSidebar, onSignOut, onSwitchRole, showToast, openChat }) {
+// the bell and chat icons, and the account dropdown -- so both layouts share
+// this instead of each keeping their own copy.
+export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, unreadMessages, unreadNotifications, onNotificationsRead, onToggleSidebar, onSignOut, onSwitchRole, showToast, openChat }) {
   const isVerified = useVerifiedIds([currentUserId]).has(currentUserId);
   const switchLabel = accountType === "client" ? "Switch to Freelancer" : "Switch to Client";
   const switchHref = accountType === "client" ? "/dashboard-freelancer" : "/dashboard-client";
@@ -154,7 +156,7 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           )}
         </form>
 
-        <div className="d-flex align-items-center gap-3">
+        <div className="d-flex align-items-center gap-2 gap-sm-3">
           {/* Phones have no room for the box: this opens the Search page. */}
           <NavLink to="/dashboard/search" data-tour="search" className="nav-link text-white-50 hover-orange d-md-none" aria-label="Search" title="Search">
             <i className="bi bi-search fs-5"></i>
@@ -162,6 +164,12 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           {/* (No "Join as Freelancer" / "Become a Client" / "Services" links here:
               switching roles is in the account menu below, and My Services is a
               sidebar link for freelancers. One way to reach each thing.) */}
+
+          {/* Notifications and messages, like on Facebook: a red number for the
+              unread ones, and the newest ones in a list when pressed. (They
+              are not in the side menu any more: one way to reach each thing.) */}
+          <TopNavNotifications currentUserId={currentUserId} unread={unreadNotifications} onRead={onNotificationsRead} />
+          <TopNavMessages currentUserId={currentUserId} unread={unreadMessages} />
 
           {/* Only for an admin's own user account (linked in the admin's My Profile):
               a button in plain sight on big screens, and an item in the menu below

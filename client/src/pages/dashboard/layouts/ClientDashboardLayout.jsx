@@ -10,11 +10,11 @@ import "../theme.css";
 
 // Profile and Settings are not here: they are in the account menu at the top
 // right, and the name card below opens the profile (one way to reach each page).
+// Inbox and Notifications aren't either: they are the chat icon and the bell
+// in the top bar.
 // tour: the name the opening tour points at (components/WelcomeGuide.jsx).
 const sidebarLinks = [
   { to: "/dashboard-client", end: true, icon: "bi-speedometer2", label: "Dashboard", tour: "menu-home" },
-  { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox", tour: "menu-inbox" },
-  { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications", tour: "menu-notifications" },
   { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings", tour: "menu-bookings" },
   { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project", tour: "menu-post" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes", tour: "menu-projects" }
@@ -43,7 +43,7 @@ export default function ClientDashboardLayout({
 
   return (
     <div className="bg-dark text-light">
-      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} openChat={openChat} />
+      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} unreadMessages={unreadCount} unreadNotifications={unreadNotifications} onNotificationsRead={refreshUnreadNotifications} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} openChat={openChat} />
 
       <div className="app-container d-flex">
         <aside data-tour="sidebar" className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
@@ -57,28 +57,18 @@ export default function ClientDashboardLayout({
                 </div>
               </NavLink>
 
-              {sidebarLinks.map((link) => {
-                // Live unread counts: messages on Inbox, notifications on Notifications.
-                const isInbox = link.to === "/dashboard/inbox";
-                const count = isInbox ? unreadCount
-                  : link.to === "/dashboard/notifications" ? unreadNotifications
-                  : 0;
-                const badge = count > 0 ? String(count) : null;
-                const badgeClass = isInbox ? "bg-danger" : "bg-warning text-dark";
-                return (
-                  <NavLink
-                    key={link.to}
-                    to={link.to}
-                    end={link.end}
-                    data-tour={link.tour}
-                    className={({ isActive }) => `sidebar-pill-btn${isActive ? " active" : ""}`}
-                  >
-                    <i className={`bi ${link.icon}`}></i>
-                    <span>{link.label}</span>
-                    {badge && <span className={`badge ${badgeClass} rounded-pill ms-auto`}>{badge}</span>}
-                  </NavLink>
-                );
-              })}
+              {sidebarLinks.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.end}
+                  data-tour={link.tour}
+                  className={({ isActive }) => `sidebar-pill-btn${isActive ? " active" : ""}`}
+                >
+                  <i className={`bi ${link.icon}`}></i>
+                  <span>{link.label}</span>
+                </NavLink>
+              ))}
             </div>
 
             <div className="sidebar-footer px-3 pt-3 border-top border-secondary border-opacity-25 fs-8 text-secondary">
