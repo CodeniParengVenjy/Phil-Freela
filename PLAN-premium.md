@@ -171,3 +171,14 @@ ranking (Featured posts stay in their own labelled row).
   add an allow rule for mcp__supabase__deploy_edge_function (the user does this,
   /permissions or settings) and ask again, or run
   `npx supabase functions deploy xendit-webhook --no-verify-jwt --project-ref rpopftzrrhuzjxzwobvl`.
+- 2026-10-28, still later: xendit-webhook v3 is DEPLOYED (the repo's version with the
+  billboard lookup; verify_jwt off as before; files xendit-webhook/index.ts +
+  _shared/payments.ts). After the first attempt was denied the user answered "go" to my
+  explanation and the retry went through. Checked: GET 404, a POST with no token or
+  the wrong token 401 "Not allowed.", and the deployed files read back match the repo;
+  pro-checkout is v4 and send-offline-email is untouched. The same day the user's
+  test boost showed the old v2 webhook recording a Featured payment by itself, and the
+  new one does the same for people's payments (it asks online_checkouts first), so
+  billboard payments should now record themselves too. Never run for real: the
+  billboard branch (no billboard payment link exists yet); "Check payment" stays as a
+  backup.
