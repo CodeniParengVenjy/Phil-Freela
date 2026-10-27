@@ -13,6 +13,10 @@
 //   { action: "billboard", billboard }          super admin: a payment link for a
 //                                               sponsored billboard; { url }
 //   { action: "billboard-confirm", checkout }   super admin: has the sponsor paid?
+//   { action: "version" }                       { version: 2, open }: the website asks
+//                                               before offering Featured posts and
+//                                               billboard links online (the older
+//                                               version answered "Unknown action.")
 //
 // Only a signed-in person can call it, and only for their own payment (the
 // super admin for billboard links). The price comes from the database, never
@@ -86,6 +90,9 @@ export async function handle(req: Request): Promise<Response> {
   if (!me) return json({ error: "Please sign in again." }, 401);
   const body = await req.json().catch(() => ({}));
   const open = Boolean(env("XENDIT_SECRET_KEY"));
+
+  // open: false while Xendit's key isn't set (paying online is closed).
+  if (body?.action === "version") return json({ version: 2, open });
 
   if (body?.action === "start") {
     if (!open) return json({ error: "Paying online is not open yet. Please try again later." }, 503);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { functionError } from "./checkout";
 import { supabase } from "./supabaseClient";
 
 // Premium (it was "Freelancer Pro"; PLAN-monetization.md, Step 5, and
@@ -78,18 +79,8 @@ export function useProIds() {
 // on Xendit, a payment company, where the person pays with GCash, Maya or QR
 // Ph; PhilFreela never sees those details. Xendit sends them back to the Pro
 // page (/dashboard/pro) with ?checkout=<id>, and Pro starts once Xendit confirms the payment.
+// (Featured posts and billboards are paid the same way: lib/checkout.js.)
 // ---------------------------------------------------------------------------
-
-// The sentence the function sent back ({ error: "..." }), or the fallback.
-async function functionError(error, fallback) {
-  try {
-    const body = await error?.context?.json();
-    if (body?.error) return body.error;
-  } catch {
-    // The answer was not the function's own (no connection, for example).
-  }
-  return fallback;
-}
 
 // "Go Pro": returns { url } (Xendit's payment page, for the browser to go to) or { error }.
 export async function startProCheckout() {

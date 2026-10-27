@@ -1,3 +1,4 @@
+import { useFeatureCheckoutReturn } from "../../../lib/checkout";
 import { useDashboardShell } from "../hooks/useDashboardShell";
 import FreelancerDashboardLayout from "./FreelancerDashboardLayout";
 import ClientDashboardLayout from "./ClientDashboardLayout";
@@ -9,6 +10,9 @@ import ClientDashboardLayout from "./ClientDashboardLayout";
 // whichever role-specific layout should render.
 export default function DashboardLayout() {
   const shell = useDashboardShell();
+  // Back from paying for a Featured post on Xendit's page (My Services or Post
+  // a Project with ?checkout=): says how it went in a toast.
+  useFeatureCheckoutReturn(shell.showToast);
 
   // accountType is null until the session finishes loading. Rendering
   // nothing for that instant (instead of guessing a role) is what stops the

@@ -2,16 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import CensoredText from "../../../components/CensoredText";
 import { checkReceiptFile, formatGcashNumber, formatPeso, isValidReference, normalizeReference } from "../../../lib/payments";
+import { onlinePaymentsReady, startFeatureCheckout } from "../../../lib/checkout";
 import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft, sendPromoRequest } from "../../../lib/featured";
 import { getSiteGcash, getSiteQrLink } from "../../../lib/promotions";
 import "../payments.css";
 
-// "Feature this post" (PLAN-monetization.md, Step 4): the owner of an offer or
-// an open job post pays for 3, 7 or 14 days in the Featured row. The person
-// sees PhilFreela's own GCash and the exact amount, pays in the GCash app (the
-// site is not part of that), then sends the 13-digit reference and the receipt
-// screenshot. An admin checks PhilFreela's GCash by hand and approves.
-// (Premium is paid online instead: ProPlans, "Paying for Pro online".)
+// "Feature this post" (PLAN-monetization.md, Step 4, and PLAN-premium.md): the
+// owner of an offer or an open job post pays for 3, 7 or 14 days in the
+// Featured row.
+//   Online (once the server can take it, lib/checkout.js): "Pay online" opens
+//   Xendit's page (GCash, Maya or QR Ph); the post is Featured as soon as Xendit
+//   confirms the payment, and Xendit sends the person back to this page.
+//   Until then, the GCash way: the person sees PhilFreela's own GCash and the
+//   exact amount, pays in the GCash app (the site is not part of that), then
+//   sends the 13-digit reference and the receipt screenshot, and an admin
+//   checks PhilFreela's GCash by hand and approves.
 // The parent mounts it only while it is open, so every opening starts empty.
 //   target: { kind: "service" | "job", id, title }
 //   until:  the end date (ISO text) when the post is already Featured, else empty.
@@ -19,7 +24,7 @@ import "../payments.css";
 //   onSent(): called after the request was saved.
 export default function PromoPayDialog({ target, userId, until, onClose, onSent }) {
   // undefined while loading, { error } when something could not be loaded,
-  // else { prices, gcash, qr, isPro, slots }.
+  // else { prices, gcash, qr, isPro, slots, online }.
   const [info, setInfo] = useState(undefined);
   const [code, setCode] = useState("feature_7");
   const [reference, setReference] = useState("");
@@ -33,19 +38,30 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
   useEffect(() => {
     let active = true;
     (async () => {
-      const [priceResult, gcashResult, isPro, slots] = await Promise.all([
+      const [priceResult, online, isPro, slots] = await Promise.all([
         getPromoPrices(FEATURE_CODES),
-        getSiteGcash(),
+        onlinePaymentsReady(),
         getIsPro(userId),
         getSlotsLeft(target.kind)
       ]);
       if (!active) return;
-      if (priceResult.error || gcashResult.error) {
-        setInfo({ error: priceResult.error || gcashResult.error });
+      if (priceResult.error) {
+        setInfo({ error: priceResult.error });
+        return;
+      }
+      if (online) {
+        setInfo({ prices: priceResult.prices, isPro, slots, online });
+        return;
+      }
+      // The GCash way needs PhilFreela's own number.
+      const gcashResult = await getSiteGcash();
+      if (!active) return;
+      if (gcashResult.error) {
+        setInfo({ error: gcashResult.error });
         return;
       }
       const qr = gcashResult.gcash?.qr_path ? await getSiteQrLink(gcashResult.gcash.qr_path) : null;
-      if (active) setInfo({ prices: priceResult.prices, gcash: gcashResult.gcash, qr, isPro, slots });
+      if (active) setInfo({ prices: priceResult.prices, gcash: gcashResult.gcash, qr, isPro, slots, online });
     })();
     return () => {
       active = false;
@@ -66,7 +82,7 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [sending, onClose]);
 
-  // What a Pro member pays is lower; the database works the price out again when it saves the request.
+  // What a Premium member pays is lower; the database works the price out again itself.
   const priceOf = (option) => (info?.isPro && option.pro_price != null ? option.pro_price : option.price);
   const chosen = info?.prices?.find((option) => option.code === code);
   const amount = chosen ? priceOf(chosen) : null;
@@ -95,9 +111,26 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
     setPreview(URL.createObjectURL(picked));
   };
 
+  // Online: Xendit's own page. It sends the person back to this page when they are done.
+  const payOnline = async () => {
+    setSending(true);
+    setError("");
+    const result = await startFeatureCheckout(code, target);
+    if (result.url) {
+      window.location.assign(result.url);
+      return;
+    }
+    setSending(false);
+    setError(result.error);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (sending) return;
+    if (info?.online) {
+      payOnline();
+      return;
+    }
     const cleanReference = normalizeReference(reference);
     if (!isValidReference(cleanReference)) {
       setError("The GCash reference number is 13 digits. You can copy it from your GCash receipt.");
@@ -128,7 +161,7 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
   // Why the form is not shown (null = show it).
   let blocked = null;
   if (info?.error) blocked = info.error;
-  else if (info && !info.gcash) blocked = "Payments for Featured posts are not open yet. Please try again later.";
+  else if (info && !info.online && !info.gcash) blocked ="Payments for Featured posts are not open yet. Please try again later.";
   else if (info && info.slots === 0 && !until) blocked = "All 3 Featured spots are taken right now. Try again when one ends.";
 
   return createPortal(
@@ -198,8 +231,32 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
                 );
               })}
             </div>
-            {info.isPro && <p className="text-success fs-8 mb-3"><i className="bi bi-patch-check-fill me-1"></i>Pro price.</p>}
+            {info.isPro && <p className="text-success fs-8 mb-3"><i className="bi bi-gem me-1"></i>Premium price.</p>}
 
+            {info.online ? (
+              <>
+                <span className="form-label text-white-50 fw-semibold fs-7 d-block">2. Pay online</span>
+                <div className="p-3 rounded-3 bg-black bg-opacity-25 border border-secondary border-opacity-25 mb-3">
+                  <p className="mb-2 fs-7">
+                    You pay <strong className="text-warning fs-6">{formatPeso(amount)}</strong> on Xendit's secure page with GCash, Maya or QR Ph.
+                  </p>
+                  <p className="text-secondary fs-8 mb-0">
+                    Your post is Featured as soon as the payment goes through: no receipt and no waiting for an admin.
+                    PhilFreela never sees your payment details.
+                  </p>
+                </div>
+                {error && <p className="text-danger fs-7 mb-0" role="alert">{error}</p>}
+                <div className="d-flex gap-2 justify-content-end mt-3">
+                  <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 py-2 fw-bold" onClick={onClose} disabled={sending}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending || amount === null}>
+                    <i className="bi bi-lock-fill me-1"></i>{sending ? "Opening Xendit..." : `Pay ${formatPeso(amount)} online`}
+                  </button>
+                </div>
+              </>
+            ) : (
+            <>
             <span className="form-label text-white-50 fw-semibold fs-7 d-block">2. Pay in your GCash app</span>
             <div className="p-3 rounded-3 bg-black bg-opacity-25 border border-secondary border-opacity-25 mb-3">
               <p className="mb-2 fs-7">Send exactly <strong className="text-warning fs-6">{formatPeso(amount)}</strong> to PhilFreela:</p>
@@ -258,6 +315,8 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
                 {sending ? "Sending..." : "Send payment"}
               </button>
             </div>
+            </>
+            )}
           </>
         )}
       </form>

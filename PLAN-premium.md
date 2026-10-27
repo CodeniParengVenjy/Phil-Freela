@@ -121,8 +121,17 @@ ranking (Featured posts stay in their own labelled row).
   large, and an "any color" box; without Premium they are locked with a "See
   Premium" note. The AI service draws them, and gives someone whose Premium
   ended the nearest free look (site font, white, small/large); the page shows
-  that same look, so saving keeps what the photos really get. Still to do:
-  on Post a Project the free Featured and the view counts, and
+  that same look, so saving keeps what the photos really get.
+- Step 3, Xendit for Featured and billboards (website written and pushed,
+  switches itself on after the deploy): the pay window offers "Pay online"
+  (Xendit's page, Featured at once, no receipt or admin) and the person comes
+  back to My Services / Post a Project with a toast; the admin's Billboard page
+  can save a sponsored billboard "waiting for payment" and make, copy and check
+  its Xendit link; the home page thanks a sponsor who comes back. The website
+  asks the function { action: "version" } first: the function deployed today
+  doesn't know it, so until the user deploys pro-checkout and xendit-webhook
+  the pay window keeps the GCash steps and the link choice stays off. Still to
+  do: on Post a Project the free Featured and the view counts, and
   the tour's words (both wait for the other session's edits of those files);
   Featured paid on Xendit and the admin's billboard link (wait for Step 2's
   deploy).

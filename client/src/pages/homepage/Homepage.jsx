@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { resolvePostAuthRoute } from "../../lib/profile";
 import "./homepage.css";
@@ -12,6 +12,10 @@ export default function Homepage() {
   // Where the logo goes: "/" for visitors, or the signed-in user's own
   // dashboard (freelancer, client, or admin) so they never land back here.
   const [logoHref, setLogoHref] = useState("/");
+  // A sponsor back from paying for a billboard on Xendit's page (the payment
+  // link the super admin sent them, PLAN-premium.md): ?sponsor=paid or canceled.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sponsor = searchParams.get("sponsor");
 
   useEffect(() => {
     let active = true;
@@ -48,6 +52,20 @@ export default function Homepage() {
           </div>
         </div>
       </nav>
+
+      {(sponsor === "paid" || sponsor === "canceled") && (
+        <div className="container px-lg-4 pt-3">
+          <div className={`alert ${sponsor === "paid" ? "alert-success" : "alert-warning"} d-flex align-items-start gap-2 mb-0`} role="status">
+            <i className={`bi ${sponsor === "paid" ? "bi-check-circle-fill" : "bi-info-circle-fill"} mt-1`}></i>
+            <div className="flex-grow-1">
+              {sponsor === "paid"
+                ? "Thank you for sponsoring PhilFreela! Once Xendit confirms your payment, your billboard shows on the dashboards from its first day."
+                : "The payment wasn't finished, so nothing was paid. You can try the link again, or ask PhilFreela for a new one."}
+            </div>
+            <button type="button" className="btn-close" aria-label="Close" onClick={() => setSearchParams({}, { replace: true })}></button>
+          </div>
+        </div>
+      )}
 
       <div className="offcanvas offcanvas-start bg-dark text-white border-end border-secondary border-opacity-25" tabIndex="-1" id="mobileNav" aria-labelledby="mobileNavLabel">
         <div className="offcanvas-header border-bottom border-secondary border-opacity-25">

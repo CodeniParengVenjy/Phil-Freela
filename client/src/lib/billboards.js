@@ -6,6 +6,12 @@ import { shrinkImage } from "./shrinkImage";
 // panel > Billboard). The table, its rules and the picture bucket are in
 // database/supabase_billboard_schema.sql. Who can read or change what is
 // decided by the database, not by this file.
+//
+// A sponsor can pay outside the site (the admin records the amount and the
+// GCash reference) or online (PLAN-premium.md): the super admin posts the
+// billboard with a price, the site makes a Xendit payment link to send to the
+// sponsor (lib/checkout.js), and the billboard waits (awaiting_payment, hidden
+// from users) until Xendit confirms the payment.
 
 // The same limits as the database.
 export const MAX_BILLBOARD_TITLE = 80;
@@ -70,9 +76,11 @@ export function lastDayOf(endsAt) {
 }
 
 // What a billboard is doing right now, for the admin's list: "off" (switched
-// off), "scheduled" (starts later), "ended" or "running".
+// off), "waiting" (for the sponsor's online payment), "scheduled" (starts
+// later), "ended" or "running".
 export function billboardState(billboard, now = Date.now()) {
   if (!billboard.is_active) return "off";
+  if (billboard.awaiting_payment) return "waiting";
   if (new Date(billboard.starts_at).getTime() > now) return "scheduled";
   if (billboard.ends_at && new Date(billboard.ends_at).getTime() <= now) return "ended";
   return "running";
@@ -82,12 +90,16 @@ export function billboardState(billboard, now = Date.now()) {
 // database stores. Returns { error } with a message, or the values to save:
 // { sponsorName, amount, paymentRef, startsAt, endsAt }. startsAt is null when
 // the first day is today (the database then uses the moment of posting).
-export function checkSponsorship({ sponsorName, amount, paymentRef, startDay, endDay }) {
+// payOnline: the sponsor will pay through a link, so the name and the price
+// are needed and there is no GCash reference.
+export function checkSponsorship({ sponsorName, amount, paymentRef, startDay, endDay, payOnline = false }) {
   const sponsor = sponsorName.trim();
   const amountText = amount.trim().replace(/,/g, "");
-  const reference = paymentRef.replace(/\s/g, "");
+  const reference = payOnline ? "" : paymentRef.replace(/\s/g, "");
 
-  if (!sponsor && (amountText || reference)) return { error: "Add the sponsor's name, or clear the amount and the reference." };
+  if (payOnline && !sponsor) return { error: "Add the sponsor's name for a payment link." };
+  if (payOnline && !amountText) return { error: "Add the price the sponsor pays." };
+  if (!sponsor &&(amountText || reference)) return { error: "Add the sponsor's name, or clear the amount and the reference." };
   if (sponsor.length > MAX_BILLBOARD_SPONSOR) return { error: `The sponsor's name can have up to ${MAX_BILLBOARD_SPONSOR} characters.` };
 
   const today = todayInManila();
@@ -143,7 +155,7 @@ export async function getMyBillboards() {
 
 // ---- The admin panel -------------------------------------------------------
 
-const ADMIN_COLUMNS = "id, title, message, image_path, audience, is_active, created_at, sponsor_name, amount, payment_ref, starts_at, ends_at";
+const ADMIN_COLUMNS = "id, title, message, image_path, audience, is_active, created_at, sponsor_name, amount, payment_ref, starts_at, ends_at, awaiting_payment";
 
 // Every billboard, on or off, newest first, with the admin who posted it.
 export function getAllBillboards() {
@@ -156,9 +168,10 @@ export function getAllBillboards() {
 // Posts a billboard. The picture is optional; it is redrawn as a JPEG first,
 // which makes it small and strips anything hidden inside the original file.
 // The sponsor part (sponsorName, amount, paymentRef, startsAt, endsAt) comes
-// from checkSponsorship() and is all optional. Returns { billboard }, or
-// { error } with a message to show.
-export async function postBillboard(adminId, { title, message, audience, picture, sponsorName = null, amount = null, paymentRef = null, startsAt = null, endsAt = null }) {
+// from checkSponsorship() and is all optional. awaitingPayment: the sponsor pays
+// online, so it is saved as waiting and never shows unpaid, even for a moment.
+// Returns { billboard }, or { error } with a message to show.
+export async function postBillboard(adminId, { title, message, audience, picture, sponsorName = null, amount = null, paymentRef = null, startsAt = null, endsAt = null, awaitingPayment = false }) {
   let imagePath = null;
   if (picture) {
     let jpeg;
@@ -181,6 +194,7 @@ export async function postBillboard(adminId, { title, message, audience, picture
   // No startsAt = the database starts it now.
   const fields = { title, message, audience, image_path: imagePath, created_by: adminId, sponsor_name: sponsorName, amount, payment_ref: paymentRef, ends_at: endsAt };
   if (startsAt) fields.starts_at = startsAt;
+  if (awaitingPayment) fields.awaiting_payment = true;
   const { data, error } = await supabase
     .from("dashboard_billboards")
     .insert(fields)
@@ -192,6 +206,20 @@ export async function postBillboard(adminId, { title, message, audience, picture
     return { error: "Couldn't post the billboard." };
   }
   return { billboard: data };
+}
+
+// The newest payment link of each billboard (super admin only), as a Map of
+// billboard id -> { id, status, checkout_url, amount, test_mode, created_at,
+// paid_at }. An empty Map when there are none or they couldn't be read.
+export async function getBillboardLinks() {
+  const { data, error } = await supabase
+    .from("billboard_checkouts")
+    .select("id, billboard_id, status, checkout_url, amount, test_mode, created_at, paid_at")
+    .order("created_at", { ascending: false });
+  const links = new Map();
+  if (error) return links;
+  for (const row of data) if (!links.has(row.billboard_id)) links.set(row.billboard_id, row);
+  return links;
 }
 
 // Switches a billboard on or off. Returns true when it was saved.

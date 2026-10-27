@@ -11,6 +11,13 @@ import { plainMessage } from "./promotions";
 // dates (featured_posts); the request itself goes through the database function
 // request_promotion, which checks who is asking. Premium (lib/pro.js,
 // Step 5) is paid the same way, so sendPromoRequest and getPromoPrices serve both.
+// Once the server can take it (PLAN-premium.md, lib/checkout.js), a Featured
+// post is paid online on Xendit's page instead and starts at once, with no
+// receipt and no admin check.
+
+// Sent on window when a Featured payment was confirmed after Xendit's page, so
+// every useFeatureStatus on the page reads the end dates again.
+export const FEATURED_CHANGED = "philfreela:featured-changed";
 
 // The 3 options, in the order they are shown. The codes are in the promo_prices table.
 export const FEATURE_CODES = ["feature_3", "feature_7", "feature_14"];
@@ -76,6 +83,10 @@ export function useFeatureStatus(userId) {
   }, [userId, round]);
 
   const reload = useCallback(() => setRound((value) => value + 1), []);
+  useEffect(() => {
+    window.addEventListener(FEATURED_CHANGED, reload);
+    return () => window.removeEventListener(FEATURED_CHANGED, reload);
+  }, [reload]);
   return { ...status, reload };
 }
 
