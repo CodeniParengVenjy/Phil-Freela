@@ -1,5 +1,6 @@
-// The server side of paying for Freelancer Pro online (PLAN-monetization.md,
-// "Paying for Pro online (Xendit)"), shared by pro-checkout and xendit-webhook.
+// The server side of paying online (PLAN-monetization.md, "Paying for Pro
+// online (Xendit)", and PLAN-premium.md: Premium, Featured posts and sponsored
+// billboards), shared by pro-checkout and xendit-webhook.
 // No outside packages: Xendit and PhilFreela's database are both called with
 // plain fetch(), so this is easy to read and to test.
 //
@@ -72,8 +73,8 @@ export async function db(path: string, options: { method?: string; body?: unknow
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
-    // P0001 = a sentence the database raised for the person ("Freelancer Pro is
-    // for freelancer accounts."); anything else is technical.
+    // P0001 = a sentence the database raised for the person ("You can only
+    // feature your own offers." and the like); anything else is technical.
     throw Object.assign(new Error(data?.message || `Database said ${res.status}`), { code: data?.code ?? "" });
   }
   return data;
@@ -98,6 +99,15 @@ export async function whoIsAsking(req: Request): Promise<{ id: string; token: st
 
 type Checkout = { id: string; status: string; session_id: string | null };
 
+// The two kinds of payment page (PLAN-premium.md): a person's own (Premium or
+// a Featured post: online_checkouts, finished by finish_online_checkout) and
+// a sponsor's billboard link (billboard_checkouts, finish_billboard_checkout).
+export type PaymentTable = "online_checkouts" | "billboard_checkouts";
+const FINISH: Record<PaymentTable, string> = {
+  online_checkouts: "finish_online_checkout",
+  billboard_checkouts: "finish_billboard_checkout"
+};
+
 // Xendit's own id for a payment page (ps-...). Its docs call it
 // payment_session_id, but the webhook test it sent on 2026-10-26 called it id,
 // so both names are accepted.
@@ -107,9 +117,11 @@ export const sessionIdOf = (session: { payment_session_id?: string; id?: string 
 // Asks Xendit how a payment page stands and acts on it. Nothing is ever given
 // because of what a message SAYS: only what Xendit answers here counts. A
 // COMPLETED page that really is ours is recorded once (finish_online_checkout
-// gives Pro); an expired or canceled one is marked so. Returns { status } with
-// "paid", "open", "expired" or "canceled" (and proUntil when it was just paid).
-export async function settleCheckout(checkout: Checkout) {
+// gives Premium or features the post; finish_billboard_checkout lets the
+// billboard show); an expired or canceled one is marked so. Returns { status }
+// with "paid", "open", "expired" or "canceled" (and proUntil when Premium was
+// just paid).
+export async function settleCheckout(checkout: Checkout, table: PaymentTable = "online_checkouts") {
   if (checkout.status === "paid") return { status: "paid" };
   if (checkout.status !== "open" || !checkout.session_id) return { status: checkout.status };
 
@@ -120,7 +132,7 @@ export async function settleCheckout(checkout: Checkout) {
 
   if (session.status === "COMPLETED") {
     if (session.currency !== "PHP") throw new Error(`Paid in ${session.currency}, not PHP.`);
-    const result = await db("rpc/finish_online_checkout", {
+    const result = await db(`rpc/${FINISH[table]}`, {
       method: "POST",
       body: {
         p_checkout: checkout.id,
@@ -134,7 +146,7 @@ export async function settleCheckout(checkout: Checkout) {
 
   if (session.status === "EXPIRED" || session.status === "CANCELED") {
     const status = session.status === "EXPIRED" ? "expired" : "canceled";
-    await db(`online_checkouts?id=eq.${checkout.id}&status=eq.open`, { method: "PATCH", body: { status } });
+    await db(`${table}?id=eq.${checkout.id}&status=eq.open`, { method: "PATCH", body: { status } });
     return { status };
   }
 

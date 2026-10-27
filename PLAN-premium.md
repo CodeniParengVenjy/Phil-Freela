@@ -96,3 +96,10 @@ ranking (Featured posts stay in their own labelled row).
   that shows the gradient as Premium; until then the old Appearance page
   keeps working for everyone. The older GCash request_promotion was left as
   it is (the website no longer uses it for Premium).
+- Step 2 (server): written and tested (pro-checkout: Featured posts and the
+  super admin's billboard links; xendit-webhook: billboard links too), NOT
+  deployed yet: deploying Edge Functions was refused by Claude Code's
+  permission check, so it waits for the user (deploy both, with
+  --no-verify-jwt as before). Until then the website must not send Featured
+  payments to Xendit: the old pro-checkout ignores the post and would open a
+  Premium page instead.

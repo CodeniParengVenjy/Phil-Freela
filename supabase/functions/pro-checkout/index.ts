@@ -1,27 +1,81 @@
-// pro-checkout: Freelancer Pro paid online (PLAN-monetization.md, "Paying for
-// Pro online (Xendit)"). The website calls it from the Freelancer Pro page.
+// pro-checkout: paying online through Xendit (PLAN-monetization.md, "Paying
+// for Pro online (Xendit)", and PLAN-premium.md). The website calls it for
+// Premium, for Featured posts, and (the super admin) for a sponsor's billboard.
+// (The name stayed "pro-checkout" because the live website already calls it.)
 //
-//   { action: "start" }               opens a Xendit payment page and returns
-//                                     { url } for the browser to go to
-//   { action: "confirm", checkout }   when the person comes back: asks Xendit
-//                                     whether that page was paid and returns
-//                                     { status: "paid" | "open" | "expired" | "canceled" }
+//   { action: "start" }                         Premium: opens a Xendit payment
+//                                               page and returns { url }
+//   { action: "start", code, service | job }    a Featured post (code feature_3,
+//                                               feature_7 or feature_14)
+//   { action: "confirm", checkout }             when the person comes back: asks
+//                                               Xendit whether that page was paid;
+//                                               { status: "paid" | "open" | "expired" | "canceled" }
+//   { action: "billboard", billboard }          super admin: a payment link for a
+//                                               sponsored billboard; { url }
+//   { action: "billboard-confirm", checkout }   super admin: has the sponsor paid?
 //
-// Only a signed-in person can call it, and only for their own payment. The
-// price comes from the database's price list, never from the browser, and
-// nothing personal is sent to Xendit (only the amount and our payment's id).
+// Only a signed-in person can call it, and only for their own payment (the
+// super admin for billboard links). The price comes from the database, never
+// from the browser, and nothing personal is sent to Xendit (only the amount
+// and our payment's id).
 import { CORS, db, env, isTestKey, isUuid, json, sessionIdOf, settleCheckout, whoIsAsking, xendit } from "../_shared/payments.ts";
 
 const SITE_URL = env("SITE_URL") || "https://phil-freela.pages.dev";
 
-// GCash, Maya and QR Ph only. Cards are left out: on ₱149 their fee is about ₱20.
+// GCash, Maya and QR Ph only. Cards are left out: on small amounts their fee is about ₱20.
 const CHANNELS = ["GCASH", "PAYMAYA", "QRPH"];
+const FEATURE_CODES = ["feature_3", "feature_7", "feature_14"];
 
-// The database's own sentence when it refused (not a freelancer account,
-// suspended, too many pages in an hour), else a plain one.
+// The database's own sentence when it refused (suspended, not the owner, too
+// many pages in an hour...), else a plain one.
 function plain(error: unknown, fallback: string): string {
   const e = error as { code?: string; message?: string };
   return e?.code === "P0001" && e.message ? e.message : fallback;
+}
+
+const FAILED = "Couldn't open the payment page. Please try again.";
+
+// Makes the Xendit page for a payment row and remembers it (with the service
+// role: the browser can't write this). Returns the page's address, or null.
+async function openXenditPage(
+  table: "online_checkouts" | "billboard_checkouts",
+  row: { id: string; amount: number; label: string },
+  back: string,
+  cancel: string
+): Promise<string | null> {
+  const secretKey = env("XENDIT_SECRET_KEY");
+  let session: { payment_session_id?: string; id?: string; payment_link_url?: string };
+  try {
+    session = await xendit("POST", "/sessions", {
+      reference_id: row.id,
+      session_type: "PAY",
+      mode: "PAYMENT_LINK",
+      amount: Number(row.amount),
+      currency: "PHP",
+      country: "PH",
+      allowed_payment_channels: CHANNELS,
+      description: `PhilFreela: ${row.label}`,
+      success_return_url: back,
+      cancel_return_url: cancel
+    });
+  } catch {
+    return null;
+  }
+  const sessionId = sessionIdOf(session);
+  if (!sessionId || !session.payment_link_url) {
+    console.error("Xendit's answer had no page id or address:", JSON.stringify(session));
+    return null;
+  }
+  try {
+    await db(`${table}?id=eq.${row.id}`, {
+      method: "PATCH",
+      body: { session_id: sessionId, checkout_url: session.payment_link_url, test_mode: isTestKey(secretKey) }
+    });
+  } catch (error) {
+    console.error("Saving the Xendit page failed:", error);
+    return null;
+  }
+  return session.payment_link_url;
 }
 
 export async function handle(req: Request): Promise<Response> {
@@ -31,55 +85,36 @@ export async function handle(req: Request): Promise<Response> {
   const me = await whoIsAsking(req);
   if (!me) return json({ error: "Please sign in again." }, 401);
   const body = await req.json().catch(() => ({}));
+  const open = Boolean(env("XENDIT_SECRET_KEY"));
 
   if (body?.action === "start") {
-    const secretKey = env("XENDIT_SECRET_KEY");
-    if (!secretKey) return json({ error: "Paying online is not open yet. Please try again later." }, 503);
+    if (!open) return json({ error: "Paying online is not open yet. Please try again later." }, 503);
+    const featuring = body.code !== undefined;
+    if (featuring) {
+      if (!FEATURE_CODES.includes(body.code)) return json({ error: "Choose one of the listed options." }, 400);
+      if ((body.service === undefined) === (body.job === undefined)) return json({ error: "Choose one post to feature." }, 400);
+      if (!isUuid(body.service ?? body.job)) return json({ error: "That post was not found." }, 404);
+    }
 
-    // 1. The database checks the person and saves the page as open (as them).
+    // 1. The database checks the person (and the post) and saves the page as open (as them).
     let started: { id: string; amount: number; days: number; label: string };
     try {
-      started = await db("rpc/start_online_checkout", { method: "POST", body: { p_code: "pro_30" }, token: me.token });
+      started = featuring
+        ? await db("rpc/start_feature_checkout", {
+          method: "POST",
+          body: { p_code: body.code, p_service: body.service ?? null, p_job: body.job ?? null },
+          token: me.token
+        })
+        : await db("rpc/start_online_checkout", { method: "POST", body: { p_code: "pro_30" }, token: me.token });
     } catch (error) {
-      return json({ error: plain(error, "Couldn't open the payment page. Please try again.") }, 400);
+      return json({ error: plain(error, FAILED) }, 400);
     }
 
-    // 2. Xendit makes the payment page. It sends the person back to the Pro page.
-    const back = `${SITE_URL}/dashboard/pro?checkout=${started.id}`;
-    let session: { payment_session_id?: string; id?: string; payment_link_url?: string };
-    try {
-      session = await xendit("POST", "/sessions", {
-        reference_id: started.id,
-        session_type: "PAY",
-        mode: "PAYMENT_LINK",
-        amount: Number(started.amount),
-        currency: "PHP",
-        country: "PH",
-        allowed_payment_channels: CHANNELS,
-        description: `PhilFreela: ${started.label}`,
-        success_return_url: back,
-        cancel_return_url: `${back}&canceled=1`
-      });
-    } catch {
-      return json({ error: "Couldn't open the payment page. Please try again." }, 502);
-    }
-    const sessionId = sessionIdOf(session);
-    if (!sessionId || !session.payment_link_url) {
-      console.error("Xendit's answer had no page id or address:", JSON.stringify(session));
-      return json({ error: "Couldn't open the payment page. Please try again." }, 502);
-    }
-
-    // 3. Remember which Xendit page it is (with the service role: the browser can't write this).
-    try {
-      await db(`online_checkouts?id=eq.${started.id}`, {
-        method: "PATCH",
-        body: { session_id: sessionId, checkout_url: session.payment_link_url, test_mode: isTestKey(secretKey) }
-      });
-    } catch (error) {
-      console.error("Saving the Xendit page failed:", error);
-      return json({ error: "Couldn't open the payment page. Please try again." }, 502);
-    }
-    return json({ url: session.payment_link_url });
+    // 2. Xendit makes the payment page, which sends the person back to the page they came from.
+    const page = !featuring ? "pro" : body.job ? "post-need" : "services";
+    const back = `${SITE_URL}/dashboard/${page}?checkout=${started.id}`;
+    const url = await openXenditPage("online_checkouts", started, back, `${back}&canceled=1`);
+    return url ? json({ url }) : json({ error: FAILED }, 502);
   }
 
   if (body?.action === "confirm") {
@@ -91,6 +126,39 @@ export async function handle(req: Request): Promise<Response> {
       return json(await settleCheckout(rows[0]));
     } catch (error) {
       console.error("Checking the payment failed:", error);
+      return json({ error: "Couldn't check the payment. Please try again." }, 502);
+    }
+  }
+
+  if (body?.action === "billboard") {
+    if (!open) return json({ error: "Paying online is not open yet. Please try again later." }, 503);
+    if (!isUuid(body.billboard)) return json({ error: "That billboard was not found." }, 404);
+    // The database checks that this is the super admin (as them) and saves the link as open.
+    let started: { id: string; amount: number; title: string; sponsor: string };
+    try {
+      started = await db("rpc/start_billboard_checkout", { method: "POST", body: { p_billboard: body.billboard }, token: me.token });
+    } catch (error) {
+      return json({ error: plain(error, FAILED) }, 400);
+    }
+    // The sponsor has no PhilFreela account: after paying they land on the home page.
+    const url = await openXenditPage(
+      "billboard_checkouts",
+      { id: started.id, amount: started.amount, label: `Sponsored billboard: ${started.title}` },
+      `${SITE_URL}/?sponsor=paid`,
+      `${SITE_URL}/?sponsor=canceled`
+    );
+    return url ? json({ url, checkout: started.id }) : json({ error: FAILED }, 502);
+  }
+
+  if (body?.action === "billboard-confirm") {
+    if (!isUuid(body.checkout)) return json({ error: "That payment was not found." }, 404);
+    // Read AS the person: only the super admin can see billboard payments.
+    const rows = await db(`billboard_checkouts?id=eq.${body.checkout}&select=id,status,session_id`, { token: me.token });
+    if (!rows?.length) return json({ error: "That payment was not found." }, 404);
+    try {
+      return json(await settleCheckout(rows[0], "billboard_checkouts"));
+    } catch (error) {
+      console.error("Checking the billboard payment failed:", error);
       return json({ error: "Couldn't check the payment. Please try again." }, 502);
     }
   }
