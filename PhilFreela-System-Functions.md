@@ -19,7 +19,7 @@ The paper lists HTML/CSS/JavaScript + Bootstrap 5, PHP, MySQL, Python AI modules
 | Frontend | React 19 + Vite, Bootstrap 5 (`client/`), live on Cloudflare Pages (phil-freela.pages.dev) |
 | Backend and database | Supabase (Postgres, Auth, Storage, row-level security; pgvector is enabled) |
 | AI modules | Python FastAPI service (`ai-service/`), live on Vercel's free plan; the website reaches it at `/ai` |
-| Online payment (PhilFreela's own Freelancer Pro fee only) | Xendit Payment Sessions (GCash, Maya, QR Ph) through two Supabase Edge Functions (`supabase/functions/pro-checkout`, `xendit-webhook`); test mode until the business is verified |
+| Online payment (PhilFreela's own Premium fee only) | Xendit Payment Sessions (GCash, Maya, QR Ph) through two Supabase Edge Functions (`supabase/functions/pro-checkout`, `xendit-webhook`); test mode until the business is verified |
 
 ## Feature summary
 
@@ -123,8 +123,8 @@ Added 2026-10-25/26 (plan: `PLAN-monetization.md`). PhilFreela never takes a cut
 | What | Price | How it is paid |
 |---|---|---|
 | Sponsored billboard on the dashboards | agreed with the sponsor | paid to PhilFreela directly; a super admin posts the banner with its dates, marked "Sponsored by ...", and records the amount |
-| Featured post (an offer or an open job post, in a separate labeled row of at most 3) | 3 / 7 / 14 days: ₱49 / ₱99 / ₱179 (Pro members ₱25 / ₱50 / ₱90) | GCash to PhilFreela's own number with the reference and a receipt; an admin checks PhilFreela's GCash and approves |
-| Freelancer Pro (15 offers instead of 3, a Pro badge, half-price Featured) | ₱149 for 30 days | online on Xendit's checkout page (GCash, Maya or QR Ph); Pro starts by itself once Xendit confirms the payment; test mode (pretend money) until the business is verified |
+| Featured post (an offer or an open job post, in a separate labeled row of at most 3) | 3 / 7 / 14 days: ₱49 / ₱99 / ₱179 (Premium members ₱25 / ₱50 / ₱90, and one free 3-day post every 30 days) | GCash to PhilFreela's own number with the reference and a receipt; an admin checks PhilFreela's GCash and approves |
+| Premium, for clients and freelancers (it was "Freelancer Pro"; plan `PLAN-premium.md`): a gold Premium badge by their name that everyone sees, half-price Featured posts and one free 3-day Featured post every 30 days, view counts (how many people opened their offers, job posts and profile), chat files up to 50 MB instead of 10 MB, the two-color (gradient) look; freelancers also get 15 offers instead of 3 and their watermark in any color, 4 fonts and 5 sizes | ₱149 for 30 days | online on Xendit's checkout page (GCash, Maya or QR Ph); Premium starts by itself once Xendit confirms the payment; test mode (pretend money) until the business is verified |
 
 Paid placement never changes the "Recommended for you" order (Feature 1 ranks by credibility): Featured posts sit in their own labeled row. Admins see every fee in Admin > Site > Promotions and the totals on the Overview (test-mode payments are left out).
 
