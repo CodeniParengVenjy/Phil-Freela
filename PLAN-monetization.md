@@ -290,7 +290,7 @@ GCash + receipt + admin check flow for now. For Pro the checkout REPLACES the
 GCash + receipt way (one clear way to pay; the Pro mode of PromoPayDialog goes).
 
 How it works:
-1. Settings > Freelancer Pro > Go Pro calls the Edge Function `pro-checkout`
+1. Freelancer Pro (Settings tab at first, its own page since 2026-10-27) > Go Pro calls the Edge Function `pro-checkout`
    (action start). It checks who is asking, calls `start_online_checkout('pro_30')`
    as that person (freelancer account, not suspended, price from the price list),
    creates a Xendit Payment Session (POST https://api.xendit.co/sessions,
@@ -298,8 +298,9 @@ How it works:
    reference_id = our checkout id, no personal data sent) and returns its
    payment_link_url. The browser goes to Xendit's page.
 2. The person pays on Xendit's page (test mode: pretend money).
-3. Xendit sends them back to /dashboard/settings?tab=Freelancer Pro&checkout=<id>.
-   The tab asks `pro-checkout` (action confirm), which asks Xendit
+3. Xendit sends them back to /dashboard/pro?checkout=<id> (at first
+   /dashboard/settings?tab=Freelancer Pro&checkout=<id>, which still works).
+   The page asks `pro-checkout` (action confirm), which asks Xendit
    (GET /sessions/{id}) whether the session is COMPLETED; if so it calls
    `finish_online_checkout` (server only): records the payment once, starts or
    extends Pro, sends the notification.
@@ -326,6 +327,8 @@ code): XENDIT_SECRET_KEY, XENDIT_WEBHOOK_TOKEN. Webhook URL to set in Xendit:
 https://rpopftzrrhuzjxzwobvl.supabase.co/functions/v1/xendit-webhook
 
 LIVE AND WORKING 2026-10-26: migration online_pro_payments, functions pro-checkout and xendit-webhook (v2 accepts Xendit's page id as "id" or "payment_session_id"; Xendit's webhook test was answered 200, so the token matches), website cd85ae4 + b4fb40b. The user's first real test-mode payment went through on the live site: Xendit's page, back to "Payment received", Pro until Nov 25, 2026, 2 of 15 offers. On the user's request the Pro tab was then redesigned as two pricing cards, Free and Pro, with ticks, crosses and one button each (pro.css).
+
+Moved out of Settings 2026-10-27 (the user: "why its in the settings? can you make it change position in the burger menu", "and thinking I have badge as well"): Freelancer Pro is its own page, /dashboard/pro (views/ProView.jsx around components/ProPlans.jsx, renamed from ProSettings.jsx), the last item of the freelancer's side menu (the burger menu on a phone), with "Active" on it while the person has Pro. The gold Pro badge also shows by the person's own name at the top of that menu, and appears at once after paying. Settings has no Freelancer Pro tab any more; old links to it (?tab=Freelancer Pro, with ?checkout= and &canceled=1) open the new page. pro-checkout now sends Xendit's return to /dashboard/pro, and the "Payment received" notification links there. The full tour's Pro note now points at the menu item and the plan cards.
 
 Parts: (1) database, (2) the two Edge Functions in supabase/functions/ (no
 outside packages, so they are tested here with Node against a pretend Xendit),

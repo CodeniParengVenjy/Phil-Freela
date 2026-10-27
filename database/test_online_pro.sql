@@ -155,9 +155,9 @@ begin
 
   select count(*) into n from public.user_notifications
    where user_id = f and type = 'promotion_approved' and title = 'Payment received'
-     and link = '/dashboard/settings?tab=Freelancer%20Pro' and message like 'Thank you! You are a Freelancer Pro until %';
+     and link = '/dashboard/pro' and message like 'Thank you! You are a Freelancer Pro until %';
   select count(*) into zz from public.user_notifications where user_id = f and type = 'promotion_approved';
-  res := res || case when n = 1 and zz = notif0 + 1 then 'PASS' else 'FAIL (' || n || ')' end || ' the freelancer is told, with a link to the Pro tab' || E'\n';
+  res := res || case when n = 1 and zz = notif0 + 1 then 'PASS' else 'FAIL (' || n || ')' end || ' the freelancer is told, with a link to the Pro page' || E'\n';
 
   -- The same news a second time changes nothing.
   j := public.finish_online_checkout(co1, 'py-test-1', 149, true);

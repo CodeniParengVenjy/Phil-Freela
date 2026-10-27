@@ -210,7 +210,7 @@ begin
   insert into public.user_notifications (user_id, type, title, message, link)
   values (co.user_id, 'promotion_approved', 'Payment received',
           'Thank you! You are a Freelancer Pro until ' || until_text || '.',
-          '/dashboard/settings?tab=Freelancer%20Pro');
+          '/dashboard/pro');
 
   return json_build_object('pro_until', new_end, 'already', false);
 end;

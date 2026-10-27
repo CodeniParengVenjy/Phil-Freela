@@ -287,7 +287,7 @@ export default function ServicesView() {
               <div className="p-3 rounded-3 bg-warning bg-opacity-10 border border-warning border-opacity-50 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <span className="text-white fs-7"><i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>{limitNotice}</span>
                 {offerLimit === FREE_OFFERS && (
-                  <Link to="/dashboard/settings?tab=Freelancer%20Pro" className="btn btn-sm btn-outline-warning rounded-pill px-3 fs-8 fw-bold">
+                  <Link to="/dashboard/pro" className="btn btn-sm btn-outline-warning rounded-pill px-3 fs-8 fw-bold">
                     <i className="bi bi-gem me-1"></i> Go Pro
                   </Link>
                 )}

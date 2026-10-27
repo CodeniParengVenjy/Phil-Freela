@@ -1,5 +1,5 @@
-/* Settings > Freelancer Pro: the Free and Pro plan cards side by side
-   (ProSettings.jsx). The Pro card uses the person's own accent color
+/* The Freelancer Pro page: the Free and Pro plan cards side by side
+   (ProPlans.jsx). The Pro card uses the person's own accent color
    (--accent-role), so it follows their role, the color they picked and
    light/dark mode like the rest of the dashboard. */
 

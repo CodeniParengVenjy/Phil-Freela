@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline, saveUsername, noAutofill } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
 import { COVER_CROP, PICTURE_CROP, checkAvatarFile, fetchCoverPath, removeCover, uploadAvatar, uploadCover } from "../../../lib/avatar";
@@ -12,20 +12,20 @@ import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
 import GcashSettingsForm from "../components/GcashSettingsForm";
-import ProSettings from "../components/ProSettings";
 
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
 // The tabs the opening tour points at by name (components/WelcomeGuide.jsx).
-const TOUR_TABS = { "GCash Payment": "settings-gcash", "Freelancer Pro": "settings-pro" };
+const TOUR_TABS = { "GCash Payment": "settings-gcash" };
 
 export default function SettingsView() {
   const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, setUsername, showToast } = useOutletContext();
   const navigate = useNavigate();
-  // Only freelancers get paid and can go Pro, so only they have the GCash Payment and Freelancer Pro tabs.
-  const menuItems = accountType === "freelancer" ? [...subNavItems, "GCash Payment", "Freelancer Pro"] : subNavItems;
-  // A link can open a tab: /dashboard/settings?tab=Freelancer Pro (the offer limit
-  // notice in My Offers does). It is worked out here, not copied into state, because
-  // the account type (and so the freelancer-only tabs) may arrive after the page opens.
+  // Only freelancers get paid, so only they have the GCash Payment tab. (Freelancer
+  // Pro has its own page in the menu now: views/ProView.jsx.)
+  const menuItems = accountType === "freelancer" ? [...subNavItems, "GCash Payment"] : subNavItems;
+  // A link can open a tab: /dashboard/settings?tab=GCash%20Payment. It is worked
+  // out here, not copied into state, because the account type (and so the
+  // freelancer-only tabs) may arrive after the page opens.
   const [searchParams] = useSearchParams();
   const wantedTab = searchParams.get("tab");
   const [pickedTab, setActiveSubNav] = useState(null);
@@ -283,6 +283,16 @@ export default function SettingsView() {
     showToast("Settings saved successfully!");
   };
 
+  // Freelancer Pro used to be a tab here. Old links to it (and Xendit's return
+  // link for a payment page opened before the move) open its own page now,
+  // keeping the rest of the address (?checkout=..., &canceled=1).
+  if (wantedTab === "Freelancer Pro") {
+    const rest = new URLSearchParams(searchParams);
+    rest.delete("tab");
+    const query = rest.toString();
+    return <Navigate to={`/dashboard/pro${query ? `?${query}` : ""}`} replace />;
+  }
+
   return (
     <section className="dashboard-view active-view">
       <div className="glass-card rounded-4 p-4 p-md-5 border border-secondary border-opacity-25">
@@ -442,13 +452,6 @@ export default function SettingsView() {
                 <GcashSettingsForm userId={currentUserId} showToast={showToast} />
               ) : (
                 <p className="text-secondary fs-7">Only freelancers receive payments, so there's nothing to set here.</p>
-              )
-            ) : activeSubNav === "Freelancer Pro" ? (
-              // The fee PhilFreela earns from freelancers (PLAN-monetization.md, Step 5). Freelancers only.
-              accountType === "freelancer" && currentUserId ? (
-                <ProSettings userId={currentUserId} />
-              ) : (
-                <p className="text-secondary fs-7">Only freelancers can go Pro, so there's nothing to set here.</p>
               )
             ) : activeSubNav === "Appearance" ? (
               currentUserId

@@ -5,6 +5,8 @@ import SuspensionBanner from "../components/SuspensionBanner";
 import DashboardBillboard from "../components/DashboardBillboard";
 import GetStartedCard from "../components/GetStartedCard";
 import Avatar from "../../../components/Avatar";
+import ProBadge from "../../../components/ProBadge";
+import { useProStatus } from "../../../lib/pro";
 import "../dashboard.css";
 import "../theme.css";
 
@@ -17,7 +19,9 @@ const sidebarLinks = [
   { to: "/dashboard/inbox", icon: "bi-chat-left-text-fill", label: "Inbox", tour: "menu-inbox" },
   { to: "/dashboard/notifications", icon: "bi-bell-fill", label: "Notifications", tour: "menu-notifications" },
   { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings", tour: "menu-bookings" },
-  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project", tour: "menu-projects" }
+  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project", tour: "menu-projects" },
+  // Freelancer Pro's own page (it used to be a Settings tab).
+  { to: "/dashboard/pro", icon: "bi-gem", label: "Freelancer Pro", tour: "menu-pro" }
 ];
 
 // Receives the shared session/toast/preview/chat state as props from
@@ -39,6 +43,10 @@ export default function FreelancerDashboardLayout({
   // The welcome banner belongs on the dashboard home only, not every
   // sub-page (chat, inbox, profile, ...) that reuses this same layout.
   const isDashboardHome = useLocation().pathname === "/dashboard-freelancer";
+  // Whether this freelancer has Pro right now: the gold Pro badge by their name
+  // and "Active" on the menu item. The Pro page calls refreshPro after a payment.
+  const pro = useProStatus(currentUserId);
+  const isPro = Boolean(pro.until);
 
   return (
     <div className="bg-dark text-light">
@@ -52,7 +60,10 @@ export default function FreelancerDashboardLayout({
                 <Avatar path={avatarPath} name={displayName} size={40} />
                 <div className="d-flex flex-column overflow-hidden">
                   <span className="text-white fw-bold fs-7 text-truncate">{displayName}</span>
-                  <span className="role-badge">Freelancer</span>
+                  <span className="d-flex align-items-center gap-1">
+                    <span className="role-badge">Freelancer</span>
+                    <ProBadge pro={isPro} />
+                  </span>
                 </div>
               </NavLink>
 
@@ -64,7 +75,9 @@ export default function FreelancerDashboardLayout({
                   : link.to === "/dashboard/notifications" ? unreadNotifications
                   : link.to === "/dashboard/bookings" ? pendingBookings
                   : 0;
-                const badge = count > 0 ? String(count) : null;
+                // Freelancer Pro says "Active" while the person has it.
+                const isProLink = link.to === "/dashboard/pro";
+                const badge = isProLink ? (isPro ? "Active" : null) : count > 0 ? String(count) : null;
                 const badgeClass = isInbox ? "bg-danger" : "bg-warning text-dark";
                 return (
                   <NavLink
@@ -115,7 +128,7 @@ export default function FreelancerDashboardLayout({
           {/* What an admin posted for this user (admin panel > Billboard). */}
           {isDashboardHome && <DashboardBillboard />}
 
-          <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, refreshPendingBookings, suspension }} />
+          <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, refreshPendingBookings, suspension, isPro, refreshPro: pro.reload }} />
         </main>
       </div>
 

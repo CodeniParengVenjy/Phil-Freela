@@ -11,7 +11,7 @@ import "../payments.css";
 // sees PhilFreela's own GCash and the exact amount, pays in the GCash app (the
 // site is not part of that), then sends the 13-digit reference and the receipt
 // screenshot. An admin checks PhilFreela's GCash by hand and approves.
-// (Freelancer Pro is paid online instead: ProSettings, "Paying for Pro online".)
+// (Freelancer Pro is paid online instead: ProPlans, "Paying for Pro online".)
 // The parent mounts it only while it is open, so every opening starts empty.
 //   target: { kind: "service" | "job", id, title }
 //   until:  the end date (ISO text) when the post is already Featured, else empty.

@@ -1,5 +1,5 @@
 // pro-checkout: Freelancer Pro paid online (PLAN-monetization.md, "Paying for
-// Pro online (Xendit)"). The website calls it from Settings > Freelancer Pro.
+// Pro online (Xendit)"). The website calls it from the Freelancer Pro page.
 //
 //   { action: "start" }               opens a Xendit payment page and returns
 //                                     { url } for the browser to go to
@@ -44,8 +44,8 @@ export async function handle(req: Request): Promise<Response> {
       return json({ error: plain(error, "Couldn't open the payment page. Please try again.") }, 400);
     }
 
-    // 2. Xendit makes the payment page. It sends the person back to the Pro tab.
-    const back = `${SITE_URL}/dashboard/settings?tab=Freelancer%20Pro&checkout=${started.id}`;
+    // 2. Xendit makes the payment page. It sends the person back to the Pro page.
+    const back = `${SITE_URL}/dashboard/pro?checkout=${started.id}`;
     let session: { payment_session_id?: string; id?: string; payment_link_url?: string };
     try {
       session = await xendit("POST", "/sessions", {

@@ -4,14 +4,15 @@ import { FEATURE_CODES, formatFeatureDate, getPromoPrices } from "../../../lib/f
 import { FREE_OFFERS, PRO_CODE, PRO_OFFERS, confirmProCheckout, countMyOffers, startProCheckout, useProStatus } from "../../../lib/pro";
 import "../pro.css";
 
-// Settings > Freelancer Pro (PLAN-monetization.md, Step 5), freelancers only:
-// two plan cards side by side, Free and Pro, each with what it gives (a tick, or
+// The Freelancer Pro page (views/ProView.jsx, in the freelancer's menu;
+// PLAN-monetization.md, Step 5), freelancers only: two plan cards side by side, Free and Pro, each with what it gives (a tick, or
 // a grey cross for what it doesn't), its price and one button; above them,
 // where the person stands (Free, or Pro until a date, and how many offers they
 // have). Pro is paid online ("Paying for Pro online (Xendit)"): Go Pro goes to
 // Xendit's own payment page (GCash, Maya or QR Ph), and Xendit sends the person
-// back here with ?checkout=<id>; this tab then asks whether the payment went
+// back here with ?checkout=<id>; this page then asks whether the payment went
 // through. Paying again before Pro ends adds the days after the current end.
+// onPaid() lets the dashboard know, so the Pro badge by the name shows at once.
 const peso = (amount) => `₱${Number(amount).toLocaleString()}`;
 
 // How long to keep asking after coming back: a payment can take a few seconds
@@ -41,7 +42,7 @@ function Feature({ included, children }) {
   );
 }
 
-export default function ProSettings({ userId }) {
+export default function ProPlans({ userId, onPaid }) {
   const pro = useProStatus(userId);
   const reloadPro = pro.reload;
   // The price list by code, and how many offers there are now (null while loading or if it failed).
@@ -51,7 +52,7 @@ export default function ProSettings({ userId }) {
   const [opening, setOpening] = useState(false);
   const [openError, setOpenError] = useState("");
 
-  // Back from Xendit's page: /dashboard/settings?tab=Freelancer Pro&checkout=<id>
+  // Back from Xendit's page: /dashboard/pro?checkout=<id>
   // (and &canceled=1 when they left without paying).
   const [searchParams] = useSearchParams();
   const checkoutId = searchParams.get("checkout");
@@ -87,7 +88,10 @@ export default function ProSettings({ userId }) {
         }
         if (result.status !== "open") {
           setAnswer({ state: result.status });
-          if (result.status === "paid") reloadPro();
+          if (result.status === "paid") {
+            reloadPro();
+            onPaid?.();
+          }
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, CHECK_EVERY_MS));
@@ -98,7 +102,7 @@ export default function ProSettings({ userId }) {
     return () => {
       active = false;
     };
-  }, [checkoutId, canceled, round, reloadPro]);
+  }, [checkoutId, canceled, round, reloadPro, onPaid]);
 
   const checkAgain = () => {
     setAnswer(null);
@@ -197,7 +201,7 @@ export default function ProSettings({ userId }) {
         </div>
 
         <div className="col-md-6">
-          <div className="pro-plan-card pro-plan-card-pro h-100 d-flex flex-column">
+          <div className="pro-plan-card pro-plan-card-pro h-100 d-flex flex-column" data-tour="pro-plan">
             <span className="pro-plan-ribbon">{isPro ? "Your plan" : "Best value"}</span>
             <h6 className="text-white fw-bold mb-3"><i className="bi bi-gem text-role me-2"></i>Freelancer Pro</h6>
             <div className="d-flex align-items-baseline gap-2">

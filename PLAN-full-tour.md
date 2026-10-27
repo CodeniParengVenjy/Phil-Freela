@@ -69,7 +69,9 @@ Freelancer (about 34 notes):
 - Notifications.
 - Profile (from the account menu): description, skills, portfolio, the
   performance box.
-- Settings (from the account menu): the tab list, GCash Payment, Freelancer Pro.
+- Settings (from the account menu): the tab list, GCash Payment.
+- Freelancer Pro (its own page since 2026-10-27): the menu link, then the Pro
+  plan card on /dashboard/pro.
 - End: "That's the tour!", a card on the dashboard home.
 
 Client (about 30 notes):
@@ -157,7 +159,10 @@ Client (about 30 notes):
   dashboard's jobs (menu link, search, Projects / Jobs, the first job),
   Bookings, Project (My Applications, My Projects), Inbox, Notifications,
   the account menu, Profile (description, skills, portfolio, your numbers),
-  Settings (the tab list, GCash Payment, Freelancer Pro), and the end.
+  Settings (the tab list, GCash Payment), and the end. (2026-10-27: the
+  Freelancer Pro note moved with Pro to its own page: a note on its menu link,
+  then one on the Pro plan card; 33 counted notes, step 2's test run again:
+  538 checks, 0 failed.)
   A part too tall for the note to fit beside it (My Projects and Your
   numbers on a phone) is outlined only down to the note, so the note never
   sits on what is outlined.

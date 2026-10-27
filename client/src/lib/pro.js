@@ -74,8 +74,8 @@ export function useProIds() {
 // Paying for Pro online (PLAN-monetization.md, "Paying for Pro online (Xendit)").
 // The Edge Function pro-checkout (supabase/functions/pro-checkout) opens a page
 // on Xendit, a payment company, where the person pays with GCash, Maya or QR
-// Ph; PhilFreela never sees those details. Xendit sends them back to the Pro tab
-// with ?checkout=<id>, and Pro starts once Xendit confirms the payment.
+// Ph; PhilFreela never sees those details. Xendit sends them back to the Pro
+// page (/dashboard/pro) with ?checkout=<id>, and Pro starts once Xendit confirms the payment.
 // ---------------------------------------------------------------------------
 
 // The sentence the function sent back ({ error: "..." }), or the fallback.
