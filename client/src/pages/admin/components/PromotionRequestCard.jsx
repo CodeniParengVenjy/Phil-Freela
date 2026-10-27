@@ -58,7 +58,7 @@ export default function PromotionRequestCard({ request, busy, onApprove, onRejec
 
       <p className="mb-1 text-white admin-description">
         {request.kind === "pro"
-          ? `${request.days} days of Freelancer Pro`
+          ? `${request.days} days of Premium`
           : <>{`${request.days} days for `}<strong>"{request.target_title || "a post"}"</strong></>}
       </p>
       <p className="mb-2 fs-7 text-white-50">

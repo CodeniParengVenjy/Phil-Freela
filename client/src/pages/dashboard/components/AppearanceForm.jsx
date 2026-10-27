@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ACCENT_PRESETS, GRADIENT_PRESETS, TEXT_SIZES, applyAppearance, fetchAppearance, isHexColor, readSavedAppearance, rememberAppearance, saveAppearance } from "../../../lib/appearance";
 
 // The usual accent of each role, shown on the "Default" choice.
@@ -224,12 +225,26 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
 
       {/* Gradient theme: the accent color blends into a second color. */}
       <div>
-        <h6 className="text-white fw-bold mb-1">Gradient</h6>
+        <h6 className="text-white fw-bold mb-1">
+          Gradient
+          <span className="badge rounded-pill bg-warning text-dark fs-8 ms-2 align-middle"><i className="bi bi-gem me-1"></i>Premium</span>
+        </h6>
         <p className="text-secondary fs-8 mb-3">
           Blend your accent color into a second color. The blend shows on buttons, the page you're on in the menu, your
           chat messages and the logo. Icons and links keep the accent color.
         </p>
 
+        {/* The two-color look is a Premium perk (PLAN-premium.md). A second color
+            saved earlier stays saved and shows again with Premium. */}
+        {loaded && !appearance.premium ? (
+          <div className="p-3 rounded-3 border border-warning border-opacity-50 bg-warning bg-opacity-10 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span className="text-white fs-7"><i className="bi bi-lock-fill text-warning me-2"></i>The two-color look is a Premium perk.</span>
+            <Link to="/dashboard/pro" className="btn btn-sm btn-outline-warning rounded-pill px-3 fs-8 fw-bold">
+              <i className="bi bi-gem me-1"></i>See Premium
+            </Link>
+          </div>
+        ) : (
+        <>
         <div className="d-flex flex-wrap align-items-center gap-3" role="radiogroup" aria-label="Gradient">
           <button
             type="button"
@@ -285,6 +300,8 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
             {saving ? "Saving..." : "Use as second color"}
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

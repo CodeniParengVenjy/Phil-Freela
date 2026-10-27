@@ -265,17 +265,32 @@ export function forgetAppearance() {
 // ---- Saving it on the profile ---------------------------------------------
 
 // The look saved on the user's profile, or null when it couldn't be loaded.
+// The two-color look is a Premium perk (PLAN-premium.md): without Premium the
+// second color is left out of what is shown, but it stays saved, so it comes
+// back with Premium. premium: whether the person has Premium now.
 export async function fetchAppearance(userId) {
-  const { data, error } = await supabase.from("profiles").select("theme_mode, accent_color, accent_color_2, text_size").eq("id", userId).maybeSingle();
+  const [{ data, error }, pro] = await Promise.all([
+    supabase.from("profiles").select("theme_mode, accent_color, accent_color_2, text_size").eq("id", userId).maybeSingle(),
+    supabase.rpc("is_pro", { target: userId })
+  ]);
   if (error || !data) return null;
-  return clean({ mode: data.theme_mode, accent: data.accent_color, accent2: data.accent_color_2, textSize: data.text_size });
+  const premium = pro.data === true;
+  return {
+    ...clean({ mode: data.theme_mode, accent: data.accent_color, accent2: premium ? data.accent_color_2 : null, textSize: data.text_size }),
+    premium
+  };
 }
 
-// Returns "" when saved, or a message to show the user.
+// Returns "" when saved, or a message to show the user. Without Premium the
+// second color isn't sent at all, so a saved one is kept as it is (except when
+// the first color goes back to the default: the database keeps no second color
+// without a first one).
 export async function saveAppearance(userId, appearance) {
   const { mode, accent, accent2, textSize } = clean(appearance);
+  const fields = { theme_mode: mode, accent_color: accent, text_size: textSize };
+  if (appearance?.premium || !accent) fields.accent_color_2 = accent2;
   // .select("id") returns the updated row, so an empty result means nothing was saved.
-  const { data, error } = await supabase.from("profiles").update({ theme_mode: mode, accent_color: accent, accent_color_2: accent2, text_size: textSize }).eq("id", userId).select("id");
+  const { data, error } = await supabase.from("profiles").update(fields).eq("id", userId).select("id");
   if (error || !data?.length) return "Couldn't save your appearance. Please try again.";
   return "";
 }

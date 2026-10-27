@@ -9,7 +9,7 @@ import { plainMessage } from "./promotions";
 // post sits in a separate "Featured" row (at most 3) at the top of Browse
 // Services / Find Jobs until its end date. The browser can only READ the end
 // dates (featured_posts); the request itself goes through the database function
-// request_promotion, which checks who is asking. Freelancer Pro (lib/pro.js,
+// request_promotion, which checks who is asking. Premium (lib/pro.js,
 // Step 5) is paid the same way, so sendPromoRequest and getPromoPrices serve both.
 
 // The 3 options, in the order they are shown. The codes are in the promo_prices table.
@@ -83,7 +83,7 @@ export function useFeatureStatus(userId) {
 // also checks it really is a picture), then the database records the request
 // as waiting. If the database refuses (a reused reference, no free spot, ...)
 // the upload is removed again. `target` is { serviceId } or { jobId } for a
-// Featured post, and { } for Freelancer Pro (it is for the account, not a post).
+// Featured post, and { } for Premium (it is for the account, not a post).
 // Returns { error } or {}.
 export async function sendPromoRequest({ userId, code, target, reference, receiptFile }) {
   let picture;

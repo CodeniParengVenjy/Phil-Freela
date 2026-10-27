@@ -5,6 +5,8 @@ import SuspensionBanner from "../components/SuspensionBanner";
 import DashboardBillboard from "../components/DashboardBillboard";
 import GetStartedCard from "../components/GetStartedCard";
 import Avatar from "../../../components/Avatar";
+import ProBadge from "../../../components/ProBadge";
+import { useProStatus } from "../../../lib/pro";
 import "../dashboard.css";
 import "../theme.css";
 
@@ -17,7 +19,9 @@ const sidebarLinks = [
   { to: "/dashboard-client", end: true, icon: "bi-speedometer2", label: "Dashboard", tour: "menu-home" },
   { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings", tour: "menu-bookings" },
   { to: "/dashboard/post-need", icon: "bi-plus-circle-fill", label: "Post a Project", tour: "menu-post" },
-  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes", tour: "menu-projects" }
+  { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Projects & Resumes", tour: "menu-projects" },
+  // Premium, for clients too (PLAN-premium.md).
+  { to: "/dashboard/pro", icon: "bi-gem", label: "Premium", tour: "menu-pro" }
   // (AI Moodboard Matching has no link here: it is the camera button in the
   // search box, see DashboardTopNav.jsx.)
 ];
@@ -40,10 +44,15 @@ export default function ClientDashboardLayout({
   // The welcome banner belongs on the dashboard home only, not every
   // sub-page (chat, inbox, profile, ...) that reuses this same layout.
   const isDashboardHome = useLocation().pathname === "/dashboard-client";
+  // Whether this client has Premium right now: the gold Premium badge by their
+  // name (menu and top bar) and "Active" on the menu item. The Premium page
+  // calls refreshPro after a payment.
+  const pro = useProStatus(currentUserId);
+  const isPro = Boolean(pro.until);
 
   return (
     <div className="bg-dark text-light">
-      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} unreadMessages={unreadCount} unreadNotifications={unreadNotifications} onNotificationsRead={refreshUnreadNotifications} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} openChat={openChat} />
+      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} unreadMessages={unreadCount} unreadNotifications={unreadNotifications} onNotificationsRead={refreshUnreadNotifications} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} openChat={openChat} isPro={isPro} />
 
       <div className="app-container d-flex">
         <aside data-tour="sidebar" className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
@@ -53,7 +62,10 @@ export default function ClientDashboardLayout({
                 <Avatar path={avatarPath} name={displayName} size={40} />
                 <div className="d-flex flex-column overflow-hidden">
                   <span className="text-white fw-bold fs-7 text-truncate">{displayName}</span>
-                  <span className="role-badge">Client</span>
+                  <span className="d-flex align-items-center gap-1">
+                    <span className="role-badge">Client</span>
+                    <ProBadge pro={isPro} />
+                  </span>
                 </div>
               </NavLink>
 
@@ -67,6 +79,8 @@ export default function ClientDashboardLayout({
                 >
                   <i className={`bi ${link.icon}`}></i>
                   <span>{link.label}</span>
+                  {/* Premium says "Active" while the person has it. */}
+                  {link.to === "/dashboard/pro" && isPro && <span className="badge bg-warning text-dark rounded-pill ms-auto">Active</span>}
                 </NavLink>
               ))}
             </div>
@@ -103,7 +117,7 @@ export default function ClientDashboardLayout({
           {/* What an admin posted for this user (admin panel > Billboard). */}
           {isDashboardHome && <DashboardBillboard />}
 
-          <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, suspension }} />
+          <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, suspension, isPro, refreshPro: pro.reload }} />
         </main>
       </div>
 

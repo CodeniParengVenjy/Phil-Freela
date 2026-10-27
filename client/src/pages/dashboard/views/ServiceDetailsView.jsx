@@ -7,7 +7,7 @@ import { SLIDES_SELECT, isOriginalWork, itemSlides } from "../../../lib/slides";
 import { fetchProfileStats, formatReplyTime } from "../../../lib/profileStats";
 import { fetchServiceReviews, summarizeReviews } from "../../../lib/serviceReviews";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
-import { useProIds } from "../../../lib/pro";
+import { recordView, useProIds } from "../../../lib/pro";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import ProBadge from "../../../components/ProBadge";
@@ -71,6 +71,12 @@ function ServiceDetails({ serviceId }) {
 
   const freelancerId = service?.freelancer?.id;
 
+  // Counts this visit for the offer's owner (Premium shows them how many
+  // people opened it; the database leaves out the owner's own visits).
+  useEffect(() => {
+    recordView("service", serviceId);
+  }, [serviceId]);
+
   useEffect(() => {
     if (!freelancerId) return undefined;
     let active = true;
@@ -102,7 +108,7 @@ function ServiceDetails({ serviceId }) {
   }, [serviceKey]);
 
   const verifiedIds = useVerifiedIds([freelancerId]);
-  // Whether the freelancer has Freelancer Pro right now (the gold Pro badge by their name).
+  // Whether the freelancer has Premium right now (the gold Premium badge by their name).
   const proIds = useProIds();
 
   // Back goes to wherever they came from (Browse Services, a search, a

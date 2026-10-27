@@ -466,7 +466,7 @@ export default function AdminOverviewView() {
             </div>
           )}
 
-          {/* What PhilFreela earns: fees for Featured posts, Freelancer Pro and
+          {/* What PhilFreela earns: fees for Featured posts, Premium and
               sponsored billboards. Its own part, so it shows even if the numbers above fail. */}
           <div className="mt-4 mb-3">
             <h2 className="h5 fw-bold text-white mb-0">Earnings</h2>
@@ -510,7 +510,7 @@ export default function AdminOverviewView() {
                   items={[
                     { label: `Featured offers (${earnings.by_kind.feature_service.count})`, value: formatPeso(earnings.by_kind.feature_service.amount) },
                     { label: `Featured job posts (${earnings.by_kind.feature_job.count})`, value: formatPeso(earnings.by_kind.feature_job.amount) },
-                    { label: `Freelancer Pro (${earnings.by_kind.pro.count})`, value: formatPeso(earnings.by_kind.pro.amount) },
+                    { label: `Premium (${earnings.by_kind.pro.count})`, value: formatPeso(earnings.by_kind.pro.amount) },
                     { label: `Sponsored billboards (${earnings.by_kind.billboard.count})`, value: formatPeso(earnings.by_kind.billboard.amount) }
                   ]}
                 />

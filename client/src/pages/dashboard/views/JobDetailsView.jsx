@@ -5,6 +5,8 @@ import { getCategory } from "../../../lib/categories";
 import { fetchIsVerified } from "../../../lib/verification";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
+import { recordView, useProIds } from "../../../lib/pro";
+import ProBadge from "../../../components/ProBadge";
 import { MAX_NOTE_LENGTH, applyToJob, getMyApplicationForJob, openResume, withdrawApplication } from "../../../lib/applications";
 import { formatDay } from "../../../lib/projects";
 import { HIRES_FIELD, budgetText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
@@ -70,6 +72,14 @@ export default function JobDetailsView() {
   }, [jobId, currentUserId]);
 
   const clientVerified = useVerifiedIds([job?.client?.id]).has(job?.client?.id);
+  // Whether the client has Premium right now (the gold Premium badge by their name).
+  const clientPremium = useProIds().has(job?.client?.id);
+
+  // Counts this visit for the job's owner (Premium shows them how many people
+  // opened it; the database leaves out the owner's own visits).
+  useEffect(() => {
+    if (currentUserId) recordView("job", jobId);
+  }, [currentUserId, jobId]);
 
   const handleApply = async (event) => {
     event.preventDefault();
@@ -255,6 +265,7 @@ export default function JobDetailsView() {
                 ? <Link to={`/dashboard/clients/${job.client.id}`} className="text-white fw-semibold text-decoration-none hover-role">{clientName}</Link>
                 : <span className="text-white fw-semibold">{clientName}</span>}
               <VerifiedBadge verified={clientVerified} showUnverified />
+              <ProBadge pro={clientPremium} />
               {/* The client's Trust score: their average rating from past projects (Feature 5, transparency). */}
               <TrustBadge userId={job.client?.id} />
               <span>• {new Date(job.created_at).toLocaleDateString()}</span>

@@ -103,3 +103,18 @@ ranking (Featured posts stay in their own labelled row).
   --no-verify-jwt as before). Until then the website must not send Featured
   payments to Xendit: the old pro-checkout ignores the post and would open a
   Premium page instead.
+- Steps 3 and 4 (website), first part, 2026-10-27: Premium in every word the
+  person sees (page, menu, badge, prices, notifications, admin pages, Terms);
+  the Premium page and menu item for clients too; the badge by the person's own
+  name (menu card, top bar, My Profile) and by other people's (public
+  profiles of both roles, job rows, the job page); opening an offer, a job post
+  or someone's profile counts a view; Premium sees "N views" on My Services and
+  profile views on My Profile and the Premium page; "Feature free" on My
+  Services; chat documents up to 50 MB with Premium; the gradient in Appearance
+  locked without Premium (a second color saved earlier is kept, not shown).
+  The gradient rule (supabase_premium_gradient_schema.sql) goes live right
+  after this website step. Still to do: the watermark choices (form, preview,
+  AI service); on Post a Project the free Featured and the view counts, and
+  the tour's words (both wait for the other session's edits of those files);
+  Featured paid on Xendit and the admin's billboard link (wait for Step 2's
+  deploy).

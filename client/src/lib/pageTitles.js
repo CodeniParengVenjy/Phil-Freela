@@ -28,7 +28,7 @@ const pageTitles = {
   "/dashboard/projects": "Projects & Resumes",
   "/dashboard/bookings": "Bookings",
   "/dashboard/settings": "Settings",
-  "/dashboard/pro": "Freelancer Pro",
+  "/dashboard/pro": "Premium",
   "/dashboard/search": "Search",
   "/dashboard/verify-identity": "Verify Identity",
   "/dashboard/feedback": "Ratings and Feedback",

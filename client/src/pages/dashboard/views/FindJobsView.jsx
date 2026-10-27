@@ -8,6 +8,8 @@ import { byPick, useRecommendations } from "../../../lib/useRecommendations";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { useRatingSummaries } from "../../../lib/ratings";
 import { useFeatureStatus } from "../../../lib/featured";
+import { useProIds } from "../../../lib/pro";
+import ProBadge from "../../../components/ProBadge";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { StarBadge } from "../../../components/StarRating";
@@ -79,6 +81,8 @@ export default function FindJobsView({ withRecommendations = false }) {
 
   // Clients can post without verifying, so freelancers see who is verified.
   const verifiedIds = useVerifiedIds((jobs || []).map((job) => job.client?.id));
+  // Which clients have Premium right now (the gold Premium badge by their name).
+  const proIds = useProIds();
   // Every client's average rating, loaded in one request for the whole list
   // (Feature 5, Profile transparency).
   const ratings = useRatingSummaries((jobs || []).map((job) => job.client?.id));
@@ -133,6 +137,7 @@ export default function FindJobsView({ withRecommendations = false }) {
                 ? <Link to={clientPage} className="text-white-50 text-decoration-underline">{clientName}</Link>
                 : clientName}
               <VerifiedBadge verified={verifiedIds.has(job.client?.id)} showUnverified />
+              <ProBadge pro={proIds.has(job.client?.id)} />
             </span>
             {/* The client's average rating from finished projects (nothing until they have one). */}
             <StarBadge summary={ratings.get(job.client?.id)} />

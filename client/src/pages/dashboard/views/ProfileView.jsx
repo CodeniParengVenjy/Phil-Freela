@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { fetchIsVerified } from "../../../lib/verification";
 import { fetchDescription } from "../../../lib/profile";
+import { useMyViews } from "../../../lib/pro";
+import ProBadge from "../../../components/ProBadge";
 import PortfolioSection from "../components/PortfolioSection";
 import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
@@ -13,7 +15,9 @@ import { avatarUrl, coverUrl, fetchCoverPath } from "../../../lib/avatar";
 import CensoredText from "../../../components/CensoredText";
 
 export default function ProfileView() {
-  const { displayName, avatarPath, currentUserId, accountType, username, showToast } = useOutletContext();
+  const { displayName, avatarPath, currentUserId, accountType, username, showToast, isPro } = useOutletContext();
+  // Premium: how many people opened this profile in the last 30 days.
+  const views = useMyViews(currentUserId);
   // null while checking, then true/false (approved identity verification).
   const [verified, setVerified] = useState(null);
   // undefined while loading, null if it couldn't load, "" if not written yet.
@@ -51,7 +55,14 @@ export default function ProfileView() {
                 <Avatar path={avatarPath} name={displayName} size={120} className="border border-4 border-dark shadow-2xl" onOpen={() => setViewing("picture")} />
               </div>
 
-              <h2 className="fw-bold text-white mb-4">{displayName}</h2>
+              <h2 className="fw-bold text-white mb-2">{displayName}<ProBadge pro={isPro} /></h2>
+              {/* Premium sees who-many (never who); free accounts see where to get it. */}
+              <p className="text-white-50 fs-8 mb-4">
+                <i className="bi bi-eye me-1"></i>
+                {views.loaded && views.premium
+                  ? `${views.profile} ${views.profile === 1 ? "person" : "people"} opened your profile in the last 30 days.`
+                  : <>Premium shows how many people open your profile. <Link to="/dashboard/pro" className="text-role fw-semibold text-decoration-none">See Premium</Link></>}
+              </p>
 
               {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
               <div data-tour="profile-description" className="text-start bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary border-opacity-25 mb-4">

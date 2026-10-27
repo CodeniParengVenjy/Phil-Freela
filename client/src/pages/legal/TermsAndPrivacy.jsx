@@ -48,7 +48,7 @@ function TermsOfService() {
         directly. <strong className="text-white">PhilFreela never holds, moves or guarantees the money between clients and freelancers.</strong> Clients pay
         freelancers directly, in their own GCash app, outside the platform. PhilFreela only keeps a record of those
         payments (see "Payments" below) and never takes a cut of them. It only charges for its own extras: Featured
-        posts, Freelancer Pro and sponsored billboards (see "PhilFreela's own fees" below).
+        posts, Premium and sponsored billboards (see "PhilFreela's own fees" below).
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your account</h5>
@@ -125,11 +125,14 @@ function TermsOfService() {
           way. If a payment you really sent is rejected, send it again with the right details, or ask an admin to return it.
         </li>
         <li>
-          <strong className="text-white">Freelancer Pro:</strong> 30 days of up to 15 offers instead of 3, a Pro badge by your name,
-          and half-price Featured posts. It is paid on the checkout page of Xendit, a payment company, with GCash, Maya or
-          QR Ph, and it starts by itself once Xendit confirms the payment. Paying again before it ends adds the days after
-          the current end. When Pro ends, the offers you have stay, but you can't add more than 3. While PhilFreela is a
-          student project, Pro runs in Xendit's test mode: no real money is charged.
+          <strong className="text-white">Premium (clients and freelancers):</strong> 30 days of a Premium badge by your name,
+          half-price Featured posts and one free 3-day Featured post every 30 days, counts of how many people opened your
+          posts and your profile (never who), chat files up to 50 MB, the two-color look and, for freelancers, up to 15
+          offers instead of 3 and more watermark choices. It is paid on the checkout page of Xendit, a payment company,
+          with GCash, Maya or QR Ph, and it starts by itself once Xendit confirms the payment. Paying again before it ends
+          adds the days after the current end. When Premium ends, what you already have stays (your offers, a saved look),
+          but you can't add more than the free limits. While PhilFreela is a student project, Premium runs in Xendit's test
+          mode: no real money is charged.
         </li>
         <li><strong className="text-white">Sponsored billboards:</strong> businesses arrange these with PhilFreela directly. They are always marked "Sponsored by ...".</li>
         <li>Paying for any of these never changes the "Recommended for you" order, which stays based on ratings, completed projects and response time.</li>
@@ -212,8 +215,8 @@ function PrivacyPolicy() {
         </li>
         <li>
           Fees you pay PhilFreela: for a Featured post, the amount, the GCash reference number and the receipt screenshot
-          (only you and PhilFreela's admins can open the receipt); for Freelancer Pro, the amount, when you paid, and
-          Xendit's payment number. The GCash, Maya or QR Ph details you use for Pro are typed on Xendit's own page, and
+          (only you and PhilFreela's admins can open the receipt); for Premium, the amount, when you paid, and
+          Xendit's payment number. The GCash, Maya or QR Ph details you use for Premium are typed on Xendit's own page, and
           PhilFreela never sees them.
         </li>
         <li>Basic usage information needed to run features like search and "Recommended for you" (for example, which posts you've viewed or messaged about).</li>
@@ -253,8 +256,8 @@ function PrivacyPolicy() {
       <p className="text-secondary">
         We don't sell or share your data with outside companies. Your information is only handled by the services that
         run PhilFreela itself: our database and file storage provider, and the separate service that runs our AI
-        features (search, recommendations, moodboard matching, and identity verification). When you pay for Freelancer
-        Pro, you pay on the page of Xendit, a payment company registered with the Bangko Sentral ng Pilipinas: PhilFreela
+        features (search, recommendations, moodboard matching, and identity verification). When you pay for
+        Premium, you pay on the page of Xendit, a payment company registered with the Bangko Sentral ng Pilipinas: PhilFreela
         sends Xendit only the amount and a payment number of its own, never your name or email, and what you type on
         Xendit's page is covered by Xendit's own privacy policy. We'd only share information with authorities if
         required by law.

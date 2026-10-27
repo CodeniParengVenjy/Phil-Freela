@@ -6,7 +6,7 @@ import { countPortfolio } from "../../../lib/portfolio";
 import { fetchProfileStats } from "../../../lib/profileStats";
 import { SLIDES_SELECT } from "../../../lib/slides";
 import { useServiceRatings } from "../../../lib/useServiceRatings";
-import { useProIds } from "../../../lib/pro";
+import { recordView, useProIds } from "../../../lib/pro";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import ProBadge from "../../../components/ProBadge";
 import AvailabilityBadge from "../../../components/AvailabilityBadge";
@@ -54,8 +54,14 @@ function PublicProfile({ userId }) {
   // Which picture is open bigger: "picture", "cover", or null (none).
   const [viewing, setViewing] = useState(null);
   const isOwnPage = userId === currentUserId;
-  // Who has Freelancer Pro right now: a freelancer's page shows the gold Pro badge by their name.
+  // Who has Premium right now: the gold Premium badge by the name (clients and freelancers).
   const proIds = useProIds();
+
+  // Counts this visit for the person (Premium shows them how many people
+  // opened their profile; your own page doesn't count).
+  useEffect(() => {
+    if (!isOwnPage) recordView("profile", userId);
+  }, [userId, isOwnPage]);
 
   useEffect(() => {
     let active = true;
@@ -117,7 +123,7 @@ function PublicProfile({ userId }) {
             <h3 className="text-white fw-bold mb-1 text-break">
               {person.full_name}
               <VerifiedBadge verified={verified} showUnverified />
-              {isFreelancer && <ProBadge pro={proIds.has(person.id)} />}
+              <ProBadge pro={proIds.has(person.id)} />
             </h3>
             <p className="text-secondary fs-7 mb-0 d-flex flex-wrap align-items-center gap-2">
               <span>@{person.username} • {ROLE_LABELS[roleToday]}</span>

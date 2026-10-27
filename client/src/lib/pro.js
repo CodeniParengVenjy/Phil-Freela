@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 
-// Freelancer Pro (PLAN-monetization.md, Step 5; database/supabase_promotions_schema.sql):
-// 30 days of up to 15 offers instead of 3, a gold Pro badge and half-price
-// Featured posts. It is paid like a Featured post (PromoPayDialog: GCash to
-// PhilFreela, the 13-digit reference and a receipt, an admin approves). The
-// browser can only READ pro_members; the end date is written by the database
-// function approve_promotion, so nobody can give themselves Pro.
+// Premium (it was "Freelancer Pro"; PLAN-monetization.md, Step 5, and
+// PLAN-premium.md): 30 days, for clients and freelancers, paid online through
+// Xendit. Its perks: a gold Premium badge, up to 15 offers instead of 3
+// (freelancers), half-price Featured posts, one free Featured post every 30
+// days, view counts, 50 MB chat files, the two-color look and the watermark's
+// extra choices. The browser can only READ pro_members; the end date is written
+// by the database after Xendit confirms a payment, so nobody can give themselves
+// Premium. (The inside names, pro_members, is_pro, pro_30, stayed.)
 
 export const PRO_CODE = "pro_30";
 
@@ -112,4 +114,65 @@ export async function confirmProCheckout(checkoutId) {
 export async function countMyOffers(userId) {
   const { count, error } = await supabase.from("services").select("id", { count: "exact", head: true }).eq("freelancer_id", userId);
   return error ? null : count;
+}
+
+// ---------------------------------------------------------------------------
+// Premium's perks that the database keeps (PLAN-premium.md). "Freelancer Pro"
+// became Premium, for clients too; the inside names (pro_members, is_pro,
+// pro_30) stayed, only the words people see changed.
+// ---------------------------------------------------------------------------
+
+// The free Featured post (one every 30 days, 3 days long):
+// { premium, available, nextAt } or null when it can't be read.
+export async function getFreeFeature() {
+  const { data, error } = await supabase.rpc("my_free_feature");
+  if (error || !data) return null;
+  return { premium: Boolean(data.premium), available: Boolean(data.available), nextAt: data.next_at || null };
+}
+
+// Uses it on one of my posts: { service } or { job } (an id). Returns
+// { until } (the post's new Featured end) or { error } (the database's own
+// sentence, like "You already used your free Featured post...").
+export async function claimFreeFeature({ service = null, job = null }) {
+  const { data, error } = await supabase.rpc("use_free_feature", { p_service: service, p_job: job });
+  if (error) return { error: error.code === "P0001" && error.message ? error.message : "Couldn't feature that post. Please try again." };
+  return { until: data?.until };
+}
+
+// Counts that someone opened an offer, a job post or a profile ("service",
+// "job" or "profile"). Quietly: if it fails, nothing changes for the person.
+// The database leaves out the owner's own opens and counts a person once a day.
+export function recordView(kind, targetId) {
+  if (!targetId) return;
+  supabase.rpc("record_view", { p_kind: kind, p_target: targetId }).then(() => {}, () => {});
+}
+
+// My own view counts (only Premium gets them):
+//   loaded:   false until read
+//   premium:  whether the counts are given
+//   profile:  people who opened my profile in the last 30 days
+//   services / jobs: post id -> how many people ever opened it
+export function useMyViews(userId) {
+  const [views, setViews] = useState({ loaded: false, premium: false, profile: 0, services: new Map(), jobs: new Map() });
+
+  useEffect(() => {
+    if (!userId) return undefined;
+    let active = true;
+    supabase.rpc("my_view_counts").then(({ data, error }) => {
+      if (!active || error || !data) return;
+      const toMap = (rows) => new Map((rows || []).map((row) => [row.id, Number(row.views) || 0]));
+      setViews({
+        loaded: true,
+        premium: Boolean(data.premium),
+        profile: Number(data.profile) || 0,
+        services: toMap(data.services),
+        jobs: toMap(data.jobs)
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  return views;
 }

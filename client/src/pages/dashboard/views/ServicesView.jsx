@@ -8,7 +8,7 @@ import { useServiceRatings } from "../../../lib/useServiceRatings";
 import { SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, SLIDES_SELECT, addPickedFiles, ownershipPassedMessage, underReviewMessage, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "../components/SlidePicker";
 import { useFeatureStatus } from "../../../lib/featured";
-import { FREE_OFFERS, PRO_OFFERS, useProStatus } from "../../../lib/pro";
+import { FREE_OFFERS, PRO_OFFERS, claimFreeFeature, getFreeFeature, useMyViews, useProStatus } from "../../../lib/pro";
 import { plainMessage } from "../../../lib/promotions";
 import ServiceCard from "../components/ServiceCard";
 import FeatureControl from "../components/FeatureControl";
@@ -48,6 +48,33 @@ export default function ServicesView() {
   // member never sees "limit reached" for a moment.
   const pro = useProStatus(currentUserId);
   const offerLimit = pro.loaded ? (pro.until ? PRO_OFFERS : FREE_OFFERS) : null;
+  // Premium's perks on this list: how many people opened each offer, and the
+  // free Featured post every 30 days ({ available } once read; null otherwise).
+  const views = useMyViews(currentUserId);
+  const [freeFeature, setFreeFeature] = useState(null);
+  const [freeRound, setFreeRound] = useState(0);
+  useEffect(() => {
+    if (!currentUserId || !pro.until) return undefined;
+    let active = true;
+    getFreeFeature().then((result) => {
+      if (active) setFreeFeature(result);
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentUserId, pro.until, freeRound]);
+
+  // Uses the free Featured post on one offer (the database checks it again).
+  const featureForFree = async (service) => {
+    const result = await claimFreeFeature({ service: service.id });
+    if (result.error) {
+      showToast(result.error);
+      return;
+    }
+    showToast(`"${service.title}" is Featured for 3 days, free with Premium.`);
+    featured.reload();
+    setFreeRound((n) => n + 1);
+  };
   // What clients rated each of your offers, for the "★ 4.5 (2)" on its row.
   const ratings = useServiceRatings((services || []).map((s) => s.id));
   // Only freelancers with a verified identity can offer services (the
@@ -247,7 +274,7 @@ export default function ServicesView() {
       ? `You have reached the limit of ${PRO_OFFERS} offers. Delete one to add another.`
       : offerCount > offerLimit
         ? `You have ${offerCount} offers. A free account can add up to ${FREE_OFFERS}, so you can't add another until you have fewer, or go Pro. The ones you have stay.`
-        : `You have ${offerCount} of ${offerLimit} offers. Go Pro to have up to ${PRO_OFFERS}.`;
+        : `You have ${offerCount} of ${offerLimit} offers. Get Premium to have up to ${PRO_OFFERS}.`;
   }
 
   return (
@@ -288,7 +315,7 @@ export default function ServicesView() {
                 <span className="text-white fs-7"><i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>{limitNotice}</span>
                 {offerLimit === FREE_OFFERS && (
                   <Link to="/dashboard/pro" className="btn btn-sm btn-outline-warning rounded-pill px-3 fs-8 fw-bold">
-                    <i className="bi bi-gem me-1"></i> Go Pro
+                    <i className="bi bi-gem me-1"></i> Get Premium
                   </Link>
                 )}
               </div>
@@ -428,6 +455,9 @@ export default function ServicesView() {
                       // Clients only see offers from verified freelancers, so featuring one before that is a waste.
                       canFeature={isVerified === true && !postingBlocked}
                       onFeature={() => setServiceToFeature({ kind: "service", id: s.id, title: s.title })}
+                      free={pro.until ? freeFeature : null}
+                      onUseFree={() => featureForFree(s)}
+                      views={views.loaded && views.premium ? views.services.get(s.id) ?? 0 : undefined}
                     />
                   )}
                 />

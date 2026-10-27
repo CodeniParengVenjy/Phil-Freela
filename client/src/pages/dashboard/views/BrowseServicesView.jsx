@@ -70,7 +70,7 @@ export default function BrowseServicesView({ withRecommendations = false }) {
   const ratings = useServiceRatings((services || []).map((s) => s.id));
   // Which offers someone paid to feature (and are still running).
   const featured = useFeatureStatus();
-  // Which freelancers have Freelancer Pro right now (the gold Pro badge by their name).
+  // Which freelancers have Premium right now (the gold Premium badge by their name).
   const proIds = useProIds();
 
   const filtered = useMemo(() => {

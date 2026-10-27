@@ -12,7 +12,7 @@ import { shrinkImage } from "./shrinkImage";
 export const PROMO_KINDS = {
   feature_service: { label: "Featured offer", icon: "bi-grid-fill" },
   feature_job: { label: "Featured job post", icon: "bi-briefcase-fill" },
-  pro: { label: "Freelancer Pro", icon: "bi-patch-check-fill" }
+  pro: { label: "Premium", icon: "bi-gem" }
 };
 
 // A message to show for a failed call: the database's own plain sentence when

@@ -43,7 +43,7 @@ function formatRelativeTime(dateString) {
 
 export default function ChatView() {
   const { conversationId } = useParams();
-  const { currentUserId, showToast, refreshUnreadCount, openPreview, suspension, accountType } = useOutletContext();
+  const { currentUserId, showToast, refreshUnreadCount, openPreview, suspension, accountType, isPro } = useOutletContext();
   // Suspended for a messaging violation (e.g. harassment): they can read this
   // chat, but can't send, forward, or edit messages.
   const messagingBlocked = isMessagingBlocked(suspension);
@@ -388,7 +388,8 @@ export default function ChatView() {
     const file = event.target.files?.[0];
     event.target.value = ""; // lets the same file be picked again later
     if (!file) return;
-    const problem = await checkChatFile(file);
+    // Premium sends documents up to 50 MB instead of 10 MB.
+    const problem = await checkChatFile(file, Boolean(isPro));
     if (problem) {
       showToast?.(problem);
       return;

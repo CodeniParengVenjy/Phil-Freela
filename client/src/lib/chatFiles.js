@@ -5,7 +5,10 @@ import { supabase } from "./supabaseClient";
 // one folder per conversation, and only the two people in that conversation
 // can open them, through links that expire (Data Privacy Act, RA 10173).
 const BUCKET = "chat-files";
+// 10 MB per document, 50 MB with Premium (the database refuses more too:
+// database/supabase_premium_schema.sql).
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const PREMIUM_FILE_BYTES = 50 * 1024 * 1024;
 export const MAX_VOICE_SECONDS = 120;
 
 // DOCX, XLSX and PPTX files are ZIP packages inside, so they start with "PK".
@@ -44,11 +47,13 @@ export function formatSize(bytes) {
 }
 
 // Checks a picked document. Returns "" when it can be sent, or a message.
-export async function checkChatFile(file) {
+// premium: true while the sender has Premium (50 MB instead of 10 MB).
+export async function checkChatFile(file, premium = false) {
   const type = FILE_TYPES[extensionOf(file.name)];
   if (!type) return "Only PDF, Word (DOCX), Excel (XLSX), PowerPoint (PPTX) or TXT files can be sent.";
   if (file.size === 0) return "That file is empty.";
-  if (file.size > MAX_FILE_BYTES) return "Files must be 10 MB or smaller.";
+  if (premium && file.size > PREMIUM_FILE_BYTES) return "Files must be 50 MB or smaller.";
+  if (!premium && file.size > MAX_FILE_BYTES) return "Files must be 10 MB or smaller. With Premium you can send up to 50 MB.";
   if (type.start && (await file.slice(0, type.start.length).text()) !== type.start) {
     return "That file isn't what its name says. Please send the original file.";
   }

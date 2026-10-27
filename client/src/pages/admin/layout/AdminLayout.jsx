@@ -38,7 +38,7 @@ const sidebarItems = [
     links: [
       { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements", superAdminOnly: true },
       { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard", superAdminOnly: true },
-      // Fees paid for Featured posts and Freelancer Pro: any admin approves or
+      // Fees paid for Featured posts and Premium: any admin approves or
       // rejects them; only a super admin changes the settings inside.
       { to: "/admin/promotions", icon: "bi-cash-coin", label: "Promotions", badge: "promotions" },
       { to: "/admin/admins", icon: "bi-shield-lock-fill", label: "Admins", superAdminOnly: true },
@@ -112,7 +112,7 @@ export default function AdminLayout() {
     setPendingApprovals(count || 0);
   }, []);
 
-  // Counts fee payments (Featured posts, Freelancer Pro) waiting for an admin.
+  // Counts fee payments (Featured posts, Premium) waiting for an admin.
   // The Promotions page calls this after each answer so the badge stays correct.
   const refreshPendingPromotions = useCallback(async () => {
     const { count } = await supabase

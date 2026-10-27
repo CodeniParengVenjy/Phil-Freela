@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { FEATURE_CODES, formatFeatureDate, getPromoPrices } from "../../../lib/featured";
-import { FREE_OFFERS, PRO_CODE, PRO_OFFERS, confirmProCheckout, countMyOffers, startProCheckout, useProStatus } from "../../../lib/pro";
+import { FREE_OFFERS, PRO_CODE, PRO_OFFERS, confirmProCheckout, countMyOffers, startProCheckout, useMyViews, useProStatus } from "../../../lib/pro";
 import "../pro.css";
 
-// The Freelancer Pro page (views/ProView.jsx, in the freelancer's menu;
-// PLAN-monetization.md, Step 5), freelancers only: two plan cards side by side, Free and Pro, each with what it gives (a tick, or
-// a grey cross for what it doesn't), its price and one button; above them,
-// where the person stands (Free, or Pro until a date, and how many offers they
-// have). Pro is paid online ("Paying for Pro online (Xendit)"): Go Pro goes to
-// Xendit's own payment page (GCash, Maya or QR Ph), and Xendit sends the person
-// back here with ?checkout=<id>; this page then asks whether the payment went
-// through. Paying again before Pro ends adds the days after the current end.
-// onPaid() lets the dashboard know, so the Pro badge by the name shows at once.
+// The Premium page (views/ProView.jsx; it was "Freelancer Pro"; PLAN-monetization.md,
+// Step 5, and PLAN-premium.md), for clients and freelancers: two plan cards side
+// by side, Free and Premium, each with what it gives for the person's role (a
+// tick, or a grey cross for what it doesn't), its price and one button; above
+// them, where the person stands (Free, or Premium until a date, offers used for
+// a freelancer, and profile views for Premium). Premium is paid online: the
+// button goes to Xendit's own payment page (GCash, Maya or QR Ph), and Xendit
+// sends the person back here with ?checkout=<id>; this page then asks whether
+// the payment went through. Paying again before Premium ends adds the days
+// after the current end. onPaid() lets the dashboard know, so the Premium badge
+// by the name shows at once.
 const peso = (amount) => `₱${Number(amount).toLocaleString()}`;
 
 // How long to keep asking after coming back: a payment can take a few seconds
@@ -23,7 +25,7 @@ const CHECK_EVERY_MS = 2500;
 // What to say after coming back from Xendit's page.
 const RESULTS = {
   checking: { className: "border-secondary", icon: "spinner", text: "Checking your payment with Xendit..." },
-  paid: { className: "border-success", icon: "bi-check-circle-fill text-success", text: "Payment received. Thank you! You are now a Freelancer Pro." },
+  paid: { className: "border-success", icon: "bi-check-circle-fill text-success", text: "Payment received. Thank you! You are now a Premium member." },
   open: { className: "border-warning", icon: "bi-hourglass-split text-warning", text: "We haven't received the payment yet. If you paid, it can take a minute." },
   expired: { className: "border-warning", icon: "bi-clock-history text-warning", text: "That payment page expired before it was paid. Nothing was charged. You can try again." },
   canceled: { className: "border-secondary", icon: "bi-x-circle text-secondary", text: "You left the payment page. Nothing was charged." }
@@ -42,8 +44,10 @@ function Feature({ included, children }) {
   );
 }
 
-export default function ProPlans({ userId, onPaid }) {
+export default function ProPlans({ userId, accountType, onPaid }) {
+  const isFreelancer = accountType === "freelancer";
   const pro = useProStatus(userId);
+  const views = useMyViews(userId);
   const reloadPro = pro.reload;
   // The price list by code, and how many offers there are now (null while loading or if it failed).
   const [prices, setPrices] = useState(null);
@@ -66,13 +70,15 @@ export default function ProPlans({ userId, onPaid }) {
     getPromoPrices([...FEATURE_CODES, PRO_CODE]).then((result) => {
       if (active && result.prices) setPrices(Object.fromEntries(result.prices.map((row) => [row.code, row])));
     });
-    countMyOffers(userId).then((count) => {
-      if (active) setOffers(count);
-    });
+    if (isFreelancer) {
+      countMyOffers(userId).then((count) => {
+        if (active) setOffers(count);
+      });
+    }
     return () => {
       active = false;
     };
-  }, [userId]);
+  }, [userId, isFreelancer]);
 
   useEffect(() => {
     if (!checkoutId || canceled) return undefined;
@@ -130,12 +136,12 @@ export default function ProPlans({ userId, onPaid }) {
   const isPro = Boolean(pro.until);
   const limit = isPro ? PRO_OFFERS : FREE_OFFERS;
   let offersText = "";
-  if (pro.loaded && offers !== null) {
+  if (isFreelancer && pro.loaded && offers !== null) {
     offersText = offers > limit
-      ? `You have ${offers} offers. A free account can add up to ${FREE_OFFERS}, so you can't add another until you have fewer, or go Pro. The ones you have stay.`
+      ? `You have ${offers} offers. A free account can add up to ${FREE_OFFERS}, so you can't add another until you have fewer, or get Premium. The ones you have stay.`
       : `${offers} of ${limit} offers used.`;
   }
-  // The Featured prices for 3, 7 and 14 days: the normal ones on Free, the Pro ones on Pro.
+  // The Featured prices for 3, 7 and 14 days: the normal ones on Free, the half prices on Premium.
   const featuredRows = FEATURE_CODES.map((code) => prices?.[code]).filter(Boolean);
   const normalFeatured = featuredRows.map((row) => peso(row.price)).join(" / ");
   const proFeatured = featuredRows.map((row) => peso(row.pro_price ?? row.price)).join(" / ");
@@ -161,7 +167,7 @@ export default function ProPlans({ userId, onPaid }) {
       <div className="d-flex flex-wrap align-items-center gap-2">
         {isPro ? (
           <span className="badge bg-warning text-dark fs-8 text-wrap text-start">
-            <i className="bi bi-gem me-1"></i>Pro until {formatFeatureDate(pro.until)}
+            <i className="bi bi-gem me-1"></i>Premium until {formatFeatureDate(pro.until)}
           </span>
         ) : (
           <span className="badge bg-secondary fs-8">Free account</span>
@@ -172,6 +178,9 @@ export default function ProPlans({ userId, onPaid }) {
           </span>
         )}
         {offersText && <span className="text-white-50 fs-7">{offersText}</span>}
+        {isPro && views.loaded && views.premium && (
+          <span className="text-white-50 fs-7"><i className="bi bi-eye me-1"></i>{views.profile} {views.profile === 1 ? "person" : "people"} opened your profile in the last 30 days.</span>
+        )}
       </div>
 
       {/* The two plans side by side (one under the other on a phone). */}
@@ -185,13 +194,16 @@ export default function ProPlans({ userId, onPaid }) {
             </div>
             <div className="pro-plan-rule"></div>
             <ul className="pro-plan-features list-unstyled mb-4 flex-grow-1">
-              <Feature included>Up to {FREE_OFFERS} offers</Feature>
+              {isFreelancer ? <Feature included>Up to {FREE_OFFERS} offers</Feature> : <Feature included>Post projects and jobs</Feature>}
               <Feature included>Featured posts{normalFeatured ? `: ${normalFeatured}` : ""}</Feature>
               <Feature included>Verified badge, ratings and AI matching</Feature>
-              <Feature included={false}>No Pro badge</Feature>
+              <Feature included>Chat files up to 10 MB, a one-color look</Feature>
+              <Feature included={false}>No free Featured post</Feature>
+              <Feature included={false}>No view counts</Feature>
+              <Feature included={false}>No Premium badge</Feature>
             </ul>
             {isPro ? (
-              <p className="text-secondary fs-8 text-center mb-0">You go back to Free when Pro ends. Your offers stay.</p>
+              <p className="text-secondary fs-8 text-center mb-0">You go back to Free when Premium ends.{isFreelancer ? " Your offers stay." : ""}</p>
             ) : (
               <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill py-2 fw-bold w-100" disabled>
                 Your current plan
@@ -203,16 +215,21 @@ export default function ProPlans({ userId, onPaid }) {
         <div className="col-md-6">
           <div className="pro-plan-card pro-plan-card-pro h-100 d-flex flex-column" data-tour="pro-plan">
             <span className="pro-plan-ribbon">{isPro ? "Your plan" : "Best value"}</span>
-            <h6 className="text-white fw-bold mb-3"><i className="bi bi-gem text-role me-2"></i>Freelancer Pro</h6>
+            <h6 className="text-white fw-bold mb-3"><i className="bi bi-gem text-role me-2"></i>Premium</h6>
             <div className="d-flex align-items-baseline gap-2">
-              <span className="pro-plan-price text-role">{proPrice ? peso(proPrice.price) : "Pro"}</span>
+              <span className="pro-plan-price text-role">{proPrice ? peso(proPrice.price) : "Premium"}</span>
               {proPrice && <span className="text-white-50 fs-7">for {proPrice.days} days</span>}
             </div>
             <div className="pro-plan-rule"></div>
             <ul className="pro-plan-features list-unstyled mb-4 flex-grow-1">
-              <Feature included><strong>Up to {PRO_OFFERS} offers</strong> instead of {FREE_OFFERS}</Feature>
+              {isFreelancer && <Feature included><strong>Up to {PRO_OFFERS} offers</strong> instead of {FREE_OFFERS}</Feature>}
+              <Feature included><strong>One free Featured post every 30 days</strong> (3 days at the top)</Feature>
               <Feature included>Half-price Featured posts{proFeatured ? `: ${proFeatured}` : ""}</Feature>
-              <Feature included>A gold Pro badge by your name on Browse Services, your offers and your profile</Feature>
+              <Feature included>See how many people opened your {isFreelancer ? "offers" : "job posts"} and your profile</Feature>
+              <Feature included>Chat files up to 50 MB instead of 10 MB</Feature>
+              <Feature included>The two-color look (Settings &gt; Appearance)</Feature>
+              {isFreelancer && <Feature included>Your watermark in any color, 4 fonts and more sizes</Feature>}
+              <Feature included>A gold Premium badge by your name, everywhere it shows</Feature>
               <Feature included>Everything in Free</Feature>
             </ul>
             {pro.waiting ? (
@@ -221,7 +238,7 @@ export default function ProPlans({ userId, onPaid }) {
               <button type="button" className="btn btn-gradient-role text-white rounded-pill py-2 fw-bold w-100" onClick={goPro} disabled={!pro.loaded || opening}>
                 {opening
                   ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Opening the payment page...</>
-                  : <><i className="bi bi-gem me-2"></i>{isPro ? "Extend Pro" : "Go Pro"}</>}
+                  : <><i className="bi bi-gem me-2"></i>{isPro ? "Extend Premium" : "Get Premium"}</>}
               </button>
             )}
             {openError && <p className="text-danger fs-8 mt-2 mb-0 text-center" role="alert">{openError}</p>}
@@ -231,8 +248,9 @@ export default function ProPlans({ userId, onPaid }) {
 
       <small className="text-secondary fs-8 d-block">
         You pay on Xendit's secure page with GCash, Maya or QR Ph; PhilFreela never sees your payment details.
-        Pay again before Pro ends and the days are added after it. What your clients pay you still goes straight to you.
-        Featured prices are for 3, 7 or 14 days.
+        Pay again before Premium ends and the days are added after it. Payments between clients and freelancers still
+        go straight to each other. Featured prices are for 3, 7 or 14 days. Premium never moves anyone up the AI's
+        "Recommended for you".
       </small>
     </div>
   );

@@ -20,8 +20,8 @@ const sidebarLinks = [
   { to: "/dashboard/services", icon: "bi-briefcase-fill", label: "My Services", tour: "menu-services" },
   { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings", tour: "menu-bookings" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project", tour: "menu-projects" },
-  // Freelancer Pro's own page (it used to be a Settings tab).
-  { to: "/dashboard/pro", icon: "bi-gem", label: "Freelancer Pro", tour: "menu-pro" }
+  // Premium's own page (it was "Freelancer Pro", and before that a Settings tab).
+  { to: "/dashboard/pro", icon: "bi-gem", label: "Premium", tour: "menu-pro" }
 ];
 
 // Receives the shared session/toast/preview/chat state as props from
@@ -43,14 +43,15 @@ export default function FreelancerDashboardLayout({
   // The welcome banner belongs on the dashboard home only, not every
   // sub-page (chat, inbox, profile, ...) that reuses this same layout.
   const isDashboardHome = useLocation().pathname === "/dashboard-freelancer";
-  // Whether this freelancer has Pro right now: the gold Pro badge by their name
-  // and "Active" on the menu item. The Pro page calls refreshPro after a payment.
+  // Whether this freelancer has Premium right now: the gold Premium badge by
+  // their name (menu and top bar) and "Active" on the menu item. The Premium
+  // page calls refreshPro after a payment.
   const pro = useProStatus(currentUserId);
   const isPro = Boolean(pro.until);
 
   return (
     <div className="bg-dark text-light">
-      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} unreadMessages={unreadCount} unreadNotifications={unreadNotifications} onNotificationsRead={refreshUnreadNotifications} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} />
+      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} unreadMessages={unreadCount} unreadNotifications={unreadNotifications} onNotificationsRead={refreshUnreadNotifications} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} isPro={isPro} />
 
       <div className="app-container d-flex">
         <aside data-tour="sidebar" className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
@@ -70,7 +71,7 @@ export default function FreelancerDashboardLayout({
               {sidebarLinks.map((link) => {
                 // Live count: booking requests waiting for an answer on Bookings.
                 const count = link.to === "/dashboard/bookings" ? pendingBookings : 0;
-                // Freelancer Pro says "Active" while the person has it.
+                // Premium says "Active" while the person has it.
                 const isProLink = link.to === "/dashboard/pro";
                 const badge = isProLink ? (isPro ? "Active" : null) : count > 0 ? String(count) : null;
                 return (

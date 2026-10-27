@@ -26,7 +26,7 @@ const formatUntil = (moment) =>
 const personName = (person) => (person ? `${person.full_name} (@${person.username})` : "a removed account");
 
 // Admin panel > Promotions: the fees people pay PhilFreela. Someone who wants a
-// Featured post or Freelancer Pro pays PhilFreela's own GCash number and sends the
+// Featured post or Premium pays PhilFreela's own GCash number and sends the
 // reference and a receipt; an admin checks PhilFreela's own GCash and approves or
 // rejects here. Any admin can answer; only a super admin changes the Settings
 // (PhilFreela's GCash number and QR, and the prices). See PLAN-monetization.md.
@@ -143,7 +143,7 @@ export default function AdminPromotionsView() {
     <section>
       <h1 className="h4 fw-bold mb-1">Promotions</h1>
       <p className="text-white-50 fs-7 mb-3">
-        Fees people pay PhilFreela. A Featured post is paid to PhilFreela's own GCash with a reference and a receipt: check your GCash, then approve or reject. Freelancer Pro is paid online on Xendit and starts by itself; it shows up in History.
+        Fees people pay PhilFreela. A Featured post is paid to PhilFreela's own GCash with a reference and a receipt: check your GCash, then approve or reject. Premium is paid online on Xendit and starts by itself; it shows up in History.
       </p>
 
       <div className="d-flex flex-wrap gap-2 mb-3" role="tablist" aria-label="Promotions">
@@ -246,10 +246,10 @@ export default function AdminPromotionsView() {
               <div className="col-12">
                 <div className="admin-card rounded-4 p-3">
                   <div className="d-flex justify-content-between align-items-baseline gap-3 mb-2">
-                    <h2 className="h6 fw-bold text-white mb-0">Freelancer Pro members</h2>
+                    <h2 className="h6 fw-bold text-white mb-0">Premium members</h2>
                     <span className="text-secondary fs-7">{running.pro.length} now</span>
                   </div>
-                  {running.pro.length === 0 && <p className="text-secondary fs-7 mb-0">Nobody is a Pro member right now.</p>}
+                  {running.pro.length === 0 && <p className="text-secondary fs-7 mb-0">Nobody is a Premium member right now.</p>}
                   <ul className="list-unstyled d-grid gap-2 mb-0">
                     {running.pro.map((row) => (
                       <li key={row.user_id}>
@@ -277,7 +277,7 @@ export default function AdminPromotionsView() {
             {answered?.map((request) => {
               const approved = request.status === "approved";
               const kind = PROMO_KINDS[request.kind];
-              // Paid on Xendit's page (Freelancer Pro): no reference, receipt or admin.
+              // Paid on Xendit's page (Premium): no reference, receipt or admin.
               const online = request.method === "online";
               return (
                 <div key={request.id} className="admin-card rounded-4 p-3">
@@ -290,7 +290,7 @@ export default function AdminPromotionsView() {
                     <span className="text-white-50 fs-8 ms-auto">{new Date(request.decided_at).toLocaleString()}</span>
                   </div>
                   <div className="text-white admin-description">
-                    {request.kind === "pro" ? `${request.days} days of Freelancer Pro` : `${request.days} days for "${request.target_title || "a removed post"}"`}
+                    {request.kind === "pro" ? `${request.days} days of Premium` : `${request.days} days for "${request.target_title || "a removed post"}"`}
                     {" "}from{" "}
                     {request.person ? (
                       <Link to={`/admin/users?search=${encodeURIComponent(request.person.username)}`} className="text-white fw-semibold">{request.person.full_name}</Link>

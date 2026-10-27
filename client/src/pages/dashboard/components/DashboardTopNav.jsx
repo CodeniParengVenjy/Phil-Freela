@@ -5,6 +5,7 @@ import { fetchMyLink, switchToOtherAccount } from "../../../lib/accountSwitch";
 import { PICTURE_TYPES, checkPicture } from "../../../lib/pictureSearch";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import ProBadge from "../../../components/ProBadge";
 import Avatar from "../../../components/Avatar";
 import AccentLogo from "./AccentLogo";
 import PictureSearchDialog from "./PictureSearchDialog";
@@ -15,7 +16,7 @@ import TopNavMessages from "./TopNavMessages";
 // Identical between the freelancer and client dashboards -- brand, search,
 // the bell and chat icons, and the account dropdown -- so both layouts share
 // this instead of each keeping their own copy.
-export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, unreadMessages, unreadNotifications, onNotificationsRead, onToggleSidebar, onSignOut, onSwitchRole, showToast, openChat }) {
+export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, unreadMessages, unreadNotifications, onNotificationsRead, onToggleSidebar, onSignOut, onSwitchRole, showToast, openChat, isPro }) {
   const isVerified = useVerifiedIds([currentUserId]).has(currentUserId);
   const switchLabel = accountType === "client" ? "Switch to Freelancer" : "Switch to Client";
   const switchHref = accountType === "client" ? "/dashboard-freelancer" : "/dashboard-client";
@@ -186,6 +187,8 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
               <span className="fw-semibold fs-7 text-truncate d-none d-sm-inline">
                 {displayName}
                 <VerifiedBadge verified={isVerified} />
+                {/* Premium right now (the layout knows: lib/pro.js, useProStatus). */}
+                <ProBadge pro={isPro} />
               </span>
             </button>
             <ul className="dropdown-menu dropdown-menu-end dropdown-menu-dark border border-secondary border-opacity-25 shadow-lg p-2">
