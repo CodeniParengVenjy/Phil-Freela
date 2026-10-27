@@ -113,8 +113,16 @@ ranking (Featured posts stay in their own labelled row).
   Services; chat documents up to 50 MB with Premium; the gradient in Appearance
   locked without Premium (a second color saved earlier is kept, not shown).
   The gradient rule (supabase_premium_gradient_schema.sql) goes live right
-  after this website step. Still to do: the watermark choices (form, preview,
-  AI service); on Post a Project the free Featured and the view counts, and
+  after this website step.
+- Step 4, the watermark: Settings > Watermark Settings has a Font row
+  (PhilFreela, and with Premium Serif, Typewriter and Handwriting: DM Serif
+  Display, Space Mono and Pacifico, all SIL Open Font License, in
+  ai-service/assets and client/public/watermark-fonts), Extra small and Extra
+  large, and an "any color" box; without Premium they are locked with a "See
+  Premium" note. The AI service draws them, and gives someone whose Premium
+  ended the nearest free look (site font, white, small/large); the page shows
+  that same look, so saving keeps what the photos really get. Still to do:
+  on Post a Project the free Featured and the view counts, and
   the tour's words (both wait for the other session's edits of those files);
   Featured paid on Xendit and the admin's billboard link (wait for Step 2's
   deploy).

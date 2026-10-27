@@ -51,7 +51,7 @@ from text_watermark import add_code as add_text_code
 from text_watermark import footer as text_footer
 from text_watermark import paragraphs_for_check, strip_hidden
 from text_watermark import read_code as read_text_code
-from visible_watermark import draw_visible_watermark, watermark_layer
+from visible_watermark import draw_visible_watermark, free_style, watermark_layer
 from watermark_video import code_reads_back, output_size, read_video_code, spread, video_info, watermark_video
 
 load_dotenv()
@@ -631,15 +631,30 @@ def watermark_photo(user_id, image, promo):
 
 def watermark_style(user_id):
     """(settings, username, full_name) for drawing the freelancer's visible
-    watermark (settings is None if they never saved their own style)."""
+    watermark (settings is None if they never saved their own style).
+    Premium's colors, fonts and sizes are drawn only while they have Premium
+    (see free_style in visible_watermark.py)."""
     settings = (
         supabase.table("watermark_settings")
-        .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, show_badge")
+        .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, font, show_badge")
         .eq("freelancer_id", user_id).limit(1).execute().data
     )
     profile = supabase.table("profiles").select("username, full_name").eq("id", user_id).limit(1).execute().data
     profile = profile[0] if profile else {}
-    return (settings[0] if settings else None), profile.get("username", ""), profile.get("full_name", "")
+    style = settings[0] if settings else None
+    if style and not has_premium(user_id):
+        style = free_style(style)
+    return style, profile.get("username", ""), profile.get("full_name", "")
+
+
+def has_premium(user_id):
+    """True while the person has Premium (the same test as the database's
+    is_pro: their pro_until is still ahead)."""
+    now = datetime.now(timezone.utc).isoformat()
+    return bool(
+        supabase.table("pro_members").select("user_id")
+        .eq("user_id", user_id).gt("pro_until", now).limit(1).execute().data
+    )
 
 
 def page_path(file_path, number):

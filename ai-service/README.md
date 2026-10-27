@@ -18,7 +18,9 @@ portfolio projects (`POST /slides`):
 
 - **Visible watermark** (`visible_watermark.py`): the freelancer's name drawn
   in the style they picked in Settings > Watermark Settings, in the website's
-  own font, Plus Jakarta Sans (SIL Open Font License, `assets/OFL.txt`).
+  own font, Plus Jakarta Sans (SIL Open Font License, `assets/OFL.txt`), or
+  with Premium in DM Serif Display, Space Mono or Pacifico (also SIL Open
+  Font License, `assets/OFL-*.txt`), in any color and 5 sizes.
 - **Invisible code** (`hidden_watermark.py`): a random 48-bit code hidden with
   **HiDDeN** ("Hiding Data with Deep Networks"), using Meta's pretrained model
   from the Stable Signature project

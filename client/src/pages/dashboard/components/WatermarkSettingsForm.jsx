@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { isHexColor } from "../../../lib/appearance";
 import {
-  COLORS, MAX_CUSTOM_TEXT, POSITIONS, SIZES,
+  COLORS, FONTS, MAX_CUSTOM_TEXT, POSITIONS, SIZES,
   loadWatermarkSettings, saveWatermarkSettings, watermarkText
 } from "../../../lib/watermarkSettings";
 import { drawWatermark, loadWatermarkFont } from "../../../lib/watermarkPreview";
 
 const SAMPLE_PHOTO = "/images/Freelancers.png";
 const LOGO = "/email/logo.png";
+// What the "any color" box shows before a color of their own was picked.
+const FIRST_OWN_COLOR = "#8b5cf6";
 
 // Loads a picture for drawing on the preview canvas.
 function loadPicture(src) {
@@ -20,7 +24,8 @@ function loadPicture(src) {
 
 // Settings > Watermark Settings: how the visible watermark on the freelancer's
 // photos looks, with a live preview on a sample photo. The invisible HiDDeN
-// code is always added and has no settings.
+// code is always added and has no settings. Any color, the extra sizes and
+// 3 more fonts are Premium's (PLAN-premium.md): shown locked without it.
 export default function WatermarkSettingsForm({ userId, username, fullName, showToast }) {
   const [settings, setSettings] = useState(null);
   const [loadError, setLoadError] = useState("");
@@ -80,6 +85,14 @@ export default function WatermarkSettingsForm({ userId, username, fullName, show
   if (!settings) return <p className="text-secondary fs-7">Loading...</p>;
 
   const pill = (active) => `btn btn-sm rounded-pill px-3 fw-semibold ${active ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`;
+  const { premium } = settings;
+  // A Premium choice: locked (with a gem) without Premium.
+  const gem = (item) => item.premium && <i className={`bi ${premium ? "bi-gem" : "bi-lock-fill"} text-warning ms-1`} title="Premium"></i>;
+  const ownColor = isHexColor(settings.color);
+  const ring = (picked) => ({
+    borderColor: picked ? "var(--accent-role)" : "rgba(148,163,184,0.5)",
+    boxShadow: picked ? "0 0 0 3px var(--accent-role-glow)" : "none"
+  });
 
   return (
     <form className="d-flex flex-column gap-4" onSubmit={handleSave}>
@@ -152,31 +165,67 @@ export default function WatermarkSettingsForm({ userId, username, fullName, show
             <label className="form-label text-white fw-semibold fs-7">Size:</label>
             <div className="d-flex flex-wrap gap-2">
               {SIZES.map((s) => (
-                <button key={s.value} type="button" className={pill(settings.size === s.value)} onClick={() => change("size", s.value)}>{s.label}</button>
+                <button
+                  key={s.value}
+                  type="button"
+                  className={pill(settings.size === s.value)}
+                  onClick={() => change("size", s.value)}
+                  disabled={s.premium && !premium}
+                >
+                  {s.label}{gem(s)}
+                </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="form-label text-white fw-semibold fs-7">Font:</label>
+          <div className="d-flex flex-wrap gap-2">
+            {FONTS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                className={pill(settings.font === f.value)}
+                style={{ fontFamily: `"${f.family}", sans-serif`, fontWeight: f.weight || 400 }}
+                onClick={() => change("font", f.value)}
+                disabled={f.premium && !premium}
+              >
+                {f.label}{gem(f)}
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="d-flex flex-wrap align-items-center gap-4">
           <div>
             <label className="form-label text-white fw-semibold fs-7 d-block">Color:</label>
-            <div className="d-flex gap-2">
+            <div className="d-flex flex-wrap align-items-center gap-2">
               {COLORS.map((c) => (
                 <button
                   key={c.value}
                   type="button"
                   className="rounded-circle border"
-                  style={{
-                    width: 32, height: 32, background: c.hex,
-                    borderColor: settings.color === c.value ? "var(--accent-role)" : "rgba(148,163,184,0.5)",
-                    boxShadow: settings.color === c.value ? "0 0 0 3px var(--accent-role-glow)" : "none"
-                  }}
+                  style={{ width: 32, height: 32, background: c.hex, ...ring(settings.color === c.value) }}
                   aria-label={c.label}
                   aria-pressed={settings.color === c.value}
                   onClick={() => change("color", c.value)}
                 ></button>
               ))}
+              {/* Premium: any color of their own. */}
+              <span className="d-inline-flex align-items-center">
+                <input
+                  type="color"
+                  className="form-control form-control-color bg-secondary bg-opacity-25 border p-1"
+                  style={{ width: 44, height: 32, ...ring(ownColor) }}
+                  value={ownColor ? settings.color : FIRST_OWN_COLOR}
+                  onChange={(e) => change("color", e.target.value.toLowerCase())}
+                  disabled={!premium}
+                  aria-label="Any color (Premium)"
+                  title={premium ? "Any color" : "Any color comes with Premium"}
+                />
+                {gem({ premium: true })}
+              </span>
             </div>
           </div>
           <div className="form-check mt-3">
@@ -184,6 +233,15 @@ export default function WatermarkSettingsForm({ userId, username, fullName, show
             <label htmlFor="wmBadge" className="form-check-label text-white fs-7">Show the PhilFreela logo</label>
           </div>
         </div>
+
+        {!premium && (
+          <div className="p-3 rounded-3 border border-warning border-opacity-50 bg-warning bg-opacity-10 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span className="text-white fs-7"><i className="bi bi-lock-fill text-warning me-2"></i>Any color, 3 more fonts and the extra sizes come with Premium.</span>
+            <Link to="/dashboard/pro" className="btn btn-sm btn-outline-warning rounded-pill px-3 fs-8 fw-bold">
+              <i className="bi bi-gem me-1"></i>See Premium
+            </Link>
+          </div>
+        )}
       </fieldset>
 
       <div className="form-check form-switch">

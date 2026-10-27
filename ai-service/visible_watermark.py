@@ -5,6 +5,11 @@ It's drawn in the style they picked in Settings > Watermark Settings. The
 website draws the same thing for the live preview
 (client/src/lib/watermarkPreview.js), so if you change the layout here,
 change it there too.
+
+Premium (PLAN-premium.md) adds any color (#rrggbb), extra small and extra
+large, and 3 more fonts. The database only lets Premium members pick them;
+someone whose Premium ended keeps them saved, and main.py passes their style
+through free_style() so their photos get the nearest free look meanwhile.
 """
 
 import math
@@ -13,8 +18,15 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
-# The website's own font (SIL Open Font License, see assets/OFL.txt).
-FONT_PATH = os.path.join(ASSETS, "PlusJakartaSans-Bold.ttf")
+# The website's own font, and Premium's 3 more (all SIL Open Font License, see
+# assets/OFL*.txt). The website's preview uses the same files
+# (client/public/watermark-fonts).
+FONT_PATHS = {
+    "jakarta": os.path.join(ASSETS, "PlusJakartaSans-Bold.ttf"),
+    "serif": os.path.join(ASSETS, "DMSerifDisplay-Regular.ttf"),
+    "mono": os.path.join(ASSETS, "SpaceMono-Bold.ttf"),
+    "script": os.path.join(ASSETS, "Pacifico-Regular.ttf"),
+}
 LOGO_PATH = os.path.join(ASSETS, "philfreela-logo.png")
 
 # Used when a freelancer never saved their own style (same as the database defaults).
@@ -26,17 +38,54 @@ DEFAULTS = {
     "opacity": 60,
     "size": "medium",
     "color": "white",
+    "font": "jakarta",
     "show_badge": True,
 }
 
 # Text height as a share of the photo's shorter side. (Made bigger: at 5%
 # the mark was easy to miss on a service card.) Same numbers as
-# client/src/lib/watermarkPreview.js.
-SIZE_RATIOS = {"small": 0.05, "medium": 0.08, "large": 0.11}
+# client/src/lib/watermarkPreview.js. xsmall and xlarge are Premium's.
+SIZE_RATIOS = {"xsmall": 0.035, "small": 0.05, "medium": 0.08, "large": 0.11, "xlarge": 0.15}
 COLORS = {"white": (255, 255, 255), "black": (17, 17, 17), "orange": (255, 107, 0)}
+# Premium's extra sizes, and the free size each one becomes without Premium.
+FREE_SIZES = {"xsmall": "small", "xlarge": "large"}
 TILE_ANGLE = 30  # degrees, for the tiled pattern
 
 _logo = None
+
+
+def free_style(settings):
+    """The same style with only the free choices: the site's font, one of the
+    3 colors (white instead of a color of their own) and small to large. For
+    someone without Premium (see the top of this file)."""
+    if not settings:
+        return settings
+    return {
+        **settings,
+        "font": "jakarta",
+        "color": settings.get("color") if settings.get("color") in COLORS else "white",
+        "size": FREE_SIZES.get(settings.get("size"), settings.get("size")),
+    }
+
+
+def _rgb(color):
+    """A color name (white, black, orange) or "#rrggbb" as (r, g, b); white if
+    it is neither."""
+    if color in COLORS:
+        return COLORS[color]
+    try:
+        if len(color) == 7 and color[0] == "#":
+            return tuple(int(color[i:i + 2], 16) for i in (1, 3, 5))
+    except (TypeError, ValueError):
+        pass
+    return COLORS["white"]
+
+
+def _is_dark(rgb):
+    """True for a dark color, which then gets a light outline (and the other
+    way round). Black is dark; white and orange are not."""
+    r, g, b = rgb
+    return 0.299 * r + 0.587 * g + 0.114 * b < 128
 
 
 def watermark_text(settings, username, full_name):
@@ -55,9 +104,9 @@ def _load_logo():
     return _logo
 
 
-def _draw_mark(text, font_px, color, show_badge):
+def _draw_mark(text, font_px, color, show_badge, font_name="jakarta"):
     """The watermark itself (logo + text) on a see-through picture, at full strength."""
-    font = ImageFont.truetype(FONT_PATH, font_px)
+    font = ImageFont.truetype(FONT_PATHS.get(font_name, FONT_PATHS["jakarta"]), font_px)
     stroke = max(1, round(font_px / 18))
     text_width = math.ceil(font.getlength(text)) + 2 * stroke
 
@@ -75,10 +124,11 @@ def _draw_mark(text, font_px, color, show_badge):
         mark.alpha_composite(logo, (0, (height - logo.height) // 2))
 
     # A thin outline in the opposite shade keeps it readable on any background.
-    outline = (255, 255, 255, 110) if color == "black" else (0, 0, 0, 110)
+    rgb = _rgb(color)
+    outline = (255, 255, 255, 110) if _is_dark(rgb) else (0, 0, 0, 110)
     x = (logo.width + gap if logo else 0) + stroke
     ImageDraw.Draw(mark).text(
-        (x, height / 2), text, font=font, fill=COLORS[color] + (255,),
+        (x, height / 2), text, font=font, fill=rgb + (255,),
         anchor="lm", stroke_width=stroke, stroke_fill=outline,
     )
     return mark
@@ -124,13 +174,13 @@ def watermark_layer(size, settings, username, full_name):
 
     width, height = size
     text = watermark_text(settings, username, full_name)
-    font_px = max(12, round(min(width, height) * SIZE_RATIOS[settings["size"]]))
-    mark = _draw_mark(text, font_px, settings["color"], settings["show_badge"])
+    font_px = max(12, round(min(width, height) * SIZE_RATIOS.get(settings["size"], SIZE_RATIOS["medium"])))
+    mark = _draw_mark(text, font_px, settings["color"], settings["show_badge"], settings["font"])
     # Long text on a small photo: shrink it so it fits.
     room = width - 2 * round(font_px * 0.8)
     if settings["position"] != "tiled" and mark.width > room:
         font_px = max(10, math.floor(font_px * room / mark.width))
-        mark = _draw_mark(text, font_px, settings["color"], settings["show_badge"])
+        mark = _draw_mark(text, font_px, settings["color"], settings["show_badge"], settings["font"])
     _set_opacity(mark, settings["opacity"])
 
     if settings["position"] == "tiled":
