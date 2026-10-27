@@ -138,9 +138,7 @@ ranking (Featured posts stay in their own labelled row).
   (31 counted notes; the freelancer's stay 33). Committed with only my own
   lines of PostNeedView.jsx and welcomeGuide.js: the other session still has
   uncommitted changes in both (the AI-filled skills, see PLAN-ai-skills.md).
-  Still to do: the user's first test boost, deploying xendit-webhook (so
-  billboard payments are recorded by themselves) and the gradient SQL
-  (database/supabase_premium_gradient_schema.sql).
+  (Its "still to do" list is in the last notes below.)
 - 2026-10-28: pro-checkout v4 is DEPLOYED (through the Supabase connector,
   after the user said "go"; verify_jwt off as before, files
   pro-checkout/index.ts + _shared/payments.ts like v3). Checked: the function
@@ -154,3 +152,22 @@ ranking (Featured posts stay in their own labelled row).
   "Check payment" until it is updated. To roll back, redeploy the old files
   (git show da89147~1:supabase/functions/pro-checkout/index.ts and
   _shared/payments.ts).
+- 2026-10-28, later: the gradient rule is LIVE (migration premium_4_gradient_only,
+  database/supabase_premium_gradient_schema.sql, trigger profiles_premium_gradient
+  on profiles). Tried first on the live database as a rolled-back block (checks
+  26 and 27 of test_premium.sql plus "with Premium it saves": all passed), applied,
+  then the same three checks again on the live rule: all passed, rolled back. The
+  trigger is enabled; 4 accounts have a saved second color (1 with Premium) and
+  keep it saved: the website shows the 3 free ones one color, and nobody can pick
+  a new second color without Premium. The trigger function is executable by
+  anon/authenticated (Postgres' default; a trigger function can't be called
+  directly, so it is harmless, but the earlier hardening migration revoked it for
+  tidiness; the watermark one from step 1 is probably the same).
+- 2026-10-28, later: deploying xendit-webhook (v3, the repo's billboard lookup)
+  was DENIED by Claude Code's permission check ("dangerous", no reason) one turn
+  after pro-checkout went through. Not retried and not worked around. Boosting
+  does not need it (the live v2 already records Featured payments); billboard
+  payments are recorded with "Check payment" until it is deployed. To deploy it:
+  add an allow rule for mcp__supabase__deploy_edge_function (the user does this,
+  /permissions or settings) and ask again, or run
+  `npx supabase functions deploy xendit-webhook --no-verify-jwt --project-ref rpopftzrrhuzjxzwobvl`.

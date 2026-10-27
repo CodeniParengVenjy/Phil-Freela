@@ -2,6 +2,9 @@
 -- Appearance becomes a Premium perk. Applied together with the website that
 -- shows it as Premium, so nobody on the old page gets a refusal it can't explain.
 -- Run after supabase_premium_schema.sql.
+-- APPLIED on the live project 2026-10-28 as the migration premium_4_gradient_only
+-- (after the website's gradient lock was live), tried first with checks 26 and 27
+-- of test_premium.sql and rolled back, then again after applying.
 
 -- ---------------------------------------------------------------------------
 -- 6. The two-color look (Appearance) is a Premium perk
