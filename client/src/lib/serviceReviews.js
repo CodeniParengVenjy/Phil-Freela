@@ -2,9 +2,11 @@ import { supabase } from "./supabaseClient";
 
 // Ratings and comments on an offer (database/supabase_service_reviews_schema.sql):
 // a signed-in client gives an offer 1 to 5 stars and may write a comment. One
-// per client per offer. The browser only READS this table (and removes its own
-// row); adding one goes through the database function add_service_review,
-// which checks who is asking and explains a refusal in plain words.
+// per client per offer, and only after a project from booking that offer is
+// Done (database/supabase_offer_review_done_schema.sql). The browser only READS
+// this table (and removes its own row); adding one goes through the database
+// function add_service_review, which checks who is asking and explains a
+// refusal in plain words.
 export const MAX_REVIEW_COMMENT_LENGTH = 1000;
 
 const REVIEW_COLUMNS =
@@ -60,6 +62,39 @@ export async function addServiceReview(serviceId, stars, comment) {
     return { error: "Couldn't post your rating. Please try again." };
   }
   return { reviewId: data };
+}
+
+// Where a client stands with an offer, from their own bookings of it:
+//   "done"   a project from booking it is Done, so they can rate it
+//   "booked" booked, but no project from it is Done yet
+//   "none"   never booked (or every booking was declined or cancelled)
+// If the request fails it answers "done" and lets the database decide when
+// they post (add_service_review checks the same thing).
+export async function getOfferProgress(serviceId, clientId) {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("status, project:projects(status)")
+    .eq("service_id", serviceId)
+    .eq("client_id", clientId);
+  if (error) return "done";
+  // A booking has at most one project (accepted bookings only).
+  const projects = (data || []).flatMap((booking) => [].concat(booking.project || []));
+  if (projects.some((project) => project.status === "done")) return "done";
+  if ((data || []).some((booking) => booking.status === "pending" || booking.status === "accepted")) return "booked";
+  return "none";
+}
+
+// Whether this person already rated an offer (for the "Rate this offer" link
+// on a Done project). null when it couldn't be checked.
+export async function hasRatedOffer(serviceId, userId) {
+  const { data, error } = await supabase
+    .from("service_reviews")
+    .select("id")
+    .eq("service_id", serviceId)
+    .eq("author_id", userId)
+    .limit(1);
+  if (error) return null;
+  return data.length > 0;
 }
 
 // Removes your own rating (the database only lets an author remove their own;

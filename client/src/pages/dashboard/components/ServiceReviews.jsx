@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Avatar from "../../../components/Avatar";
 import { profilePath } from "../../../lib/profileStats";
-import { MAX_REVIEW_COMMENT_LENGTH, addServiceReview, fetchServiceReviews, removeOwnReview, summarizeReviews } from "../../../lib/serviceReviews";
+import { MAX_REVIEW_COMMENT_LENGTH, addServiceReview, fetchServiceReviews, getOfferProgress, removeOwnReview, summarizeReviews } from "../../../lib/serviceReviews";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import CensoredText from "../../../components/CensoredText";
 
@@ -15,9 +16,11 @@ function Stars({ value }) {
 }
 
 // The "Ratings and comments" part of an offer's page (Service Details). The
-// average and the list are for everyone; a signed-in client who hasn't rated
-// this offer yet also gets the box to pick stars and write a comment (see
-// lib/serviceReviews.js and database/supabase_service_reviews_schema.sql).
+// average and the list are for everyone; a client whose project from booking
+// this offer is Done, and who hasn't rated it yet, also gets the box to pick
+// stars and write a comment (see lib/serviceReviews.js and
+// database/supabase_offer_review_done_schema.sql). Opened with
+// #offer-ratings in the address (the link on a Done project), it scrolls here.
 //   reviews: the list (null while loading); onReviewsChange(list): the page keeps it
 //   isOwnOffer: this is the viewer's own offer (nobody rates their own)
 //   onReport(review): the flag on somebody else's comment
@@ -32,10 +35,45 @@ export default function ServiceReviews({ serviceId, reviews, loadError, onReview
   const [toRemove, setToRemove] = useState(null);
   const [removing, setRemoving] = useState(false);
 
+  // Where this client stands with the offer: "done", "booked" or "none"
+  // (null while checking, and for everyone who isn't a client looking at
+  // someone else's offer).
+  const [progress, setProgress] = useState(null);
+  const askProgress = accountType === "client" && !isOwnOffer && Boolean(currentUserId);
+
+  useEffect(() => {
+    if (!askProgress) return undefined;
+    let active = true;
+    getOfferProgress(serviceId, currentUserId).then((result) => {
+      if (active) setProgress(result);
+    });
+    return () => {
+      active = false;
+    };
+  }, [askProgress, serviceId, currentUserId]);
+
   const list = reviews || [];
   const { count, average } = summarizeReviews(list);
   const mine = list.find((review) => review.author_id === currentUserId);
-  const canRate = accountType === "client" && !isOwnOffer && !mine;
+  // Only after the work is done: a project from booking this offer is Done.
+  const canRate = askProgress && !mine && progress === "done";
+
+  // Opened from a Done project's "Rate this offer" link: once the list and
+  // the box are in place, scroll the dashboard's content area to this part
+  // (only that area: scrollIntoView would also slide the page under the top bar).
+  const { hash } = useLocation();
+  const sectionRef = useRef(null);
+  const scrolled = useRef(false);
+  const ready = reviews !== null && (!askProgress || progress !== null);
+  useEffect(() => {
+    if (hash !== "#offer-ratings" || !ready || scrolled.current) return;
+    scrolled.current = true;
+    const section = sectionRef.current;
+    const area = section?.closest(".content-wrapper");
+    if (!area) return;
+    const offset = section.getBoundingClientRect().top - area.getBoundingClientRect().top;
+    area.scrollTo({ top: area.scrollTop + offset - 24 });
+  }, [hash, ready]);
 
   // Loads the list again after a change, so it shows what the database has.
   const reload = async () => {
@@ -72,7 +110,7 @@ export default function ServiceReviews({ serviceId, reviews, loadError, onReview
   };
 
   return (
-    <div id="offer-ratings">
+    <div id="offer-ratings" ref={sectionRef}>
       <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3">
         <h4 className="text-white fw-bold mb-0"><i className="bi bi-star-half text-role me-2"></i> Ratings and comments</h4>
         {count > 0 && (
@@ -83,7 +121,7 @@ export default function ServiceReviews({ serviceId, reviews, loadError, onReview
         )}
       </div>
 
-      {/* Who can rate: signed-in clients, once per offer. */}
+      {/* Who can rate: a client whose project from this offer is Done, once per offer. */}
       {canRate && (
         <form className="bg-dark bg-opacity-50 p-3 p-md-4 rounded-4 border border-secondary border-opacity-25 mb-3" onSubmit={handlePost}>
           <p className="text-white fw-semibold fs-7 mb-2">Rate this offer</p>
@@ -120,6 +158,13 @@ export default function ServiceReviews({ serviceId, reviews, loadError, onReview
             <i className="bi bi-send me-1"></i>{sending ? "Posting..." : "Post rating"}
           </button>
         </form>
+      )}
+      {/* A client who can't rate yet is told why. */}
+      {askProgress && !mine && progress === "none" && (
+        <p className="text-secondary fs-8 mb-3"><i className="bi bi-lock-fill me-1"></i>Book this offer and finish the project to rate it.</p>
+      )}
+      {askProgress && !mine && progress === "booked" && (
+        <p className="text-secondary fs-8 mb-3"><i className="bi bi-hourglass-split me-1"></i>You can rate this offer once your project from it is done.</p>
       )}
       {!canRate && accountType !== "client" && (
         <p className="text-secondary fs-8 mb-3">Only client accounts can rate and comment on an offer.</p>

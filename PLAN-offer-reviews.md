@@ -36,7 +36,8 @@ ratings" almost everywhere.
 
 - One rating per client per offer. Stars are required, the comment is not.
 - Not tied to a finished project (the user's choice), so it can be faked or
-  spammed; the report flag and the admins are the answer. A client who is
+  spammed; the report flag and the admins are the answer. (Changed
+  2026-10-27, see step 3: now only after a project from the offer is Done.) A client who is
   suspended from posting can't rate, and a suspended person's comments are
   hidden while it lasts.
 - Separate from the freelancer's project stars (the header keeps those).
@@ -131,3 +132,50 @@ fake backend, desktop and phone, dark and light (37 checks; plus the ratings
 (73) and offer-page (86) tests again): the chip, none for an unrated offer, one
 request for the whole list, and a failed request just leaves the chip off. Not
 shown on: the moodboard picture-search results (they are freelancers, not offers).
+
+## Step 3: rating only after the work is done (2026-10-27)
+
+The user asked: "Ratings and comments are able to if the services/offers (both
+freelancer/client case) are accomplishly complete". Project ratings (the
+client rates the freelancer, the freelancer rates the client) already opened
+only once the project is Done. Offer ratings did not: any client could rate
+any offer, even one they never booked. The plan was approved with "ok", with
+these defaults: still one rating per client per offer, no time limit for
+offer ratings (they are not blind), project ratings unchanged, the freelancer
+still gives stars only, and the one live rating with no finished project
+removed.
+
+What people see:
+1. Offer page, "Ratings and comments": the box to rate only shows for a client
+   who booked this offer and whose project from it is Done. Others see why:
+   never booked (or only declined / cancelled bookings): "Book this offer and
+   finish the project to rate it."; booked but not Done yet: "You can rate this
+   offer once your project from it is done." The list and average stay for
+   everyone. If the bookings can't be read, the box shows and the database
+   decides.
+2. Project page, Done, for the client of a project that came from a booking and
+   who hasn't rated that offer yet: a "Rate this offer" button under the
+   project rating. It opens the offer's page scrolled to its ratings
+   (`#offer-ratings`).
+
+Database: `database/supabase_offer_review_done_schema.sql`. Part 1 (applied
+as migration "offer_review_after_done", 2026-10-27): `add_service_review`
+also refuses unless the client has a booking of this offer whose project is
+Done ("You can rate this offer after your project from it is done."). Part 2
+is a one-time delete of ratings with no finished project behind them (one on
+the live database: 3 stars, "Amazing Nice", 2026-10-20, on "UI Design"). The
+Supabase connector and Claude Code's permission check both refused to run that
+delete, so it waits for the SQL Editor. Test: `database/test_offer_review_done.sql`
+(rolled back, borrows real accounts): 12 checks, all passed on the live
+database before applying (never booked, pending, declined, started, sent but
+not Done all refused; Done accepted; still one per client; a Done hire or a
+Done booking of another offer doesn't open this one; the offer's freelancer
+still can't rate it; only signed-in people can call it; the cleanup condition
+picks only the rating with no finished project). `database/test_service_reviews.sql`
+now gives its two clients a Done project first; it was not run again (it
+deletes rows, which the connector refuses).
+
+Website: `lib/serviceReviews.js` (`getOfferProgress`, `hasRatedOffer`),
+`components/ServiceReviews.jsx`, `lib/projects.js` (`getProject` reads the
+booking's offer), `views/ProjectDetailsView.jsx`. Tested in a real browser
+against a pretend database, laptop dark and phone light: 74 checks, 0 failed.

@@ -5,6 +5,7 @@ import {
   openDeliverable, personName, projectStatuses, ratingDeadline, ratingStep, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
 import { profilePath } from "../../../lib/profileStats";
+import { hasRatedOffer } from "../../../lib/serviceReviews";
 import Avatar from "../../../components/Avatar";
 import CensoredText from "../../../components/CensoredText";
 import PaymentsSection from "../components/PaymentsSection";
@@ -62,6 +63,24 @@ export default function ProjectDetailsView() {
       active = false;
     };
   }, [project?.status, project?.id, currentUserId]);
+
+  // A Done project from a booked offer: the client can now rate that offer on
+  // its page too. undefined while checking, true / false = rated it or not
+  // (null when it couldn't be checked: then no link).
+  const offerId = project?.booking?.service_id;
+  const clientOfDoneOffer = project?.status === "done" && project?.client_id === currentUserId && Boolean(offerId);
+  const [offerRated, setOfferRated] = useState(undefined);
+
+  useEffect(() => {
+    if (!clientOfDoneOffer) return undefined;
+    let active = true;
+    hasRatedOffer(offerId, currentUserId).then((rated) => {
+      if (active) setOfferRated(rated);
+    });
+    return () => {
+      active = false;
+    };
+  }, [clientOfDoneOffer, offerId, currentUserId]);
 
   // A submitted video or photo is shown right on the page ("video" /
   // "image"); other files ("file": PDF, ZIP, Blender) only get the View button.
@@ -381,6 +400,16 @@ export default function ProjectDetailsView() {
                 )}
                 {myRating !== undefined && !theirRating && deadline?.ended && (
                   <p className="text-secondary fs-8 mt-2 mb-0">{otherName} didn't rate this project.</p>
+                )}
+                {/* The offer the client booked can be rated now that the work is done
+                    (PLAN-offer-reviews.md, step 3). No time limit, unlike the blind ratings. */}
+                {clientOfDoneOffer && offerRated === false && (
+                  <div className="mt-3 pt-3 border-top border-secondary border-opacity-25">
+                    <Link to={`/dashboard/service-details/${offerId}#offer-ratings`} className="btn btn-outline-role rounded-pill px-4 fw-bold">
+                      <i className="bi bi-chat-square-text me-1"></i> Rate this offer
+                    </Link>
+                    <p className="text-white-50 fs-8 mt-2 mb-0">Your project is done, so you can now rate and comment on the offer you booked. Other clients read it before they book.</p>
+                  </div>
                 )}
               </div>
             )}

@@ -152,14 +152,16 @@ export function getMyProjects(userId, asFreelancer) {
     .order("started_at", { ascending: false });
 }
 
-// One project, or null when it doesn't exist or isn't the user's.
+// One project, or null when it doesn't exist or isn't the user's. "booking"
+// is the booking it came from ({ service_id }: the offer that was booked), or
+// null when it came from a job post.
 export async function getProject(projectId) {
   const { data } = await supabase
     .from("projects")
     .select(`id, title, note, status, started_at, due_date, completed_at,
       submission_path, submission_link, submission_message, submitted_at,
       agreed_amount, price_basis, price_status, price_source, price_proposed_by, price_agreed_at,
-      job_post_id, client_id, freelancer_id, ${PEOPLE_FIELDS}`)
+      job_post_id, client_id, freelancer_id, booking:bookings(service_id), ${PEOPLE_FIELDS}`)
     .eq("id", projectId)
     .maybeSingle();
   return data;

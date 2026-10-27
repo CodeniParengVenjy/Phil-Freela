@@ -37,6 +37,16 @@ begin
   end if;
   select title into old_title from public.services where id = svc;
   insert into public.services (freelancer_id, title, category, description) values (ca, 'Client-owned test offer', 'copywriting', 'A test offer.') returning id into own_svc;
+  -- Since supabase_offer_review_done_schema.sql an offer is rated only after a
+  -- project from booking it is Done, so both clients get one (the new rule
+  -- itself is tested in test_offer_review_done.sql).
+  with b as (
+    insert into public.bookings (client_id, freelancer_id, service_id, title, due_date, status, responded_at)
+    values (ca, fr, svc, 'Test booking', current_date, 'accepted', now()), (cb, fr, svc, 'Test booking', current_date, 'accepted', now())
+    returning id, client_id
+  )
+  insert into public.projects (booking_id, client_id, freelancer_id, title, due_date, status, submitted_at, completed_at)
+  select b.id, b.client_id, fr, 'Test booking', current_date, 'done', now(), now() from b;
 
   -- ===== The table and its rules =====
   select relrowsecurity into ok from pg_class where oid = 'public.service_reviews'::regclass;

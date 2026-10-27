@@ -143,6 +143,11 @@ function TermsOfService() {
         meant to reflect real completed work.
       </p>
       <p className="text-secondary">
+        A client can also rate and comment on a freelancer's offer, but only one they booked, and only once the project
+        from that booking is marked done. That rating shows on the offer's page right away. Each client rates an offer
+        once, and can remove their own rating and write a new one.
+      </p>
+      <p className="text-secondary">
         A profile also shows a track record other people can see: how many projects were marked done, how many of
         those were delivered by the due date, the title, finish date and other person of each completed project, and how
         quickly you usually reply in chats. The notes, files and links of a project stay private to the two people on it.
