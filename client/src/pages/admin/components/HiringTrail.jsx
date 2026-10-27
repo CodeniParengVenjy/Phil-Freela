@@ -5,8 +5,8 @@ import { avatarUrl } from "../../../lib/avatar";
 import { formatDay, projectStatuses } from "../../../lib/projects";
 
 // A round picture, or the first letter of the name when there is no picture (or
-// it fails to load).
-function Picture({ path, name }) {
+// it fails to load). Also used by the Overview's list of hired freelancers.
+export function Picture({ path, name }) {
   const src = avatarUrl(path);
   const [failedSrc, setFailedSrc] = useState(null);
 

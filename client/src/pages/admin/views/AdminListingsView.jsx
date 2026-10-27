@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { removeListing } from "../../../lib/adminListings";
 import { categories, getCategory } from "../../../lib/categories";
@@ -35,7 +36,12 @@ const STATE_FILTERS = [{ value: "all", label: "All" }, ...Object.entries(JOB_STA
 const formatPeso = (value) => (value ? `₱${Number(value).toLocaleString()}` : "—");
 
 export default function AdminListingsView() {
-  const [activeTab, setActiveTab] = useState("services");
+  // The Overview links here: ?state=filled opens the Job Posts tab already
+  // filtered, and ?post=<id> opens that job post's pop-up (with its hiring trail).
+  const [params] = useSearchParams();
+  const wantedPost = useRef(params.get("post"));
+  const startState = STATE_FILTERS.some((option) => option.value === params.get("state")) ? params.get("state") : "all";
+  const [activeTab, setActiveTab] = useState(params.get("post") || startState !== "all" ? "jobs" : "services");
   // Both lists load once; switching tabs just shows the other one.
   const [listings, setListings] = useState({ services: null, jobs: null });
   // owner id -> "banned" or "suspended", only for bans/suspensions still in effect.
@@ -44,7 +50,7 @@ export default function AdminListingsView() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   // Job Posts tab: all / open / filled / expired.
-  const [stateFilter, setStateFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState(startState);
   // How hiring stands per job post: null while loading, "failed" if it could not
   // be loaded (the list still works without it), or { post id: { state, applicants, hired } }.
   const [hiring, setHiring] = useState(null);
@@ -81,6 +87,9 @@ export default function AdminListingsView() {
       }
 
       setListings({ services: servicesResult.data, jobs: jobsResult.data });
+      // Sent here from a hire on the Overview: open that post (nothing if it was removed).
+      const wanted = jobsResult.data.find((job) => job.id === wantedPost.current);
+      if (wanted) setViewing(wanted);
       // An archived account's badge wins over a penalty it may also have.
       setBlockedStatus({
         ...Object.fromEntries(suspensionsResult.data.map((s) => [s.user_id, suspensionStatus(s)]).filter(([, status]) => status)),
@@ -107,7 +116,8 @@ export default function AdminListingsView() {
       || (item.owner?.full_name || "").toLowerCase().includes(searchText)
       || (item.owner?.username || "").toLowerCase().includes(searchText);
     const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
-    const matchesState = !isJobs || stateFilter === "all" || hiringOf(item)?.state === stateFilter;
+    // Without the hiring numbers there is no state to filter by (the pills are hidden too).
+    const matchesState = !isJobs || stateFilter === "all" || !hiring || hiring === "failed" || hiringOf(item)?.state === stateFilter;
     return matchesSearch && matchesCategory && matchesState;
   });
 

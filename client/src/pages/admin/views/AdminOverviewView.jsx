@@ -5,6 +5,7 @@ import { formatPeso } from "../../../lib/payments";
 import { getEarnings } from "../../../lib/promotions";
 import { GrowthChart, GrowthTable } from "../components/GrowthChart";
 import SplitBar from "../components/SplitBar";
+import HiredList from "../components/HiredList";
 import RatingCard from "../components/RatingCard";
 import StatusCounts from "../components/StatusCounts";
 import TopRatedList from "../components/TopRatedList";
@@ -433,8 +434,8 @@ export default function AdminOverviewView() {
           <div className="mt-4 mb-3">
             <h3 className="h6 fw-bold text-white mb-0">Job hiring</h3>
             <p className="text-secondary fs-7 mb-0">
-              How many job posts are open, filled (everyone needed was hired) or expired, and how many freelancers applied and were hired.
-              {" "}Open <Link to="/admin/listings" className="text-white">Listings</Link>, then View a job post to see who was hired from it.
+              How many job posts are open, filled (everyone needed was hired, so freelancers no longer see it) or expired, and how many freelancers applied and were hired.
+              {" "}Click a number to see those posts in <Link to="/admin/listings" className="text-white">Listings</Link>; View a post there to see who was hired from it.
             </p>
           </div>
 
@@ -447,9 +448,9 @@ export default function AdminOverviewView() {
                 <StatusCounts
                   title="Job posts"
                   items={[
-                    { label: "Open", value: hiringTotals.open },
-                    { label: "Filled", value: hiringTotals.filled },
-                    { label: "Expired", value: hiringTotals.expired }
+                    { label: "Open", value: hiringTotals.open, to: "/admin/listings?state=open" },
+                    { label: "Filled", value: hiringTotals.filled, to: "/admin/listings?state=filled" },
+                    { label: "Expired", value: hiringTotals.expired, to: "/admin/listings?state=expired" }
                   ]}
                 />
               </div>
@@ -465,6 +466,11 @@ export default function AdminOverviewView() {
               </div>
             </div>
           )}
+
+          {/* Who was hired: its own request, so it shows even if the numbers above fail (and the other way round). */}
+          <div className="mt-3">
+            <HiredList />
+          </div>
 
           {/* What PhilFreela earns: fees for Featured posts, Premium and
               sponsored billboards. Its own part, so it shows even if the numbers above fail. */}

@@ -199,6 +199,11 @@ body {
 .admin-stat-link:focus-visible {
   color: inherit;
 }
+/* A number that links to the page behind it (StatusCounts): its label underlines. */
+.admin-count-link:hover .fs-8,
+.admin-count-link:focus-visible .fs-8 {
+  text-decoration: underline;
+}
 .admin-stat-card.is-link {
   transition: transform 0.15s ease, border-color 0.15s ease;
 }

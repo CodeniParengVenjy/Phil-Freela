@@ -1,9 +1,12 @@
+import { Link } from "react-router-dom";
+
 // A card with one plain number per status, e.g. Bookings: Pending 0, Accepted 4.
 // Numbers only, no colors, so nothing depends on telling colors apart.
 //
 // Props:
 //   title      the heading, e.g. "Bookings"
-//   items      [{ label: "Accepted", value: 4 }]
+//   items      [{ label: "Accepted", value: 4, to: "/admin/..." }]; `to` is
+//              optional and makes that number a link to the page behind it
 //   showTotal  "N in total" beside the heading (on by default). Off when the
 //              numbers are not parts of one whole, e.g. applications and hires.
 export default function StatusCounts({ title, items, showTotal = true }) {
@@ -17,12 +20,19 @@ export default function StatusCounts({ title, items, showTotal = true }) {
       </div>
 
       <div className="d-flex flex-wrap column-gap-4 row-gap-2">
-        {items.map((item) => (
-          <div key={item.label}>
-            <div className="admin-trend-total">{item.value}</div>
-            <div className="text-secondary fs-8">{item.label}</div>
-          </div>
-        ))}
+        {items.map((item) => {
+          const body = (
+            <>
+              <div className="admin-trend-total">{item.value}</div>
+              <div className="text-secondary fs-8">{item.label}</div>
+            </>
+          );
+          return item.to ? (
+            <Link key={item.label} to={item.to} className="admin-stat-link admin-count-link">{body}</Link>
+          ) : (
+            <div key={item.label}>{body}</div>
+          );
+        })}
       </div>
     </div>
   );
