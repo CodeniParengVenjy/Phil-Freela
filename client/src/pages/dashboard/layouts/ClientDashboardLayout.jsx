@@ -98,9 +98,9 @@ export default function ClientDashboardLayout({
         <main className="content-wrapper flex-grow-1 p-3 p-md-4">
           <SuspensionBanner suspension={suspension} />
 
-          {/* Just "Welcome, Name" for clients (no userId, so no job name). No buttons:
-              Post a Project and Projects & Resumes are in the sidebar. */}
-          {isDashboardHome && <WelcomeBanner displayName={displayName} />}
+          {/* "Welcome, Name", plus "a thoughtful client looking for a Video Editor" from their
+              open job posts. No buttons: Post a Project and Projects & Resumes are in the sidebar. */}
+          {isDashboardHome && <WelcomeBanner displayName={displayName} userId={currentUserId} isClient />}
 
           {/* The checklist for a new account: what to do first (hides itself when done). */}
           {isDashboardHome && <GetStartedCard userId={currentUserId} accountType={accountType} />}

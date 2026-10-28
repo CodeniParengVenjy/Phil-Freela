@@ -75,34 +75,55 @@ export const welcomeRoles = {
   }
 };
 
-// Nice words that go in front of the job name.
+// Nice words that go in front of the job name (freelancers) or of "client" (clients).
 const compliments = [
   "skillful", "talented", "creative", "dedicated", "reliable", "passionate",
   "brilliant", "hardworking", "outstanding", "amazing", "excellent", "inspiring"
 ];
+const clientCompliments = ["thoughtful", "motivated", "visionary", "friendly", "supportive", "generous", "driven", "wise"];
 
-// "a skillful" or "an outstanding".
+// The lines under a client's welcome; {role} becomes the job name ("video editor").
+const clientLines = [
+  "Finding the right {role} for your next project.",
+  "Great work starts with the right {role}.",
+  "Your project deserves a great {role}."
+];
+
+// "a skillful" or "an outstanding". UI/UX starts with a vowel letter but is said "you-eye".
 export function article(word) {
-  return /^[aeiou]/i.test(word) ? "an" : "a";
+  return /^[aeiou]/i.test(word) && !/^(ui|uni|use)/i.test(word) ? "an" : "a";
+}
+
+// A job name in the middle of a sentence is written in small letters
+// ("Video Editor" -> "video editor"), except when it holds letters that must
+// stay capital ("UI/UX Designer", "3D Animator").
+function inSentence(role) {
+  return /[A-Z]{2}|\d/.test(role) ? role : role.toLowerCase();
 }
 
 function randomIndex(length) {
   return Math.floor(Math.random() * length);
 }
 
-// From the categories of someone's services and hires, makes the list the banner
-// goes through: [{ role: "Video Editor", compliment: "skillful", line: "..." }].
-// Each job name appears once, categories without a job name are left out, and
-// the compliments differ from one job name to the next.
-export function pickWelcomeRoles(categories) {
+// From the categories of someone's services and hires (or, for a client, of
+// their open job posts), makes the list the banner goes through:
+// [{ phrase: "a skillful Video Editor", line: "..." }]. The banner writes it
+// after "Welcome, Name, ". For a client the phrase is "a thoughtful client
+// looking for a Video Editor". Each job name appears once, categories without a
+// job name are left out, and the compliments differ from one job name to the next.
+export function pickWelcomeRoles(categories, forClient = false) {
   const known = [...new Set(categories)].filter((category) => welcomeRoles[category]);
-  const firstCompliment = randomIndex(compliments.length);
+  const words = forClient ? clientCompliments : compliments;
+  const firstWord = randomIndex(words.length);
   return known.map((category, i) => {
     const { name, lines } = welcomeRoles[category];
-    return {
-      role: name,
-      compliment: compliments[(firstCompliment + i) % compliments.length],
-      line: lines[randomIndex(lines.length)]
-    };
+    const word = words[(firstWord + i) % words.length];
+    if (forClient) {
+      return {
+        phrase: `${article(word)} ${word} client looking for ${article(name)} ${name}`,
+        line: clientLines[randomIndex(clientLines.length)].replace("{role}", inSentence(name))
+      };
+    }
+    return { phrase: `${article(word)} ${word} ${name}`, line: lines[randomIndex(lines.length)] };
   });
 }

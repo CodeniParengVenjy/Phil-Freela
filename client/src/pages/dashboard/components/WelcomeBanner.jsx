@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { article } from "../../../lib/welcomeTitles";
 import { useWelcomeRoles } from "../hooks/useWelcomeRoles";
 
 // How long each job name stays before the next one (when there are 2 or more).
@@ -7,12 +6,14 @@ const SWITCH_MS = 4000;
 
 // The banner at the top of the dashboard home, for both roles:
 //   no job name:  "Welcome, Ana"
-//   a job name:   "Welcome, Ana, a skillful Video Editor" + a line that fits it
+//   freelancer:   "Welcome, Ana, a skillful Video Editor" + a line that fits it
+//   client:       "Welcome, Ana, a thoughtful client looking for a Video Editor"
 // With two or more job names the banner shows them one after another.
-// userId: pass the freelancer's id to look up their job names; leave it out
-// (clients) and the banner only says "Welcome, Name".
-export default function WelcomeBanner({ displayName, userId = null }) {
-  const picks = useWelcomeRoles(userId);
+// userId: the person's id, to look up their job names (leave it out and the
+// banner only says "Welcome, Name"). isClient: read a client's open job posts
+// instead of a freelancer's services and hires.
+export default function WelcomeBanner({ displayName, userId = null, isClient = false }) {
+  const picks = useWelcomeRoles(userId, isClient);
   const [shown, setShown] = useState(0);
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function WelcomeBanner({ displayName, userId = null }) {
               <h1 className="welcome-title h2 text-white mb-1">
                 Welcome, {displayName}
                 {/* welcome-role fades the job name in when it becomes the current one. */}
-                {pick && <span className={i === index ? "welcome-role" : undefined}>, {article(pick.compliment)} {pick.compliment} {pick.role}</span>}
+                {pick && <span className={i === index ? "welcome-role" : undefined}>, {pick.phrase}</span>}
               </h1>
               {pick && <p className={`text-secondary mb-0 fs-7 d-none d-md-block${i === index ? " welcome-role" : ""}`}>{pick.line}</p>}
             </div>
