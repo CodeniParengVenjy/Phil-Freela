@@ -29,3 +29,36 @@
     min-height: 110px;
   }
 }
+
+/* The strip beside the Billboard (see .dashboard-boards in dashboard.css) is only
+   40% wide, too narrow for the picture beside the text: the picture goes on top,
+   then the text, then the button. The !important beats Bootstrap's own
+   flex-md-row and align-items-md-center on the two boxes. */
+@media (min-width: 1200px) {
+  .dashboard-boards > .community-billboard:not(:only-child) .member-ad-slide {
+    flex-direction: column !important;
+  }
+
+  .dashboard-boards > .community-billboard:not(:only-child) .member-ad-body {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center;
+    flex: 1 1 auto;
+  }
+
+  /* The slide fills the card, so a short ad sits in the middle of a taller card. */
+  .dashboard-boards > .community-billboard:not(:only-child) .dashboard-billboard-slide {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dashboard-boards > .community-billboard:not(:only-child) .member-ad-slide {
+    flex: 1 1 auto;
+  }
+
+  .dashboard-boards > .community-billboard:not(:only-child) .member-ad-pic {
+    width: 100%;
+    height: 130px;
+    min-height: 0;
+  }
+}

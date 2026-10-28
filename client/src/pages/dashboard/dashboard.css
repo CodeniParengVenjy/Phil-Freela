@@ -1438,6 +1438,57 @@ a.sidebar-identity:hover {
   }
 }
 
+/* Wide screens: the Billboard (left) and the Community Billboard (right) side by
+   side, 60% and 40%, as tall as each other. Both hide themselves when they have
+   nothing to show, so :only-child tells when one is alone: it then takes the whole
+   width and looks the way it does on its own. Below 1200px they stay stacked. */
+@media (min-width: 1200px) {
+  .dashboard-boards {
+    display: flex;
+    column-gap: 1.5rem; /* the same gap as mb-md-4 between the other cards */
+  }
+
+  .dashboard-boards > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .dashboard-boards > .dashboard-billboard:not(:only-child) {
+    flex-grow: 3;
+  }
+
+  .dashboard-boards > .community-billboard:not(:only-child) {
+    flex-grow: 2;
+  }
+
+  /* Each card is a column so its dots stay at the bottom when the other card is taller. */
+  .dashboard-boards > :not(:only-child) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dashboard-boards > :not(:only-child) > .dashboard-billboard-slide {
+    flex: 1 1 auto;
+  }
+
+  /* In the narrower card the Billboard's picture goes back on top of its text, whole.
+     The slide is a column too, and the text fills what is left under the picture, so a
+     short message sits in the middle of a taller card instead of stuck at the top. */
+  .dashboard-boards > .dashboard-billboard:not(:only-child) .dashboard-billboard-slide {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboard-boards > .dashboard-billboard:not(:only-child) .dashboard-billboard-slide.has-picture .dashboard-billboard-picture {
+    width: 100%;
+  }
+
+  .dashboard-boards > .dashboard-billboard:not(:only-child) .dashboard-billboard-slide .dashboard-billboard-text {
+    flex: 1 1 auto;
+  }
+}
+
 /* One dot per billboard when several take turns; the current one is in the
    accent color. */
 .dashboard-billboard-dots {

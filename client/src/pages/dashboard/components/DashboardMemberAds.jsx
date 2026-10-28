@@ -36,7 +36,7 @@ export default function DashboardMemberAds() {
   return (
     <section
       data-tour="community-billboard"
-      className="glass-card rounded-4 mb-3 mb-md-4 border border-secondary border-opacity-25 overflow-hidden"
+      className="community-billboard glass-card rounded-4 mb-3 mb-md-4 border border-secondary border-opacity-25 overflow-hidden"
       aria-label="Community Billboard"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}

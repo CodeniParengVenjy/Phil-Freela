@@ -20,9 +20,9 @@ export default function MemberAdSlide({
   buttonClass = `btn ${small ? "btn-sm" : ""} btn-gradient-role rounded-pill ${small ? "px-3" : "px-4"} fw-bold text-white flex-shrink-0`
 }) {
   return (
-    <div className="d-flex flex-column flex-md-row align-items-md-stretch">
+    <div className="member-ad-slide d-flex flex-column flex-md-row align-items-md-stretch">
       {pictureUrl && <img src={pictureUrl} alt="" className={small ? "member-ad-pic-sm" : "member-ad-pic"} />}
-      <div className={`${small ? "p-3" : "px-3 py-3 p-md-4"} d-flex flex-column flex-md-row align-items-md-center gap-3 flex-grow-1`}>
+      <div className={`member-ad-body ${small ? "p-3" : "px-3 py-3 p-md-4"} d-flex flex-column flex-md-row align-items-md-center gap-3 flex-grow-1`}>
         <div className="flex-grow-1 min-w-0">
           <span className={`badge rounded-pill ${badgeClass} fw-semibold mb-2 text-wrap text-start`}>
             <i className="bi bi-megaphone me-1"></i> Ad by {owner.name}

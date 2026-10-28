@@ -114,9 +114,16 @@ export default function FreelancerDashboardLayout({
           {/* The checklist for a new account: what to do first (hides itself when done). */}
           {isDashboardHome && <GetStartedCard userId={currentUserId} accountType={accountType} />}
 
-          {/* What an admin posted for this user (admin panel > Billboard). */}
-          {isDashboardHome && <DashboardBillboard />}
-          {isDashboardHome && <DashboardMemberAds />}
+          {/* What an admin posted for this user (admin panel > Billboard) and the ads members
+              paid for (Community Billboard). On a wide screen they sit side by side, 60% and
+              40% (dashboard.css, .dashboard-boards); each one hides itself when it has nothing
+              to show, and the other then takes the full width. */}
+          {isDashboardHome && (
+            <div className="dashboard-boards">
+              <DashboardBillboard />
+              <DashboardMemberAds />
+            </div>
+          )}
 
           <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, refreshPendingBookings, suspension, isPro, refreshPro: pro.reload }} />
         </main>
