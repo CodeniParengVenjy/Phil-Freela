@@ -12,14 +12,19 @@ import "../memberAds.css";
 //   ad:      { title, message }
 //   owner:   { name, verified, premium }
 //   button:  { to, label } or null
-export default function MemberAdSlide({ ad, owner, pictureUrl, button, small = false, previewOnly = false }) {
-  const buttonClass = `btn ${small ? "btn-sm" : ""} btn-gradient-role rounded-pill ${small ? "px-3" : "px-4"} fw-bold text-white flex-shrink-0`;
+//   badgeClass / buttonClass: the colors of the "Ad by" tag and of the button; the
+//            defaults use the member's role color, the admin page passes its own.
+export default function MemberAdSlide({
+  ad, owner, pictureUrl, button, small = false, previewOnly = false,
+  badgeClass = "bg-role-subtle text-role",
+  buttonClass = `btn ${small ? "btn-sm" : ""} btn-gradient-role rounded-pill ${small ? "px-3" : "px-4"} fw-bold text-white flex-shrink-0`
+}) {
   return (
     <div className="d-flex flex-column flex-md-row align-items-md-stretch">
       {pictureUrl && <img src={pictureUrl} alt="" className={small ? "member-ad-pic-sm" : "member-ad-pic"} />}
       <div className={`${small ? "p-3" : "px-3 py-3 p-md-4"} d-flex flex-column flex-md-row align-items-md-center gap-3 flex-grow-1`}>
         <div className="flex-grow-1 min-w-0">
-          <span className="badge rounded-pill bg-role-subtle text-role fw-semibold mb-2 text-wrap text-start">
+          <span className={`badge rounded-pill ${badgeClass} fw-semibold mb-2 text-wrap text-start`}>
             <i className="bi bi-megaphone me-1"></i> Ad by {owner.name}
             <VerifiedBadge verified={owner.verified} />
             <ProBadge pro={owner.premium} />

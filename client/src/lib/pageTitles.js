@@ -52,6 +52,7 @@ const pageTitles = {
   "/admin/approvals": "Approvals",
   "/admin/announcements": "Monitor Announcements",
   "/admin/billboard": "Dashboard Billboard",
+  "/admin/community-billboard": "Community Billboard",
   "/admin/promotions": "Promotions",
   "/admin/admins": "Monitor Accounts",
   "/admin/log": "Activity Log",

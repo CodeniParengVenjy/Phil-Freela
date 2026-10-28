@@ -37,7 +37,20 @@ which are not committed).
   laptop and phone: 89 checks, 0 failed. The older suites against the changed menus, layouts and
   checkout helper: Premium 72, Post a Project 30, Featured and billboards on Xendit 96, the
   freelancer's full tour 538 and the client's 514, all passed.
-- Steps 4 and 5: next (the admin page is written and waits for its edits of shared files).
+- Step 4 (website, admin side): built and pushed. Admin > Site > Community Billboard
+  (/admin/community-billboard, any admin, a number on the menu link for the ads waiting): Waiting
+  for review (Approve, or Reject with a reason box and "Send rejection"), Running now (Take down with
+  a reason) and History, each ad drawn with the same card the members see, with the price (the
+  Premium price when the poster has Premium). lib/adminMemberAds.js holds the reads and the two calls
+  (review_member_ad, take_down_member_ad). Two places that would have broken on the first paid ad
+  were fixed: the Promotions History now labels the kind "Community ad", and the Overview Earnings
+  list "Community ads (N)" (a database without the new number shows 0 instead of crashing).
+  Tested in a real browser against a pretend backend, laptop and phone: 48 checks on the admin
+  page, 12 on Promotions History and Overview Earnings, 0 failed; the older Featured and billboard
+  suite (96) passed against the changed admin layout; lint shows only the two old warnings, build
+  clean.
+- Step 5: next (words: tour note, Terms and Privacy, System Functions, memory), then the user's go to
+  deploy pro-checkout v5.
 
 The user asked (2026-10-28): "user can post in the billboard, how?" and then "can you
 make billboard for user's and billboard for super admin". So there are TWO boards:
@@ -112,7 +125,7 @@ make billboard for user's and billboard for super admin". So there are TWO board
   "Advertise" in both side menus, the route, the page title, and one tour note each.
 - Admin: views/AdminMemberAdsView.jsx, lib/adminMemberAds.js, route /admin/member-ads,
   the menu link with its badge, the label "Community ad" in Promotions and the Earnings
-  numbers on the Overview.
+  numbers on the Overview. (The route became /admin/community-billboard.)
 - Words: Terms and Privacy (ads, Xendit), PhilFreela-System-Functions.md, this plan, memory.
 
 ## Steps (each one tried, tested, committed and pushed)

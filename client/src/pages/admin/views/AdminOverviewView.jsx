@@ -517,7 +517,8 @@ export default function AdminOverviewView() {
                     { label: `Featured offers (${earnings.by_kind.feature_service.count})`, value: formatPeso(earnings.by_kind.feature_service.amount) },
                     { label: `Featured job posts (${earnings.by_kind.feature_job.count})`, value: formatPeso(earnings.by_kind.feature_job.amount) },
                     { label: `Premium (${earnings.by_kind.pro.count})`, value: formatPeso(earnings.by_kind.pro.amount) },
-                    { label: `Sponsored billboards (${earnings.by_kind.billboard.count})`, value: formatPeso(earnings.by_kind.billboard.amount) }
+                    { label: `Sponsored billboards (${earnings.by_kind.billboard.count})`, value: formatPeso(earnings.by_kind.billboard.amount) },
+                    { label: `Community ads (${earnings.by_kind.member_ad?.count ?? 0})`, value: formatPeso(earnings.by_kind.member_ad?.amount ?? 0) }
                   ]}
                 />
               </div>

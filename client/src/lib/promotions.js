@@ -12,7 +12,9 @@ import { shrinkImage } from "./shrinkImage";
 export const PROMO_KINDS = {
   feature_service: { label: "Featured offer", icon: "bi-grid-fill" },
   feature_job: { label: "Featured job post", icon: "bi-briefcase-fill" },
-  pro: { label: "Premium", icon: "bi-gem" }
+  pro: { label: "Premium", icon: "bi-gem" },
+  // An ad on the Community Billboard, paid on Xendit (PLAN-community-billboard.md).
+  member_ad: { label: "Community ad", icon: "bi-people-fill" }
 };
 
 // A message to show for a failed call: the database's own plain sentence when

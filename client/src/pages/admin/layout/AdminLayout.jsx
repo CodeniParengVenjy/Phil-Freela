@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { fetchMyLink, switchToOtherAccount } from "../../../lib/accountSwitch";
+import { getPendingAdCount } from "../../../lib/adminMemberAds";
 import AdminCreatePassword from "../components/AdminCreatePassword";
 import "../admin.css";
 
@@ -38,6 +39,9 @@ const sidebarItems = [
     links: [
       { to: "/admin/announcements", icon: "bi-megaphone-fill", label: "Announcements", superAdminOnly: true },
       { to: "/admin/billboard", icon: "bi-easel2-fill", label: "Billboard", superAdminOnly: true },
+      // The ads members post and pay for: any admin approves or rejects them
+      // (PLAN-community-billboard.md); the database rules are the real protection.
+      { to: "/admin/community-billboard", icon: "bi-people-fill", label: "Community Billboard", badge: "memberAds" },
       // Fees paid for Featured posts and Premium: any admin approves or
       // rejects them; only a super admin changes the settings inside.
       { to: "/admin/promotions", icon: "bi-cash-coin", label: "Promotions", badge: "promotions" },
@@ -87,6 +91,8 @@ export default function AdminLayout() {
   const [pendingUsers, setPendingUsers] = useState(0);
   // Number shown on the Promotions link: fee payments waiting for an admin.
   const [pendingPromotions, setPendingPromotions] = useState(0);
+  // Number shown on the Community Billboard link: member ads waiting for an admin.
+  const [pendingMemberAds, setPendingMemberAds] = useState(0);
   // Which sidebar groups are open. The group with the current page starts
   // open, and opens again whenever the admin lands on one of its pages.
   const [openGroups, setOpenGroups] = useState(() => new Set([groupOfPath(pathname)].filter(Boolean)));
@@ -120,6 +126,12 @@ export default function AdminLayout() {
       .select("id", { count: "exact", head: true })
       .eq("status", "pending");
     setPendingPromotions(count || 0);
+  }, []);
+
+  // Counts member ads waiting for an admin. The Community Billboard page calls this
+  // after each answer so the badge stays correct.
+  const refreshPendingMemberAds = useCallback(async () => {
+    setPendingMemberAds(await getPendingAdCount());
   }, []);
 
   // Counts pending reports (head: true = just the count, no rows). The Reports
@@ -206,12 +218,13 @@ export default function AdminLayout() {
         refreshPendingFlagged();
         refreshPendingUsers();
         refreshPendingPromotions();
+        refreshPendingMemberAds();
         if (adminRow.role === "super_admin") refreshPendingApprovals();
       }
     })();
 
     return () => { active = false; };
-  }, [navigate, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingPromotions, refreshPendingApprovals]);
+  }, [navigate, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingPromotions, refreshPendingMemberAds, refreshPendingApprovals]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -269,6 +282,7 @@ export default function AdminLayout() {
     refreshPendingFlagged();
     refreshPendingUsers();
     refreshPendingPromotions();
+    refreshPendingMemberAds();
     return true;
   };
 
@@ -309,6 +323,7 @@ export default function AdminLayout() {
     appeals: { count: pendingAppeals },
     flagged: { count: pendingFlagged },
     promotions: { count: pendingPromotions },
+    memberAds: { count: pendingMemberAds },
     approvals: { count: pendingApprovals }
   };
   const renderBadge = (count, amber, extra = "") => (
@@ -403,7 +418,7 @@ export default function AdminLayout() {
           <main className="col-12 col-md-9 col-xl-10">
             {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                 to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingPromotions, refreshPendingApprovals }} />
+            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingPromotions, refreshPendingMemberAds, refreshPendingApprovals }} />
           </main>
         </div>
       </div>
