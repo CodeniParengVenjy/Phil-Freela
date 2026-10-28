@@ -4,6 +4,7 @@ import DashboardOverlays from "../components/DashboardOverlays";
 import SuspensionBanner from "../components/SuspensionBanner";
 import DashboardBillboard from "../components/DashboardBillboard";
 import GetStartedCard from "../components/GetStartedCard";
+import WelcomeBanner from "../components/WelcomeBanner";
 import Avatar from "../../../components/Avatar";
 import ProBadge from "../../../components/ProBadge";
 import { useProStatus } from "../../../lib/pro";
@@ -97,19 +98,9 @@ export default function ClientDashboardLayout({
         <main className="content-wrapper flex-grow-1 p-3 p-md-4">
           <SuspensionBanner suspension={suspension} />
 
-          {isDashboardHome && (
-            <div className="welcome-banner glass-card p-3 p-md-4 rounded-4 mb-3 mb-md-4 border border-secondary border-opacity-25 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 gap-md-3">
-              <div>
-                {/* The tag and the line under the name are left out on a phone, so the cards below come into view sooner. */}
-                <span className="badge bg-orange-subtle text-orange px-3 py-1 rounded-pill fw-bold text-uppercase fs-8 mb-2 d-none d-md-inline-block">PHILFREELA PORTAL</span>
-                <h1 className="welcome-title h2 text-white mb-1">Welcome, {displayName}</h1>
-                <p className="text-secondary mb-0 fs-7 d-none d-md-block">
-                  Track applications, manage your hires, and keep your project pipeline moving.
-                </p>
-              </div>
-              {/* No buttons: Post a Project and Projects & Resumes are in the sidebar. */}
-            </div>
-          )}
+          {/* Just "Welcome, Name" for clients (no userId, so no job name). No buttons:
+              Post a Project and Projects & Resumes are in the sidebar. */}
+          {isDashboardHome && <WelcomeBanner displayName={displayName} />}
 
           {/* The checklist for a new account: what to do first (hides itself when done). */}
           {isDashboardHome && <GetStartedCard userId={currentUserId} accountType={accountType} />}

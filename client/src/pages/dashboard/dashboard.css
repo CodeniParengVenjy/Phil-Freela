@@ -827,6 +827,24 @@ a.sidebar-identity:hover {
   -webkit-background-clip: text;
 }
 
+/* The welcome line and the line under it, for every job name, sit in the same
+   spot, one on top of the other with only one visible, so the banner keeps the
+   height of the tallest one and nothing below it moves when the name changes. */
+.welcome-stack { display: grid; }
+.welcome-stack > * { grid-area: 1 / 1; }
+.welcome-stack > .welcome-hidden { visibility: hidden; }
+
+/* The job name in the welcome line, and the line under it, fade in each time
+   the banner moves to the next job name (unless the person turned motion off). */
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-role { animation: welcome-role-in 0.5s ease-out both; }
+}
+
+@keyframes welcome-role-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .banner-wrap {
   position: relative;
   border-radius: 38px;
