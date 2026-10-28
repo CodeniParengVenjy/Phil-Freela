@@ -3,6 +3,7 @@ import DashboardTopNav from "../components/DashboardTopNav";
 import DashboardOverlays from "../components/DashboardOverlays";
 import SuspensionBanner from "../components/SuspensionBanner";
 import DashboardBillboard from "../components/DashboardBillboard";
+import DashboardMemberAds from "../components/DashboardMemberAds";
 import GetStartedCard from "../components/GetStartedCard";
 import WelcomeBanner from "../components/WelcomeBanner";
 import Avatar from "../../../components/Avatar";
@@ -22,7 +23,9 @@ const sidebarLinks = [
   { to: "/dashboard/bookings", icon: "bi-calendar-check-fill", label: "Bookings", tour: "menu-bookings" },
   { to: "/dashboard/projects", icon: "bi-folder-fill", label: "Project", tour: "menu-projects" },
   // Premium's own page (it was "Freelancer Pro", and before that a Settings tab).
-  { to: "/dashboard/pro", icon: "bi-gem", label: "Premium", tour: "menu-pro" }
+  { to: "/dashboard/pro", icon: "bi-gem", label: "Premium", tour: "menu-pro" },
+  // The person's own paid ads on the Community Billboard (PLAN-community-billboard.md).
+  { to: "/dashboard/advertise", icon: "bi-megaphone-fill", label: "Advertise", tour: "menu-advertise" }
 ];
 
 // Receives the shared session/toast/preview/chat state as props from
@@ -113,6 +116,7 @@ export default function FreelancerDashboardLayout({
 
           {/* What an admin posted for this user (admin panel > Billboard). */}
           {isDashboardHome && <DashboardBillboard />}
+          {isDashboardHome && <DashboardMemberAds />}
 
           <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, refreshPendingBookings, suspension, isPro, refreshPro: pro.reload }} />
         </main>

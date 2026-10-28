@@ -26,6 +26,7 @@ import ProjectsView from "./pages/dashboard/views/ProjectsView";
 import BookingsView from "./pages/dashboard/views/BookingsView";
 import SettingsView from "./pages/dashboard/views/SettingsView";
 import ProView from "./pages/dashboard/views/ProView";
+import AdvertiseView from "./pages/dashboard/views/AdvertiseView";
 import VerifyIdentityView from "./pages/dashboard/views/VerifyIdentityView";
 import SearchResultsView from "./pages/dashboard/views/SearchResultsView";
 import FeedbackView from "./pages/dashboard/views/FeedbackView";
@@ -100,6 +101,7 @@ function App() {
         <Route path="bookings" element={<BookingsView />} />
         <Route path="settings" element={<SettingsView />} />
         <Route path="pro" element={<ProView />} />
+        <Route path="advertise" element={<AdvertiseView />} />
         <Route path="verify-identity" element={<VerifyIdentityView />} />
         <Route path="search" element={<SearchResultsView />} />
         {/* The old Moodboard Match page is gone (it is the camera button in

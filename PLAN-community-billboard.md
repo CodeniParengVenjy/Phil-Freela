@@ -22,7 +22,22 @@ which are not committed).
   0 failed. NOT deployed: the deployed pro-checkout (v4) would open a PREMIUM page for an ad, so
   the website must not offer ad payments until it answers version 3 (lib/checkout.js checks the
   number), and the deploy needs the user's go.
-- Steps 3 to 5: next.
+- Step 3 (website, user side): built and pushed. The Advertise page (/dashboard/advertise, an
+  "Advertise" link last in both side menus): the form (headline, message, picture, who sees it, the
+  button, 3 / 7 / 14 days with the normal or Premium price, a live preview, the checks the database
+  also makes) and "My Ads" with every status (waiting, approved with Pay and Withdraw, rejected with
+  the reason, running, ended, withdrawn, taken down) and "N of 5 spots in use". Pay goes to Xendit
+  only when pro-checkout answers version 3 (lib/checkout.js onlinePaymentsReady(3)); until the
+  server is deployed an approved ad says paying online is not open yet. Coming back from Xendit the
+  dashboard says "Your ad is on the Community Billboard now" and the page reads its ads again. The
+  strip "Community Billboard" on the dashboard home of both roles (components/DashboardMemberAds.jsx,
+  under the Billboard): the ads running for that person take turns like the Billboard, each "Ad by
+  <name>" with the Verified check and the Premium pill, an optional button to the poster's own offer,
+  job post or profile, hidden when nothing runs. Tested in a real browser against a pretend backend,
+  laptop and phone: 89 checks, 0 failed. The older suites against the changed menus, layouts and
+  checkout helper: Premium 72, Post a Project 30, Featured and billboards on Xendit 96, the
+  freelancer's full tour 538 and the client's 514, all passed.
+- Steps 4 and 5: next (the admin page is written and waits for its edits of shared files).
 
 The user asked (2026-10-28): "user can post in the billboard, how?" and then "can you
 make billboard for user's and billboard for super admin". So there are TWO boards:

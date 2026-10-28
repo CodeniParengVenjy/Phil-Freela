@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FEATURED_CHANGED } from "./featured";
+import { ADS_CHANGED } from "./memberAds";
 import { supabase } from "./supabaseClient";
 
 // Paying PhilFreela online through Xendit (PLAN-premium.md): Premium (lib/pro.js),
@@ -24,21 +25,24 @@ export async function functionError(error, fallback) {
 const OPEN_FAILED = "Couldn't open the payment page. Please try again.";
 const CHECK_FAILED = "Couldn't check the payment. Please try again.";
 
-// Can Featured posts and billboard links be paid online? Only once the server
-// function has been updated (version 2) and Xendit's key is set; until then
-// Featured posts keep the GCash way (PromoPayDialog) and billboards have no
-// link. Asked once per visit (again after a "no", in case it was a bad moment).
-let readyCheck = null;
-export function onlinePaymentsReady() {
-  readyCheck ??= supabase.functions
+// Can this be paid online? Only once the server function has been updated far enough
+// and Xendit's key is set: version 2 = Featured posts and billboard links (until then
+// Featured posts keep the GCash way, PromoPayDialog, and billboards have no link),
+// version 3 = also Community Billboard ads (an older function would open a PREMIUM
+// page for an ad, so ads need 3). Asked once per visit (again after a "no", in case
+// it was a bad moment).
+let versionCheck = null;
+export async function onlinePaymentsReady(minVersion = 2) {
+  versionCheck ??= supabase.functions
     .invoke("pro-checkout", { body: { action: "version" } })
-    .then(({ data, error }) => !error && data?.version >= 2 && data.open === true)
-    .catch(() => false)
-    .then((ready) => {
-      if (!ready) readyCheck = null;
-      return ready;
+    .then(({ data, error }) => (error ? { version: 0, open: false } : { version: Number(data?.version) || 0, open: data?.open === true }))
+    .catch(() => ({ version: 0, open: false }))
+    .then((info) => {
+      if (!info.open) versionCheck = null;
+      return info;
     });
-  return readyCheck;
+  const info = await versionCheck;
+  return info.open && info.version >= minVersion;
 }
 
 // Asks whether a payment page was paid: { status: "paid" | "open" | "expired" |
@@ -67,9 +71,28 @@ export async function startBillboardLink(billboardId) {
   return data?.url ? { url: data.url, checkout: data.checkout } : { error: "Couldn't make the payment link. Please try again." };
 }
 
-// The pages Xendit sends a Featured payment back to (the server function's
-// "services" and "post-need").
-const FEATURE_PAGES = ["/dashboard/services", "/dashboard/post-need"];
+// "Pay" on an approved Community Billboard ad: the database knows its price and
+// length. Needs onlinePaymentsReady(3). Returns { url } (Xendit's page) or { error }.
+export async function startAdCheckout(adId) {
+  const { data, error } = await supabase.functions.invoke("pro-checkout", { body: { action: "start", ad: adId } });
+  if (error) return { error: await functionError(error, OPEN_FAILED) };
+  return data?.url ? { url: data.url } : { error: OPEN_FAILED };
+}
+
+// The pages Xendit sends a person's payment back to (the server function's
+// "services", "post-need" and "advertise"), and what to say about each.
+const ADVERTISE_PAGE = "/dashboard/advertise";
+const FEATURE_PAGES = ["/dashboard/services", "/dashboard/post-need", ADVERTISE_PAGE];
+const OUTCOMES = {
+  featured: {
+    paid: "Payment received. Your post is Featured now.",
+    waiting: "Your payment isn't confirmed yet. If you paid, your post is Featured within a few minutes and you'll get a notification."
+  },
+  ad: {
+    paid: "Payment received. Your ad is on the Community Billboard now.",
+    waiting: "Your payment isn't confirmed yet. If you paid, your ad goes live within a few minutes and you'll get a notification."
+  }
+};
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Back from Xendit's page after paying for a Featured post: My Services or Post a
@@ -91,6 +114,9 @@ export function useFeatureCheckoutReturn(showToast) {
   const params = new URLSearchParams(search);
   const checkoutId = FEATURE_PAGES.includes(pathname) ? params.get("checkout") : null;
   const canceled = params.get("canceled") === "1";
+  // On the Advertise page the payment is for an ad, elsewhere for a Featured post.
+  const advertising = pathname === ADVERTISE_PAGE;
+  const outcome = advertising ? OUTCOMES.ad : OUTCOMES.featured;
 
   useEffect(() => {
     if (!checkoutId) return undefined;
@@ -111,8 +137,8 @@ export function useFeatureCheckoutReturn(showToast) {
         const result = await confirmCheckout(checkoutId);
         if (!active) return;
         if (result.status === "paid") {
-          window.dispatchEvent(new Event(FEATURED_CHANGED));
-          done("Payment received. Your post is Featured now.");
+          window.dispatchEvent(new Event(advertising ? ADS_CHANGED : FEATURED_CHANGED));
+          done(outcome.paid);
           return;
         }
         if (result.status === "expired" || result.status === "canceled") {
@@ -122,10 +148,10 @@ export function useFeatureCheckoutReturn(showToast) {
         await wait(3000);
         if (!active) return;
       }
-      done("Your payment isn't confirmed yet. If you paid, your post is Featured within a few minutes and you'll get a notification.");
+      done(outcome.waiting);
     })();
     return () => {
       active = false;
     };
-  }, [checkoutId, canceled, pathname]);
+  }, [checkoutId, canceled, pathname, advertising, outcome]);
 }

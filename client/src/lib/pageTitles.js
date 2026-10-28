@@ -29,6 +29,7 @@ const pageTitles = {
   "/dashboard/bookings": "Bookings",
   "/dashboard/settings": "Settings",
   "/dashboard/pro": "Premium",
+  "/dashboard/advertise": "Advertise",
   "/dashboard/search": "Search",
   "/dashboard/verify-identity": "Verify Identity",
   "/dashboard/feedback": "Ratings and Feedback",
