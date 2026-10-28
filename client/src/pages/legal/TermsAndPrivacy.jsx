@@ -115,6 +115,29 @@ function TermsOfService() {
         <li>Payments made outside a project or a chat request are not recorded and are not covered by PhilFreela in any way.</li>
       </ul>
 
+      <h5 className="text-white fw-bold mt-4 mb-2">Who pays first</h5>
+      <ul className="text-secondary">
+        <li>
+          <strong className="text-white">PhilFreela does not decide who pays first, and it does not enforce an order.</strong> The
+          freelancer and the client agree on it themselves before the work starts: the full price after the work is delivered,
+          a down payment first and the balance later, or a payment for each day or month of an ongoing job. Write what you
+          agreed in the chat, so there is a record of it. If something goes wrong, you can tick those messages and send them
+          with a report.
+        </li>
+        <li>
+          Because PhilFreela never holds the money, whoever goes first takes the risk: a client who pays first trusts the
+          freelancer to deliver, and a freelancer who delivers first trusts the client to pay. To lower that risk, a client
+          should look at the freelancer's profile (the Verified mark, ratings and finished projects) before paying a down
+          payment, and a freelancer can send a preview or a part of the work first, for example with a watermark on it,
+          before sending the full work. The Verified mark only means PhilFreela checked the person's ID and face scan. It
+          is not a promise that they will deliver or pay.
+        </li>
+        <li>
+          Done does not mean paid. The client marks a project Done after the freelancer sends the work, and that does not
+          wait for payment. A payment can be recorded before the project is Done, or after it.
+        </li>
+      </ul>
+
       <h5 className="text-white fw-bold mt-4 mb-2">PhilFreela's own fees</h5>
       <ul className="text-secondary">
         <li>
