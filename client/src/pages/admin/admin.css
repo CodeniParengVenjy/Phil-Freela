@@ -243,6 +243,13 @@ body {
   --trend-orange: #d95926;
   --trend-blue: #3987e5;
   --trend-aqua: #199e70;
+  /* Only the share bars for statuses and for where the earnings came from need these
+     two. Checked in this order with the validator against the card color: orange,
+     blue, aqua, yellow, magenta pass (the closest neighbours, yellow and aqua, are
+     8.4 apart for color-blind eyes), and every part is also named in words with its
+     number under the bar. (Magenta never sits next to aqua: that pair fails.) */
+  --trend-yellow: #c98500;
+  --trend-magenta: #d55181;
   --trend-track: rgba(255, 255, 255, 0.16);
 }
 

@@ -3,6 +3,7 @@ import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { formatPeso } from "../../../lib/payments";
 import { getEarnings } from "../../../lib/promotions";
+import ActivityGraph from "../components/ActivityGraph";
 import { GrowthChart, GrowthTable } from "../components/GrowthChart";
 import SplitBar from "../components/SplitBar";
 import HiredList from "../components/HiredList";
@@ -61,6 +62,84 @@ const growthTabs = [
     ]
   }
 ];
+
+// The graphs at the top of Transactions, Job hiring and Earnings (ActivityGraph.jsx). They
+// count steps of a journey, so the colors follow the step: orange = begun, aqua = reached
+// (set in admin.css, .admin-trends). The series keys are the names in
+// admin_activity_trends(); `headline` is the series the big number counts, because the
+// second line is part of the first (accepted bookings are some of the bookings made).
+const pesoShort = (amount) => `₱${Math.round(amount).toLocaleString("en-PH")}`;
+
+const transactionTabs = [
+  {
+    key: "bookings",
+    label: "Bookings",
+    title: "Bookings made",
+    totalLabel: "bookings in total",
+    emptyText: "No bookings yet.",
+    headline: "bookings",
+    series: [
+      { key: "bookings", label: "Requested", color: "var(--trend-orange)" },
+      { key: "bookings_accepted", label: "Accepted", color: "var(--trend-aqua)" }
+    ]
+  },
+  {
+    key: "projects",
+    label: "Projects",
+    title: "Projects started",
+    totalLabel: "projects in total",
+    emptyText: "No projects yet.",
+    headline: "projects_started",
+    series: [
+      { key: "projects_started", label: "Started", color: "var(--trend-orange)" },
+      { key: "projects_done", label: "Done", color: "var(--trend-aqua)" }
+    ]
+  },
+  {
+    key: "payments",
+    label: "Payments",
+    title: "Payments recorded",
+    totalLabel: "payments in total",
+    emptyText: "No payments yet.",
+    headline: "payments",
+    series: [
+      { key: "payments", label: "Recorded", color: "var(--trend-orange)" },
+      { key: "payments_confirmed", label: "Confirmed", color: "var(--trend-aqua)" }
+    ]
+  }
+];
+
+const jobTabs = [
+  {
+    key: "hiring",
+    label: "Hiring",
+    title: "Applications received",
+    totalLabel: "applications in total",
+    emptyText: "No applications yet.",
+    headline: "applications",
+    series: [
+      { key: "applications", label: "Applications", color: "var(--trend-orange)" },
+      { key: "hires", label: "Hired", color: "var(--trend-aqua)" }
+    ]
+  }
+];
+
+const earningTabs = [
+  {
+    key: "earned",
+    label: "Earned",
+    title: "Earned from fees",
+    totalLabel: "earned in total",
+    emptyText: "Nothing earned yet.",
+    headline: "earned",
+    format: formatPeso,
+    tickFormat: pesoShort,
+    series: [{ key: "earned", label: "Earned", color: "var(--trend-aqua)" }]
+  }
+];
+
+// The sum of a block of counts, e.g. { pending: 3, accepted: 7 } -> 10.
+const totalOf = (counts) => Object.values(counts).reduce((sum, count) => sum + count, 0);
 
 // The parts of the Overview, chosen in the dropdown at the top. Only the chosen part
 // is drawn, so the page is not one long list, and each part asks the database for its
@@ -458,8 +537,10 @@ export default function AdminOverviewView() {
         <div className="admin-trends">
           <div className="mb-3">
             <h2 className="h5 fw-bold text-white mb-0">Transactions</h2>
-            <p className="text-secondary fs-7 mb-0">Where the work stands today, from bookings and projects.</p>
+            <p className="text-secondary fs-7 mb-0">How bookings, projects and payments have moved over time, and where each one stands today.</p>
           </div>
+
+          <ActivityGraph tabs={transactionTabs} />
 
           {transactionsError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{transactionsError}</div>}
           {!transactionsError && !transactions && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the transactions...</div>}
@@ -467,23 +548,25 @@ export default function AdminOverviewView() {
           {transactions && (
             <div className="row g-3">
               <div className="col-12 col-md-6">
-                <StatusCounts
+                <SplitBar
                   title="Bookings"
-                  items={[
-                    { label: "Pending", value: transactions.bookings.pending },
-                    { label: "Accepted", value: transactions.bookings.accepted },
-                    { label: "Declined", value: transactions.bookings.declined },
-                    { label: "Cancelled", value: transactions.bookings.cancelled }
+                  summary={`${totalOf(transactions.bookings)} in total`}
+                  parts={[
+                    { label: "Pending", value: transactions.bookings.pending, color: "var(--trend-orange)" },
+                    { label: "Accepted", value: transactions.bookings.accepted, color: "var(--trend-aqua)" },
+                    { label: "Declined", value: transactions.bookings.declined, color: "var(--trend-yellow)" },
+                    { label: "Cancelled", value: transactions.bookings.cancelled, color: "var(--trend-track)" }
                   ]}
                 />
               </div>
               <div className="col-12 col-md-6">
-                <StatusCounts
+                <SplitBar
                   title="Projects"
-                  items={[
-                    { label: "Started", value: transactions.projects.started },
-                    { label: "Submitted", value: transactions.projects.submitted },
-                    { label: "Done", value: transactions.projects.done }
+                  summary={`${totalOf(transactions.projects)} in total`}
+                  parts={[
+                    { label: "Started", value: transactions.projects.started, color: "var(--trend-orange)" },
+                    { label: "Submitted", value: transactions.projects.submitted, color: "var(--trend-blue)" },
+                    { label: "Done", value: transactions.projects.done, color: "var(--trend-aqua)" }
                   ]}
                 />
               </div>
@@ -491,14 +574,15 @@ export default function AdminOverviewView() {
                   together (counts only, no amounts: PhilFreela never holds the money). */}
               <div className="col-12">
                 {paymentCounts ? (
-                  <StatusCounts
+                  <SplitBar
                     title="Payments"
-                    items={[
-                      { label: "Requested", value: paymentCounts.requested },
-                      { label: "Payment sent", value: paymentCounts.sent },
-                      { label: "Confirmed", value: paymentCounts.confirmed },
-                      { label: "Not received", value: paymentCounts.not_received },
-                      { label: "Cancelled", value: paymentCounts.cancelled }
+                    summary={`${totalOf(paymentCounts)} in total`}
+                    parts={[
+                      { label: "Requested", value: paymentCounts.requested, color: "var(--trend-orange)" },
+                      { label: "Payment sent", value: paymentCounts.sent, color: "var(--trend-blue)" },
+                      { label: "Confirmed", value: paymentCounts.confirmed, color: "var(--trend-aqua)" },
+                      { label: "Not received", value: paymentCounts.not_received, color: "var(--trend-yellow)" },
+                      { label: "Cancelled", value: paymentCounts.cancelled, color: "var(--trend-track)" }
                     ]}
                   />
                 ) : (
@@ -530,18 +614,21 @@ export default function AdminOverviewView() {
             </p>
           </div>
 
+          <ActivityGraph tabs={jobTabs} />
+
           {hiringError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{hiringError}</div>}
           {!hiringError && !hiringTotals && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the job hiring numbers...</div>}
 
           {hiringTotals && (
             <div className="row g-3">
               <div className="col-12 col-md-6">
-                <StatusCounts
+                <SplitBar
                   title="Job posts"
-                  items={[
-                    { label: "Open", value: hiringTotals.open, to: "/admin/listings?state=open" },
-                    { label: "Filled", value: hiringTotals.filled, to: "/admin/listings?state=filled" },
-                    { label: "Expired", value: hiringTotals.expired, to: "/admin/listings?state=expired" }
+                  summary={`${hiringTotals.open + hiringTotals.filled + hiringTotals.expired} in total`}
+                  parts={[
+                    { label: "Open", value: hiringTotals.open, color: "var(--trend-orange)", to: "/admin/listings?state=open" },
+                    { label: "Filled", value: hiringTotals.filled, color: "var(--trend-aqua)", to: "/admin/listings?state=filled" },
+                    { label: "Expired", value: hiringTotals.expired, color: "var(--trend-track)", to: "/admin/listings?state=expired" }
                   ]}
                 />
               </div>
@@ -578,6 +665,8 @@ export default function AdminOverviewView() {
             </p>
           </div>
 
+          <ActivityGraph tabs={earningTabs} />
+
           {earningsError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{earningsError}</div>}
           {!earningsError && !earnings && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the earnings...</div>}
 
@@ -606,15 +695,16 @@ export default function AdminOverviewView() {
                 />
               </div>
               <div className="col-12">
-                <StatusCounts
+                <SplitBar
                   title="Where it came from"
-                  showTotal={false}
-                  items={[
-                    { label: `Featured offers (${earnings.by_kind.feature_service.count})`, value: formatPeso(earnings.by_kind.feature_service.amount) },
-                    { label: `Featured job posts (${earnings.by_kind.feature_job.count})`, value: formatPeso(earnings.by_kind.feature_job.amount) },
-                    { label: `Premium (${earnings.by_kind.pro.count})`, value: formatPeso(earnings.by_kind.pro.amount) },
-                    { label: `Sponsored billboards (${earnings.by_kind.billboard.count})`, value: formatPeso(earnings.by_kind.billboard.amount) },
-                    { label: `Community ads (${earnings.by_kind.member_ad?.count ?? 0})`, value: formatPeso(earnings.by_kind.member_ad?.amount ?? 0) }
+                  summary={formatPeso(earnings.total)}
+                  format={formatPeso}
+                  parts={[
+                    { label: `Featured offers (${earnings.by_kind.feature_service.count})`, value: earnings.by_kind.feature_service.amount, color: "var(--trend-orange)" },
+                    { label: `Featured job posts (${earnings.by_kind.feature_job.count})`, value: earnings.by_kind.feature_job.amount, color: "var(--trend-blue)" },
+                    { label: `Premium (${earnings.by_kind.pro.count})`, value: earnings.by_kind.pro.amount, color: "var(--trend-aqua)" },
+                    { label: `Sponsored billboards (${earnings.by_kind.billboard.count})`, value: earnings.by_kind.billboard.amount, color: "var(--trend-yellow)" },
+                    { label: `Community ads (${earnings.by_kind.member_ad?.count ?? 0})`, value: earnings.by_kind.member_ad?.amount ?? 0, color: "var(--trend-magenta)" }
                   ]}
                 />
               </div>

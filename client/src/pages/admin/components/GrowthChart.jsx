@@ -1,25 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-// The growth graph on the Overview: how many users (or listings) there are,
-// day by day, as one line per kind. GrowthChart draws it (by hand as SVG, no
-// chart library) and GrowthTable lists the same numbers as a table.
+// The graphs on the Overview: how many users (or listings, bookings, applications,
+// pesos earned...) there are, day by day, as one line per kind. GrowthChart draws it
+// (by hand as SVG, no chart library) and GrowthTable lists the same numbers as a table.
 //
-// The database only sends how many NEW things there were on each day
-// (admin_trends) and the totals right now (admin_stats). The total at the end of
-// any earlier day is today's total minus everything added after that day, so no
-// history has to be stored. It counts the accounts and listings that exist now.
+// The database only sends how many NEW things there were on each day (admin_trends,
+// admin_activity_trends) and the totals right now (admin_stats, admin_activity_trends).
+// The total at the end of any earlier day is today's total minus everything added after
+// that day, so no history has to be stored. It counts what exists now: an account that
+// was deleted does not appear in the past.
 //
 // Props (both components):
-//   series   what to draw: [{ key: "freelancers", label: "Freelancers", color: "var(--trend-orange)" }]
-//   data     the rows from admin_trends(): { day: "2026-10-24", freelancers: 2, ... }, oldest first
-//   current  the totals right now, from admin_stats(): { freelancers: 18, clients: 12, ... }
-// GrowthChart also takes title, totalLabel (what the big number counts),
-// emptyText (shown when there is nothing yet) and days.
+//   series    what to draw: [{ key: "freelancers", label: "Freelancers", color: "var(--trend-orange)" }]
+//   data      the rows of new things per day: { day: "2026-10-24", freelancers: 2, ... }, oldest first
+//   current   the totals right now: { freelancers: 18, clients: 12, ... }
+//   headline  optional: the key of the one series the big number and "added that day" count.
+//             Without it they add up all the series, which is right when the series are parts
+//             of one whole (freelancers + clients). Series that are nested (accepted bookings
+//             are part of the bookings made) need a headline, or they would be counted twice.
+//   format    optional: how a number is written in the big number, the legend, the tooltip
+//             and the table (pesos: "₱1,250.00"). Default: the plain number.
+// GrowthChart also takes title, totalLabel (what the big number counts), emptyText (shown
+// when there is nothing yet), days, and tickFormat (the numbers up the side and at the
+// line ends; shorter than format for money; default: format).
 
 const HEIGHT = 230;
 const MARGIN = { top: 14, right: 30, bottom: 26, left: 30 };
 const LABEL_SPACE = 64; // room for one date label on the bottom axis
 const TOO_CLOSE = 14; // two end numbers closer than this (pixels) would overlap
+const CHAR_WIDTH = 7; // about how wide one character of an axis or end number is (pixels)
+
+const plain = (value) => String(value);
 
 // "2026-10-24" -> a Date at local midnight. new Date("2026-10-24") would be read
 // as UTC and could show the day before, so the parts are used one by one.
@@ -33,13 +44,13 @@ const longDay = (day) => parseDay(day).toLocaleDateString("en-PH", { weekday: "s
 // One row per day with the total of each series at the END of that day, and how
 // many were added that day. Counting back from today: the total now, minus what
 // came in today = the total at the end of yesterday, and so on.
-function runningTotals(data, series, current) {
+function runningTotals(data, series, current, headline) {
   const rows = data.map((row) => ({ day: row.day, added: 0 }));
   series.forEach((s) => {
     let running = current[s.key] || 0;
     for (let i = data.length - 1; i >= 0; i -= 1) {
       rows[i][s.key] = Math.max(running, 0);
-      rows[i].added += data[i][s.key] || 0;
+      if (!headline || s.key === headline) rows[i].added += data[i][s.key] || 0;
       running -= data[i][s.key] || 0;
     }
   });
@@ -49,9 +60,9 @@ function runningTotals(data, series, current) {
 // Whole-number tick marks up the side (a count of people is never 1.5): the
 // smallest step that gives no more than 4 gaps, and a top that is a multiple of it.
 function niceTicks(max) {
-  const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+  const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
   const target = Math.max(max, 2);
-  const step = steps.find((s) => Math.ceil(target / s) <= 4) ?? 10000;
+  const step = steps.find((s) => Math.ceil(target / s) <= 4) ?? 1000000;
   const top = Math.ceil(target / step) * step;
   const ticks = [];
   for (let value = 0; value <= top; value += step) ticks.push(value);
@@ -73,27 +84,36 @@ function useWidth() {
   return [ref, width];
 }
 
-export function GrowthChart({ title, totalLabel, emptyText, series, data, current, days }) {
+export function GrowthChart({ title, totalLabel, emptyText, series, data, current, days, headline, format = plain, tickFormat = format }) {
   const [boxRef, width] = useWidth();
   // The day the pointer (or the arrow keys) is on, or null.
   const [active, setActive] = useState(null);
 
-  const rows = useMemo(() => runningTotals(data, series, current), [data, series, current]);
-  const totalNow = series.reduce((sum, s) => sum + (current[s.key] || 0), 0);
+  const rows = useMemo(() => runningTotals(data, series, current, headline), [data, series, current, headline]);
+  const countedSeries = headline ? series.filter((s) => s.key === headline) : series;
+  const totalNow = countedSeries.reduce((sum, s) => sum + (current[s.key] || 0), 0);
   const gained = rows.reduce((sum, row) => sum + row.added, 0);
 
-  const plotWidth = Math.max(width - MARGIN.left - MARGIN.right, 0);
-  const plotHeight = HEIGHT - MARGIN.top - MARGIN.bottom;
-  const baseY = MARGIN.top + plotHeight;
   const { top: topValue, ticks } = niceTicks(Math.max(0, ...rows.flatMap((row) => series.map((s) => row[s.key]))));
+  const lastRow = rows[rows.length - 1];
+  // Room on the left for the longest number up the side, and on the right for the
+  // numbers at the line ends (money is wider than a count).
+  const margin = {
+    ...MARGIN,
+    left: Math.max(MARGIN.left, 14 + CHAR_WIDTH * tickFormat(topValue).length),
+    right: Math.max(MARGIN.right, lastRow ? 14 + CHAR_WIDTH * Math.max(...series.map((s) => tickFormat(lastRow[s.key]).length)) : 0)
+  };
+  const plotWidth = Math.max(width - margin.left - margin.right, 0);
+  const plotHeight = HEIGHT - margin.top - margin.bottom;
+  const baseY = margin.top + plotHeight;
   const step = rows.length > 1 ? plotWidth / (rows.length - 1) : 0;
-  const xAt = (index) => MARGIN.left + index * step;
+  const xAt = (index) => margin.left + index * step;
   const yAt = (value) => baseY - (value / topValue) * plotHeight;
 
   // Which day is nearest to the pointer.
   function dayAt(event) {
     const box = event.currentTarget.getBoundingClientRect();
-    const index = step ? Math.round((event.clientX - box.left - MARGIN.left) / step) : 0;
+    const index = step ? Math.round((event.clientX - box.left - margin.left) / step) : 0;
     return Math.min(Math.max(index, 0), rows.length - 1);
   }
 
@@ -120,12 +140,11 @@ export function GrowthChart({ title, totalLabel, emptyText, series, data, curren
 
   // The number at the end of each line. If two lines end almost on top of each
   // other the numbers are left out (the legend above still has them).
-  const lastRow = rows[rows.length - 1];
   const endYs = lastRow ? series.map((s) => yAt(lastRow[s.key])).sort((a, b) => a - b) : [];
   const endCrowded = endYs.some((y, i) => i > 0 && y - endYs[i - 1] < TOO_CLOSE);
 
   const activeRow = active === null ? null : rows[active];
-  const nothing = totalNow === 0 && gained === 0;
+  const nothing = series.every((s) => !(current[s.key] || 0)) && gained === 0;
   // The tooltip sits beside the active day, on the side with more room, so it
   // never covers the dots on the line.
   const tipOnRight = active !== null && xAt(active) < width / 2;
@@ -136,11 +155,11 @@ export function GrowthChart({ title, totalLabel, emptyText, series, data, curren
       <div className="mb-2">
         <h3 className="h6 fw-bold text-white mb-1">{title}</h3>
         <div className="d-flex flex-wrap align-items-baseline column-gap-3">
-          <span className="admin-trend-total">{totalNow}</span>
+          <span className="admin-trend-total">{format(totalNow)}</span>
           <span className="text-secondary fs-7">{totalLabel}</span>
           <span className="fs-7">
             {gained > 0 ? (
-              <><strong className="text-success">+{gained}</strong> <span className="text-secondary">in the last {days} days</span></>
+              <><strong className="text-success">+{format(gained)}</strong> <span className="text-secondary">in the last {days} days</span></>
             ) : (
               <span className="text-secondary">No change in the last {days} days</span>
             )}
@@ -153,7 +172,7 @@ export function GrowthChart({ title, totalLabel, emptyText, series, data, curren
           <li key={s.key} className="d-flex align-items-center gap-2 fs-8 text-white-50">
             <span className="admin-trend-key" style={{ background: s.color }}></span>
             {s.label}
-            <strong className="text-white">{current[s.key] || 0}</strong>
+            <strong className="text-white">{format(current[s.key] || 0)}</strong>
           </li>
         ))}
       </ul>
@@ -185,17 +204,17 @@ export function GrowthChart({ title, totalLabel, emptyText, series, data, curren
                 <g key={tick}>
                   <line
                     className={tick === 0 ? "admin-trend-base" : "admin-trend-grid"}
-                    x1={MARGIN.left}
-                    x2={width - MARGIN.right}
+                    x1={margin.left}
+                    x2={width - margin.right}
                     y1={yAt(tick)}
                     y2={yAt(tick)}
                   />
-                  <text className="admin-trend-axis" x={MARGIN.left - 8} y={yAt(tick) + 4} textAnchor="end">{tick}</text>
+                  <text className="admin-trend-axis" x={margin.left - 8} y={yAt(tick) + 4} textAnchor="end">{tickFormat(tick)}</text>
                 </g>
               ))}
 
               {/* The day under the pointer: a thin vertical line. */}
-              {active !== null && <line className="admin-trend-cross" x1={xAt(active)} x2={xAt(active)} y1={MARGIN.top} y2={baseY} />}
+              {active !== null && <line className="admin-trend-cross" x1={xAt(active)} x2={xAt(active)} y1={margin.top} y2={baseY} />}
 
               {series.map((s) => (
                 <path
@@ -213,7 +232,7 @@ export function GrowthChart({ title, totalLabel, emptyText, series, data, curren
                   <g key={s.key}>
                     <circle className="admin-trend-ring" style={{ fill: s.color }} cx={xAt(index)} cy={yAt(rows[index][s.key])} r={4} />
                     {active === null && !endCrowded && (
-                      <text className="admin-trend-end" x={xAt(index) + 9} y={yAt(rows[index][s.key]) + 4}>{rows[index][s.key]}</text>
+                      <text className="admin-trend-end" x={xAt(index) + 9} y={yAt(rows[index][s.key]) + 4}>{tickFormat(rows[index][s.key])}</text>
                     )}
                   </g>
                 );
@@ -236,9 +255,9 @@ export function GrowthChart({ title, totalLabel, emptyText, series, data, curren
               return (
                 <div key={s.key} className="d-flex align-items-center gap-2">
                   <span className="admin-trend-key" style={{ background: s.color }}></span>
-                  <strong className="text-white">{activeRow[s.key]}</strong>
+                  <strong className="text-white">{format(activeRow[s.key])}</strong>
                   <span className="text-white-50 fs-8">{s.label}</span>
-                  {added > 0 && <span className="text-success fs-8">+{added}</span>}
+                  {added > 0 && <span className="text-success fs-8">+{format(added)}</span>}
                 </div>
               );
             })}
@@ -248,7 +267,7 @@ export function GrowthChart({ title, totalLabel, emptyText, series, data, curren
 
       {/* Read out by screen readers while the arrow keys or pointer move. */}
       <span className="visually-hidden" aria-live="polite">
-        {activeRow ? `${longDay(activeRow.day)}: ${series.map((s) => `${activeRow[s.key]} ${s.label}`).join(", ")}` : ""}
+        {activeRow ? `${longDay(activeRow.day)}: ${series.map((s) => `${format(activeRow[s.key])} ${s.label}`).join(", ")}` : ""}
       </span>
     </div>
   );
@@ -256,8 +275,8 @@ export function GrowthChart({ title, totalLabel, emptyText, series, data, curren
 
 // The same numbers as a table, newest day first. Shown instead of the graph when
 // "View as table" is picked. Every number the graph shows can be read here.
-export function GrowthTable({ series, data, current }) {
-  const rows = useMemo(() => runningTotals(data, series, current), [data, series, current]);
+export function GrowthTable({ series, data, current, headline, format = plain }) {
+  const rows = useMemo(() => runningTotals(data, series, current, headline), [data, series, current, headline]);
   const newestFirst = [...rows].reverse();
   return (
     <div className="admin-card rounded-4 p-3">
@@ -274,8 +293,8 @@ export function GrowthTable({ series, data, current }) {
             {newestFirst.map((row) => (
               <tr key={row.day}>
                 <th scope="row" className="fw-normal text-nowrap">{longDay(row.day)}</th>
-                {series.map((s) => <td key={s.key} className="text-end text-white">{row[s.key]}</td>)}
-                <td className={`text-end ${row.added ? "text-success fw-semibold" : "text-secondary"}`}>{row.added ? `+${row.added}` : 0}</td>
+                {series.map((s) => <td key={s.key} className="text-end text-white">{format(row[s.key])}</td>)}
+                <td className={`text-end ${row.added ? "text-success fw-semibold" : "text-secondary"}`}>{row.added ? `+${format(row.added)}` : format(0)}</td>
               </tr>
             ))}
           </tbody>
