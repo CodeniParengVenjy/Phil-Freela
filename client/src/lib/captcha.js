@@ -12,7 +12,9 @@ import "../styles/captcha.css";
 // The site key is public. Leave it out and nothing here does anything, so the
 // website works as before (the laptop, the tests, the days before the switch
 // in Supabase is turned on).
-const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+// Trimmed: a space or line break copied along with the key into Cloudflare
+// Pages' variable makes Turnstile refuse it ("Invalid input for parameter sitekey").
+const SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY || "").trim();
 export const CAPTCHA_SITE_KEY = SITE_KEY;
 export const captchaEnabled = Boolean(SITE_KEY);
 
