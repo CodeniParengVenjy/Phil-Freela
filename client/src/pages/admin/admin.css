@@ -528,6 +528,27 @@ body {
   color: #fff;
 }
 
+/* The "what to look at" dropdown at the top of the Overview: the width of the screen
+   on a phone, and no wider than 320px on a bigger one. */
+.admin-view-select {
+  max-width: 320px;
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
+  font-weight: 600;
+}
+
+/* .admin-input sets a plain background, which also removes the arrow Bootstrap draws
+   on a dropdown, so the arrow is drawn again (white, also while the dropdown has the
+   focus, because .admin-input:focus resets the background too). */
+.admin-view-select,
+.admin-view-select:focus {
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 16px 12px;
+}
+
 .admin-input::placeholder {
   color: rgba(255, 255, 255, 0.4);
 }

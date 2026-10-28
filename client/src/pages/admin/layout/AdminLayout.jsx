@@ -72,7 +72,7 @@ const groupOfPath = (pathname) => sidebarItems.find((item) => item.links?.some((
 // guard. The pages themselves render inside <Outlet />.
 export default function AdminLayout() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   // null while checking; the page stays blank until we know this is an admin,
   // so admin screens never flash for someone who isn't one.
   const [admin, setAdmin] = useState(null);
@@ -378,11 +378,12 @@ export default function AdminLayout() {
   return (
     <div className="admin-shell text-light min-vh-100">
       <nav className="admin-topbar px-3 px-md-4">
-        {/* Logo goes back to the admin Overview, or reloads it if already there. */}
+        {/* Logo goes back to the admin Overview, or reloads it if already there. On a part
+            picked in the Overview's dropdown (?view=ratings) it goes back to the Overview. */}
         <Link
           to="/admin"
           onClick={(event) => {
-            if (pathname === "/admin") {
+            if (pathname === "/admin" && !search) {
               event.preventDefault();
               window.location.reload();
             }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { formatPeso } from "../../../lib/payments";
 import { getEarnings } from "../../../lib/promotions";
@@ -62,10 +62,33 @@ const growthTabs = [
   }
 ];
 
+// The parts of the Overview, chosen in the dropdown at the top. Only the chosen part
+// is drawn, so the page is not one long list, and each part asks the database for its
+// numbers when it is opened. "overview" is the first and the default.
+const overviewViews = [
+  { key: "overview", label: "Overview" },
+  { key: "ratings", label: "Ratings" },
+  { key: "transactions", label: "Transactions" },
+  { key: "jobs", label: "Job hiring" },
+  { key: "earnings", label: "Earnings" }
+];
+
 export default function AdminOverviewView() {
   const { adminName, isSuperAdmin } = useOutletContext();
   const [stats, setStats] = useState(null);
   const [error, setError] = useState("");
+
+  // The chosen part is kept in the address (?view=ratings), so a refresh comes back
+  // to the same part. A missing or unknown ?view= means the Overview.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const asked = searchParams.get("view");
+  const view = overviewViews.some((item) => item.key === asked) ? asked : "overview";
+
+  // replace: choosing a part is not a page of its own, so Back doesn't step through
+  // every part that was looked at.
+  function pickView(key) {
+    setSearchParams(key === "overview" ? {} : { view: key }, { replace: true });
+  }
 
   // The growth graph: how many days to show, the rows for them, what is counted
   // (Users or Listings) and graph or table.
@@ -76,7 +99,9 @@ export default function AdminOverviewView() {
   const [growthTab, setGrowthTab] = useState("users");
   const [showTable, setShowTable] = useState(false);
 
+  // The Overview's own numbers: only asked for while that part is open.
   useEffect(() => {
+    if (view !== "overview") return undefined;
     let active = true;
 
     (async () => {
@@ -86,15 +111,20 @@ export default function AdminOverviewView() {
       if (!active) return;
 
       if (statsError) setError("Failed to load stats.");
-      else setStats(data);
+      else {
+        setStats(data);
+        setError("");
+      }
     })();
 
     return () => { active = false; };
-  }, []);
+  }, [view]);
 
-  // Runs again whenever a different number of days is picked. admin_trends()
-  // is admin-only too and sends one row per day, with zeros on quiet days.
+  // Runs again whenever a different number of days is picked (and when the Overview
+  // is opened again). admin_trends() is admin-only too and sends one row per day,
+  // with zeros on quiet days.
   useEffect(() => {
+    if (view !== "overview") return undefined;
     let active = true;
 
     (async () => {
@@ -110,7 +140,7 @@ export default function AdminOverviewView() {
     })();
 
     return () => { active = false; };
-  }, [days]);
+  }, [days, view]);
 
   // The stars given to freelancers and clients (admin_ratings()) and where the
   // bookings and projects stand (admin_transactions()). Each has its own error,
@@ -135,40 +165,77 @@ export default function AdminOverviewView() {
   const [earnings, setEarnings] = useState(null);
   const [earningsError, setEarningsError] = useState("");
 
+  // Each of these asks for its numbers when its part is opened (so the page only works
+  // out what is on screen, and the numbers are fresh each time). A failure clears that
+  // part's numbers and shows its own message; opening the part again tries again.
   useEffect(() => {
+    if (view !== "ratings") return undefined;
     let active = true;
 
     (async () => {
-      const [ratingsResult, transactionsResult, topRatedResult, hiringResult, paymentsResult, earningsResult] = await Promise.all([
+      const [ratingsResult, topRatedResult] = await Promise.all([
         supabase.rpc("admin_ratings"),
-        supabase.rpc("admin_transactions"),
-        supabase.rpc("admin_top_rated", { p_limit: 5 }),
-        supabase.rpc("admin_job_hiring"),
-        supabase.rpc("admin_payment_counts"),
-        getEarnings()
+        supabase.rpc("admin_top_rated", { p_limit: 5 })
       ]);
       if (!active) return;
 
-      if (!paymentsResult.error) setPaymentCounts(paymentsResult.data);
-
-      if (earningsResult.error) setEarningsError(earningsResult.error);
-      else setEarnings(earningsResult.earnings);
-
-      if (hiringResult.error) setHiringError("Failed to load the job hiring numbers.");
-      else setHiringTotals(hiringResult.data.totals);
-
-      if (ratingsResult.error) setRatingsError("Failed to load the ratings.");
-      else setRatings(ratingsResult.data);
-
-      if (topRatedResult.error) setTopRatedError("Failed to load the top rated.");
-      else setTopRated(topRatedResult.data);
-
-      if (transactionsResult.error) setTransactionsError("Failed to load the transactions.");
-      else setTransactions(transactionsResult.data);
+      setRatings(ratingsResult.error ? null : ratingsResult.data);
+      setRatingsError(ratingsResult.error ? "Failed to load the ratings." : "");
+      setTopRated(topRatedResult.error ? null : topRatedResult.data);
+      setTopRatedError(topRatedResult.error ? "Failed to load the top rated." : "");
     })();
 
     return () => { active = false; };
-  }, []);
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "transactions") return undefined;
+    let active = true;
+
+    (async () => {
+      const [transactionsResult, paymentsResult] = await Promise.all([
+        supabase.rpc("admin_transactions"),
+        supabase.rpc("admin_payment_counts")
+      ]);
+      if (!active) return;
+
+      setTransactions(transactionsResult.error ? null : transactionsResult.data);
+      setTransactionsError(transactionsResult.error ? "Failed to load the transactions." : "");
+      setPaymentCounts(paymentsResult.error ? null : paymentsResult.data);
+    })();
+
+    return () => { active = false; };
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "jobs") return undefined;
+    let active = true;
+
+    (async () => {
+      const { data, error: hiringResultError } = await supabase.rpc("admin_job_hiring");
+      if (!active) return;
+
+      setHiringTotals(hiringResultError ? null : data.totals);
+      setHiringError(hiringResultError ? "Failed to load the job hiring numbers." : "");
+    })();
+
+    return () => { active = false; };
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "earnings") return undefined;
+    let active = true;
+
+    (async () => {
+      const result = await getEarnings();
+      if (!active) return;
+
+      setEarnings(result.error ? null : result.earnings);
+      setEarningsError(result.error || "");
+    })();
+
+    return () => { active = false; };
+  }, [view]);
 
   const currentTab = growthTabs.find((tab) => tab.key === growthTab);
 
@@ -184,12 +251,24 @@ export default function AdminOverviewView() {
       <div className="admin-card rounded-4 p-4 mb-4">
         <span className="badge admin-badge-orange px-3 py-1 rounded-pill fw-bold text-uppercase fs-8 mb-2">Admin Overview</span>
         <h1 className="h3 fw-bold text-white mb-1">Welcome, {adminName}</h1>
-        <p className="text-secondary fs-7 mb-0">A quick look at what's happening on PhilFreela. Click a number to see who or what is behind it.</p>
+        <p className="text-secondary fs-7 mb-0">A quick look at what's happening on PhilFreela. Pick a part below, and click a number to see who or what is behind it.</p>
+
+        {/* What to look at: one part at a time, so the page is not one long list. */}
+        <div className="mt-3">
+          <select
+            className="form-select admin-input admin-view-select"
+            value={view}
+            onChange={(event) => pickView(event.target.value)}
+            aria-label="Choose what to look at"
+          >
+            {overviewViews.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+          </select>
+        </div>
       </div>
 
-      {error && <div className="admin-card rounded-4 p-4 text-center text-white-50">{error}</div>}
+      {view === "overview" && error && <div className="admin-card rounded-4 p-4 text-center text-white-50">{error}</div>}
 
-      {!error && (
+      {view === "overview" && !error && (
         <div className="admin-trends mb-4">
           <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
             <div>
@@ -269,7 +348,7 @@ export default function AdminOverviewView() {
         </div>
       )}
 
-      {!error && (
+      {view === "overview" && !error && (
         <div className="row g-3">
           {/* All users, and the ones online right now (seen in the last 2 minutes). */}
           <div className="col-12 col-sm-6 col-xl-4">
@@ -320,8 +399,9 @@ export default function AdminOverviewView() {
         </div>
       )}
 
-      {!error && (
-        <div className="admin-trends mt-4">
+      {/* Ratings: the stars given, and who is best rated. */}
+      {view === "ratings" && (
+        <div className="admin-trends">
           <div className="mb-3">
             <h2 className="h5 fw-bold text-white mb-0">Ratings</h2>
             <p className="text-secondary fs-7 mb-0">The stars people were given after a finished project. A rating shows here once both sides have rated, or after 14 days.</p>
@@ -370,7 +450,13 @@ export default function AdminOverviewView() {
             </div>
           )}
 
-          <div className="mt-4 mb-3">
+        </div>
+      )}
+
+      {/* Transactions: where the bookings, projects and payments stand. */}
+      {view === "transactions" && (
+        <div className="admin-trends">
+          <div className="mb-3">
             <h2 className="h5 fw-bold text-white mb-0">Transactions</h2>
             <p className="text-secondary fs-7 mb-0">Where the work stands today, from bookings and projects.</p>
           </div>
@@ -430,9 +516,14 @@ export default function AdminOverviewView() {
             </div>
           )}
 
-          {/* Hiring from job posts: its own part, so it shows even if the numbers above fail. */}
-          <div className="mt-4 mb-3">
-            <h3 className="h6 fw-bold text-white mb-0">Job hiring</h3>
+        </div>
+      )}
+
+      {/* Job hiring: how many posts are open, filled or expired, and who applied and was hired. */}
+      {view === "jobs" && (
+        <div className="admin-trends">
+          <div className="mb-3">
+            <h2 className="h5 fw-bold text-white mb-0">Job hiring</h2>
             <p className="text-secondary fs-7 mb-0">
               How many job posts are open, filled (everyone needed was hired, so freelancers no longer see it) or expired, and how many freelancers applied and were hired.
               {" "}Click a number to see those posts in <Link to="/admin/listings" className="text-white">Listings</Link>; View a post there to see who was hired from it.
@@ -472,9 +563,14 @@ export default function AdminOverviewView() {
             <HiredList />
           </div>
 
-          {/* What PhilFreela earns: fees for Featured posts, Premium and
-              sponsored billboards. Its own part, so it shows even if the numbers above fail. */}
-          <div className="mt-4 mb-3">
+        </div>
+      )}
+
+      {/* Earnings: what PhilFreela earns from fees for Featured posts, Premium,
+          sponsored billboards and members' ads. */}
+      {view === "earnings" && (
+        <div className="admin-trends">
+          <div className="mb-3">
             <h2 className="h5 fw-bold text-white mb-0">Earnings</h2>
             <p className="text-secondary fs-7 mb-0">
               Fees paid to PhilFreela's own GCash (never the money between clients and freelancers).
