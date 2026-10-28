@@ -1,0 +1,81 @@
+/* The "are you a robot?" check (lib/captcha.js, components/CaptchaBox.jsx). */
+
+/* The box on the sign-in forms. The room is kept from the start so the
+   form doesn't jump when Cloudflare's box appears. */
+.captcha-box {
+  min-height: 65px;
+}
+
+.captcha-box .captcha-holder {
+  min-height: 65px;
+}
+
+/* The "One quick check" pop-up. It is on the page from the start but hidden
+   (not removed) until Cloudflare asks for a click; a hidden iframe still
+   runs its check. */
+.captcha-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.captcha-popup.is-open {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.captcha-popup-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 20px;
+  border-radius: 16px;
+  text-align: center;
+  background: #141824;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+body.theme-light .captcha-popup-card {
+  background: #ffffff;
+  color: #1f2937;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.captcha-popup-title {
+  margin: 0 0 4px;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.captcha-popup-note {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.captcha-popup-holder {
+  display: flex;
+  justify-content: center;
+  min-height: 65px;
+}
+
+.captcha-popup-cancel {
+  margin-top: 12px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.8;
+}

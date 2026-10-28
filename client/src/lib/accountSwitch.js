@@ -1,6 +1,7 @@
 import { OTHER_ACCOUNT_KEY, activeStorage, supabase, supabaseSignup } from "./supabaseClient";
 import { getFriendlyErrorMessage } from "./errors";
 import { resolvePostAuthRoute } from "./profile";
+import { getCaptchaToken } from "./captcha";
 
 // Switching between an admin's login and their own user login
 // (database/supabase_admin_switch_schema.sql). The two logins are linked in the
@@ -56,7 +57,16 @@ export function clearSlot() {
 // Signs in to the other account on the second, in-memory connection (so the
 // current sign-in is untouched). Returns { session, userId } or { error }.
 async function signInOther(email, password) {
-  const { data, error } = await supabaseSignup.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+  // Supabase wants the "are you a robot?" check for every password sign-in
+  // (a pop-up shows only if Cloudflare asks for a click).
+  let captchaToken;
+  try {
+    captchaToken = await getCaptchaToken();
+  } catch (error) {
+    return { error: error.message };
+  }
+
+  const { data, error } = await supabaseSignup.auth.signInWithPassword({ email: email.trim().toLowerCase(), password, options: { captchaToken: captchaToken || undefined } });
   if (error) {
     const invalid = error.code === "invalid_credentials" || /invalid login credentials/i.test(error.message || "");
     return { error: invalid ? "Incorrect email or password for that account." : getFriendlyErrorMessage(error) };

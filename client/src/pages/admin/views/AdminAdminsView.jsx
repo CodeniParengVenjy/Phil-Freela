@@ -6,6 +6,7 @@ import { getFriendlyErrorMessage } from "../../../lib/errors";
 import { DEFAULT_ADMIN_PASSWORD } from "../../../lib/adminPassword";
 import { adminEmailFor } from "../../../lib/adminEmail";
 import { noAutofill } from "../../../lib/profile";
+import { getCaptchaToken } from "../../../lib/captcha";
 import AdminRoleDialog from "../components/AdminRoleDialog";
 
 const emptyForm = { fullName: "", username: "", email: "" };
@@ -83,12 +84,17 @@ export default function AdminAdminsView() {
       //    admin using this page stays signed in as themselves. Every new
       //    admin starts with the default password; the super admin never
       //    chooses or sees the one they end up with.
+      // Supabase wants the "are you a robot?" check for every sign-up (a
+      // pop-up shows only if Cloudflare asks for a click).
+      const captchaToken = await getCaptchaToken();
+
       const { data, error } = await supabaseSignup.auth.signUp({
         email,
         password: DEFAULT_ADMIN_PASSWORD,
         options: {
           // The new admin's confirmation link opens the Admin Sign In page.
           emailRedirectTo: `${window.location.origin}/admin/login`,
+          captchaToken: captchaToken || undefined,
           data: { full_name: fullName, username }
         }
       });

@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
 import { noAutofill } from "../../lib/profile";
 import { getPasswordStrengthMessage } from "../../lib/validators";
+import { useCaptcha } from "../../lib/captcha";
+import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
 
 export default function AdminSetup() {
@@ -10,6 +12,7 @@ export default function AdminSetup() {
   const [form, setForm] = useState({ fullName: "", username: "", email: "", password: "" });
   const [message, setMessage] = useState({ text: "", type: "" });
   const [submitting, setSubmitting] = useState(false);
+  const captcha = useCaptcha();
 
   const updateField = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
 
@@ -27,6 +30,11 @@ export default function AdminSetup() {
       return;
     }
 
+    if (captcha.waiting) {
+      setMessage({ text: "Please wait for the human check above the button to finish.", type: "error" });
+      return;
+    }
+
     setSubmitting(true);
     setMessage({ text: "Creating admin account...", type: "" });
 
@@ -34,7 +42,7 @@ export default function AdminSetup() {
       const { data, error } = await supabase.auth.signUp({
         email: form.email.trim().toLowerCase(),
         password: form.password,
-        options: { data: { full_name: form.fullName.trim(), username: form.username.trim() } }
+        options: { captchaToken: captcha.token || undefined, data: { full_name: form.fullName.trim(), username: form.username.trim() } }
       });
 
       if (error) throw new Error(error.message);
@@ -57,6 +65,8 @@ export default function AdminSetup() {
       setMessage({ text: error.message, type: "error" });
     } finally {
       setSubmitting(false);
+      // A check works once: the box makes a new one for the next try.
+      captcha.reset();
     }
   };
 
@@ -97,8 +107,10 @@ export default function AdminSetup() {
               <label htmlFor="password" className="form-label text-white-50 fw-semibold fs-7 mb-1">Password</label>
               <input id="password" type="password" className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" placeholder="Min 8 chars, upper/lower/number" value={form.password} onChange={updateField("password")} required />
             </div>
-            <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting}>
-              Create Admin Account
+            <CaptchaBox captcha={captcha} />
+
+            <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting || captcha.waiting}>
+              {captcha.waiting ? "Checking you're human..." : "Create Admin Account"}
             </button>
           </form>
 

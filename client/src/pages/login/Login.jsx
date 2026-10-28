@@ -5,6 +5,8 @@ import { MAX_NAME_LENGTH, checkName, checkNameWords, cleanName, dashboardRouteFo
 import { EMAIL_PATTERN, getPasswordStrengthMessage } from "../../lib/validators";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import { renderGoogleButton } from "../../lib/googleSignIn";
+import { useCaptcha } from "../../lib/captcha";
+import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
 
 const initialForm = {
@@ -65,6 +67,8 @@ export default function Login() {
   // confirmation email" button shows under the message.
   const [resendEmail, setResendEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // The "are you a robot?" box above the button (see lib/captcha.js).
+  const captcha = useCaptcha();
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   // Google's own button: "loading" while its script loads, "ready" once it's
   // drawn, or "fallback" to show the older redirect button instead.
@@ -228,6 +232,11 @@ export default function Login() {
       return;
     }
 
+    if (captcha.waiting) {
+      setMessage({ text: "Please wait for the human check above the button to finish.", type: "error" });
+      return;
+    }
+
     setSubmitting(true);
     setMessage({ text: isSignup ? "Creating account..." : "Signing in...", type: "" });
     setResendEmail("");
@@ -248,6 +257,7 @@ export default function Login() {
             // which signs them in and sends them to their dashboard (see
             // the getSession() check at the top).
             emailRedirectTo: `${window.location.origin}/login`,
+            captchaToken: captcha.token || undefined,
             data: {
               full_name: cleanName(form.fullName),
               username: form.username.trim(),
@@ -293,7 +303,8 @@ export default function Login() {
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: normalizedEmail,
-          password: form.password
+          password: form.password,
+          options: { captchaToken: captcha.token || undefined }
         });
 
         if (error) {
@@ -326,19 +337,27 @@ export default function Login() {
       if (error.message?.toLowerCase().includes("email not confirmed")) setResendEmail(normalizedEmail);
     } finally {
       setSubmitting(false);
+      // A check works once: the box makes a new one for the next try.
+      captcha.reset();
     }
   };
 
   // Sends the confirmation email again, for someone who lost it or whose
   // link expired.
   const handleResend = async () => {
+    if (captcha.waiting) {
+      setMessage({ text: "Please wait for the human check above the button to finish.", type: "error" });
+      return;
+    }
+
     setSubmitting(true);
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: resendEmail,
-      options: { emailRedirectTo: `${window.location.origin}/login` }
+      options: { emailRedirectTo: `${window.location.origin}/login`, captchaToken: captcha.token || undefined }
     });
     setSubmitting(false);
+    captcha.reset();
 
     setMessage(error
       ? { text: getFriendlyErrorMessage(error), type: "error" }
@@ -609,12 +628,14 @@ export default function Login() {
               </div>
             </div>
 
+            <CaptchaBox captcha={captcha} />
+
             <button
               type="submit"
               className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2"
-              disabled={submitting}
+              disabled={submitting || captcha.waiting}
             >
-              {isSignup ? "Create Account" : "Sign In"}
+              {captcha.waiting ? "Checking you're human..." : isSignup ? "Create Account" : "Sign In"}
             </button>
           </form>
 

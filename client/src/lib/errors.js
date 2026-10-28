@@ -19,5 +19,8 @@ export function getFriendlyErrorMessage(error) {
   if (lower.includes("invalid login credentials")) {
     return "Incorrect email or password.";
   }
+  if (error?.code === "captcha_failed" || lower.includes("captcha")) {
+    return "The human check didn't pass. Please try again.";
+  }
   return message;
 }

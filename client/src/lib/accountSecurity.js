@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import { getFriendlyErrorMessage } from "./errors";
 import { getPasswordStrengthMessage } from "./validators";
+import { getCaptchaToken } from "./captcha";
 
 // Settings > Account Security: how the user signs in, changing their
 // password, and signing out their other devices. All of it goes through
@@ -44,7 +45,16 @@ export function checkPasswordChange(current, next, confirm) {
 // device is signed out, in case the old password was known to someone else.
 // Returns "" when changed, or a message to show.
 export async function changePassword(email, current, next) {
-  const { error: wrongPassword } = await supabase.auth.signInWithPassword({ email, password: current });
+  // Supabase wants the "are you a robot?" check for every password sign-in,
+  // this one too (a pop-up shows only if Cloudflare asks for a click).
+  let captchaToken;
+  try {
+    captchaToken = await getCaptchaToken();
+  } catch (error) {
+    return error.message;
+  }
+
+  const { error: wrongPassword } = await supabase.auth.signInWithPassword({ email, password: current, options: { captchaToken: captchaToken || undefined } });
   if (wrongPassword) {
     const invalid = wrongPassword.code === "invalid_credentials" || /invalid login credentials/i.test(wrongPassword.message || "");
     return invalid ? "Your current password is incorrect." : getFriendlyErrorMessage(wrongPassword);
