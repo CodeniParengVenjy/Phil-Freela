@@ -19,9 +19,9 @@ which are not committed).
   /dashboard/advertise?checkout=<id>; an ad together with a code, a service or a job is refused; a
   made-up id is "not found" without asking anyone) and "version" says 3. The webhook is unchanged.
   Tested in Node against a pretend Xendit and database: 93 checks (the 79 from before and 14 new),
-  0 failed. NOT deployed: the deployed pro-checkout (v4) would open a PREMIUM page for an ad, so
-  the website must not offer ad payments until it answers version 3 (lib/checkout.js checks the
-  number), and the deploy needs the user's go.
+  0 failed. DEPLOYED 2026-10-29 as pro-checkout v5 after the user's "go" (see "Deployed" below).
+  The deployed v4 would have opened a PREMIUM page for an ad, which is why the website checks the
+  version number (lib/checkout.js) before it offers ad payments.
 - Step 3 (website, user side): built and pushed. The Advertise page (/dashboard/advertise, an
   "Advertise" link last in both side menus): the form (headline, message, picture, who sees it, the
   button, 3 / 7 / 14 days with the normal or Premium price, a live preview, the checks the database
@@ -62,8 +62,17 @@ which are not committed).
   nothing shows it). PhilFreela-System-Functions.md: the online-payment line, the Featured row, a new
   Community Billboard row and the admin page. Tested in a real browser, laptop and phone: the full
   tours 586 (freelancer) and 562 (client) checks, 0 failed, and the Terms page 18 checks, 0 failed.
-- LEFT: deploy pro-checkout v5 (adds the ad payment, version 3). It needs the user's go. Until then
-  an approved ad shows "Paying online is not open yet" and Pay is off; nothing is lost.
+- Deployed (2026-10-29, the user said "go"): pro-checkout v5 (the ad action, version 3) through the
+  Supabase connector, with verify_jwt off as before (the function checks the sign-in itself) and the
+  same _shared/payments.ts as v4 (compared first: identical). Proved: the deployed files read back
+  equal the local ones (version 3, start_ad_checkout, the "advertise" return page), and calls
+  without a sign-in answered OPTIONS 200, GET 404, POST 401 ("Please sign in again.") for both the
+  version and the ad action, all logged as version 5. xendit-webhook (v3) is unchanged: it records
+  an ad payment through finish_online_checkout like a Featured one.
+- LEFT: one real test by a person (a signed-in account is needed, so it can't be done from here): a
+  verified account sends an ad on Advertise, an admin approves it on Admin > Community Billboard, the
+  account presses "Pay" (Xendit test mode), and the ad shows on both dashboards' Community Billboard
+  strip and in Admin > Promotions History and the Overview Earnings.
 
 The user asked (2026-10-28): "user can post in the billboard, how?" and then "can you
 make billboard for user's and billboard for super admin". So there are TWO boards:
