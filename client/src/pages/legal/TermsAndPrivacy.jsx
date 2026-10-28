@@ -48,7 +48,7 @@ function TermsOfService() {
         directly. <strong className="text-white">PhilFreela never holds, moves or guarantees the money between clients and freelancers.</strong> Clients pay
         freelancers directly, in their own GCash app, outside the platform. PhilFreela only keeps a record of those
         payments (see "Payments" below) and never takes a cut of them. It only charges for its own extras: Featured
-        posts, Premium and sponsored billboards (see "PhilFreela's own fees" below).
+        posts, Premium, ads on the Community Billboard and sponsored billboards (see "PhilFreela's own fees" below).
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your account</h5>
@@ -119,10 +119,12 @@ function TermsOfService() {
       <ul className="text-secondary">
         <li>
           <strong className="text-white">Featured post:</strong> the owner of an offer or an open job post can pay to show it in a
-          separate row marked "Featured" at the top of Browse Services or Find Jobs, for 3, 7 or 14 days. It is paid in your
-          own GCash app to PhilFreela's GCash number shown on the page, and you send the reference number and a receipt
-          screenshot. An admin checks PhilFreela's GCash and approves it, or rejects it with a reason; you are told either
-          way. If a payment you really sent is rejected, send it again with the right details, or ask an admin to return it.
+          separate row marked "Featured" at the top of Browse Services or Find Jobs, for 3, 7 or 14 days. It is paid on the
+          checkout page of Xendit, a payment company, with GCash, Maya or QR Ph, and it goes up by itself once Xendit
+          confirms the payment. When online payment is not open, it is paid in your own GCash app to PhilFreela's GCash
+          number shown on the page, and you send the reference number and a receipt screenshot. Then an admin checks
+          PhilFreela's GCash and approves it, or rejects it with a reason; you are told either way. If a payment you really
+          sent is rejected, send it again with the right details, or ask an admin to return it.
         </li>
         <li>
           <strong className="text-white">Premium (clients and freelancers):</strong> 30 days of a Premium badge by your name,
@@ -133,6 +135,18 @@ function TermsOfService() {
           adds the days after the current end. When Premium ends, what you already have stays (your offers, a saved look),
           but you can't add more than the free limits. While PhilFreela is a student project, Premium runs in Xendit's test
           mode: no real money is charged.
+        </li>
+        <li>
+          <strong className="text-white">Ads on the Community Billboard (clients and freelancers):</strong> a verified member can send an ad
+          on the Advertise page: a headline, a short message and, if they like, a picture and a button that opens one of their
+          own offers, job posts or their profile. An admin reads it first and approves it, or rejects it with a reason; you
+          are told either way. Only after it is approved do you pay, on the checkout page of Xendit with GCash, Maya or QR Ph,
+          for 3, 7 or 14 days (half price with Premium). It goes up by itself once Xendit confirms the payment and runs for the
+          days you paid for, counted from that moment. Up to 5 ads run at once, and you can't pay while all the spots are
+          taken. Ads can't have links, and bad words are hidden. An admin can take down a running ad that breaks the rules,
+          and you are told why. Money is not returned automatically: if a payment goes wrong (for example, you paid at the
+          moment you withdrew the ad), ask an admin. Like Premium, ads run in Xendit's test mode while PhilFreela is a
+          student project: no real money is charged.
         </li>
         <li><strong className="text-white">Sponsored billboards:</strong> businesses arrange these with PhilFreela directly. They are always marked "Sponsored by ...".</li>
         <li>Paying for any of these never changes the "Recommended for you" order, which stays based on ratings, completed projects and response time.</li>
@@ -214,10 +228,16 @@ function PrivacyPolicy() {
           two people sends it with a report.
         </li>
         <li>
-          Fees you pay PhilFreela: for a Featured post, the amount, the GCash reference number and the receipt screenshot
-          (only you and PhilFreela's admins can open the receipt); for Premium, the amount, when you paid, and
-          Xendit's payment number. The GCash, Maya or QR Ph details you use for Premium are typed on Xendit's own page, and
-          PhilFreela never sees them.
+          Fees you pay PhilFreela: for a Featured post paid in GCash, the amount, the GCash reference number and the receipt
+          screenshot (only you and PhilFreela's admins can open the receipt); for Premium, a Featured post or an ad paid on
+          Xendit, the amount, when you paid, and Xendit's payment number. The GCash, Maya or QR Ph details you use on
+          Xendit are typed on Xendit's own page, and PhilFreela never sees them.
+        </li>
+        <li>
+          Ads you send for the Community Billboard: the headline, the message and the picture, who the ad is meant for,
+          the button you chose, how many days you picked, and what an admin decided and why. An admin reads your ad before it
+          runs. While it runs, the people it is meant for see it with your name and your Verified and Premium badges, and
+          never your email or phone number.
         </li>
         <li>Basic usage information needed to run features like search and "Recommended for you" (for example, which posts you've viewed or messaged about).</li>
         <li>
@@ -257,7 +277,7 @@ function PrivacyPolicy() {
         We don't sell or share your data with outside companies. Your information is only handled by the services that
         run PhilFreela itself: our database and file storage provider, and the separate service that runs our AI
         features (search, recommendations, moodboard matching, and identity verification). When you pay for
-        Premium, you pay on the page of Xendit, a payment company registered with the Bangko Sentral ng Pilipinas: PhilFreela
+        Premium, a Featured post or an ad, you pay on the page of Xendit, a payment company registered with the Bangko Sentral ng Pilipinas: PhilFreela
         sends Xendit only the amount and a payment number of its own, never your name or email, and what you type on
         Xendit's page is covered by Xendit's own privacy policy. We'd only share information with authorities if
         required by law.
@@ -270,8 +290,9 @@ function PrivacyPolicy() {
         archives an account, its data is kept but the account can't be used, and it is permanently deleted 100 days
         later unless an admin restores it. A report you sent, with any chat messages you sent along with it, is
         removed if you delete your account. Your GCash details are removed with your account, and so are the payment
-        records of the payments you were on, and the records of the fees you paid PhilFreela. The receipt picture files
-        stay in private storage, where nobody can open them once the record they belong to is gone.
+        records of the payments you were on, the records of the fees you paid PhilFreela and the ads you sent. The
+        receipt picture files stay in private storage, where nobody can open them once the record they belong to is gone.
+        An ad's picture file also stays in storage once its ad is gone, but nothing shows it any more.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your rights</h5>

@@ -49,8 +49,21 @@ which are not committed).
   page, 12 on Promotions History and Overview Earnings, 0 failed; the older Featured and billboard
   suite (96) passed against the changed admin layout; lint shows only the two old warnings, build
   clean.
-- Step 5: next (words: tour note, Terms and Privacy, System Functions, memory), then the user's go to
-  deploy pro-checkout v5.
+- Step 5 (words): built and pushed. The full tour of both roles has three more notes after Premium
+  (the "Advertise" menu link, the form "Send an ad", and "My Ads"; the "Your menu" note names
+  Advertise too). Terms of Service: the intro and a new bullet in "PhilFreela's own fees" (verified
+  members, an admin approves first, the poster pays after on Xendit, 3 / 7 / 14 days, half price with
+  Premium, 5 at once, no links, taken down with a reason, no automatic refunds, test mode like
+  Premium); the Featured bullet now says it can be paid on Xendit (the GCash way stays for when online
+  payment is not open), which was already true since the Featured payments went online. Privacy
+  Policy: the fees list says what is kept for ads and Xendit payments, a new "Ads you send" bullet
+  (what an ad holds, who sees it, never email or phone number), Xendit's page also for a Featured
+  post or an ad, and the ads are removed with the account (an ad's picture file stays in storage but
+  nothing shows it). PhilFreela-System-Functions.md: the online-payment line, the Featured row, a new
+  Community Billboard row and the admin page. Tested in a real browser, laptop and phone: the full
+  tours 586 (freelancer) and 562 (client) checks, 0 failed, and the Terms page 18 checks, 0 failed.
+- LEFT: deploy pro-checkout v5 (adds the ad payment, version 3). It needs the user's go. Until then
+  an approved ad shows "Paying online is not open yet" and Pay is off; nothing is lost.
 
 The user asked (2026-10-28): "user can post in the billboard, how?" and then "can you
 make billboard for user's and billboard for super admin". So there are TWO boards:

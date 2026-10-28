@@ -19,7 +19,7 @@ The paper lists HTML/CSS/JavaScript + Bootstrap 5, PHP, MySQL, Python AI modules
 | Frontend | React 19 + Vite, Bootstrap 5 (`client/`), live on Cloudflare Pages (phil-freela.pages.dev) |
 | Backend and database | Supabase (Postgres, Auth, Storage, row-level security; pgvector is enabled) |
 | AI modules | Python FastAPI service (`ai-service/`), live on Vercel's free plan; the website reaches it at `/ai` |
-| Online payment (PhilFreela's own Premium fee only) | Xendit Payment Sessions (GCash, Maya, QR Ph) through two Supabase Edge Functions (`supabase/functions/pro-checkout`, `xendit-webhook`); test mode until the business is verified |
+| Online payment (PhilFreela's own fees only: Premium, Featured posts, Community Billboard ads and sponsors' billboard links) | Xendit Payment Sessions (GCash, Maya, QR Ph) through two Supabase Edge Functions (`supabase/functions/pro-checkout`, `xendit-webhook`); test mode until the business is verified |
 
 ## Feature summary
 
@@ -123,10 +123,11 @@ Added 2026-10-25/26 (plan: `PLAN-monetization.md`). PhilFreela never takes a cut
 | What | Price | How it is paid |
 |---|---|---|
 | Sponsored billboard on the dashboards | agreed with the sponsor | paid to PhilFreela directly; a super admin posts the banner with its dates, marked "Sponsored by ...", and records the amount |
-| Featured post (an offer or an open job post, in a separate labeled row of at most 3) | 3 / 7 / 14 days: ₱49 / ₱99 / ₱179 (Premium members ₱25 / ₱50 / ₱90, and one free 3-day post every 30 days) | GCash to PhilFreela's own number with the reference and a receipt; an admin checks PhilFreela's GCash and approves |
+| Featured post (an offer or an open job post, in a separate labeled row of at most 3) | 3 / 7 / 14 days: ₱49 / ₱99 / ₱179 (Premium members ₱25 / ₱50 / ₱90, and one free 3-day post every 30 days) | online on Xendit's checkout page (GCash, Maya or QR Ph), and the post goes up by itself once Xendit confirms the payment; when online payment is not open, GCash to PhilFreela's own number with the reference and a receipt, and an admin checks PhilFreela's GCash and approves |
 | Premium, for clients and freelancers (it was "Freelancer Pro"; plan `PLAN-premium.md`): a gold Premium badge by their name that everyone sees, half-price Featured posts and one free 3-day Featured post every 30 days, view counts (how many people opened their offers, job posts and profile), chat files up to 50 MB instead of 10 MB, the two-color (gradient) look; freelancers also get 15 offers instead of 3 and their watermark in any color, 4 fonts and 5 sizes | ₱149 for 30 days | online on Xendit's checkout page (GCash, Maya or QR Ph); Premium starts by itself once Xendit confirms the payment; test mode (pretend money) until the business is verified |
+| Community Billboard ad (plan `PLAN-community-billboard.md`): a verified client or freelancer sends their own ad, shown in a second strip under the Billboard on the dashboards of the people it is meant for (everyone, only freelancers or only clients): a headline, a short message, an optional picture and an optional button that opens one of their own offers, job posts or their profile; no links, bad words hidden, at most 5 ads running at once | 3 / 7 / 14 days: ₱149 / ₱299 / ₱499 (Premium members half: ₱75 / ₱150 / ₱250) | an admin approves the ad first, or rejects it with a reason; only after that the poster pays online on Xendit's checkout page, and the ad starts by itself once Xendit confirms the payment and runs for the days paid; an admin can take a running ad down with a reason; test mode until the business is verified |
 
-Paid placement never changes the "Recommended for you" order (Feature 1 ranks by credibility): Featured posts sit in their own labeled row. Admins see every fee in Admin > Site > Promotions and the totals on the Overview (test-mode payments are left out).
+Paid placement never changes the "Recommended for you" order (Feature 1 ranks by credibility): Featured posts sit in their own labeled row. Admins see every fee in Admin > Site > Promotions and the totals on the Overview (test-mode payments are left out). The Billboard itself stays for the super admin only (welcome messages, announcements, sponsors); the members' ads have their own Community Billboard, and Admin > Site > Community Billboard is where any admin approves, rejects or takes down ads.
 
 ---
 

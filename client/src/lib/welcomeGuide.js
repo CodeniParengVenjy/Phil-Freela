@@ -63,7 +63,7 @@ export const TOUR = {
     welcome: [
       { page: "home", target: null, when: "unverified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step. First a quick look at your dashboard, then we'll verify your identity together. Once you're verified, it shows you how to post your first service, find jobs and get paid. You can skip it any time.", next: "Start tour" },
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post services, find jobs, handle bookings and projects, and get paid. You can skip it any time.", next: "Start tour" },
-      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: My Services, Bookings, Project and Premium. The menu button at the top left opens and closes it." },
+      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: My Services, Bookings, Project, Premium and Advertise. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to look for jobs, services or people, then press Enter." },
       { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between freelancer and client, and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
@@ -118,6 +118,10 @@ export const TOUR = {
       { page: null, target: "menu-pro", menu: true, title: "Premium", text: "More offers, a free Featured post every month and a gold Premium badge, if you want them. Next opens it." },
       { page: "/dashboard/pro", target: "pro-plan", scroll: true, title: "Free or Premium", text: "Free stays free. Premium is ₱149 for 30 days, paid online with GCash, Maya or QR Ph: up to 15 offers instead of 3, a free Featured post every month, view counts, bigger chat files, your own watermark look, and a gold Premium badge." },
 
+      { page: null, target: "menu-advertise", menu: true, title: "Advertise", text: "Want more people to see your offers? Send an ad for the Community Billboard, the strip on every dashboard home. Next opens it." },
+      { page: "/dashboard/advertise", target: "advertise-form", scroll: true, title: "Send an ad", text: "Write a headline and a short message, add a picture if you like, pick who sees it and for how many days, then send it. An admin reads it first, and you pay only after it's approved." },
+      { page: "/dashboard/advertise", target: "advertise-list", scroll: true, title: "My Ads", text: "Every ad you sent and where it stands: waiting, approved (press Pay), running, or rejected with the reason." },
+
       { page: "home", target: null, icon: "bi-flag-fill", title: "That's the tour!", text: "You know your way around PhilFreela now. Good luck with your first client!", next: "Done" }
     ]
   },
@@ -125,7 +129,7 @@ export const TOUR = {
     welcome: [
       { page: "home", target: null, when: "unverified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step. First a quick look at your dashboard, then we'll verify your identity together. Once you're verified, it shows you how to post a project, hire freelancers and pay them. You can skip it any time.", next: "Start tour" },
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post a project, book services, hire freelancers and pay them. You can skip it any time.", next: "Start tour" },
-      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: Bookings, Post a Project, Projects & Resumes and Premium. The menu button at the top left opens and closes it." },
+      { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: Bookings, Post a Project, Projects & Resumes, Premium and Advertise. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to find freelancers and services, then press Enter. On a computer, the camera button lets you search with a picture." },
       { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between client and freelancer, and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
@@ -176,6 +180,10 @@ export const TOUR = {
 
       { page: null, target: "menu-pro", menu: true, title: "Premium", text: "A free Featured job post every month and a gold Premium badge, if you want them. Next opens it." },
       { page: "/dashboard/pro", target: "pro-plan", scroll: true, title: "Free or Premium", text: "Free stays free. Premium is ₱149 for 30 days, paid online with GCash, Maya or QR Ph: a free Featured post every month, half-price ones after, view counts on your posts, bigger chat files, the two-color look, and a gold Premium badge." },
+
+      { page: null, target: "menu-advertise", menu: true, title: "Advertise", text: "Want more freelancers to see your job posts? Send an ad for the Community Billboard, the strip on every dashboard home. Next opens it." },
+      { page: "/dashboard/advertise", target: "advertise-form", scroll: true, title: "Send an ad", text: "Write a headline and a short message, add a picture if you like, pick who sees it and for how many days, then send it. An admin reads it first, and you pay only after it's approved." },
+      { page: "/dashboard/advertise", target: "advertise-list", scroll: true, title: "My Ads", text: "Every ad you sent and where it stands: waiting, approved (press Pay), running, or rejected with the reason." },
 
       { page: "home", target: null, icon: "bi-flag-fill", title: "That's the tour!", text: "You know your way around PhilFreela now. Good luck with your first hire!", next: "Done" }
     ]
