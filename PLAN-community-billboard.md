@@ -14,7 +14,15 @@ which are not committed).
   bucket is public 2 MB with its 4 rules, the prices are 149/299/499 (Premium 75/150/250). The same
   41 checks passed again on the applied schema, and the old test_premium.sql (36 checks) passed
   too, because finish_online_checkout and admin_promo_earnings were replaced.
-- Steps 2 to 5: next.
+- Step 2 (server): supabase/functions/pro-checkout now takes { action: "start", ad } (the owner's own
+  approved ad: start_ad_checkout as the person, the page for the database's price, back to
+  /dashboard/advertise?checkout=<id>; an ad together with a code, a service or a job is refused; a
+  made-up id is "not found" without asking anyone) and "version" says 3. The webhook is unchanged.
+  Tested in Node against a pretend Xendit and database: 93 checks (the 79 from before and 14 new),
+  0 failed. NOT deployed: the deployed pro-checkout (v4) would open a PREMIUM page for an ad, so
+  the website must not offer ad payments until it answers version 3 (lib/checkout.js checks the
+  number), and the deploy needs the user's go.
+- Steps 3 to 5: next.
 
 The user asked (2026-10-28): "user can post in the billboard, how?" and then "can you
 make billboard for user's and billboard for super admin". So there are TWO boards:

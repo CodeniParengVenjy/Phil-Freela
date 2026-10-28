@@ -7,16 +7,20 @@
 //                                               page and returns { url }
 //   { action: "start", code, service | job }    a Featured post (code feature_3,
 //                                               feature_7 or feature_14)
+//   { action: "start", ad }                     a Community Billboard ad: the owner's
+//                                               own, once an admin approved it (the
+//                                               database knows its price and length)
 //   { action: "confirm", checkout }             when the person comes back: asks
 //                                               Xendit whether that page was paid;
 //                                               { status: "paid" | "open" | "expired" | "canceled" }
 //   { action: "billboard", billboard }          super admin: a payment link for a
 //                                               sponsored billboard; { url }
 //   { action: "billboard-confirm", checkout }   super admin: has the sponsor paid?
-//   { action: "version" }                       { version: 2, open }: the website asks
-//                                               before offering Featured posts and
-//                                               billboard links online (the older
-//                                               version answered "Unknown action.")
+//   { action: "version" }                       { version: 3, open }: the website asks
+//                                               before offering Featured posts, billboard
+//                                               links (2) and ads (3) online. An older
+//                                               version would open a Premium page for an
+//                                               ad, so the website checks the number.
 //
 // Only a signed-in person can call it, and only for their own payment (the
 // super admin for billboard links). The price comes from the database, never
@@ -92,11 +96,18 @@ export async function handle(req: Request): Promise<Response> {
   const open = Boolean(env("XENDIT_SECRET_KEY"));
 
   // open: false while Xendit's key isn't set (paying online is closed).
-  if (body?.action === "version") return json({ version: 2, open });
+  if (body?.action === "version") return json({ version: 3, open });
 
   if (body?.action === "start") {
     if (!open) return json({ error: "Paying online is not open yet. Please try again later." }, 503);
-    const featuring = body.code !== undefined;
+    // What is paid for: an ad ({ ad }), a Featured post ({ code, service | job }) or, with
+    // nothing else given, Premium.
+    const advertising = body.ad !== undefined;
+    const featuring = !advertising && body.code !== undefined;
+    if (advertising) {
+      if (body.code !== undefined || body.service !== undefined || body.job !== undefined) return json({ error: "Choose one thing to pay for." }, 400);
+      if (!isUuid(body.ad)) return json({ error: "That ad was not found." }, 404);
+    }
     if (featuring) {
       if (!FEATURE_CODES.includes(body.code)) return json({ error: "Choose one of the listed options." }, 400);
       if ((body.service === undefined) === (body.job === undefined)) return json({ error: "Choose one post to feature." }, 400);
@@ -106,19 +117,21 @@ export async function handle(req: Request): Promise<Response> {
     // 1. The database checks the person (and the post) and saves the page as open (as them).
     let started: { id: string; amount: number; days: number; label: string };
     try {
-      started = featuring
-        ? await db("rpc/start_feature_checkout", {
-          method: "POST",
-          body: { p_code: body.code, p_service: body.service ?? null, p_job: body.job ?? null },
-          token: me.token
-        })
-        : await db("rpc/start_online_checkout", { method: "POST", body: { p_code: "pro_30" }, token: me.token });
+      started = advertising
+        ? await db("rpc/start_ad_checkout", { method: "POST", body: { p_ad: body.ad }, token: me.token })
+        : featuring
+          ? await db("rpc/start_feature_checkout", {
+            method: "POST",
+            body: { p_code: body.code, p_service: body.service ?? null, p_job: body.job ?? null },
+            token: me.token
+          })
+          : await db("rpc/start_online_checkout", { method: "POST", body: { p_code: "pro_30" }, token: me.token });
     } catch (error) {
       return json({ error: plain(error, FAILED) }, 400);
     }
 
     // 2. Xendit makes the payment page, which sends the person back to the page they came from.
-    const page = !featuring ? "pro" : body.job ? "post-need" : "services";
+    const page = advertising ? "advertise" : !featuring ? "pro" : body.job ? "post-need" : "services";
     const back = `${SITE_URL}/dashboard/${page}?checkout=${started.id}`;
     const url = await openXenditPage("online_checkouts", started, back, `${back}&canceled=1`);
     return url ? json({ url }) : json({ error: FAILED }, 502);
