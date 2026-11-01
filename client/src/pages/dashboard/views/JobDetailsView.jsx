@@ -7,7 +7,7 @@ import { isPostingBlocked } from "../../../lib/suspensions";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { recordView, useProIds } from "../../../lib/pro";
 import ProBadge from "../../../components/ProBadge";
-import { MAX_NOTE_LENGTH, applyToJob, getMyApplicationForJob, openResume, withdrawApplication } from "../../../lib/applications";
+import { MAX_NOTE_LENGTH, RESUME_ACCEPT, applyToJob, getMyApplicationForJob, openResume, resumeIcon, withdrawApplication } from "../../../lib/applications";
 import { formatDay } from "../../../lib/projects";
 import { HIRES_FIELD, budgetText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import Avatar from "../../../components/Avatar";
@@ -21,9 +21,9 @@ import ReportDialog from "../components/ReportDialog";
 import CensoredText from "../../../components/CensoredText";
 
 // One client job post (opened from Find Jobs). Freelancers apply here with a
-// PDF resume and an optional note; the client then sees them in Projects &
-// Resumes. The client's name opens their public page (their record); this is
-// also where a freelancer can report the client.
+// resume (a PDF, Word file or picture) and an optional note; the client then
+// sees them in Projects & Resumes. The client's name opens their public page
+// (their record); this is also where a freelancer can report the client.
 export default function JobDetailsView() {
   const { jobId } = useParams();
   const navigate = useNavigate();
@@ -188,7 +188,7 @@ export default function JobDetailsView() {
           </div>
           <div className="d-flex gap-2 flex-shrink-0">
             <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-7 fw-bold" onClick={handleViewResume}>
-              <i className="bi bi-file-earmark-pdf me-1"></i> My resume
+              <i className={`bi ${resumeIcon(application.resume_path)} me-1`}></i> My resume
             </button>
             <button type="button" className="btn btn-outline-danger rounded-pill px-3 fs-7 fw-bold" onClick={() => setConfirmWithdraw(true)}>
               Withdraw
@@ -215,12 +215,12 @@ export default function JobDetailsView() {
     return (
       <form className="d-flex flex-column gap-3" onSubmit={handleApply}>
         <div>
-          <label htmlFor="resumeFile" className="form-label text-white-50 fw-semibold fs-7">Your resume (PDF, up to 5 MB)</label>
+          <label htmlFor="resumeFile" className="form-label text-white-50 fw-semibold fs-7">Your resume (PDF, Word or a picture, up to 5 MB)</label>
           <input
             id="resumeFile"
             type="file"
             className="form-control bg-secondary bg-opacity-25 border-secondary text-white"
-            accept="application/pdf,.pdf"
+            accept={RESUME_ACCEPT}
             onChange={(event) => setResumeFile(event.target.files?.[0] || null)}
             required
           />

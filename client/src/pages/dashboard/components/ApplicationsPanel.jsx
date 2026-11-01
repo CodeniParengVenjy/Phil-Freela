@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getApplicantsForMyJobs, getMyApplications, openResume } from "../../../lib/applications";
+import { getApplicantsForMyJobs, getMyApplications, openResume, resumeIcon } from "../../../lib/applications";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
@@ -49,8 +49,10 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
 
   const verifiedIds = useVerifiedIds((rows || []).map((row) => row.freelancer?.id));
 
-  const handleViewResume = async (resumePath) => {
-    const problem = await openResume(resumePath);
+  // ownerName names a downloaded Word file after the applicant (a client may open
+  // several, and they would all be called "resume.docx").
+  const handleViewResume = async (resumePath, ownerName) => {
+    const problem = await openResume(resumePath, ownerName);
     if (problem) showToast(problem);
   };
 
@@ -131,7 +133,7 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
                 <div className="d-flex flex-wrap gap-2 flex-shrink-0">
                   {row.project && <HiredLink project={row.project} />}
                   <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => handleViewResume(row.resume_path)}>
-                    <i className="bi bi-file-earmark-pdf me-1"></i> My resume
+                    <i className={`bi ${resumeIcon(row.resume_path)} me-1`}></i> My resume
                   </button>
                 </div>
               </div>
@@ -157,7 +159,7 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
                   type="button"
                   className="btn btn-outline-role rounded-pill px-4 fs-7 fw-bold flex-shrink-0"
                   aria-label={`View ${name}'s resume`}
-                  onClick={() => handleViewResume(row.resume_path)}
+                  onClick={() => handleViewResume(row.resume_path, name)}
                 >
                   View
                 </button>

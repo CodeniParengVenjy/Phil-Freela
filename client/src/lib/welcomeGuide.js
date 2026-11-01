@@ -90,7 +90,7 @@ export const TOUR = {
       { page: null, target: "menu-home", menu: true, title: "Dashboard: jobs", text: "Your dashboard lists jobs from clients, the ones that fit you first. Next opens it." },
       { page: "home", target: "jobs-search", scroll: true, title: "Search the jobs", text: "Type to narrow the list by job title, client or category." },
       { page: "home", target: "jobs-filter", scroll: true, title: "Projects or jobs", text: "A project is one piece of work for one price; a job is ongoing work paid per day or per month. Pick one to see only those." },
-      { page: "home", target: "first-item", optional: true, scroll: true, title: "Open a job", text: "Tap a job to read it. On its page you apply with your resume (a PDF), message the client, or report the post." },
+      { page: "home", target: "first-item", optional: true, scroll: true, title: "Open a job", text: "Tap a job to read it. On its page you apply with your resume (a PDF, Word file or picture), message the client, or report the post." },
 
       { page: null, target: "menu-bookings", menu: true, title: "Bookings", text: "When a client books one of your offers, the request comes here. Next opens it." },
       { page: "/dashboard/bookings", target: "bookings", scroll: true, title: "Booking requests", text: "Accept or decline each request. An accepted booking becomes a project. The number on the menu shows how many are waiting." },

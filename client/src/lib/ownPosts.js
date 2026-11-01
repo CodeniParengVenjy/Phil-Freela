@@ -31,7 +31,7 @@ export async function countApplicants(jobId) {
 // Removes a job post. Its applications go with it; a project already started
 // from it keeps going (the project only forgets which job it came from).
 export async function deleteJobPost(job) {
-  // The resumes sent to this job are private PDFs in Storage. They are removed
+  // The resumes sent to this job are private files in Storage. They are removed
   // first, while the applications still prove the job is this client's (a rule
   // in supabase_post_remove_resumes_schema.sql); afterwards nobody could.
   const { data: applications } = await supabase.from("job_applications").select("resume_path").eq("job_post_id", job.id);
