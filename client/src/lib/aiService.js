@@ -231,24 +231,37 @@ export async function matchSkill(text) {
   }
 }
 
-// Asks the AI service whether a resume file (a PDF, a Word file or a picture) looks like a
-// resume. Returns { verdict: "yes" | "unsure" | "no", message }, or null when
-// there is no answer: the service is offline, still starting, or slow (20
-// seconds). It never fails, because the check must never be the reason an
-// application can't be sent: only a clear "no" stops one. See
-// ai-service/resume_check.py.
+// Asks the AI service whether a resume file (a PDF, a Word file or a picture)
+// looks like a resume. Returns { verdict: "yes" | "unsure" | "no", message },
+// or null when there is no answer: the service is offline, or too slow (30
+// seconds: a service that has been idle for a while needs several seconds to
+// wake up). It never fails, because the check must never be the reason an
+// application can't be sent: only a clear "no" stops one. A try that fails
+// quickly is made once more. See ai-service/resume_check.py.
 export async function checkResume(file) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
-  try {
-    const form = new FormData();
-    form.append("file", file, file.name || "resume");
-    return await request("/resumes/check", { method: "POST", headers: await authHeader(), body: form, signal: controller.signal });
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    try {
+      const form = new FormData();
+      form.append("file", file, file.name || "resume");
+      return await request("/resumes/check", { method: "POST", headers: await authHeader(), body: form, signal: controller.signal });
+    } catch {
+      // Too slow: give up. Failed quickly: wait a moment, then try once more.
+      if (controller.signal.aborted) return null;
+    } finally {
+      clearTimeout(timer);
+    }
+    await new Promise((done) => setTimeout(done, 1500));
   }
+  return null;
+}
+
+// Wakes the AI service while the apply form is open, so the first check
+// doesn't have to wait for it to start. It asks for nothing that matters and
+// never fails.
+export function wakeAiService() {
+  fetch(`${AI_SERVICE_URL}/health`).catch(() => {});
 }
 
 // "Recommended for you" (Hybrid recommendation system: content-based +

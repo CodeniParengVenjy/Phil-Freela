@@ -7,6 +7,7 @@ import { isPostingBlocked } from "../../../lib/suspensions";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { recordView, useProIds } from "../../../lib/pro";
 import ProBadge from "../../../components/ProBadge";
+import { wakeAiService } from "../../../lib/aiService";
 import { MAX_NOTE_LENGTH, RESUME_ACCEPT, applyToJob, getMyApplicationForJob, openResume, resumeIcon, withdrawApplication } from "../../../lib/applications";
 import { formatDay } from "../../../lib/projects";
 import { HIRES_FIELD, budgetText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
@@ -83,11 +84,17 @@ export default function JobDetailsView() {
     if (currentUserId) recordView("job", jobId);
   }, [currentUserId, jobId]);
 
+  // A freelancer may apply on this page: wake the AI service now, so the resume
+  // check doesn't have to wait for it to start when they press Send.
+  useEffect(() => {
+    if (accountType === "freelancer") wakeAiService();
+  }, [accountType, jobId]);
+
   const handleApply = async (event) => {
     event.preventDefault();
     if (sending) return;
     setSending(true);
-    const { error } = await applyToJob(currentUserId, job.id, resumeFile, note, setChecking);
+    const { error, note: checkNote } = await applyToJob(currentUserId, job.id, resumeFile, note, setChecking);
     if (error) {
       setSending(false);
       showToast(error);
@@ -97,7 +104,8 @@ export default function JobDetailsView() {
     setSending(false);
     setResumeFile(null);
     setNote("");
-    showToast("Application sent! The client can now view your resume.");
+    // checkNote: the resume check could not tell, or could not run (it is said, not hidden).
+    showToast(`Application sent! The client can now view your resume.${checkNote ? ` ${checkNote}` : ""}`);
   };
 
   const handleWithdraw = async () => {

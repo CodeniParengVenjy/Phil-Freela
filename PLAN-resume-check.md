@@ -9,6 +9,26 @@ PDFs, a text reader) is BUILT and tested (the user said "okie" to start it); see
 done. To continue in a new Claude session, say: "Read PLAN-resume-check.md and
 tell me what is left."
 
+Fix after the user's first live test (2026-11-02, "it still accepts a not
+resume"): the user's real files were used as test data, read only (a random
+sample of 45 documents and 25 pictures from Downloads, and the user's own
+resumes). Every one of the 45 documents was refused (the highest score was 15),
+and the user's own resumes were all "yes" (67 to 74). The only leaks were 2
+photos that had 4 lines of text but only 2 readable words: they were "not sure",
+and "not sure" goes through. So: a picture or scanned PDF with lines but fewer
+than 25 readable words is now "no" (a sign, an ID card, a blurry page), and a
+Word file with almost no text and no picture inside is "no". The measurements
+below were repeated: all 12 + 10 other documents are refused in every
+picture run now, and the only resume refused anywhere is a 29-word resume
+photographed at low quality (14 readable words; a known limit, the message says
+to send a clearer picture or a PDF). The website also says so on screen when a
+resume was sent without a clear "yes" ("We couldn't be sure this is a resume..."
+or "The resume check couldn't run..."), waits up to 30 seconds (was 20) and
+tries once more when a try fails fast, and wakes the AI service when the apply
+page opens (a service that has been idle needs several seconds). The leak could
+also have been a check that did not run (the AI service idle, slow or broken):
+that is now said out loud instead of hidden.
+
 Step 3 test results (2026-11-02): the text reader is PaddleOCR's PP-OCRv3
 English model (9 MB, SHA-256 in `ai-service/get_models.py`; its list of letters
 is inside the file), run through onnxruntime, with the text finder that was

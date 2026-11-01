@@ -89,10 +89,13 @@ A picture (a photo or screenshot of a resume), or a PDF made only of pictures
 already uses (OpenCV's PP-OCR "DB" model) marks the lines of text, and a
 text reader (PaddleOCR's PP-OCRv3 English model, 9 MB, downloaded by
 `get_models.py`, run through onnxruntime) reads each line. The words are then
-judged like the text of a PDF. A picture with almost no lines of text (a
-photo of a person or a view, a logo, a blank page) is "no"; a picture whose
-print can't be made out is "not sure"; a reading that runs out of its 15
-seconds is never "no".
+judged like the text of a PDF. A picture with almost no lines of text, or
+with lines but fewer than 25 readable words (a photo of a person or a view, a
+sign, an ID card, a logo, a blank or blurry page), is "no", with a message
+that says to send a clearer picture or a PDF; a reading that runs out of its
+15 seconds is never "no", and a reader that breaks is "not sure". A Word file
+with almost no text and no picture inside is "no" too (a template made of a
+picture is "not sure").
 
 `python test_resume_check.py` measures the text part on made-up resumes and
 other documents (`resume_samples.py`, set A chosen from, set B never used)

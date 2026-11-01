@@ -228,8 +228,19 @@ Image.new("1", (6000, 6000)).save(huge, "PNG")  # 36 megapixels, a few KB: more 
 answer = rc.check_resume(huge.getvalue())
 check("a picture of 36 megapixels is refused before it is opened", answer["verdict"] == "no" and answer["message"] == rc.UNREADABLE_PICTURE, str(answer))
 
-# The reader running out of time, or failing, must never refuse a file:
+# A photo with a sign in it, or an ID card: lines of text are found, but only a few words can be read. Not a resume.
+sign = render_page("OPEN NOW\nBIG SALE\nFREE PARKING\nVISIT US\nTHANK YOU\nSEE YOU SOON", size=70)
+answer = rc.check_resume(png_bytes(sign))
+check("a picture of a sign (a few big words, several lines): no", answer["verdict"] == "no" and answer["message"] in (rc.NO_TEXT_IN_PICTURE, rc.NOT_ENOUGH_TEXT_IN_PICTURE), str(answer))
 real_read_picture = rc.read_picture
+rc.read_picture = lambda image: ("Open now\nBig sale\nFree parking", 6, False)
+answer = rc.check_resume(png_bytes(sign))
+check("6 lines found but only 6 words read from a picture: no, with the 'read enough text' message", answer["verdict"] == "no" and answer["message"] == rc.NOT_ENOUGH_TEXT_IN_PICTURE, str(answer))
+rc.read_picture = real_read_picture
+answer = rc.check_resume(scanned_pdf([sign]))
+check("the same sign as a scanned PDF: no", answer["verdict"] == "no", str(answer))
+
+# The reader running out of time, or failing, must never refuse a file:
 rc.read_picture = lambda image: (INVOICE, 40, True)
 answer = rc.check_resume(png_bytes(invoice_page))
 check("an invoice picture whose reading ran out of time: not sure, never no", answer["verdict"] == "unsure", str(answer))
@@ -260,7 +271,14 @@ check("a Word file that unpacks to far too much text: refused as unreadable", an
 short = rc.check_resume(pdf_of("Hello\nThis is a short note."))
 check("a PDF with only two lines of text: no (it is looked at as a picture, and has almost no text)", short["verdict"] == "no" and short["message"] == rc.NO_TEXT_IN_PDF, str(short))
 short = rc.check_resume(docx_of("Hello\nThis is a short note."))
-check("a Word file with almost no text: not sure (its words may be in a picture, so it goes through)", short["verdict"] == "unsure", str(short))
+check("a Word file with almost no text and no picture in it: no", short["verdict"] == "no" and short["message"] == rc.NO_TEXT_IN_WORD, str(short))
+with_picture = Document()
+with_picture.add_paragraph("My resume")
+with_picture.add_picture(io.BytesIO(picture_bytes("PNG")))
+buffer = io.BytesIO()
+with_picture.save(buffer)
+short = rc.check_resume(buffer.getvalue())
+check("a Word file with almost no text but a picture in it (a template made of a picture): not sure, it goes through", short["verdict"] == "unsure", str(short))
 
 # --- The route: the login check is replaced, nothing else
 real_get_user_id = main.get_user_id

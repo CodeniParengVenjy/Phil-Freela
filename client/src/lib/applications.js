@@ -90,7 +90,7 @@ export async function checkResumeFile(file) {
   return { kind };
 }
 
-// Sends an application. Returns {} when sent, or { error } with a message.
+// Sends an application. Returns { note } (or {}) when sent, where note is a sentence to show the freelancer when the resume check could not tell or could not run, or { error } with a message.
 export async function applyToJob(freelancerId, jobPostId, file, note, onChecking) {
   const { kind, error: problem } = await checkResumeFile(file);
   if (problem) return { error: problem };
@@ -118,6 +118,9 @@ export async function applyToJob(freelancerId, jobPostId, file, note, onChecking
   const answer = await checkResume(upload);
   onChecking?.(false);
   if (answer?.verdict === "no") return { error: answer.message || NOT_A_RESUME };
+  // What to tell the freelancer once it is sent, so a check that could not
+  // tell, or could not run, is not a secret.
+  const checkNote = !answer ? "The resume check couldn't run, so it was sent as it is." : answer.verdict === "unsure" ? answer.message : "";
 
   // A new file name for every attempt, so a failed or repeated try can never
   // overwrite a resume that was already sent.
@@ -143,7 +146,7 @@ export async function applyToJob(freelancerId, jobPostId, file, note, onChecking
     console.error("Saving the application failed:", error);
     return { error: "Couldn't send your application. Please try again." };
   }
-  return {};
+  return checkNote ? { note: checkNote } : {};
 }
 
 // The signed-in freelancer's application for one job, or null.

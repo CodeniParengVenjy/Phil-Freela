@@ -65,6 +65,11 @@ UNREADABLE = "We couldn't read that file. Please save your resume as a PDF or DO
 UNREADABLE_PICTURE = "We couldn't open that picture. Please send a JPG or PNG picture, or your resume as a PDF."
 NO_TEXT_IN_PICTURE = "We couldn't find any text in this picture. A resume picture should show your whole resume, sharp enough to read. Please send a clearer picture, or your resume as a PDF."
 NO_TEXT_IN_PDF = "We couldn't find any text in this PDF. A resume should show your whole resume, sharp enough to read. Please save it as a PDF again, or send a clear picture of it."
+# The lines were found but too few words could be read (a photo with a sign in it,
+# an ID card, a blurry page): it is not a resume that can be read.
+NOT_ENOUGH_TEXT_IN_PICTURE = "We couldn't read enough text in this picture to see a resume. Please send a clearer, closer picture of the whole page, or your resume as a PDF."
+NOT_ENOUGH_TEXT_IN_PDF = "We couldn't read enough text in this PDF to see a resume. Please save it as a PDF again, or send a clear picture of it."
+NO_TEXT_IN_WORD = "We couldn't find any text in this Word file. Please open it, check that it holds your resume, and save it again."
 NOT_A_RESUME = "This doesn't look like a resume. A resume lists your experience, education and skills. Please choose your resume."
 
 
@@ -107,6 +112,15 @@ _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 def _run_text(run):
     """The text of one run: its words, with a tab or a line break as a space."""
     return "".join((part.text or "") if part.tag == _W + "t" else " " if part.tag in (_W + "tab", _W + "br") else "" for part in run)
+
+
+def _word_has_pictures(data):
+    """Whether a Word file has a picture inside it (its pictures are in word/media)."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            return any(name.startswith("word/media/") for name in archive.namelist())
+    except zipfile.BadZipFile:
+        return False
 
 
 def _word_text(data):
@@ -163,6 +177,10 @@ def read_text(data):
             text, seen = _text_from_pictures(lambda: read_scanned_pdf(data))
     elif kind == "word":
         text = _word_text(data)
+        # Almost no words, and no picture inside that could hold the resume (a
+        # template made of a picture would): an empty or unrelated file.
+        if len(text.split()) < MIN_WORDS and not _word_has_pictures(data):
+            raise ResumeProblem(NO_TEXT_IN_WORD)
     elif kind == "picture":
         try:
             image = decode_picture(data)
@@ -413,10 +431,18 @@ def check_resume(data):
     timed_out = False
     if seen is not None:
         lines, timed_out = seen
-        # Almost no lines of text in the picture: it is not a resume. (Not when
-        # the time ran out: that only means the picture was slow to read.)
-        if lines < MIN_PICTURE_LINES and not timed_out:
-            return {"verdict": "no", "score": None, "found": [], "message": NO_TEXT_IN_PICTURE if kind == "picture" else NO_TEXT_IN_PDF}
+        # Words READ from a picture (or a scanned PDF), when the reading finished
+        # (a reading that ran out of time only means the picture was slow, so it
+        # is never refused): almost no lines of text in it, or lines but too few
+        # readable words (a photo with a sign in it, an ID card, a blurry page).
+        # Neither is a resume that can be read. A real resume page gives dozens
+        # of lines and more than a hundred words.
+        if not timed_out:
+            picture = kind == "picture"
+            if lines < MIN_PICTURE_LINES:
+                return {"verdict": "no", "score": None, "found": [], "message": NO_TEXT_IN_PICTURE if picture else NO_TEXT_IN_PDF}
+            if len(text.split()) < MIN_WORDS:
+                return {"verdict": "no", "score": None, "found": [], "message": NOT_ENOUGH_TEXT_IN_PICTURE if picture else NOT_ENOUGH_TEXT_IN_PDF}
 
     if len(text.split()) < MIN_WORDS:
         # Too little to judge by (a page with only a title, a picture whose print
