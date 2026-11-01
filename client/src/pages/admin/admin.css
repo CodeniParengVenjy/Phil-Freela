@@ -577,6 +577,26 @@ body {
   text-overflow: ellipsis;
 }
 
+/* Admin > Users: an email or @username longer than this wraps onto a second line
+   instead of making the table wider than its card. */
+.admin-wrap-text {
+  max-width: 260px;
+  overflow-wrap: break-word;
+}
+
+/* Admin > Users, Actions column: Suspend, Ban and Archive sit in two rows
+   (right-aligned) instead of one long row, so the column stays narrow enough for
+   the whole table to fit a laptop screen. 190px holds "Suspend" + "Ban" (or
+   "Unsuspend" + "Ban") side by side, and "Archive" under them. */
+.admin-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  width: 190px;
+  margin-left: auto;
+}
+
 /* Pop-up dialog (e.g. Suspend user) */
 .admin-modal-backdrop {
   position: fixed;

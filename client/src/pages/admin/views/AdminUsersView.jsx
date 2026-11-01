@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
@@ -10,6 +10,10 @@ import { ARCHIVE_DELETE_DAYS } from "../../../lib/archives";
 import { BAN_DELETE_DAYS, SUSPENSION_COLUMNS, banDeletionDay, blockedBadges, formatEndDate, restrictionText, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
+import AdminPagination from "../components/AdminPagination";
+
+// How many users one page of the table shows (the page numbers are under it).
+const USERS_PER_PAGE = 10;
 
 // Text for the Suspend / Ban pop-up.
 const blockText = {
@@ -37,6 +41,15 @@ const sortOptions = {
   online: { label: "Online", start: "desc", desc: "Online first", asc: "Offline first" },
   name: { label: "Name A-Z", start: "asc", desc: "Z to A", asc: "A to Z" }
 };
+
+// An email with a place to break after each "@" and ".", so a narrow column wraps it there
+// ("keanne.reyes2026@" / "gmail.com") and not in the middle of a word. <wbr> adds nothing to
+// the text, so copying the email still gives the plain address.
+function EmailText({ email }) {
+  return String(email ?? "").split(/(?<=[@.])/).map((part, index) => (
+    <Fragment key={index}>{index > 0 && <wbr />}{part}</Fragment>
+  ));
+}
 
 // A labelled row of round choice buttons (one is picked), used in the Filters pop-up.
 // options: [[value, text], ...]
@@ -109,6 +122,14 @@ export default function AdminUsersView() {
   const [sortDir, setSortDir] = useState(() => fromAddress("dir", ["asc", "desc"], sortOptions[fromAddress("sort", Object.keys(sortOptions), "joined")].start));
   // The Filters and sorting pop-up is open.
   const [filterOpen, setFilterOpen] = useState(false);
+  // The page numbers under the table. The page is kept together with the search,
+  // filters and sorting it was picked under; when any of them changes (including
+  // Reset) the table is back on page 1. Set while drawing, not in an effect, so the
+  // old page is never drawn first.
+  const filterKey = JSON.stringify([search, roleFilter, statusFilter, verifyFilter, presenceFilter, joinedFrom, joinedTo, sortBy, sortDir]);
+  const [pageState, setPageState] = useState({ page: 1, key: filterKey });
+  if (pageState.key !== filterKey) setPageState({ page: 1, key: filterKey });
+  const tableCardRef = useRef(null);
   const [message, setMessage] = useState({ text: "", type: "" });
   // The open Suspend / Ban pop-up: { kind: "suspend" | "ban", user } (null = closed).
   const [blockTarget, setBlockTarget] = useState(null);
@@ -212,6 +233,21 @@ export default function AdminUsersView() {
     }
     return sign * (new Date(b.created_at) - new Date(a.created_at));
   });
+
+  // One page of the sorted list. The page is held back to the last one when the list
+  // gets shorter (someone was archived, or a filter was typed).
+  const totalPages = Math.max(1, Math.ceil(visibleUsers.length / USERS_PER_PAGE));
+  const page = Math.min(pageState.key === filterKey ? pageState.page : 1, totalPages);
+  const pageUsers = visibleUsers.slice((page - 1) * USERS_PER_PAGE, page * USERS_PER_PAGE);
+  const countText = users === null ? "" : totalPages > 1
+    ? `Showing ${(page - 1) * USERS_PER_PAGE + 1}-${(page - 1) * USERS_PER_PAGE + pageUsers.length} of ${visibleUsers.length} users${visibleUsers.length < users.length ? ` (${users.length} in all)` : ""}`
+    : `${visibleUsers.length} of ${users.length} users shown`;
+
+  // Page numbers: go to the page, and bring the top of the table into view.
+  const goToPage = (next) => {
+    setPageState({ page: next, key: filterKey });
+    tableCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const changeSort = (value) => {
     setSortBy(value);
@@ -425,7 +461,7 @@ export default function AdminUsersView() {
           </button>
         </div>
         <div className="text-white-50 fs-7 mt-2 text-end">
-          {users !== null && `${visibleUsers.length} of ${users.length} users shown`}
+          {countText}
         </div>
       </div>
 
@@ -505,14 +541,13 @@ export default function AdminUsersView() {
         <p className={`admin-message ${message.type} fs-7 fw-semibold`} aria-live="polite">{message.text}</p>
       )}
 
-      <div className="admin-card rounded-4 p-3 p-md-4">
+      <div className="admin-card rounded-4 p-3 p-md-4" ref={tableCardRef}>
         <div className="table-responsive">
           <table className="table table-dark table-hover align-middle mb-0">
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Name</th>
-                <th>Username</th>
                 <th>Email</th>
                 <th>Role</th>
                 <th>Status</th>
@@ -522,15 +557,15 @@ export default function AdminUsersView() {
             </thead>
             <tbody>
               {loadError && (
-                <tr><td colSpan={8} className="text-center text-white-50 py-4">{loadError}</td></tr>
+                <tr><td colSpan={7} className="text-center text-white-50 py-4">{loadError}</td></tr>
               )}
               {!loadError && users === null && (
-                <tr><td colSpan={8} className="text-center text-white-50 py-4">Loading users...</td></tr>
+                <tr><td colSpan={7} className="text-center text-white-50 py-4">Loading users...</td></tr>
               )}
               {!loadError && users !== null && visibleUsers.length === 0 && (
-                <tr><td colSpan={8} className="text-center text-white-50 py-4">No users found.</td></tr>
+                <tr><td colSpan={7} className="text-center text-white-50 py-4">No users found.</td></tr>
               )}
-              {!loadError && visibleUsers.map((user) => {
+              {!loadError && pageUsers.map((user) => {
                 const suspension = suspensions[user.id];
                 // "banned", "suspended", or null (active).
                 const status = suspensionStatus(suspension);
@@ -557,10 +592,12 @@ export default function AdminUsersView() {
                         </span>
                       )}
                       <VerifiedBadge verified={verifiedIds.has(user.id)} />
+                      {/* The username sits under the name (not a column of its own) so the
+                          Actions column still fits on a laptop screen. */}
+                      <div className="text-white-50 fs-8 admin-wrap-text">@{user.username}</div>
                     </td>
-                    <td>{user.username}</td>
                     <td>
-                      {user.email}
+                      <div className="admin-wrap-text"><EmailText email={user.email} /></div>
                       {/* The user signed up but never clicked the link in the confirmation email. */}
                       {!user.email_confirmed_at && (
                         <div><span className="badge bg-secondary fw-normal mt-1">Unconfirmed</span></div>
@@ -608,36 +645,40 @@ export default function AdminUsersView() {
                         )
                       )}
                     </td>
-                    <td>{new Date(user.created_at).toLocaleDateString()}</td>
-                    <td className="text-end text-nowrap">
-                      {status ? (
-                        <button className="btn btn-outline-success btn-sm" onClick={() => { setLiftTarget({ user, status }); setMessage({ text: "", type: "" }); }}>
-                          <i className="bi bi-unlock"></i> {status === "banned" ? "Unban" : "Unsuspend"}
-                        </button>
-                      ) : !waiting && (
-                        <button className="btn btn-outline-warning btn-sm" onClick={() => openBlockDialog("suspend", user)}>
-                          <i className="bi bi-slash-circle"></i> Suspend
-                        </button>
-                      )}
-                      {waiting && (
-                        <span className="badge bg-warning text-dark fw-normal ms-2" title={isSuperAdmin ? "Decide it on the Approvals page" : "A super admin has to approve it"}>
-                          <i className="bi bi-hourglass-split me-1"></i>
-                          {isSuperAdmin ? `${waiting.requested_by_name || "An admin"} asked to ${requestKindText[waiting.kind].toLowerCase()}` : `Waiting for a super admin: ${requestKindText[waiting.kind]}`}
-                        </span>
-                      )}
-                      {/* A suspended user can still be banned; that replaces the suspension. */}
-                      {status !== "banned" && !waiting && (
-                        <button className="btn btn-outline-danger btn-sm ms-2" onClick={() => openBlockDialog("ban", user)}>
-                          <i className="bi bi-ban"></i> Ban
-                        </button>
-                      )}
-                      {/* A regular admin's Archive is a request, like Ban; the database
-                          refuses a direct archive from anyone but a super admin. */}
-                      {!waiting && (
-                        <button className="btn btn-outline-light btn-sm ms-2" onClick={() => { setArchiveTarget(user); setMessage({ text: "", type: "" }); }}>
-                          <i className="bi bi-archive"></i> Archive
-                        </button>
-                      )}
+                    <td className="text-nowrap">{new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>
+                      {/* The buttons wrap onto a second line instead of making the table
+                          wider than its card, which hid Ban and Archive behind a sideways scroll. */}
+                      <div className="admin-user-actions">
+                        {status ? (
+                          <button className="btn btn-outline-success btn-sm text-nowrap" onClick={() => { setLiftTarget({ user, status }); setMessage({ text: "", type: "" }); }}>
+                            <i className="bi bi-unlock"></i> {status === "banned" ? "Unban" : "Unsuspend"}
+                          </button>
+                        ) : !waiting && (
+                          <button className="btn btn-outline-warning btn-sm text-nowrap" onClick={() => openBlockDialog("suspend", user)}>
+                            <i className="bi bi-slash-circle"></i> Suspend
+                          </button>
+                        )}
+                        {waiting && (
+                          <span className="badge bg-warning text-dark fw-normal text-wrap text-start" title={isSuperAdmin ? "Decide it on the Approvals page" : "A super admin has to approve it"}>
+                            <i className="bi bi-hourglass-split me-1"></i>
+                            {isSuperAdmin ? `${waiting.requested_by_name || "An admin"} asked to ${requestKindText[waiting.kind].toLowerCase()}` : `Waiting for a super admin: ${requestKindText[waiting.kind]}`}
+                          </span>
+                        )}
+                        {/* A suspended user can still be banned; that replaces the suspension. */}
+                        {status !== "banned" && !waiting && (
+                          <button className="btn btn-outline-danger btn-sm text-nowrap" onClick={() => openBlockDialog("ban", user)}>
+                            <i className="bi bi-ban"></i> Ban
+                          </button>
+                        )}
+                        {/* A regular admin's Archive is a request, like Ban; the database
+                            refuses a direct archive from anyone but a super admin. */}
+                        {!waiting && (
+                          <button className="btn btn-outline-light btn-sm text-nowrap" onClick={() => { setArchiveTarget(user); setMessage({ text: "", type: "" }); }}>
+                            <i className="bi bi-archive"></i> Archive
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -645,6 +686,7 @@ export default function AdminUsersView() {
             </tbody>
           </table>
         </div>
+        {!loadError && <AdminPagination page={page} totalPages={totalPages} onChange={goToPage} label="Users pages" />}
       </div>
 
       {/* Suspend / Ban pop-up: the admin picks the violation, and the penalty
