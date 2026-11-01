@@ -1,6 +1,7 @@
 """Downloads the models too big to keep in GitHub into the models folder:
 the SFace face model (37 MB), the copy check's ViT (23 MB), the documents'
-text model (23 MB), and moodboard matching's CLIP vision model (58 MB). On
+text model (23 MB), moodboard matching's CLIP vision model (58 MB), and the
+resume check's text reader for pictures (9 MB). On
 Linux (Vercel) it also adds FFmpeg for videos, compressed (see get_ffmpeg).
 
 They're fetched from OpenCV's model collection and Hugging Face instead:
@@ -50,6 +51,14 @@ FILES = {
     "clip_vision_quantized.onnx": (
         "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/vision_model_bnb4.onnx",
         "d37c9d4463a3ade0bd069e2d35af22f6cbe71ca6e64ad922dbd4f5b2cba9243e",
+    ),
+    # The resume check's text reader for pictures and scanned PDFs (PaddleOCR's
+    # PP-OCRv3 English model, Apache 2.0): the ONNX copy in the RapidOCR
+    # collection on Hugging Face, 9 MB, with its list of letters inside it. The
+    # lines are found by the text finder that is already here (see resume_ocr.py).
+    "en_PP-OCRv3_rec_infer.onnx": (
+        "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/en_PP-OCRv3_rec_infer.onnx",
+        "ef7abd8bd3629ae57ea2c28b425c1bd258a871b93fd2fe7c433946ade9b5d9ea",
     ),
 }
 

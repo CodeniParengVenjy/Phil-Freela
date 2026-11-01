@@ -4,9 +4,38 @@ Status (2026-11-02): the plan was approved ("ok build"; the user chose "block"
 for a file that doesn't look like a resume). Step 1 is BUILT, tested and pushed
 (the database change is live as the migration `resume_formats`). Step 2 (the AI
 check for PDF and Word) is BUILT, tested and pushed. Step 3 (pictures and scanned
-PDFs, a text reader) is next and waits for the user's OK. To continue in a new
-Claude session, say: "Read PLAN-resume-check.md and continue from the current
-step."
+PDFs, a text reader) is BUILT and tested (the user said "okie" to start it); see
+"Step 3 test results" below for how the Vercel deploy went. All three steps are
+done. To continue in a new Claude session, say: "Read PLAN-resume-check.md and
+tell me what is left."
+
+Step 3 test results (2026-11-02): the text reader is PaddleOCR's PP-OCRv3
+English model (9 MB, SHA-256 in `ai-service/get_models.py`; its list of letters
+is inside the file), run through onnxruntime, with the text finder that was
+already in the service marking the lines (`ai-service/resume_ocr.py`). A
+picture is read in about a second on the laptop. Rules: a picture or scanned
+PDF with fewer than 4 lines of text is "no" (a photo of a person or a view, a
+logo, a blank page: "We couldn't find any text in this picture..."); print that
+can't be made out is "not sure"; a reading that runs out of its 15 seconds, or a
+reader that breaks, is never "no". Measured with `ai-service/test_resume_ocr.py`
+on the same made-up documents drawn onto pages, CLEAN and PHOTOGRAPHED (turned,
+skewed, shaded, soft, noisy, shrunk, low quality JPEG); nothing was tuned on
+pictures. SET A clean: 12 resumes (9 yes, 3 not sure, none refused), 12 other
+documents all refused. SET A photographed: 8 yes, 4 not sure, none refused; all
+12 others refused. SET B clean: 5 yes, 3 not sure, none refused; all 10 others
+refused. SET B photographed: 3 yes, 5 not sure, none refused; 9 of 10 others
+refused, and 1 let through as "not sure" (a barangay form that is mostly blank
+lines, with too few readable words). `test_resume_check.py` is now 42 of 42
+(scanned PDFs of a resume and of an invoice, a blank page, pictures with no
+text, a broken picture, a picture of 36 megapixels, the reader running out of
+time or breaking). Real browser, the real website code against the real checker:
+24 of 24 (the picture is shrunk first, and the AI is given the very same JPEG
+that is saved; a phone-like photo and a scanned PDF of a resume sent; a picture
+and a scanned PDF of an invoice stopped; a picture with no text stopped with its
+own message); the Step 1 browser test is still 33 of 33. The other AI service
+tests still pass (skills 136, document previews 30, page blur 19, watermarks 28,
+ranking 33). A resume photographed on its side is not handled (the reader reads
+level lines only); the website turns phone photos upright first.
 
 Step 2 test results (2026-11-02): `ai-service/test_resume_check.py`, 30 of 30.
 Measured on made-up files (`ai-service/resume_samples.py`): SET A, which the
@@ -139,9 +168,12 @@ the 4 MB limit). Test file `ai-service/test_resume_check.py`.
 
 ### Step 3: pictures and scanned PDFs (a text reader)
 
-Adds the reader to `get_models.py` and `resume_check.py`. Last, because it adds
-a model and Vercel's size limit has been tight before. If Vercel refuses the
-size, a picture falls back to "many lines of text found = not sure = sent".
+Built: `resume_ocr.py` (the finder and the reader), `get_models.py` (the 9 MB
+model), `resume_check.py` (a picture, or a PDF with no words of its own, is read
+and judged like text), and the website shrinks a picture BEFORE the check. It
+came last because it adds a model and Vercel's size limit has been tight before.
+If Vercel refuses the size, pictures go back to "not sure = sent" until space is
+made (the old deploy stays live while a new one fails).
 
 ## How the AI decides (Steps 2 and 3; no training, only pretrained parts)
 

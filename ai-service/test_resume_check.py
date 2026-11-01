@@ -37,6 +37,7 @@ from pypdf import PdfReader, PdfWriter  # noqa: E402
 import main  # noqa: E402
 import resume_check as rc  # noqa: E402
 import resume_samples as samples  # noqa: E402
+from resume_test_pictures import photographed, png_bytes, render_page, scanned_pdf  # noqa: E402
 
 results = []
 
@@ -197,14 +198,54 @@ writer.write(locked)
 answer = rc.check_resume(locked.getvalue())
 check("a PDF locked with a password: no, and says so", answer["verdict"] == "no" and "password" in answer["message"], str(answer))
 
-scan = io.BytesIO()
-Image.new("RGB", (300, 400), "white").save(scan, "PDF")
-answer = rc.check_resume(scan.getvalue())
-check("a scanned PDF with no text: not sure (it goes through)", answer["verdict"] == "unsure" and answer["score"] is None, str(answer))
+# --- Pictures and scans: the words are READ from the picture (resume_ocr.py)
+answer = rc.check_resume(scanned_pdf([Image.new("RGB", (1240, 1754), "white")]))
+check("a scanned PDF of a blank page: no (no text in it)", answer["verdict"] == "no" and answer["message"] == rc.NO_TEXT_IN_PDF, str(answer))
 
 for kind in ("PNG", "JPEG", "WEBP"):
     answer = rc.check_resume(picture_bytes(kind))
-    check(f"a {kind} picture: not sure for now (a text reader comes in step 3)", answer["verdict"] == "unsure", str(answer))
+    check(f"a {kind} picture with no text in it: no, with its own message", answer["verdict"] == "no" and answer["message"] == rc.NO_TEXT_IN_PICTURE, str(answer))
+
+resume_page = render_page(RESUME)
+invoice_page = render_page(INVOICE)
+answer = rc.check_resume(png_bytes(resume_page))
+check("a picture of a resume: yes", answer["verdict"] == "yes" and answer["message"] == "", str(answer))
+answer = rc.check_resume(photographed(resume_page, seed=1))
+check("a phone photo of a resume (turned, skewed, shaded, soft, low quality): not refused", answer["verdict"] in ("yes", "unsure"), str(answer))
+answer = rc.check_resume(png_bytes(invoice_page))
+check("a picture of an invoice: no, with the plain message", answer["verdict"] == "no" and answer["message"] == rc.NOT_A_RESUME, str(answer))
+answer = rc.check_resume(scanned_pdf([resume_page]))
+check("a scanned PDF of a resume: yes", answer["verdict"] == "yes", str(answer))
+answer = rc.check_resume(scanned_pdf([invoice_page]))
+check("a scanned PDF of an invoice: no", answer["verdict"] == "no" and answer["message"] == rc.NOT_A_RESUME, str(answer))
+answer = rc.check_resume(scanned_pdf([resume_page, invoice_page, invoice_page]))
+check("a scanned PDF reads only its first 2 pages (a resume, then an invoice, then more)", answer["verdict"] != "no", str(answer))
+
+answer = rc.check_resume(b"\xff\xd8\xff\xe0" + b"garbage that is not a picture " * 20)
+check("a broken picture (starts like a JPEG): no, with the opening message", answer["verdict"] == "no" and answer["message"] == rc.UNREADABLE_PICTURE, str(answer))
+huge = io.BytesIO()
+Image.new("1", (6000, 6000)).save(huge, "PNG")  # 36 megapixels, a few KB: more pixels than any photo of a page
+answer = rc.check_resume(huge.getvalue())
+check("a picture of 36 megapixels is refused before it is opened", answer["verdict"] == "no" and answer["message"] == rc.UNREADABLE_PICTURE, str(answer))
+
+# The reader running out of time, or failing, must never refuse a file:
+real_read_picture = rc.read_picture
+rc.read_picture = lambda image: (INVOICE, 40, True)
+answer = rc.check_resume(png_bytes(invoice_page))
+check("an invoice picture whose reading ran out of time: not sure, never no", answer["verdict"] == "unsure", str(answer))
+rc.read_picture = lambda image: ("", 0, True)
+answer = rc.check_resume(png_bytes(invoice_page))
+check("a picture whose reading ran out of time before any line: not sure", answer["verdict"] == "unsure", str(answer))
+
+
+def reader_breaks(image):
+    raise RuntimeError("the reader broke")
+
+
+rc.read_picture = reader_breaks
+answer = rc.check_resume(png_bytes(resume_page))
+check("a picture when the reader itself breaks: not sure (it goes through)", answer["verdict"] == "unsure", str(answer))
+rc.read_picture = real_read_picture
 
 for label, data in (("a program", b"MZ\x90\x00" + b"\x00" * 200), ("an empty file", b""), ("plain text", b"just some words in a text file")):
     answer = rc.check_resume(data)
@@ -217,7 +258,9 @@ rc.MAX_XML_BYTES = old_limit
 check("a Word file that unpacks to far too much text: refused as unreadable", answer["verdict"] == "no" and answer["message"] == rc.UNREADABLE, str(answer))
 
 short = rc.check_resume(pdf_of("Hello\nThis is a short note."))
-check("a PDF with almost no text: not sure (it goes through)", short["verdict"] == "unsure", str(short))
+check("a PDF with only two lines of text: no (it is looked at as a picture, and has almost no text)", short["verdict"] == "no" and short["message"] == rc.NO_TEXT_IN_PDF, str(short))
+short = rc.check_resume(docx_of("Hello\nThis is a short note."))
+check("a Word file with almost no text: not sure (its words may be in a picture, so it goes through)", short["verdict"] == "unsure", str(short))
 
 # --- The route: the login check is replaced, nothing else
 real_get_user_id = main.get_user_id

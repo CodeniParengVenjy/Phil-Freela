@@ -231,7 +231,7 @@ export async function matchSkill(text) {
   }
 }
 
-// Asks the AI service whether a resume file (a PDF or a Word file) looks like a
+// Asks the AI service whether a resume file (a PDF, a Word file or a picture) looks like a
 // resume. Returns { verdict: "yes" | "unsure" | "no", message }, or null when
 // there is no answer: the service is offline, still starting, or slow (20
 // seconds). It never fails, because the check must never be the reason an

@@ -41,18 +41,19 @@ PAGE_STRENGTHS = STRENGTHS + (5.5,)
 _pdfium_lock = threading.Lock()
 
 
-def render_pages(pdf_bytes):
-    """The first pages of a PDF as pictures (RGB), each at most 1200 pixels
-    wide or tall."""
+def render_pages(pdf_bytes, max_pages=MAX_PAGES, max_side=PAGE_MAX_SIDE):
+    """The first pages of a PDF as pictures (RGB), each at most max_side pixels
+    wide or tall (1200 unless asked for more: the resume check reads the words
+    on scanned pages, which needs them bigger)."""
     with _pdfium_lock:
         pdf = pdfium.PdfDocument(pdf_bytes)
         try:
             pictures = []
-            for number in range(min(len(pdf), MAX_PAGES)):
+            for number in range(min(len(pdf), max_pages)):
                 page = pdf[number]
                 # A page's size is in points (72 per inch); scale turns them into pixels.
                 width, height = page.get_size()
-                pictures.append(page.render(scale=PAGE_MAX_SIDE / max(width, height)).to_pil().convert("RGB"))
+                pictures.append(page.render(scale=max_side / max(width, height)).to_pil().convert("RGB"))
             return pictures
         finally:
             pdf.close()

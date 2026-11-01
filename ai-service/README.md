@@ -72,8 +72,8 @@ fails waits for an admin on the Flagged Content page:
 
 ## Resume check (`POST /resumes/check`)
 
-The apply form asks this before a resume is sent: does this PDF or Word file
-look like a resume? `resume_check.py` reads its words (a Word file's text boxes
+The apply form asks this before a resume is sent: does this PDF, Word file or
+picture look like a resume? `resume_check.py` reads its words (a Word file's text boxes
 too), gives points for what a resume has (headings like Experience and
 Education, an email or phone number, date ranges like "June 2023 - Present",
 skills from `skills_list.py`), and adds or takes away points with the same
@@ -82,11 +82,22 @@ few sentences that describe a resume, or to ones that describe an invoice, a
 letter, a job post, a contract...? The score is 0 to 100: 55 and over is
 "yes", under 20 is "no" (the only answer that stops an application), and in
 between is "not sure" (it goes through). Nothing is trained and nothing is
-saved; the file is read in memory. A picture can't be read yet (step 3 of
-`PLAN-resume-check.md` adds a text reader), so it is "not sure".
-`python test_resume_check.py` measures it on made-up resumes and other
-documents (`resume_samples.py`, set A chosen from, set B never used) and tests
-the ways a file can be wrong.
+saved; the file is read in memory.
+
+A picture (a photo or screenshot of a resume), or a PDF made only of pictures
+(a scan), is read by `resume_ocr.py`: the text finder that `photo_checks.py`
+already uses (OpenCV's PP-OCR "DB" model) marks the lines of text, and a
+text reader (PaddleOCR's PP-OCRv3 English model, 9 MB, downloaded by
+`get_models.py`, run through onnxruntime) reads each line. The words are then
+judged like the text of a PDF. A picture with almost no lines of text (a
+photo of a person or a view, a logo, a blank page) is "no"; a picture whose
+print can't be made out is "not sure"; a reading that runs out of its 15
+seconds is never "no".
+
+`python test_resume_check.py` measures the text part on made-up resumes and
+other documents (`resume_samples.py`, set A chosen from, set B never used)
+and tests the ways a file can be wrong; `python test_resume_ocr.py` does the
+same on pictures of those documents, drawn clean and as if photographed.
 
 ## Online: Vercel (free)
 

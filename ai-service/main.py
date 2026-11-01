@@ -1404,11 +1404,12 @@ def match_typed_skill(body: SkillMatchRequest, authorization: str | None = Heade
 
 @app.post("/resumes/check")
 def check_resume_upload(file: UploadFile = File(...), authorization: str | None = Header(default=None)):
-    """Does this file (a PDF or a Word file; a picture can't be read yet) look
-    like a resume? {"verdict": "yes" | "unsure" | "no", "score": 0-100 or null,
-    "found": [what it has], "message": a sentence for the person}. Only "no"
-    stops an application; the website lets everything else through, and also
-    carries on if this service can't be reached."""
+    """Does this file (a PDF, a Word file, or a picture or scanned PDF, which
+    are read word by word) look like a resume? {"verdict": "yes" | "unsure" |
+    "no", "score": 0-100 or null, "found": [what it has], "message": a sentence
+    for the person}. Only "no" stops an application; the website lets
+    everything else through, and also carries on if this service can't be
+    reached."""
     get_user_id(authorization)
     data = file.file.read(MAX_RESUME_BYTES + 1)
     if len(data) > MAX_RESUME_BYTES:

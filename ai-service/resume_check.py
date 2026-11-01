@@ -1,4 +1,4 @@
-"""Is this file a resume? (Resume check, step 2 of PLAN-resume-check.md.)
+"""Is this file a resume? (Resume check, steps 2 and 3 of PLAN-resume-check.md.)
 
 The apply form asks this before a resume is sent, so a wrong file (an invoice,
 a contract, a school paper) is stopped with a plain message instead of
@@ -8,8 +8,9 @@ personal data, RA 10173).
 
 How it works, in three parts:
 1. Read the words: the text of a PDF (pypdf) or of a Word file (its XML; text
-   boxes count too). A picture or a PDF with no text can't be read yet, so it
-   is "not sure" and goes through (a text reader for pictures is step 3).
+   boxes count too). A picture, or a PDF made of pictures (a scan), is read by
+   resume_ocr.py: it finds the lines of text and reads them. A picture with
+   almost no text in it (a photo of a person, a landscape) is not a resume.
 2. Give points for what almost every resume has: headings (Experience,
    Education, Skills...), contact details (an email, a phone number, a link),
    date ranges ("June 2023 - Present") and skills that are in the site's own
@@ -32,6 +33,7 @@ purpose; it is there to catch honest mistakes, like sending the wrong file.
 """
 
 import io
+import logging
 import re
 import zipfile
 from xml.etree import ElementTree
@@ -39,6 +41,7 @@ from xml.etree import ElementTree
 import numpy as np
 from pypdf import PdfReader
 
+from resume_ocr import UnreadablePicture, decode_picture, read_picture, read_scanned_pdf
 from skills import skills_in_text
 from text_embedder import embed_texts
 
@@ -52,7 +55,16 @@ MIN_WORDS = 25           # less text than this can't be judged: a scan, or a pag
 YES_FROM = 55
 NO_BELOW = 20
 
+# A picture with fewer lines of text than this is not a resume (a resume page
+# has dozens): a photo of a person or a view, a logo, a blank page.
+MIN_PICTURE_LINES = 4
+
+logger = logging.getLogger("uvicorn.error")
+
 UNREADABLE = "We couldn't read that file. Please save your resume as a PDF or DOCX and try again."
+UNREADABLE_PICTURE = "We couldn't open that picture. Please send a JPG or PNG picture, or your resume as a PDF."
+NO_TEXT_IN_PICTURE = "We couldn't find any text in this picture. A resume picture should show your whole resume, sharp enough to read. Please send a clearer picture, or your resume as a PDF."
+NO_TEXT_IN_PDF = "We couldn't find any text in this PDF. A resume should show your whole resume, sharp enough to read. Please save it as a PDF again, or send a clear picture of it."
 NOT_A_RESUME = "This doesn't look like a resume. A resume lists your experience, education and skills. Please choose your resume."
 
 
@@ -125,19 +137,42 @@ def _word_text(data):
     return "\n".join(lines)
 
 
+def _text_from_pictures(read):
+    """(text, seen) from a reading function of resume_ocr.py. `seen` is (the
+    number of lines of text found, whether the time ran out), or None when the
+    reader itself failed (then nothing can be said, and the file goes through)."""
+    try:
+        text, lines, timed_out = read()
+        return text, (lines, timed_out)
+    except Exception:
+        logger.exception("Reading a picture for the resume check failed")
+        return "", None
+
+
 def read_text(data):
-    """(kind, text) of a file. The text is empty for a picture."""
+    """(kind, text, seen) of a file. `seen` is None when the words were in the
+    file itself; for a picture, or a PDF made of pictures (a scan), the words
+    are READ from the picture and `seen` is (lines of text found, time ran out)
+    or None if the reader failed."""
     kind = file_kind(data)
+    seen = None
     if kind == "pdf":
         text = _pdf_text(data)
+        if len(text.split()) < MIN_WORDS:
+            # A PDF with no words of its own is a scan: its first pages are read like pictures.
+            text, seen = _text_from_pictures(lambda: read_scanned_pdf(data))
     elif kind == "word":
         text = _word_text(data)
     elif kind == "picture":
-        text = ""
+        try:
+            image = decode_picture(data)
+        except UnreadablePicture:
+            raise ResumeProblem(UNREADABLE_PICTURE)
+        text, seen = _text_from_pictures(lambda: read_picture(image))
     else:
         raise ResumeProblem("Please send a PDF, a Word file (.docx) or a picture.")
     text = text.replace("\u00a0", " ").replace("\r", "\n")
-    return kind, text[:MAX_CHARACTERS]
+    return kind, text[:MAX_CHARACTERS], seen
 
 
 # ---------------------------------------------------------------------------
@@ -371,19 +406,27 @@ def check_resume(data):
     "score": 0-100 or None, "found": [what it has], "message": a sentence for
     the person (empty for "yes")}."""
     try:
-        kind, text = read_text(data)
+        kind, text, seen = read_text(data)
     except ResumeProblem as problem:
         return {"verdict": "no", "score": None, "found": [], "message": str(problem)}
 
+    timed_out = False
+    if seen is not None:
+        lines, timed_out = seen
+        # Almost no lines of text in the picture: it is not a resume. (Not when
+        # the time ran out: that only means the picture was slow to read.)
+        if lines < MIN_PICTURE_LINES and not timed_out:
+            return {"verdict": "no", "score": None, "found": [], "message": NO_TEXT_IN_PICTURE if kind == "picture" else NO_TEXT_IN_PDF}
+
     if len(text.split()) < MIN_WORDS:
-        # A picture, or a PDF that is only pictures (a scan): nothing to judge by,
-        # so it goes through rather than being refused on a guess.
-        message = "This picture can't be checked yet, so it was sent as it is." if kind == "picture" else "We couldn't find enough text in this file to check it, so it was sent as it is."
-        return {"verdict": "unsure", "score": None, "found": [], "message": message}
+        # Too little to judge by (a page with only a title, a picture whose print
+        # could not be made out, or a reader that failed): it goes through
+        # rather than being refused on a guess.
+        return {"verdict": "unsure", "score": None, "found": [], "message": "We couldn't find enough text in this file to check it, so it was sent as it is."}
 
     score, found, _ = score_text(text)
     if score >= YES_FROM:
         return {"verdict": "yes", "score": score, "found": found, "message": ""}
-    if score >= NO_BELOW:
+    if score >= NO_BELOW or timed_out:
         return {"verdict": "unsure", "score": score, "found": found, "message": "We couldn't be sure this is a resume, so it was sent as it is."}
     return {"verdict": "no", "score": score, "found": found, "message": NOT_A_RESUME}

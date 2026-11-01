@@ -95,19 +95,9 @@ export async function applyToJob(freelancerId, jobPostId, file, note, onChecking
   const { kind, error: problem } = await checkResumeFile(file);
   if (problem) return { error: problem };
 
-  // Does it look like a resume? (the AI service, ai-service/resume_check.py).
-  // Only a clear "no" stops the application. "Not sure", and no answer at all
-  // (the AI service is off or slow), go on, so the check can never be the
-  // reason an application can't be sent. A picture can't be read yet, so it is
-  // not asked. onChecking(true / false) lets the button say "Checking...".
-  if (kind !== "picture") {
-    onChecking?.(true);
-    const answer = await checkResume(file);
-    onChecking?.(false);
-    if (answer?.verdict === "no") return { error: answer.message || NOT_A_RESUME };
-  }
-
   // A picture is shrunk and saved as a JPEG (a phone photo is often over 4 MB).
+  // This comes BEFORE the check, so the AI reads the same small, upright
+  // picture that will be saved, and it travels faster.
   let upload = file;
   if (kind === "picture") {
     try {
@@ -117,6 +107,17 @@ export async function applyToJob(freelancerId, jobPostId, file, note, onChecking
     }
     if (upload.size > MAX_RESUME_BYTES) return { error: "That picture is too big. Please send a smaller one." };
   }
+
+  // Does it look like a resume? (the AI service, ai-service/resume_check.py;
+  // it reads the words of a PDF or Word file, and of a picture or a scanned
+  // PDF). Only a clear "no" stops the application. "Not sure", and no answer
+  // at all (the AI service is off or slow), go on, so the check can never be
+  // the reason an application can't be sent. onChecking(true / false) lets the
+  // button say "Checking...".
+  onChecking?.(true);
+  const answer = await checkResume(upload);
+  onChecking?.(false);
+  if (answer?.verdict === "no") return { error: answer.message || NOT_A_RESUME };
 
   // A new file name for every attempt, so a failed or repeated try can never
   // overwrite a resume that was already sent.
