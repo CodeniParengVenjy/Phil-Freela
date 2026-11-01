@@ -441,7 +441,7 @@ export default function AdminUsersView() {
             <div className="admin-filter-body">
               <ChoiceRow label="Online" value={presenceFilter} onChange={setPresenceFilter} options={[["all", "All"], ["online", "Online now"], ["offline", "Offline"]]} />
               <ChoiceRow label="Role" value={roleFilter} onChange={setRoleFilter} options={[["all", "All"], ["freelancer", "Freelancers"], ["client", "Clients"]]} />
-              <ChoiceRow label="Status" value={statusFilter} onChange={setStatusFilter} options={[["all", "All"], ["active", "Active"], ["suspended", "Suspended"], ["banned", "Banned"]]} />
+              <ChoiceRow label="Status" value={statusFilter} onChange={setStatusFilter} options={[["all", "All"], ["active", "Not blocked"], ["suspended", "Suspended"], ["banned", "Banned"]]} />
               <ChoiceRow label="Verification" value={verifyFilter} onChange={setVerifyFilter} options={[["all", "All"], ["verified", "Verified"], ["unverified", "Not verified"]]} />
               {/* The day they signed up, the same date the Joined column shows. Either end can be left empty. */}
               <div className="mb-3">
@@ -587,16 +587,22 @@ export default function AdminUsersView() {
                           )}
                           <div className="text-white-50 fs-8 mt-1 admin-reason" title={suspension.reason}>{suspension.reason}</div>
                         </>
+                      ) : seen?.online ? (
+                        <span className="badge bg-success fw-normal">Online</span>
                       ) : (
-                        <span className="badge bg-success fw-normal">Active</span>
+                        // Someone not blocked shows whether they are on the site right now, not "Active":
+                        // a green "Active" next to "Seen 6h ago" read as online. Never seen counts as offline too.
+                        <span className="badge bg-secondary fw-normal">Offline</span>
                       )}
-                      {/* Not "Offline": next to the Active badge that read as a contradiction.
-                          This says when they were last on the site; people never seen get nothing. */}
+                      {/* When they were last on the site. An online person's badge already says so;
+                          a suspended or banned one keeps its badge, so "Online now" is spelled out. */}
                       {seen && (
                         seen.online ? (
-                          <div className="fs-8 mt-1 text-success fw-semibold">
-                            <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>Online now
-                          </div>
+                          status && (
+                            <div className="fs-8 mt-1 text-success fw-semibold">
+                              <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>Online now
+                            </div>
+                          )
                         ) : (
                           <div className="fs-8 mt-1 text-white-50 text-nowrap" title={`Last seen ${seen.ago}`}>Seen {seen.ago}</div>
                         )
