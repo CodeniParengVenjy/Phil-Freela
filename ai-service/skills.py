@@ -259,6 +259,23 @@ def suggest_skills(title, category, description, have=()):
     return {"skills": [_NAMES[i] for i in sure], "more": [_NAMES[i] for i in more]}
 
 
+def skills_in_text(text):
+    """The standard names of the skills written in a text (used by the resume
+    check, resume_check.py): a skill's name, or another way of writing it, as a
+    whole word or phrase. A skill named by an everyday word ("editing",
+    "research") is left out, because any document has those words."""
+    lowered = text.lower()
+    found = []
+    for index, name in enumerate(_NAMES):
+        if name.lower() in EVERYDAY_WORDS:
+            continue
+        if _NAME_PATTERNS[index].search(lowered) or any(
+            pattern.search(lowered) for words, pattern in _ALIAS_PATTERNS[index] if words not in EVERYDAY_WORDS
+        ):
+            found.append(name)
+    return found
+
+
 def match_skill(text):
     """The standard name for a skill someone typed, or None if it isn't one we
     know (then it stays as typed). Two ways to match:

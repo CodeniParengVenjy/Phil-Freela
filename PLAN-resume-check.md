@@ -1,10 +1,33 @@
 # Resume check: plan
 
-Status (2026-11-01): the plan was approved ("ok build"). Step 1 is BUILT, tested
-and pushed (the database change is live as the migration `resume_formats`).
-Step 2 (the AI check for PDF and Word) is next and waits for the user's OK. To
-continue in a new Claude session, say: "Read PLAN-resume-check.md and continue
-from the current step."
+Status (2026-11-02): the plan was approved ("ok build"; the user chose "block"
+for a file that doesn't look like a resume). Step 1 is BUILT, tested and pushed
+(the database change is live as the migration `resume_formats`). Step 2 (the AI
+check for PDF and Word) is BUILT, tested and pushed. Step 3 (pictures and scanned
+PDFs, a text reader) is next and waits for the user's OK. To continue in a new
+Claude session, say: "Read PLAN-resume-check.md and continue from the current
+step."
+
+Step 2 test results (2026-11-02): `ai-service/test_resume_check.py`, 30 of 30.
+Measured on made-up files (`ai-service/resume_samples.py`): SET A, which the
+numbers were chosen from: 12 resumes, 9 "yes", 3 "not sure", none refused (the
+lowest scored 23); 12 other documents, all refused (the highest scored 16). SET
+B, written after the numbers were fixed and never used to choose one: 8 resumes,
+5 "yes", 3 "not sure", none refused (the lowest scored 32); 10 other documents,
+all refused (the highest scored 10), including a company job description, a
+freelancer's service offer and an application letter. The three "not sure"
+resumes of set B are not refused because of unusual heading names ("Clinical
+Experience", "Voice Over Experience"); that is the thing to improve first if it
+is ever needed. Real browser, the real website code against the real checker
+running on the laptop: 18 of 18 (a resume as PDF and as Word sent; an invoice
+as PDF and Word, and a contract, stopped with the plain message and nothing
+uploaded or saved; a zip with a Word file's name stopped; a doubtful document
+and a picture sent; a file over 4 MB refused by the page; the AI service off,
+broken (500), without the route (404, an old deploy) or answering with the
+website's own page: the application is sent anyway; the button says "Checking
+your resume..." while it works; an AI that takes more than 20 seconds is given
+up on and the application is sent). The Step 1 browser test still passes, 33 of
+33. Not tried: the live AI service on Vercel, and a real phone.
 
 Step 1 test results (2026-11-01): `database/test_resume_formats.sql` on the live
 database, rolled back: 18 of 18 passed (pdf, docx and jpg accepted; exe, zip,
@@ -47,8 +70,8 @@ can tell that a file really is a resume, and to build it if it can.
    resume..." for a second or a few:
    - looks like a resume: sent, as today;
    - not sure: sent;
-   - doesn't look like one: NOT sent (default, the user can change it to a
-     "Send anyway" button). A plain message: "This doesn't look like a resume.
+   - doesn't look like one: NOT sent (the user chose this on 2026-11-01: block,
+     no "Send anyway" button). A plain message: "This doesn't look like a resume.
      A resume lists your experience, education and skills. Please choose your
      resume."
 3. If the AI service can't be reached, the application is sent without the
@@ -146,10 +169,13 @@ size, a picture falls back to "many lines of text found = not sure = sent".
    - length: about 80 to 1,500 words.
    Extra spaces inside a heading ("E XPERIENCE", which some PDFs have) are
    ignored.
-3. 55 and over = yes, 30 to 54 = not sure, under 30 = no. These numbers are
-   first guesses: they are set by measuring at least 12 resumes of different
-   styles (simple, designed, Filipino format, short, Word, PDF, photo) and at
-   least 12 other documents, like the ID check was (see photo_checks.py).
+3. 55 and over = yes, 20 to 54 = not sure, under 20 = no. The numbers were set
+   by measuring 12 resumes of different styles and 12 other documents (set A),
+   like the ID check was (see photo_checks.py), and then checked once on 8
+   resumes and 10 other documents written afterwards (set B). See "Step 2 test
+   results" at the top. The meaning check's example sentences have no field of
+   work in them (a first try with "graphic designer" made a job post for a
+   graphic designer look like a resume).
 4. Time cap: a picture or scan that takes too long to read gives "not sure".
 5. The file is read in memory only. It is not saved by the service, not logged,
    and no outside AI company sees it (a resume is personal data, RA 10173).

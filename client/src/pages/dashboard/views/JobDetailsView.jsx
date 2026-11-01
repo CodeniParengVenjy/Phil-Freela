@@ -37,6 +37,8 @@ export default function JobDetailsView() {
   const [resumeFile, setResumeFile] = useState(null);
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
+  // True while the AI is checking that the file looks like a resume (the button says so).
+  const [checking, setChecking] = useState(false);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   // The client being reported (null = Report popup closed).
@@ -85,7 +87,7 @@ export default function JobDetailsView() {
     event.preventDefault();
     if (sending) return;
     setSending(true);
-    const { error } = await applyToJob(currentUserId, job.id, resumeFile, note);
+    const { error } = await applyToJob(currentUserId, job.id, resumeFile, note, setChecking);
     if (error) {
       setSending(false);
       showToast(error);
@@ -215,7 +217,7 @@ export default function JobDetailsView() {
     return (
       <form className="d-flex flex-column gap-3" onSubmit={handleApply}>
         <div>
-          <label htmlFor="resumeFile" className="form-label text-white-50 fw-semibold fs-7">Your resume (PDF, Word or a picture, up to 5 MB)</label>
+          <label htmlFor="resumeFile" className="form-label text-white-50 fw-semibold fs-7">Your resume (PDF, Word or a picture, up to 4 MB)</label>
           <input
             id="resumeFile"
             type="file"
@@ -240,7 +242,7 @@ export default function JobDetailsView() {
         </div>
         <div>
           <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role" disabled={sending || iAmVerified === null}>
-            <i className="bi bi-send me-2"></i>{sending ? "Sending..." : "Send Application"}
+            <i className="bi bi-send me-2"></i>{sending ? (checking ? "Checking your resume..." : "Sending...") : "Send Application"}
           </button>
         </div>
       </form>

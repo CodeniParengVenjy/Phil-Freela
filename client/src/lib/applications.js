@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { checkResume } from "./aiService";
 import { shrinkImage } from "./shrinkImage";
 
 // Job applications (Find Jobs > a job > "Send your resume"), see
@@ -7,7 +8,10 @@ import { shrinkImage } from "./shrinkImage";
 // "resumes" bucket: only the freelancer and that job's client can open one
 // (Data Privacy Act, RA 10173: a resume is personal data).
 const BUCKET = "resumes";
-const MAX_RESUME_BYTES = 5 * 1024 * 1024;
+// 4 MB, not 5: the resume check sends the file to the AI service on Vercel,
+// which takes 4.5 MB per request.
+const MAX_RESUME_BYTES = 4 * 1024 * 1024;
+const NOT_A_RESUME = "This doesn't look like a resume. A resume lists your experience, education and skills. Please choose your resume.";
 // A picture can be bigger than that when it is picked (a phone photo is often 5
 // to 12 MB): it is shrunk before it is sent, so this only stops a file too big
 // to open at all.
@@ -82,16 +86,28 @@ export async function checkResumeFile(file) {
     return { error: "Your resume must be a PDF, a Word file (.docx) or a picture (JPG, PNG or WebP)." };
   }
   if (kind === "picture" && file.size > MAX_PICTURE_BYTES) return { error: "That picture is too big. Please send a smaller one." };
-  if (kind !== "picture" && file.size > MAX_RESUME_BYTES) return { error: "Your resume must be 5 MB or smaller." };
+  if (kind !== "picture" && file.size > MAX_RESUME_BYTES) return { error: "Your resume must be 4 MB or smaller." };
   return { kind };
 }
 
 // Sends an application. Returns {} when sent, or { error } with a message.
-export async function applyToJob(freelancerId, jobPostId, file, note) {
+export async function applyToJob(freelancerId, jobPostId, file, note, onChecking) {
   const { kind, error: problem } = await checkResumeFile(file);
   if (problem) return { error: problem };
 
-  // A picture is shrunk and saved as a JPEG (a phone photo is often over 5 MB).
+  // Does it look like a resume? (the AI service, ai-service/resume_check.py).
+  // Only a clear "no" stops the application. "Not sure", and no answer at all
+  // (the AI service is off or slow), go on, so the check can never be the
+  // reason an application can't be sent. A picture can't be read yet, so it is
+  // not asked. onChecking(true / false) lets the button say "Checking...".
+  if (kind !== "picture") {
+    onChecking?.(true);
+    const answer = await checkResume(file);
+    onChecking?.(false);
+    if (answer?.verdict === "no") return { error: answer.message || NOT_A_RESUME };
+  }
+
+  // A picture is shrunk and saved as a JPEG (a phone photo is often over 4 MB).
   let upload = file;
   if (kind === "picture") {
     try {

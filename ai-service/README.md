@@ -70,6 +70,24 @@ fails waits for an admin on the Flagged Content page:
   (Meta's DINO ViT-S/16). Writing is compared with a text model
   (`text_embedder.py`, all-MiniLM-L6-v2).
 
+## Resume check (`POST /resumes/check`)
+
+The apply form asks this before a resume is sent: does this PDF or Word file
+look like a resume? `resume_check.py` reads its words (a Word file's text boxes
+too), gives points for what a resume has (headings like Experience and
+Education, an email or phone number, date ranges like "June 2023 - Present",
+skills from `skills_list.py`), and adds or takes away points with the same
+MiniLM text model (`text_embedder.py`): is the start of the text closer to a
+few sentences that describe a resume, or to ones that describe an invoice, a
+letter, a job post, a contract...? The score is 0 to 100: 55 and over is
+"yes", under 20 is "no" (the only answer that stops an application), and in
+between is "not sure" (it goes through). Nothing is trained and nothing is
+saved; the file is read in memory. A picture can't be read yet (step 3 of
+`PLAN-resume-check.md` adds a text reader), so it is "not sure".
+`python test_resume_check.py` measures it on made-up resumes and other
+documents (`resume_samples.py`, set A chosen from, set B never used) and tests
+the ways a file can be wrong.
+
 ## Online: Vercel (free)
 
 The live website (phil-freela.pages.dev) can't run Python, so this service

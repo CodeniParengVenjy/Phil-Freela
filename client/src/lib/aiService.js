@@ -231,6 +231,26 @@ export async function matchSkill(text) {
   }
 }
 
+// Asks the AI service whether a resume file (a PDF or a Word file) looks like a
+// resume. Returns { verdict: "yes" | "unsure" | "no", message }, or null when
+// there is no answer: the service is offline, still starting, or slow (20
+// seconds). It never fails, because the check must never be the reason an
+// application can't be sent: only a clear "no" stops one. See
+// ai-service/resume_check.py.
+export async function checkResume(file) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const form = new FormData();
+    form.append("file", file, file.name || "resume");
+    return await request("/resumes/check", { method: "POST", headers: await authHeader(), body: form, signal: controller.signal });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // "Recommended for you" (Hybrid recommendation system: content-based +
 // collaborative filtering + ranking): job posts for freelancers, services for
 // clients, best first. Returns { personalized, results: [{ type, id, score,

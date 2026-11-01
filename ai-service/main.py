@@ -44,6 +44,7 @@ from moodboard import match_moodboard
 from page_blur import blur_pages
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
 from recommendations import recommend
+from resume_check import MAX_RESUME_BYTES, check_resume
 from similarity import image_embedding
 from skills import match_skill, suggest_skills
 from text_embedder import embed_texts
@@ -1393,6 +1394,26 @@ def match_typed_skill(body: SkillMatchRequest, authorization: str | None = Heade
     get_user_id(authorization)
     text = " ".join(body.text.split())[:40]
     return {"skill": match_skill(text) if text else None}
+
+
+# ---------------------------------------------------------------------------
+# Resume check (see resume_check.py and PLAN-resume-check.md): the apply form asks
+# whether a file looks like a resume before it is sent. Nothing is saved: the
+# file is read in memory and forgotten.
+# ---------------------------------------------------------------------------
+
+@app.post("/resumes/check")
+def check_resume_upload(file: UploadFile = File(...), authorization: str | None = Header(default=None)):
+    """Does this file (a PDF or a Word file; a picture can't be read yet) look
+    like a resume? {"verdict": "yes" | "unsure" | "no", "score": 0-100 or null,
+    "found": [what it has], "message": a sentence for the person}. Only "no"
+    stops an application; the website lets everything else through, and also
+    carries on if this service can't be reached."""
+    get_user_id(authorization)
+    data = file.file.read(MAX_RESUME_BYTES + 1)
+    if len(data) > MAX_RESUME_BYTES:
+        raise HTTPException(400, "That file is too big (max 4 MB).")
+    return check_resume(data)
 
 
 # ---------------------------------------------------------------------------
