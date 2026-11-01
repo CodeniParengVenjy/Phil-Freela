@@ -526,6 +526,30 @@ a.sidebar-identity:hover {
   color: var(--accent-on);
 }
 
+/* Text boxes on the site's dark cards (Bootstrap's form-control with
+   text-white). The hint inside an empty box ("Why are you a great fit for...")
+   is drawn by Bootstrap in a dark grey made for white boxes, which could hardly
+   be read here. Light mode keeps its own grey (theme.css, which is more specific). */
+.form-control.text-white::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* A file box ("Choose File | No file chosen", the resume in Apply for this
+   job). Bootstrap draws its button white, which stood out on a dark box. Here
+   it is the accent color's soft tint with the accent color's words, and it
+   fills in when the box is pointed at, like .btn-outline-role above. The
+   hover rule repeats Bootstrap's own selector so that it can win over it. */
+.form-control.text-white[type="file"]::file-selector-button {
+  background-color: var(--accent-role-subtle);
+  color: var(--accent-role);
+  font-weight: 700;
+}
+
+.form-control.text-white[type="file"]:hover:not(:disabled):not([readonly])::file-selector-button {
+  background: var(--accent-gradient, var(--accent-role));
+  color: var(--accent-on);
+}
+
 .hover-role:hover { color: var(--accent-role) !important; }
 .hover-bg-role:hover { background-color: var(--accent-role) !important; color: var(--accent-on) !important; }
 
