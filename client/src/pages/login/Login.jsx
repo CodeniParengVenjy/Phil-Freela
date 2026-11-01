@@ -297,7 +297,7 @@ export default function Login() {
         // Email confirmation is required on this project: there's no session
         // yet, so the profile row is created on first sign-in instead (see
         // resolvePostAuthRoute), once user_metadata has full_name/username/gender.
-        setMessage({ text: "Account created! Check your email and click the confirmation link to open your dashboard.", type: "success" });
+        setMessage({ text: "Account created! Check your email and click the confirmation link to open your dashboard. Can't find it? Look in your Spam or Promotions folder, and if it's there, mark it \"Not spam\".", type: "success" });
         setResendEmail(normalizedEmail);
         setMode("signin");
       } else {
