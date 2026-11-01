@@ -122,7 +122,7 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
       onDrop={handleDrop}
     >
       <div className="container-fluid px-3 px-lg-4">
-        <div className="d-flex align-items-center gap-3">
+        <div className="d-flex align-items-center gap-2 gap-sm-3">
           <button
             className="btn btn-outline-secondary text-white border-0 shadow-none p-1"
             type="button"
@@ -182,7 +182,7 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           )}
 
           <div className="dropdown">
-            <button data-tour="account" className="btn btn-dark border border-secondary border-opacity-50 rounded-pill d-flex align-items-center gap-2 px-3 py-1 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <button data-tour="account" className="btn btn-dark border border-secondary border-opacity-50 rounded-pill d-flex align-items-center gap-2 px-2 px-sm-3 py-1 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
               <Avatar path={avatarPath} name={displayName} size={32} />
               <span className="fw-semibold fs-7 text-truncate d-none d-sm-inline">
                 {displayName}

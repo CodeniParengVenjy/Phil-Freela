@@ -62,6 +62,15 @@
   filter: drop-shadow(0 0 12px rgba(255, 107, 0, 0.6));
 }
 
+/* Phones: a bigger logo above the form (46px, with letters about 36px tall).
+   Each page gives its logo a height of 46 in its own style="", so only
+   !important beats it. */
+@media (max-width: 767.98px) {
+  .logo-glow {
+    height: 64px !important;
+  }
+}
+
 .btn-gradient-orange {
   background: linear-gradient(135deg, #ff6b00 0%, #ff8800 100%);
   border: none;

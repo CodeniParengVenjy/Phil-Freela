@@ -284,6 +284,41 @@ svg.logo-img {
   }
 }
 
+/* Phones: a bigger logo in the top bar. At 38px its letters were only about
+   29px tall in the 70px bar. Under 360px wide there is no room for 56px, so
+   the logo is smaller there and the side space and round buttons are trimmed
+   (!important only because the side space is Bootstrap's px-3). At 320px the
+   bar used to push its buttons onto a second line. */
+@media (max-width: 767.98px) {
+  /* The bar has a fixed height, so its own top and bottom space goes: the
+     taller logo needs the whole 70px to be centered in, or it pushes the
+     buttons next to it down. */
+  #topNavbar {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  #topNavbar .logo-img {
+    height: 56px;
+  }
+}
+
+@media (max-width: 359.98px) {
+  #topNavbar > .container-fluid {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  #topNavbar .logo-img {
+    height: 44px;
+  }
+
+  #topNavbar .topbar-icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 .avatar-circle-sm {
   width: 32px;
   height: 32px;

@@ -57,6 +57,21 @@ body {
   transform: scale(1.05);
 }
 
+/* Phones: a bigger logo in the top bar (it was 38px, with letters about 29px
+   tall). The id is there because the dashboard's .logo-img rule is global too
+   and won here: the logo came out 38px, not 40px. The logo's own top and
+   bottom space goes, so the bar ends up about as tall as the dashboard's. */
+@media (max-width: 767.98px) {
+  #mainNavbar .navbar-brand {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  #mainNavbar .logo-img {
+    height: 56px;
+  }
+}
+
 .nav-search-input {
   background: rgba(255, 255, 255, 0.06) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
