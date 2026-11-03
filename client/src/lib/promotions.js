@@ -2,10 +2,9 @@ import { supabase } from "./supabaseClient";
 
 // The admin side of the fees PhilFreela earns (PLAN-monetization.md,
 // database/supabase_promotions_schema.sql): fees are paid online on Xendit and
-// start by themselves. An old payment sent by hand (a reference and a receipt to
-// PhilFreela's own GCash, a way that was removed) can still be approved or rejected
-// by an admin. The browser can only READ the requests; approving and rejecting go
-// through database functions that check who is asking.
+// start by themselves, so the browser only READS what was paid and what is running
+// (the old way of paying PhilFreela's own GCash by hand, with an admin approving,
+// was removed).
 
 // How a request is named on the page.
 export const PROMO_KINDS = {
@@ -30,12 +29,7 @@ export function plainMessage(error, fallback) {
 
 const REQUEST_FIELDS = "id, user_id, kind, price_code, service_id, job_id, target_title, days, amount, reference_no, receipt_path, method, provider_payment_id, test_mode, status, reject_reason, created_at, decided_at, starts_at, ends_at, person:profiles!promotions_user_id_fkey(id, full_name, username), decider:admins!promotions_decided_by_fkey(full_name)";
 
-// The requests nobody has answered, the oldest first (the one that has waited longest).
-export function getWaitingRequests() {
-  return supabase.from("promotions").select(REQUEST_FIELDS).eq("status", "pending").order("created_at", { ascending: true });
-}
-
-// The last 50 answered requests, newest first.
+// The last 50 paid (or free) requests, newest first.
 export function getAnsweredRequests() {
   return supabase.from("promotions").select(REQUEST_FIELDS).in("status", ["approved", "rejected"]).order("decided_at", { ascending: false }).limit(50);
 }
@@ -59,44 +53,10 @@ export async function getRunning() {
   return { featured: featured.data, pro: pro.data };
 }
 
-// "Approve": the database checks the person is an admin and that the request is
-// still waiting, starts the period (or adds to the one running), and tells the
-// person. Returns "" or a message to show.
-export async function approveRequest(id) {
-  const { error } = await supabase.rpc("approve_promotion", { target_promotion: id });
-  if (error) {
-    console.error("Approving the payment failed:", error);
-    return plainMessage(error, "Couldn't approve that payment. Please try again.");
-  }
-  return "";
-}
-
+// How long the reason for turning a Community ad down can be (the Community
+// Billboard page, AdminMemberAdsView, uses these).
 export const MIN_REASON = 3;
 export const MAX_REASON = 200;
-
-// "Reject": the reason (3 to 200 characters) goes to the person. Returns "" or a message.
-export async function rejectRequest(id, reason) {
-  const { error } = await supabase.rpc("reject_promotion", { target_promotion: id, reason });
-  if (error) {
-    console.error("Rejecting the payment failed:", error);
-    return plainMessage(error, "Couldn't reject that payment. Please try again.");
-  }
-  return "";
-}
-
-// Opens a receipt in a new tab through a link that stops working after 60
-// seconds. Returns "" or a message.
-export async function openPromoReceipt(path) {
-  const tab = window.open("", "_blank");
-  const { data, error } = await supabase.storage.from("promo-receipts").createSignedUrl(path, 60);
-  if (error || !data?.signedUrl) {
-    tab?.close();
-    return "Couldn't open that receipt. Please try again.";
-  }
-  if (tab) tab.location.href = data.signedUrl;
-  else window.location.href = data.signedUrl;
-  return "";
-}
 
 // ---------------------------------------------------------------------------
 // The price list (a super admin can change the two prices of each option)

@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { formatDay } from "../../../lib/billboards";
-import { formatPeso, formatReference } from "../../../lib/payments";
-import {
-  PROMO_KINDS, approveRequest, getAnsweredRequests, getPrices, getRunning,
-  getWaitingRequests, openPromoReceipt, rejectRequest
-} from "../../../lib/promotions";
-import PromotionRequestCard from "../components/PromotionRequestCard";
+import { formatPeso } from "../../../lib/payments";
+import { PROMO_KINDS, getAnsweredRequests, getPrices, getRunning } from "../../../lib/promotions";
 import PromotionSettings from "../components/PromotionSettings";
 
 const TABS = [
-  { key: "waiting", label: "Waiting" },
   { key: "running", label: "Running now" },
   { key: "history", label: "History" },
   { key: "settings", label: "Settings" }
@@ -27,21 +22,17 @@ const personName = (person) => (person ? `${person.full_name} (@${person.usernam
 
 // Admin panel > Promotions: the fees people pay PhilFreela. Featured posts,
 // Community ads and Premium are paid online on Xendit and start by themselves, so
-// they show up in History. Waiting only holds an old payment sent by hand with a
-// reference and a receipt (that way was removed); any admin can still answer it.
-// Only a super admin changes the Settings (the prices). See PLAN-monetization.md.
+// nobody here checks a payment: Running now shows what is on, History lists what
+// was paid, and only a super admin changes the Settings (the prices). See
+// PLAN-monetization.md.
 export default function AdminPromotionsView() {
-  const { isSuperAdmin, refreshPendingPromotions } = useOutletContext();
-  const [tab, setTab] = useState("waiting");
+  const { isSuperAdmin } = useOutletContext();
+  const [tab, setTab] = useState("running");
   // Each is null until it has loaded.
-  const [waiting, setWaiting] = useState(null);
   const [running, setRunning] = useState(null);
   const [answered, setAnswered] = useState(null);
   const [prices, setPrices] = useState(null);
   const [errors, setErrors] = useState({});
-  const [message, setMessage] = useState({ text: "", type: "" });
-  // The request being answered, so its buttons wait.
-  const [busyId, setBusyId] = useState(null);
 
   const setError = (key, text) => setErrors((prev) => ({ ...prev, [key]: text }));
 
@@ -61,12 +52,7 @@ export default function AdminPromotionsView() {
   useEffect(() => {
     let active = true;
     (async () => {
-      if (tab === "waiting") {
-        const { data, error } = await getWaitingRequests();
-        if (!active) return;
-        if (error) setError("waiting", "Failed to load the payments waiting for you.");
-        else { setWaiting(data); setError("waiting", ""); }
-      } else if (tab === "running") {
+      if (tab === "running") {
         const result = await getRunning();
         if (!active) return;
         if (result.error) setError("running", result.error);
@@ -80,55 +66,6 @@ export default function AdminPromotionsView() {
     })();
     return () => { active = false; };
   }, [tab]);
-
-  const say = (text, type = "success") => setMessage({ text, type });
-
-  // A request somebody else (or an earlier click) already answered: show the
-  // sentence and bring the list up to date.
-  const reloadWaiting = async () => {
-    const { data } = await getWaitingRequests();
-    if (data) setWaiting(data);
-    refreshPendingPromotions?.();
-  };
-
-  const handleApprove = async (request) => {
-    const who = personName(request.person);
-    if (!window.confirm(`Approve ${formatPeso(request.amount)} from ${who}?\n\nOnly do this after you see it in PhilFreela's own GCash.`)) return;
-    setBusyId(request.id);
-    const problem = await approveRequest(request.id);
-    setBusyId(null);
-    if (problem) {
-      say(problem, "error");
-      if (/already answered/i.test(problem)) reloadWaiting();
-      return;
-    }
-    setWaiting((prev) => prev.filter((r) => r.id !== request.id));
-    refreshPendingPromotions?.();
-    say(`Approved ${formatPeso(request.amount)} from ${who}. They were told.`);
-  };
-
-  // Returns true when it was rejected, so the card can close its reason box.
-  const handleReject = async (request, reason) => {
-    setBusyId(request.id);
-    const problem = await rejectRequest(request.id, reason);
-    setBusyId(null);
-    if (problem) {
-      say(problem, "error");
-      if (/already answered/i.test(problem)) reloadWaiting();
-      return false;
-    }
-    setWaiting((prev) => prev.filter((r) => r.id !== request.id));
-    refreshPendingPromotions?.();
-    say(`Rejected ${formatPeso(request.amount)} from ${personName(request.person)}. They were told why.`);
-    return true;
-  };
-
-  const handleOpenReceipt = async (request) => {
-    const problem = await openPromoReceipt(request.receipt_path);
-    if (problem) say(problem, "error");
-  };
-
-  const waitingCount = waiting?.length ?? 0;
 
   // Featured posts split by the list they appear in.
   const offers = running?.featured?.filter((row) => row.service_id) ?? [];
@@ -149,41 +86,12 @@ export default function AdminPromotionsView() {
             role="tab"
             aria-selected={tab === key}
             className={`btn btn-sm rounded-pill px-3 ${tab === key ? "btn-admin-orange fw-bold" : "btn-outline-light"}`}
-            onClick={() => { setTab(key); setMessage({ text: "", type: "" }); }}
+            onClick={() => setTab(key)}
           >
             {label}
-            {key === "waiting" && waitingCount > 0 && <span className="badge rounded-pill bg-danger ms-2">{waitingCount}</span>}
           </button>
         ))}
       </div>
-
-      {message.text && <p className={`admin-message ${message.type} fs-7 fw-semibold`} aria-live="polite">{message.text}</p>}
-
-      {/* ---- Waiting ---- */}
-      {tab === "waiting" && (
-        <>
-          {errors.waiting && <div className="admin-card rounded-4 p-4 text-center text-white-50">{errors.waiting}</div>}
-          {!errors.waiting && waiting === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the payments...</div>}
-          {!errors.waiting && waiting?.length === 0 && (
-            <div className="admin-card rounded-4 p-4 text-center text-white-50">
-              <i className="bi bi-cash-coin fs-1 d-block mb-2"></i>
-              Nothing is waiting.
-            </div>
-          )}
-          <div className="d-flex flex-column gap-3">
-            {waiting?.map((request) => (
-              <PromotionRequestCard
-                key={request.id}
-                request={request}
-                busy={busyId === request.id}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onOpenReceipt={handleOpenReceipt}
-              />
-            ))}
-          </div>
-        </>
-      )}
 
       {/* ---- Running now ---- */}
       {tab === "running" && (
@@ -254,18 +162,19 @@ export default function AdminPromotionsView() {
           {errors.history && <div className="admin-card rounded-4 p-4 text-center text-white-50">{errors.history}</div>}
           {!errors.history && !answered && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the history...</div>}
           {!errors.history && answered?.length === 0 && (
-            <div className="admin-card rounded-4 p-4 text-center text-white-50">Nothing has been answered yet.</div>
+            <div className="admin-card rounded-4 p-4 text-center text-white-50">Nothing has been paid yet.</div>
           )}
           <div className="d-flex flex-column gap-3">
             {answered?.map((request) => {
               const approved = request.status === "approved";
               const kind = PROMO_KINDS[request.kind];
-              // Paid on Xendit's page (Premium): no reference, receipt or admin.
+              // Paid on Xendit's page: no admin. A free Featured post (a Premium perk) has no payment at all.
               const online = request.method === "online";
+              const free = request.method === "free";
               return (
                 <div key={request.id} className="admin-card rounded-4 p-3">
                   <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                    <span className={`badge fw-normal ${approved ? "bg-success" : "bg-danger"}`}>{online ? "Paid online" : approved ? "Approved" : "Rejected"}</span>
+                    <span className={`badge fw-normal ${approved ? "bg-success" : "bg-danger"}`}>{online ? "Paid online" : free ? "Free with Premium" : approved ? "Approved" : "Rejected"}</span>
                     <span className="badge bg-info text-dark fw-normal">{kind.label}</span>
                     <span className="fw-bold text-white">{formatPeso(request.amount)}</span>
                     <span className="text-white-50 fs-8 ms-auto">{new Date(request.decided_at).toLocaleString()}</span>
@@ -280,7 +189,9 @@ export default function AdminPromotionsView() {
                   <div className="text-white-50 fs-8">
                     {online
                       ? <>Paid on Xendit · payment {request.provider_payment_id}</>
-                      : <>Reference {formatReference(request.reference_no)} · answered by {request.decider?.full_name || "a removed admin"}</>}
+                      : free
+                        ? <>The free Featured post a Premium member gets every 30 days</>
+                        : <>Answered by {request.decider?.full_name || "a removed admin"}</>}
                     {approved && request.starts_at && request.ends_at && <> · ran from {formatDay(request.starts_at)} to {formatDay(new Date(request.ends_at).getTime() - 1)}</>}
                   </div>
                   {!approved && request.reject_reason && <div className="fs-7 text-white-50 mt-1">Reason: {request.reject_reason}</div>}

@@ -660,8 +660,8 @@ export default function AdminOverviewView() {
           <div className="mb-3">
             <h2 className="h5 fw-bold text-white mb-0">Earnings</h2>
             <p className="text-secondary fs-7 mb-0">
-              Fees paid to PhilFreela (never the money between clients and freelancers).
-              {" "}Answer waiting payments in <Link to="/admin/promotions" className="text-white">Promotions</Link>.
+              Fees paid to PhilFreela on Xendit (never the money between clients and freelancers).
+              {" "}See each one in <Link to="/admin/promotions" className="text-white">Promotions</Link>.
             </p>
           </div>
 
