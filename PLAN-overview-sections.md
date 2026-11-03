@@ -2,9 +2,13 @@
 
 Status (2026-10-29): approved in chat ("ok"). Step 1 (the dropdown) is built, tested
 and pushed (ed01d72). Step 2 (the graphs) is built and tested, and its database
-function passed a rolled-back trial on the live database (20 checks). The function is
-NOT applied to the live database yet: that waits for the user's go. Until then the
-graph slot says "The graph isn't set up yet" and every number and bar below it works.
+function passed a rolled-back trial on the live database (20 checks). The function was
+APPLIED to the live database on 2026-11-03 (migration admin_activity_trends) after the
+user sent pictures of the "The graph isn't set up yet" message and said "apply it
+please". Checked after: function exists, security definer, anon/public cannot run it,
+authenticated can, a rolled-back admin call gives 7/30/90 days and totals equal to the
+real tables (6 bookings, 4 accepted, 5 projects, 3 done, 1 payment, 2 applications,
+1 hire, 0 earned), a non-admin is refused.
 
 The admin found the Overview too overwhelming: one long page with the growth
 graph, 11 number cards, Ratings, Top rated, Transactions, Job hiring and
