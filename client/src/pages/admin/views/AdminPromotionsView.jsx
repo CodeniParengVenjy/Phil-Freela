@@ -29,9 +29,9 @@ const personName = (person) => (person ? `${person.full_name} (@${person.usernam
 // Featured post or Premium pays PhilFreela's own GCash number and sends the
 // reference and a receipt; an admin checks PhilFreela's own GCash and approves or
 // rejects here. Any admin can answer; only a super admin changes the Settings
-// (PhilFreela's GCash number and QR, and the prices). See PLAN-monetization.md.
+// (PhilFreela's GCash number and name, and the prices). See PLAN-monetization.md.
 export default function AdminPromotionsView() {
-  const { adminId, isSuperAdmin, refreshPendingPromotions } = useOutletContext();
+  const { isSuperAdmin, refreshPendingPromotions } = useOutletContext();
   const [tab, setTab] = useState("waiting");
   // Each is null until it has loaded.
   const [waiting, setWaiting] = useState(null);
@@ -283,8 +283,6 @@ export default function AdminPromotionsView() {
                 <div key={request.id} className="admin-card rounded-4 p-3">
                   <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <span className={`badge fw-normal ${approved ? "bg-success" : "bg-danger"}`}>{online ? "Paid online" : approved ? "Approved" : "Rejected"}</span>
-                    {/* Paid with Xendit's test keys: pretend money, left out of Earnings. */}
-                    {online && request.test_mode && <span className="badge bg-warning text-dark fw-normal">TEST</span>}
                     <span className="badge bg-info text-dark fw-normal">{kind.label}</span>
                     <span className="fw-bold text-white">{formatPeso(request.amount)}</span>
                     <span className="text-white-50 fs-8 ms-auto">{new Date(request.decided_at).toLocaleString()}</span>
@@ -319,7 +317,6 @@ export default function AdminPromotionsView() {
           {gcash !== undefined && prices !== null && (
             <PromotionSettings
               isSuperAdmin={isSuperAdmin}
-              adminId={adminId}
               gcash={gcash}
               prices={prices}
               onGcashSaved={setGcash}

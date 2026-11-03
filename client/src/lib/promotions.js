@@ -1,5 +1,4 @@
 import { supabase } from "./supabaseClient";
-import { shrinkImage } from "./shrinkImage";
 
 // The admin side of the fees PhilFreela earns (PLAN-monetization.md,
 // database/supabase_promotions_schema.sql): a freelancer or client pays in the
@@ -100,52 +99,23 @@ export async function openPromoReceipt(path) {
 }
 
 // ---------------------------------------------------------------------------
-// PhilFreela's own GCash number and QR (a super admin sets them)
+// PhilFreela's own GCash number (a super admin sets it)
 // ---------------------------------------------------------------------------
-
-const QR_BUCKET = "promo-qr";
 
 // The one row, or null when it has not been set yet.
 export async function getSiteGcash() {
-  const { data, error } = await supabase.from("site_gcash").select("gcash_number, account_name, qr_path").maybeSingle();
+  const { data, error } = await supabase.from("site_gcash").select("gcash_number, account_name").maybeSingle();
   return error ? { error: "Failed to load PhilFreela's GCash details." } : { gcash: data };
 }
 
-// Redraws the QR as a plain JPEG (which also makes sure it really is a picture
-// and strips anything hidden in the file) and uploads it into the admin's own
-// folder. Returns { path } or { error }.
-export async function uploadSiteQr(adminId, file) {
-  let picture;
-  try {
-    picture = await shrinkImage(file, 1200);
-  } catch (error) {
-    return { error: error.message };
-  }
-  const path = `${adminId}/qr-${Date.now()}.jpg`;
-  const { error } = await supabase.storage.from(QR_BUCKET).upload(path, picture, { contentType: "image/jpeg" });
-  if (error) {
-    console.error("Uploading the PhilFreela QR failed:", error);
-    return { error: "Couldn't upload that picture. Please try again." };
-  }
-  return { path };
-}
-
-// If removing an old file fails it only leaves the file behind, so it is never an error.
-export const removeSiteQr = (path) => (path ? supabase.storage.from(QR_BUCKET).remove([path]) : null);
-
-export async function getSiteQrLink(path) {
-  if (!path) return null;
-  const { data, error } = await supabase.storage.from(QR_BUCKET).createSignedUrl(path, 60 * 60);
-  return error ? null : data?.signedUrl ?? null;
-}
-
-// Saves the number, the name and the QR path (the table has one row, id = true).
+// Saves the number and the name (the table has one row, id = true). The table still
+// has an old, unused qr_path column; leaving it out of the upsert leaves it alone.
 // Returns { gcash } or { error }.
-export async function saveSiteGcash({ number, name, qrPath }) {
+export async function saveSiteGcash({ number, name }) {
   const { data, error } = await supabase
     .from("site_gcash")
-    .upsert({ id: true, gcash_number: number, account_name: name, qr_path: qrPath }, { onConflict: "id" })
-    .select("gcash_number, account_name, qr_path")
+    .upsert({ id: true, gcash_number: number, account_name: name }, { onConflict: "id" })
+    .select("gcash_number, account_name")
     .single();
   if (error) {
     console.error("Saving the PhilFreela GCash details failed:", error);

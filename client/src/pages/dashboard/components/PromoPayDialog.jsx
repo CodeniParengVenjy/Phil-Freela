@@ -4,7 +4,7 @@ import CensoredText from "../../../components/CensoredText";
 import { checkReceiptFile, formatGcashNumber, formatPeso, isValidReference, normalizeReference } from "../../../lib/payments";
 import { onlinePaymentsReady, startFeatureCheckout } from "../../../lib/checkout";
 import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft, sendPromoRequest } from "../../../lib/featured";
-import { getSiteGcash, getSiteQrLink } from "../../../lib/promotions";
+import { getSiteGcash } from "../../../lib/promotions";
 import "../payments.css";
 
 // "Feature this post" (PLAN-monetization.md, Step 4, and PLAN-premium.md): the
@@ -24,7 +24,7 @@ import "../payments.css";
 //   onSent(): called after the request was saved.
 export default function PromoPayDialog({ target, userId, until, onClose, onSent }) {
   // undefined while loading, { error } when something could not be loaded,
-  // else { prices, gcash, qr, isPro, slots, online }.
+  // else { prices, gcash, isPro, slots, online }.
   const [info, setInfo] = useState(undefined);
   const [code, setCode] = useState("feature_7");
   const [reference, setReference] = useState("");
@@ -60,8 +60,7 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
         setInfo({ error: gcashResult.error });
         return;
       }
-      const qr = gcashResult.gcash?.qr_path ? await getSiteQrLink(gcashResult.gcash.qr_path) : null;
-      if (active) setInfo({ prices: priceResult.prices, gcash: gcashResult.gcash, qr, isPro, slots, online });
+      setInfo({ prices: priceResult.prices, gcash: gcashResult.gcash, isPro, slots, online });
     })();
     return () => {
       active = false;
@@ -267,7 +266,6 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
                   <i className={`bi ${copied ? "bi-check2" : "bi-clipboard"} me-1`}></i>{copied ? "Copied" : "Copy"}
                 </button>
               </div>
-              {info.qr && <img src={info.qr} alt="PhilFreela's GCash QR code" className="d-block mt-3 rounded-3 bg-white p-1" style={{ maxWidth: 180, width: "100%" }} />}
               <p className="text-secondary fs-8 mb-0 mt-2">This is PhilFreela's own GCash. It is the only one that gets Featured fees.</p>
             </div>
 

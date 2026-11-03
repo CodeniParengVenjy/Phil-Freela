@@ -388,7 +388,7 @@ export default function AdminBillboardView() {
                   <span className="fs-8 text-white-50">
                     <i className="bi bi-link-45deg me-1"></i>
                     {link?.status === "paid"
-                      ? `Paid online ${pesos(link.amount)} on ${formatDay(link.paid_at)}${link.test_mode ? " (test payment)" : ""}`
+                      ? `Paid online ${pesos(link.amount)} on ${formatDay(link.paid_at)}`
                       : link?.status === "open"
                         ? `Payment link for ${pesos(link.amount)}, not paid yet`
                         : link

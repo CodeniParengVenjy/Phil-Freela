@@ -107,7 +107,6 @@ export const paymentStatuses = {
 
 const RECEIPT_BUCKET = "receipts";
 const PICTURE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-export const MAX_QR_BYTES = 2 * 1024 * 1024;
 export const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
 
 // Checks a picked picture. Returns "" when it's fine, or a message to show.
@@ -118,9 +117,6 @@ function checkPicture(file, maxBytes, what) {
   return "";
 }
 
-// Not used for freelancers any more (they have no QR here). It stays because the
-// earning plan's Admin > Site page checks PhilFreela's own GCash QR with it.
-export const checkQrFile = (file) => checkPicture(file, MAX_QR_BYTES, "your QR picture");
 export const checkReceiptFile = (file) => checkPicture(file, MAX_RECEIPT_BYTES, "your receipt screenshot");
 
 // Redraws the picture as a plain JPEG (this also makes sure it really is a
