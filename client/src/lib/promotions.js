@@ -1,11 +1,11 @@
 import { supabase } from "./supabaseClient";
 
 // The admin side of the fees PhilFreela earns (PLAN-monetization.md,
-// database/supabase_promotions_schema.sql): a freelancer or client pays in the
-// GCash app to PhilFreela's own number and sends the reference and a receipt; an
-// admin checks PhilFreela's own GCash and approves or rejects. The browser can
-// only READ the requests; approving and rejecting go through database functions
-// that check who is asking.
+// database/supabase_promotions_schema.sql): fees are paid online on Xendit and
+// start by themselves. An old payment sent by hand (a reference and a receipt to
+// PhilFreela's own GCash, a way that was removed) can still be approved or rejected
+// by an admin. The browser can only READ the requests; approving and rejecting go
+// through database functions that check who is asking.
 
 // How a request is named on the page.
 export const PROMO_KINDS = {
@@ -96,32 +96,6 @@ export async function openPromoReceipt(path) {
   if (tab) tab.location.href = data.signedUrl;
   else window.location.href = data.signedUrl;
   return "";
-}
-
-// ---------------------------------------------------------------------------
-// PhilFreela's own GCash number (a super admin sets it)
-// ---------------------------------------------------------------------------
-
-// The one row, or null when it has not been set yet.
-export async function getSiteGcash() {
-  const { data, error } = await supabase.from("site_gcash").select("gcash_number, account_name").maybeSingle();
-  return error ? { error: "Failed to load PhilFreela's GCash details." } : { gcash: data };
-}
-
-// Saves the number and the name (the table has one row, id = true). The table still
-// has an old, unused qr_path column; leaving it out of the upsert leaves it alone.
-// Returns { gcash } or { error }.
-export async function saveSiteGcash({ number, name }) {
-  const { data, error } = await supabase
-    .from("site_gcash")
-    .upsert({ id: true, gcash_number: number, account_name: name }, { onConflict: "id" })
-    .select("gcash_number, account_name")
-    .single();
-  if (error) {
-    console.error("Saving the PhilFreela GCash details failed:", error);
-    return { error: "Couldn't save the GCash details. Please check them and try again." };
-  }
-  return { gcash: data };
 }
 
 // ---------------------------------------------------------------------------

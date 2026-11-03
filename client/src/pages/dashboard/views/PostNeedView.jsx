@@ -750,11 +750,6 @@ export default function PostNeedView() {
           userId={currentUserId}
           until={featured.until.get(postToFeature.id)}
           onClose={() => setPostToFeature(null)}
-          onSent={() => {
-            setPostToFeature(null);
-            featured.reload();
-            showToast("Payment sent. An admin will check it, and you'll get a notification.");
-          }}
         />
       )}
 

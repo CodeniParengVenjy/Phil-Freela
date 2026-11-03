@@ -1,39 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import CensoredText from "../../../components/CensoredText";
-import { checkReceiptFile, formatGcashNumber, formatPeso, isValidReference, normalizeReference } from "../../../lib/payments";
+import { formatPeso } from "../../../lib/payments";
 import { onlinePaymentsReady, startFeatureCheckout } from "../../../lib/checkout";
-import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft, sendPromoRequest } from "../../../lib/featured";
-import { getSiteGcash } from "../../../lib/promotions";
-import "../payments.css";
+import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft } from "../../../lib/featured";
 
 // "Feature this post" (PLAN-monetization.md, Step 4, and PLAN-premium.md): the
 // owner of an offer or an open job post pays for 3, 7 or 14 days in the
-// Featured row.
-//   Online (once the server can take it, lib/checkout.js): "Pay online" opens
-//   Xendit's page (GCash, Maya or QR Ph); the post is Featured as soon as Xendit
-//   confirms the payment, and Xendit sends the person back to this page.
-//   Until then, the GCash way: the person sees PhilFreela's own GCash and the
-//   exact amount, pays in the GCash app (the site is not part of that), then
-//   sends the 13-digit reference and the receipt screenshot, and an admin
-//   checks PhilFreela's GCash by hand and approves.
+// Featured row. "Pay online" opens Xendit's page (GCash, Maya or QR Ph); the post
+// is Featured as soon as Xendit confirms the payment, and Xendit sends the person
+// back to this page. When the server can't take online payments, the window only
+// says so (the old way of paying PhilFreela's own GCash by hand was removed).
 // The parent mounts it only while it is open, so every opening starts empty.
 //   target: { kind: "service" | "job", id, title }
 //   until:  the end date (ISO text) when the post is already Featured, else empty.
 //           Paying again adds the days after it and needs no new spot.
-//   onSent(): called after the request was saved.
-export default function PromoPayDialog({ target, userId, until, onClose, onSent }) {
+export default function PromoPayDialog({ target, userId, until, onClose }) {
   // undefined while loading, { error } when something could not be loaded,
-  // else { prices, gcash, isPro, slots, online }.
+  // else { prices, isPro, slots, online }.
   const [info, setInfo] = useState(undefined);
   const [code, setCode] = useState("feature_7");
-  const [reference, setReference] = useState("");
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -49,28 +37,12 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
         setInfo({ error: priceResult.error });
         return;
       }
-      if (online) {
-        setInfo({ prices: priceResult.prices, isPro, slots, online });
-        return;
-      }
-      // The GCash way needs PhilFreela's own number.
-      const gcashResult = await getSiteGcash();
-      if (!active) return;
-      if (gcashResult.error) {
-        setInfo({ error: gcashResult.error });
-        return;
-      }
-      setInfo({ prices: priceResult.prices, gcash: gcashResult.gcash, isPro, slots, online });
+      setInfo({ prices: priceResult.prices, isPro, slots, online });
     })();
     return () => {
       active = false;
     };
   }, [userId, target.kind]);
-
-  // Frees the temporary preview when it is replaced or the window closes.
-  useEffect(() => () => {
-    if (preview) URL.revokeObjectURL(preview);
-  }, [preview]);
 
   // Escape closes the window, unless it is sending.
   useEffect(() => {
@@ -86,31 +58,7 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
   const chosen = info?.prices?.find((option) => option.code === code);
   const amount = chosen ? priceOf(chosen) : null;
 
-  const copyNumber = async () => {
-    try {
-      await navigator.clipboard.writeText(info.gcash.gcash_number);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setError("Couldn't copy the number. Please type it in your GCash app.");
-    }
-  };
-
-  const handlePick = (event) => {
-    const picked = event.target.files?.[0];
-    event.target.value = ""; // so picking the same file again still works
-    if (!picked) return;
-    const problem = checkReceiptFile(picked);
-    if (problem) {
-      setError(problem);
-      return;
-    }
-    setError("");
-    setFile(picked);
-    setPreview(URL.createObjectURL(picked));
-  };
-
-  // Online: Xendit's own page. It sends the person back to this page when they are done.
+  // Xendit's own page. It sends the person back to this page when they are done.
   const payOnline = async () => {
     setSending(true);
     setError("");
@@ -123,44 +71,16 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
     setError(result.error);
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
     if (sending) return;
-    if (info?.online) {
-      payOnline();
-      return;
-    }
-    const cleanReference = normalizeReference(reference);
-    if (!isValidReference(cleanReference)) {
-      setError("The GCash reference number is 13 digits. You can copy it from your GCash receipt.");
-      return;
-    }
-    if (!file) {
-      setError("Attach your receipt screenshot to continue.");
-      return;
-    }
-
-    setSending(true);
-    setError("");
-    const result = await sendPromoRequest({
-      userId,
-      code,
-      target: target.kind === "service" ? { serviceId: target.id } : { jobId: target.id },
-      reference: cleanReference,
-      receiptFile: file
-    });
-    setSending(false);
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    onSent();
+    payOnline();
   };
 
   // Why the form is not shown (null = show it).
   let blocked = null;
   if (info?.error) blocked = info.error;
-  else if (info && !info.online && !info.gcash) blocked ="Payments for Featured posts are not open yet. Please try again later.";
+  else if (info && !info.online) blocked = "Payments for Featured posts are not open yet. Please try again later.";
   else if (info && info.slots === 0 && !until) blocked = "All 3 Featured spots are taken right now. Try again when one ends.";
 
   return createPortal(
@@ -232,89 +152,25 @@ export default function PromoPayDialog({ target, userId, until, onClose, onSent 
             </div>
             {info.isPro && <p className="text-success fs-8 mb-3"><i className="bi bi-gem me-1"></i>Premium price.</p>}
 
-            {info.online ? (
-              <>
-                <span className="form-label text-white-50 fw-semibold fs-7 d-block">2. Pay online</span>
-                <div className="p-3 rounded-3 bg-black bg-opacity-25 border border-secondary border-opacity-25 mb-3">
-                  <p className="mb-2 fs-7">
-                    You pay <strong className="text-warning fs-6">{formatPeso(amount)}</strong> on Xendit's secure page with GCash, Maya or QR Ph.
-                  </p>
-                  <p className="text-secondary fs-8 mb-0">
-                    Your post is Featured as soon as the payment goes through: no receipt and no waiting for an admin.
-                    PhilFreela never sees your payment details.
-                  </p>
-                </div>
-                {error && <p className="text-danger fs-7 mb-0" role="alert">{error}</p>}
-                <div className="d-flex gap-2 justify-content-end mt-3">
-                  <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 py-2 fw-bold" onClick={onClose} disabled={sending}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending || amount === null}>
-                    <i className="bi bi-lock-fill me-1"></i>{sending ? "Opening Xendit..." : `Pay ${formatPeso(amount)} online`}
-                  </button>
-                </div>
-              </>
-            ) : (
-            <>
-            <span className="form-label text-white-50 fw-semibold fs-7 d-block">2. Pay in your GCash app</span>
+            <span className="form-label text-white-50 fw-semibold fs-7 d-block">2. Pay online</span>
             <div className="p-3 rounded-3 bg-black bg-opacity-25 border border-secondary border-opacity-25 mb-3">
-              <p className="mb-2 fs-7">Send exactly <strong className="text-warning fs-6">{formatPeso(amount)}</strong> to PhilFreela:</p>
-              <p className="mb-1 text-break fw-semibold">{info.gcash.account_name}</p>
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <span className="pay-mono fs-5">{formatGcashNumber(info.gcash.gcash_number)}</span>
-                <button type="button" className="btn btn-outline-light btn-sm rounded-pill" onClick={copyNumber}>
-                  <i className={`bi ${copied ? "bi-check2" : "bi-clipboard"} me-1`}></i>{copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-              <p className="text-secondary fs-8 mb-0 mt-2">This is PhilFreela's own GCash. It is the only one that gets Featured fees.</p>
+              <p className="mb-2 fs-7">
+                You pay <strong className="text-warning fs-6">{formatPeso(amount)}</strong> on Xendit's secure page with GCash, Maya or QR Ph.
+              </p>
+              <p className="text-secondary fs-8 mb-0">
+                Your post is Featured as soon as the payment goes through: no receipt and no waiting for an admin.
+                PhilFreela never sees your payment details.
+              </p>
             </div>
-
-            <span className="form-label text-white-50 fw-semibold fs-7 d-block">3. Send us your receipt</span>
-            <label htmlFor="featureReference" className="form-label text-white-50 fw-semibold fs-8 mb-1">GCash reference no.</label>
-            <input
-              id="featureReference"
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              className="form-control bg-secondary bg-opacity-25 border-secondary text-white pay-mono mb-1"
-              placeholder="4021 358 091742"
-              value={reference}
-              onChange={(event) => setReference(event.target.value)}
-              maxLength={20}
-              disabled={sending}
-            />
-            <small className="text-secondary fs-8 d-block mb-3">13 digits, shown on your GCash receipt.</small>
-
-            <span className="form-label text-white-50 fw-semibold fs-8 d-block">Receipt screenshot (required)</span>
-            <div className="d-flex align-items-center gap-3 mb-1">
-              {preview && <img src={preview} alt="Your receipt screenshot" className="pay-receipt-thumb" />}
-              <div className="d-flex flex-column gap-1">
-                <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/webp" className="d-none" onChange={handlePick} />
-                <div>
-                  <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => fileInputRef.current?.click()} disabled={sending}>
-                    {file ? "Change screenshot" : "Add screenshot"}
-                  </button>
-                </div>
-                {file && <small className="text-white-50 fs-8 text-break">{file.name}</small>}
-              </div>
-            </div>
-            <small className="text-secondary fs-8 d-block mb-2">JPG, PNG or WebP, 5 MB at most. Only you and the PhilFreela admins can open it.</small>
-            {!file && <p className="text-warning fs-8 mb-2">Attach your receipt screenshot to continue.</p>}
-
-            <p className="text-secondary fs-8 mb-0">An admin checks PhilFreela's GCash by hand, then your post goes live. You'll get a notification either way.</p>
-
-            {error && <p className="text-danger fs-7 mt-3 mb-0" role="alert">{error}</p>}
-
+            {error && <p className="text-danger fs-7 mb-0" role="alert">{error}</p>}
             <div className="d-flex gap-2 justify-content-end mt-3">
               <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 py-2 fw-bold" onClick={onClose} disabled={sending}>
                 Cancel
               </button>
-              <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending || !file}>
-                {sending ? "Sending..." : "Send payment"}
+              <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending || amount === null}>
+                <i className="bi bi-lock-fill me-1"></i>{sending ? "Opening Xendit..." : `Pay ${formatPeso(amount)} online`}
               </button>
             </div>
-            </>
-            )}
           </>
         )}
       </form>

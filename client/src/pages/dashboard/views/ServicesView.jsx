@@ -475,11 +475,6 @@ export default function ServicesView() {
           userId={currentUserId}
           until={featured.until.get(serviceToFeature.id)}
           onClose={() => setServiceToFeature(null)}
-          onSent={() => {
-            setServiceToFeature(null);
-            featured.reload();
-            showToast("Payment sent. An admin will check it, and you'll get a notification.");
-          }}
         />
       )}
 

@@ -3,7 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { formatDay } from "../../../lib/billboards";
 import { formatPeso, formatReference } from "../../../lib/payments";
 import {
-  PROMO_KINDS, approveRequest, getAnsweredRequests, getPrices, getRunning, getSiteGcash,
+  PROMO_KINDS, approveRequest, getAnsweredRequests, getPrices, getRunning,
   getWaitingRequests, openPromoReceipt, rejectRequest
 } from "../../../lib/promotions";
 import PromotionRequestCard from "../components/PromotionRequestCard";
@@ -25,11 +25,11 @@ const formatUntil = (moment) =>
 
 const personName = (person) => (person ? `${person.full_name} (@${person.username})` : "a removed account");
 
-// Admin panel > Promotions: the fees people pay PhilFreela. Someone who wants a
-// Featured post or Premium pays PhilFreela's own GCash number and sends the
-// reference and a receipt; an admin checks PhilFreela's own GCash and approves or
-// rejects here. Any admin can answer; only a super admin changes the Settings
-// (PhilFreela's GCash number and name, and the prices). See PLAN-monetization.md.
+// Admin panel > Promotions: the fees people pay PhilFreela. Featured posts,
+// Community ads and Premium are paid online on Xendit and start by themselves, so
+// they show up in History. Waiting only holds an old payment sent by hand with a
+// reference and a receipt (that way was removed); any admin can still answer it.
+// Only a super admin changes the Settings (the prices). See PLAN-monetization.md.
 export default function AdminPromotionsView() {
   const { isSuperAdmin, refreshPendingPromotions } = useOutletContext();
   const [tab, setTab] = useState("waiting");
@@ -37,8 +37,6 @@ export default function AdminPromotionsView() {
   const [waiting, setWaiting] = useState(null);
   const [running, setRunning] = useState(null);
   const [answered, setAnswered] = useState(null);
-  // PhilFreela's GCash row: undefined while loading, null when not set yet.
-  const [gcash, setGcash] = useState(undefined);
   const [prices, setPrices] = useState(null);
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState({ text: "", type: "" });
@@ -47,15 +45,12 @@ export default function AdminPromotionsView() {
 
   const setError = (key, text) => setErrors((prev) => ({ ...prev, [key]: text }));
 
-  // PhilFreela's GCash details and the prices: needed for the warning banner and
-  // the Settings tab, so they load once, straight away.
+  // The prices are needed for the Settings tab, so they load once, straight away.
   useEffect(() => {
     let active = true;
     (async () => {
-      const [gcashResult, pricesResult] = await Promise.all([getSiteGcash(), getPrices()]);
+      const pricesResult = await getPrices();
       if (!active) return;
-      if (gcashResult.error) setError("settings", gcashResult.error);
-      else setGcash(gcashResult.gcash);
       if (pricesResult.error) setError("settings", pricesResult.error);
       else setPrices(pricesResult.prices);
     })();
@@ -143,7 +138,7 @@ export default function AdminPromotionsView() {
     <section>
       <h1 className="h4 fw-bold mb-1">Promotions</h1>
       <p className="text-white-50 fs-7 mb-3">
-        Fees people pay PhilFreela. A Featured post is paid to PhilFreela's own GCash with a reference and a receipt: check your GCash, then approve or reject. Premium is paid online on Xendit and starts by itself; it shows up in History.
+        Fees people pay PhilFreela. Featured posts, Community ads and Premium are paid online on Xendit and start by themselves; they show up in History.
       </p>
 
       <div className="d-flex flex-wrap gap-2 mb-3" role="tablist" aria-label="Promotions">
@@ -167,24 +162,12 @@ export default function AdminPromotionsView() {
       {/* ---- Waiting ---- */}
       {tab === "waiting" && (
         <>
-          {gcash === null && (
-            <div className="admin-card rounded-4 p-3 mb-3 d-flex align-items-start gap-3">
-              <span className="admin-stat-icon admin-stat-orange"><i className="bi bi-exclamation-triangle-fill"></i></span>
-              <div>
-                <div className="fw-bold text-white">PhilFreela's GCash number isn't set yet</div>
-                <div className="text-secondary fs-7">
-                  Nobody can pay a fee until a super admin sets it in the{" "}
-                  <button type="button" className="btn btn-link p-0 align-baseline text-white" onClick={() => setTab("settings")}>Settings</button> tab.
-                </div>
-              </div>
-            </div>
-          )}
           {errors.waiting && <div className="admin-card rounded-4 p-4 text-center text-white-50">{errors.waiting}</div>}
           {!errors.waiting && waiting === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the payments...</div>}
           {!errors.waiting && waiting?.length === 0 && (
             <div className="admin-card rounded-4 p-4 text-center text-white-50">
               <i className="bi bi-cash-coin fs-1 d-block mb-2"></i>
-              Nothing is waiting. New payments appear here.
+              Nothing is waiting.
             </div>
           )}
           <div className="d-flex flex-column gap-3">
@@ -313,13 +296,11 @@ export default function AdminPromotionsView() {
       {tab === "settings" && (
         <>
           {errors.settings && <div className="admin-card rounded-4 p-4 text-center text-white-50">{errors.settings}</div>}
-          {!errors.settings && (gcash === undefined || prices === null) && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the settings...</div>}
-          {gcash !== undefined && prices !== null && (
+          {!errors.settings && prices === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the settings...</div>}
+          {prices !== null && (
             <PromotionSettings
               isSuperAdmin={isSuperAdmin}
-              gcash={gcash}
               prices={prices}
-              onGcashSaved={setGcash}
               onPriceSaved={(saved) => setPrices((prev) => prev.map((option) => (option.code === saved.code ? saved : option)))}
             />
           )}

@@ -144,10 +144,7 @@ function TermsOfService() {
           <strong className="text-white">Featured post:</strong> the owner of an offer or an open job post can pay to show it in a
           separate row marked "Featured" at the top of Browse Services or Find Jobs, for 3, 7 or 14 days. It is paid on the
           checkout page of Xendit, a payment company, with GCash, Maya or QR Ph, and it goes up by itself once Xendit
-          confirms the payment. When online payment is not open, it is paid in your own GCash app to PhilFreela's GCash
-          number shown on the page, and you send the reference number and a receipt screenshot. Then an admin checks
-          PhilFreela's GCash and approves it, or rejects it with a reason; you are told either way. If a payment you really
-          sent is rejected, send it again with the right details, or ask an admin to return it.
+          confirms the payment. When online payment is not open, a Featured post cannot be bought until it is.
         </li>
         <li>
           <strong className="text-white">Premium (clients and freelancers):</strong> 30 days of a Premium badge by your name,
