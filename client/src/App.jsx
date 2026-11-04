@@ -8,6 +8,7 @@ import VerifyPhone from "./pages/verify-phone/VerifyPhone";
 import AppealPage from "./pages/appeal/AppealPage";
 import ArchivedPage from "./pages/archived/ArchivedPage";
 import TermsAndPrivacy from "./pages/legal/TermsAndPrivacy";
+import Security from "./pages/legal/Security";
 import DashboardLayout from "./pages/dashboard/layouts/DashboardLayout";
 import DashboardFreelancerRoute from "./pages/dashboard/layouts/DashboardFreelancerRoute";
 import DashboardClientRoute from "./pages/dashboard/layouts/DashboardClientRoute";
@@ -79,6 +80,7 @@ function App() {
       {/* One page for both; /privacy opens it scrolled to the Privacy Policy part. */}
       <Route path="/terms" element={<TermsAndPrivacy />} />
       <Route path="/privacy" element={<TermsAndPrivacy />} />
+      <Route path="/security" element={<Security />} />
       <Route path="/dashboard-freelancer" element={<DashboardFreelancerRoute />}>
         <Route index element={<FreelancerFYPView />} />
       </Route>

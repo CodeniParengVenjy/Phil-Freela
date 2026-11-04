@@ -4,10 +4,6 @@ import { supabase } from "../../lib/supabaseClient";
 import { resolvePostAuthRoute } from "../../lib/profile";
 import "./homepage.css";
 
-// Cross-page links below point at the old PHP site's relative paths, since those
-// pages (dashboard, etc.) haven't been migrated to React yet.
-const LEGACY = "/pages";
-
 export default function Homepage() {
   // Where the logo goes: "/" for visitors, or the signed-in user's own
   // dashboard (freelancer, client, or admin) so they never land back here.
@@ -31,6 +27,11 @@ export default function Homepage() {
     return () => { active = false; };
   }, []);
 
+  // Links that open "the app": a signed-in person goes to their own dashboard,
+  // a visitor to the sign-in page (every dashboard page needs an account). These
+  // are plain links, not router links, so the next page opens at its top.
+  const dashboardHref = logoHref === "/" ? "/login" : logoHref;
+
   return (
     <div className="bg-dark text-light">
       <nav className="navbar navbar-expand-lg sticky-top border-bottom border-secondary border-opacity-25" id="mainNavbar">
@@ -47,7 +48,7 @@ export default function Homepage() {
           <div className="d-none d-lg-flex align-items-center gap-5">
             <Link to="/login?mode=signup&role=freelancer" className="nav-link text-white hover-orange font-weight-600">Join as Freelancer</Link>
             <Link to="/login?mode=signup&role=client" className="nav-link text-white hover-orange font-weight-600">Become a Client</Link>
-            <a href={`${LEGACY}/dashboard/index.html?tab=services`} className="nav-link text-white hover-orange font-weight-600">Services</a>
+            <a href={dashboardHref} className="nav-link text-white hover-orange font-weight-600">Services</a>
             <Link to="/login" className="btn btn-gradient-orange px-4 py-2 rounded-pill fw-bold text-white shadow-glow">Sign In</Link>
           </div>
         </div>
@@ -78,8 +79,8 @@ export default function Homepage() {
           <div className="d-flex flex-column gap-3">
             <Link to="/login?mode=signup&role=freelancer" className="mobile-nav-item"><i className="bi bi-person-workspace"></i> Join as Freelancer</Link>
             <Link to="/login?mode=signup&role=client" className="mobile-nav-item"><i className="bi bi-briefcase"></i> Become a Client</Link>
-            <a href={`${LEGACY}/dashboard/index.html?tab=services`} className="mobile-nav-item"><i className="bi bi-grid"></i> Services</a>
-            <a href={`${LEGACY}/dashboard/index.html`} className="mobile-nav-item"><i className="bi bi-speedometer2"></i> Dashboard</a>
+            <a href={dashboardHref} className="mobile-nav-item"><i className="bi bi-grid"></i> Services</a>
+            <a href={dashboardHref} className="mobile-nav-item"><i className="bi bi-speedometer2"></i> Dashboard</a>
           </div>
           <div className="pt-4 border-top border-secondary border-opacity-25">
             <Link to="/login" className="btn btn-gradient-orange w-100 py-3 rounded-3 fw-bold text-white shadow-glow text-center d-block text-decoration-none">Sign In to PhilFreela</Link>
@@ -176,7 +177,7 @@ export default function Homepage() {
 
           <div className="row g-4">
             <div className="col-6 col-lg-3">
-              <a href={`${LEGACY}/dashboard/index.html?tab=services&category=video-editing`} className="category-tile glass-card rounded-4 p-4 h-100 border border-secondary border-opacity-25 hover-lift d-flex flex-column align-items-center text-center text-decoration-none" style={{ animationDelay: "0s" }}>
+              <a href={dashboardHref} className="category-tile glass-card rounded-4 p-4 h-100 border border-secondary border-opacity-25 hover-lift d-flex flex-column align-items-center text-center text-decoration-none" style={{ animationDelay: "0s" }}>
                 <div className="category-icon orange mb-3">
                   <i className="bi bi-camera-reels-fill fs-4"></i>
                 </div>
@@ -185,7 +186,7 @@ export default function Homepage() {
             </div>
 
             <div className="col-6 col-lg-3">
-              <a href={`${LEGACY}/dashboard/index.html?tab=services&category=graphic-design`} className="category-tile glass-card rounded-4 p-4 h-100 border border-secondary border-opacity-25 hover-lift d-flex flex-column align-items-center text-center text-decoration-none" style={{ animationDelay: "0.1s" }}>
+              <a href={dashboardHref} className="category-tile glass-card rounded-4 p-4 h-100 border border-secondary border-opacity-25 hover-lift d-flex flex-column align-items-center text-center text-decoration-none" style={{ animationDelay: "0.1s" }}>
                 <div className="category-icon cyan mb-3">
                   <i className="bi bi-palette-fill fs-4"></i>
                 </div>
@@ -194,7 +195,7 @@ export default function Homepage() {
             </div>
 
             <div className="col-6 col-lg-3">
-              <a href={`${LEGACY}/dashboard/index.html?tab=services&category=web-development`} className="category-tile glass-card rounded-4 p-4 h-100 border border-secondary border-opacity-25 hover-lift d-flex flex-column align-items-center text-center text-decoration-none" style={{ animationDelay: "0.2s" }}>
+              <a href={dashboardHref} className="category-tile glass-card rounded-4 p-4 h-100 border border-secondary border-opacity-25 hover-lift d-flex flex-column align-items-center text-center text-decoration-none" style={{ animationDelay: "0.2s" }}>
                 <div className="category-icon amber mb-3">
                   <i className="bi bi-code-slash fs-4"></i>
                 </div>
@@ -203,7 +204,7 @@ export default function Homepage() {
             </div>
 
             <div className="col-6 col-lg-3">
-              <a href={`${LEGACY}/dashboard/index.html?tab=services&category=copywriting`} className="category-tile glass-card rounded-4 p-4 h-100 border border-secondary border-opacity-25 hover-lift d-flex flex-column align-items-center text-center text-decoration-none" style={{ animationDelay: "0.3s" }}>
+              <a href={dashboardHref} className="category-tile glass-card rounded-4 p-4 h-100 border border-secondary border-opacity-25 hover-lift d-flex flex-column align-items-center text-center text-decoration-none" style={{ animationDelay: "0.3s" }}>
                 <div className="category-icon emerald mb-3">
                   <i className="bi bi-pencil-fill fs-4"></i>
                 </div>
@@ -227,20 +228,18 @@ export default function Homepage() {
             <div className="col-6 col-lg-3">
               <h6 className="text-white fw-bold mb-3">For Freelancers</h6>
               <ul className="list-unstyled d-flex flex-column gap-2 fs-7 text-secondary">
-                <li><a href={`${LEGACY}/dashboard/index.html?tab=services`} className="text-secondary text-decoration-none hover-orange">Find Projects</a></li>
-                <li><a href={`${LEGACY}/dashboard/index.html?tab=services`} className="text-secondary text-decoration-none hover-orange">Create Service</a></li>
-                <li><a href={`${LEGACY}/dashboard/index.html?tab=profile`} className="text-secondary text-decoration-none hover-orange">Portfolio Builder</a></li>
-                <li><a href="#" className="text-secondary text-decoration-none hover-orange">Freelance Guide</a></li>
+                <li><a href="/dashboard/find-jobs" className="text-secondary text-decoration-none hover-orange">Find Projects</a></li>
+                <li><a href="/dashboard/services" className="text-secondary text-decoration-none hover-orange">Create Service</a></li>
+                <li><a href="/dashboard/profile" className="text-secondary text-decoration-none hover-orange">Portfolio Builder</a></li>
               </ul>
             </div>
 
             <div className="col-6 col-lg-3">
               <h6 className="text-white fw-bold mb-3">For Clients</h6>
               <ul className="list-unstyled d-flex flex-column gap-2 fs-7 text-secondary">
-                <li><a href={`${LEGACY}/dashboard/index.html?tab=messages`} className="text-secondary text-decoration-none hover-orange">Post a Job</a></li>
-                <li><a href={`${LEGACY}/dashboard/index.html?tab=messages`} className="text-secondary text-decoration-none hover-orange">Browse Talents</a></li>
-                <li><a href={`${LEGACY}/dashboard/index.html?tab=projects`} className="text-secondary text-decoration-none hover-orange">Manage Projects</a></li>
-                <li><a href="#" className="text-secondary text-decoration-none hover-orange">Enterprise</a></li>
+                <li><a href="/dashboard/post-need" className="text-secondary text-decoration-none hover-orange">Post a Job</a></li>
+                <li><a href={dashboardHref} className="text-secondary text-decoration-none hover-orange">Browse Talents</a></li>
+                <li><a href="/dashboard/projects" className="text-secondary text-decoration-none hover-orange">Manage Projects</a></li>
               </ul>
             </div>
           </div>
@@ -250,7 +249,7 @@ export default function Homepage() {
             <div className="d-flex gap-4">
               <Link to="/terms" className="text-secondary text-decoration-none hover-orange">Terms of Service</Link>
               <Link to="/privacy" className="text-secondary text-decoration-none hover-orange">Privacy Policy</Link>
-              <a href="#" className="text-secondary text-decoration-none hover-orange">Security</a>
+              <Link to="/security" className="text-secondary text-decoration-none hover-orange">Security</Link>
             </div>
           </div>
         </div>
