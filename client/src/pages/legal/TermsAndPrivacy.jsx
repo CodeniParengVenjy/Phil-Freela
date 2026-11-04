@@ -17,7 +17,7 @@ export default function TermsAndPrivacy() {
   }, [pathname]);
 
   return (
-    <LegalLayout title="Terms of Service and Privacy Policy" updated="October 2026">
+    <LegalLayout title="Terms of Service and Privacy Policy" updated="November 2026">
       <div className="d-flex flex-wrap gap-4 fs-7">
         <a href="#terms-of-service" className="hover-orange text-decoration-none"><i className="bi bi-arrow-down-circle me-1"></i> Part 1: Terms of Service</a>
         <a href="#privacy-policy" className="hover-orange text-decoration-none"><i className="bi bi-arrow-down-circle me-1"></i> Part 2: Privacy Policy</a>
@@ -248,10 +248,9 @@ function PrivacyPolicy() {
           two people sends it with a report.
         </li>
         <li>
-          Fees you pay PhilFreela: for a Featured post paid in GCash, the amount, the GCash reference number and the receipt
-          screenshot (only you and PhilFreela's admins can open the receipt); for Premium, a Featured post or an ad paid on
-          Xendit, the amount, when you paid, and Xendit's payment number. The GCash, Maya or QR Ph details you use on
-          Xendit are typed on Xendit's own page, and PhilFreela never sees them.
+          Fees you pay PhilFreela: for Premium, a Featured post or an ad, which are all paid on Xendit, the amount, when
+          you paid, and Xendit's payment number. The GCash, Maya or QR Ph details you use on Xendit are typed on
+          Xendit's own page, and PhilFreela never sees them.
         </li>
         <li>
           Ads you send for the Community Billboard: the headline, the message and the picture, who the ad is meant for,
@@ -281,8 +280,8 @@ function PrivacyPolicy() {
       <h5 className="text-white fw-bold mt-4 mb-2">Consent and transparency</h5>
       <p className="text-secondary">
         Creating an account means you've agreed to this policy and to the Terms of Service in Part 1. Identity verification is
-        optional for clients and only required of freelancers before they can post a service, and you're shown exactly
-        what's being captured (your ID and a few seconds of face scan) before you submit anything.
+        required before a freelancer can post a service and before a client can post a project or a job, and you're
+        shown exactly what's being captured (your ID and a few seconds of face scan) before you submit anything.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Data minimization</h5>
