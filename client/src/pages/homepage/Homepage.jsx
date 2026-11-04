@@ -217,20 +217,14 @@ export default function Homepage() {
       <footer className="border-top border-secondary border-opacity-25 bg-black py-5">
         <div className="container">
           <div className="row g-4 mb-4">
-            <div className="col-lg-4">
+            <div className="col-lg-6">
               <img src="/logo-philfreela.svg" alt="PhilFreela" style={{ height: 42 }} className="mb-3" />
               <p className="text-secondary fs-7">
                 PhilFreela is the leading freelance platform designed specifically to empower Filipino digital creators, freelancers, and businesses worldwide.
               </p>
-              <div className="d-flex gap-3 text-secondary fs-5">
-                <a href="#" className="text-secondary hover-orange"><i className="bi bi-facebook"></i></a>
-                <a href="#" className="text-secondary hover-orange"><i className="bi bi-twitter-x"></i></a>
-                <a href="#" className="text-secondary hover-orange"><i className="bi bi-linkedin"></i></a>
-                <a href="#" className="text-secondary hover-orange"><i className="bi bi-instagram"></i></a>
-              </div>
             </div>
 
-            <div className="col-6 col-lg-2">
+            <div className="col-6 col-lg-3">
               <h6 className="text-white fw-bold mb-3">For Freelancers</h6>
               <ul className="list-unstyled d-flex flex-column gap-2 fs-7 text-secondary">
                 <li><a href={`${LEGACY}/dashboard/index.html?tab=services`} className="text-secondary text-decoration-none hover-orange">Find Projects</a></li>
@@ -240,7 +234,7 @@ export default function Homepage() {
               </ul>
             </div>
 
-            <div className="col-6 col-lg-2">
+            <div className="col-6 col-lg-3">
               <h6 className="text-white fw-bold mb-3">For Clients</h6>
               <ul className="list-unstyled d-flex flex-column gap-2 fs-7 text-secondary">
                 <li><a href={`${LEGACY}/dashboard/index.html?tab=messages`} className="text-secondary text-decoration-none hover-orange">Post a Job</a></li>
@@ -248,15 +242,6 @@ export default function Homepage() {
                 <li><a href={`${LEGACY}/dashboard/index.html?tab=projects`} className="text-secondary text-decoration-none hover-orange">Manage Projects</a></li>
                 <li><a href="#" className="text-secondary text-decoration-none hover-orange">Enterprise</a></li>
               </ul>
-            </div>
-
-            <div className="col-lg-4">
-              <h6 className="text-white fw-bold mb-3">Stay Connected</h6>
-              <p className="text-secondary fs-7">Subscribe to receive top job alerts &amp; freelance tips.</p>
-              <div className="input-group">
-                <input type="email" className="form-control bg-dark border-secondary border-opacity-50 text-white placeholder-muted fs-7" placeholder="Enter your email" />
-                <button className="btn btn-gradient-orange px-3 text-white fw-bold fs-7">Subscribe</button>
-              </div>
             </div>
           </div>
 
