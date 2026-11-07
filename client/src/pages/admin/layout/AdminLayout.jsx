@@ -5,6 +5,7 @@ import { fetchMyLink, switchToOtherAccount } from "../../../lib/accountSwitch";
 import { getPendingAdCount } from "../../../lib/adminMemberAds";
 import AdminCreatePassword from "../components/AdminCreatePassword";
 import { PageLoader } from "../../../components/Loaders";
+import PageTransition from "../../../components/PageTransition";
 import "../admin.css";
 
 const ADMIN_COLUMNS = "id, full_name, username, role, must_change_password";
@@ -403,11 +404,15 @@ export default function AdminLayout() {
             </aside>
           </div>
 
-          <main className="col-12 col-md-9 col-xl-10">
-            {/* isAdmin tells the shared user pages (Browse Services / Jobs)
-                to show admin buttons instead of user ones. */}
-            <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingMemberAds, refreshPendingApprovals }} />
-          </main>
+          {/* The page area: when another admin page opens, the band sweeps across it
+              (components/PageTransition.jsx) while the top bar and the menu stay still. */}
+          <PageTransition>
+            <main className="col-12 col-md-9 col-xl-10">
+              {/* isAdmin tells the shared user pages (Browse Services / Jobs)
+                  to show admin buttons instead of user ones. */}
+              <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingMemberAds, refreshPendingApprovals }} />
+            </main>
+          </PageTransition>
         </div>
       </div>
     </div>

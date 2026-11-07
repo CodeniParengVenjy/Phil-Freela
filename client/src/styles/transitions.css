@@ -1,0 +1,128 @@
+/* ──────────────────────────────────────
+   PhilFreela – Page transitions (components/PageTransition.jsx)
+   ──────────────────────────────────────
+   The user picked "Accent Wipe" (PLAN-opening-transitions.md): when another
+   page opens, a band in the person's accent color sweeps across and uncovers
+   the new page.
+
+   The browser takes a picture of the old page and one of the new page (React's
+   <ViewTransition> gives the pair the class "pf-wipe"). These rules move them:
+   the old picture is cut away from the left, the new one is uncovered a moment
+   later, and the band is the colored layer behind both pictures, seen in the
+   gap between them. Everything outside the page area (the top bar, the side
+   menu) is not in a picture, so it stays still. The browser's Back and
+   Forward buttons switch at once: React handles them outside a transition. */
+
+:root {
+  /* The band's colors. PageTransition.jsx copies the real ones from <body>
+     right before each page change (and the colors behind the pages, below);
+     these are only the first-time fallback. */
+  --pf-wipe-a: #ff6b00;
+  --pf-wipe-b: #ff8800;
+}
+
+/* Clicks go through to the new page while the band sweeps, so the side menu
+   works again at once. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* The rest of the screen shows its new state at once (no fade). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* The band: the layer behind both pictures. A two-color gradient picked in
+   Settings > Appearance fills it too. */
+::view-transition-image-pair(.pf-wipe) {
+  background: var(--pf-wipe-gradient, linear-gradient(100deg, var(--pf-wipe-b), var(--pf-wipe-a) 55%, var(--pf-wipe-b)));
+}
+
+/* The pair takes the new page's size at once. (Growing or shrinking from the
+   old size would show the band below a shorter new page.) The old picture
+   keeps its own size until it is swept away. */
+::view-transition-group(.pf-wipe) {
+  animation: none;
+}
+
+/* The browser normally adds the two pictures together for its own cross-fade;
+   here they never overlap, so they are drawn normally. */
+::view-transition-old(.pf-wipe),
+::view-transition-new(.pf-wipe) {
+  mix-blend-mode: normal;
+  animation-duration: 0.52s;
+  animation-timing-function: cubic-bezier(0.7, 0, 0.25, 1);
+  animation-fill-mode: both;
+}
+
+::view-transition-old(.pf-wipe) {
+  animation-name: pf-wipe-old;
+}
+
+/* Each picture is drawn on the color that is behind it on the page, so a page
+   with a see-through background (the admin panel's, the soft glow at the top
+   of the dashboard) still hides the band behind it. */
+::view-transition-old(pf-page),
+::view-transition-new(pf-page) {
+  background-color: var(--pf-page-ground, transparent);
+}
+
+::view-transition-old(pf-screen),
+::view-transition-new(pf-screen) {
+  background-color: var(--pf-screen-ground, transparent);
+}
+
+/* The new page follows 0.11 s behind: that gap is the band. */
+::view-transition-new(.pf-wipe) {
+  animation-name: pf-wipe-new;
+  animation-delay: 0.11s;
+}
+
+/* The edge leans like a brush stroke: 8% further along at the top. Each shape
+   has four corners so the browser can move between them smoothly. */
+@keyframes pf-wipe-old {
+  from { clip-path: polygon(-2% 0, 110% 0, 110% 100%, -10% 100%); }
+  to { clip-path: polygon(112% 0, 110% 0, 110% 100%, 104% 100%); }
+}
+
+@keyframes pf-wipe-new {
+  from { clip-path: polygon(0 0, -2% 0, -10% 100%, 0 100%); }
+  to { clip-path: polygon(0 0, 112% 0, 104% 100%, 0 100%); }
+}
+
+/* The admin panel's page scrolls under its sticky top bar. The top bar gets a
+   picture of its own, drawn above the sweeping page, so the page never covers it. */
+.admin-topbar {
+  view-transition-name: pf-admin-top;
+}
+
+/* During the opening tour (WelcomeGuide.jsx, whose note has #tourTitle) the
+   page switches at once, so the tour's outline stays on the part it points at. */
+:root:has(#tourTitle)::view-transition-old(.pf-wipe),
+:root:has(#tourTitle)::view-transition-new(.pf-wipe) {
+  animation: none;
+}
+
+/* Phones and computers set to reduce motion: a short plain fade, no band. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-image-pair(.pf-wipe) {
+    background: none;
+  }
+
+  ::view-transition-old(.pf-wipe) {
+    animation: pf-wipe-fade-out 0.18s ease both;
+  }
+
+  ::view-transition-new(.pf-wipe) {
+    animation: pf-wipe-fade-in 0.18s ease both;
+  }
+}
+
+@keyframes pf-wipe-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes pf-wipe-fade-in {
+  from { opacity: 0; }
+}

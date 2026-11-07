@@ -8,6 +8,7 @@ import GetStartedCard from "../components/GetStartedCard";
 import WelcomeBanner from "../components/WelcomeBanner";
 import Avatar from "../../../components/Avatar";
 import ProBadge from "../../../components/ProBadge";
+import PageTransition from "../../../components/PageTransition";
 import { useProStatus } from "../../../lib/pro";
 import "../dashboard.css";
 import "../theme.css";
@@ -103,30 +104,34 @@ export default function FreelancerDashboardLayout({
         {/* Only shows on phones while the menu is open; tapping it closes the menu. */}
         <div className="sidebar-backdrop" onClick={closeSidebar} aria-hidden="true"></div>
 
-        <main className="content-wrapper flex-grow-1 p-3 p-md-4">
-          <SuspensionBanner suspension={suspension} />
+        {/* The page area: when another page opens, the band sweeps across it
+            (components/PageTransition.jsx) while the top bar and the menu stay still. */}
+        <PageTransition>
+          <main className="content-wrapper flex-grow-1 p-3 p-md-4">
+            <SuspensionBanner suspension={suspension} />
 
-          {/* "Welcome, Name", plus their job name ("a skillful Video Editor") from their
-              services and hires. No buttons: this page is already the list of jobs, and
-              the sidebar has My Services and Project. */}
-          {isDashboardHome && <WelcomeBanner displayName={displayName} userId={currentUserId} />}
+            {/* "Welcome, Name", plus their job name ("a skillful Video Editor") from their
+                services and hires. No buttons: this page is already the list of jobs, and
+                the sidebar has My Services and Project. */}
+            {isDashboardHome && <WelcomeBanner displayName={displayName} userId={currentUserId} />}
 
-          {/* The checklist for a new account: what to do first (hides itself when done). */}
-          {isDashboardHome && <GetStartedCard userId={currentUserId} accountType={accountType} />}
+            {/* The checklist for a new account: what to do first (hides itself when done). */}
+            {isDashboardHome && <GetStartedCard userId={currentUserId} accountType={accountType} />}
 
-          {/* What an admin posted for this user (admin panel > Billboard) and the ads members
-              paid for (Community Billboard). On a wide screen they sit side by side, 60% and
-              40% (dashboard.css, .dashboard-boards); each one hides itself when it has nothing
-              to show, and the other then takes the full width. */}
-          {isDashboardHome && (
-            <div className="dashboard-boards">
-              <DashboardBillboard />
-              <DashboardMemberAds />
-            </div>
-          )}
+            {/* What an admin posted for this user (admin panel > Billboard) and the ads members
+                paid for (Community Billboard). On a wide screen they sit side by side, 60% and
+                40% (dashboard.css, .dashboard-boards); each one hides itself when it has nothing
+                to show, and the other then takes the full width. */}
+            {isDashboardHome && (
+              <div className="dashboard-boards">
+                <DashboardBillboard />
+                <DashboardMemberAds />
+              </div>
+            )}
 
-          <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, refreshPendingBookings, suspension, isPro, refreshPro: pro.reload }} />
-        </main>
+            <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, refreshPendingBookings, suspension, isPro, refreshPro: pro.reload }} />
+          </main>
+        </PageTransition>
       </div>
 
       <DashboardOverlays preview={preview} onClosePreview={closePreview} toast={toast} onCloseToast={closeToast} roleConfirm={roleConfirm} onResolveRoleConfirm={resolveRoleConfirm} nameMissing={nameMissing} userId={currentUserId} accountType={accountType} onNameSaved={handleNameSaved} onSignOut={handleSignOut} />

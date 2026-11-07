@@ -8,6 +8,22 @@ import { countUnreadNotifications } from "../../../lib/notifications";
 import { hangUp, listenForCalls } from "../../../lib/calls";
 import { startPresenceHeartbeat } from "../../../lib/presence";
 
+// The signed-in person as last loaded in this browser tab. The dashboard home
+// (/dashboard-freelancer, /dashboard-client) and the other dashboard pages are
+// separate routes, so moving between them builds a fresh frame and runs this
+// hook again. Starting from these values instead of empty ones shows that frame
+// at once, with the right name, picture and role, instead of the loading screen
+// and "User"; it also gives the page wipe (styles/transitions.css) the real page
+// to uncover. The checks below still run every time and replace these values.
+// Forgotten when the person signs out or is sent to another page.
+let lastShell = null;
+// Whether the side menu was closed, so a fresh frame keeps the menu as it was.
+let menuClosed = true;
+function forgetShell() {
+  lastShell = null;
+  menuClosed = true;
+}
+
 // Everything the freelancer and client dashboard shells have in common:
 // the signed-in session (and redirect-to-login guard), the sidebar
 // collapse/theme body classes, and the toast/preview/chat/sign-out
@@ -17,18 +33,19 @@ import { startPresenceHeartbeat } from "../../../lib/presence";
 export function useDashboardShell() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [displayName, setDisplayName] = useState("User");
+  const [displayName, setDisplayName] = useState(() => lastShell?.displayName ?? "User");
   // null until the session loads -- defaulting this to either role caused a
   // visible flash of the wrong dashboard when navigating between the
   // separate /dashboard, /dashboard-freelancer, and /dashboard-client route
-  // trees, each of which mounts its own fresh instance of this hook.
-  const [accountType, setAccountType] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState(null);
+  // trees, each of which mounts its own fresh instance of this hook. (The role
+  // this tab already knows is used at once when there is one: see lastShell.)
+  const [accountType, setAccountType] = useState(() => lastShell?.accountType ?? null);
+  const [currentUserId, setCurrentUserId] = useState(() => lastShell?.currentUserId ?? null);
   // The signed-in user's @username (shown faintly over their own portfolio slides).
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(() => lastShell?.username ?? "");
   // Where the signed-in user's profile picture is in the avatars bucket
   // ("" = no picture). Settings updates it after an upload.
-  const [avatarPath, setAvatarPath] = useState("");
+  const [avatarPath, setAvatarPath] = useState(() => lastShell?.avatarPath ?? "");
   // Number on the chat icon in the top bar: messages not read yet.
   const [unreadCount, setUnreadCount] = useState(0);
   // Number on the bell in the top bar: announcements and the user's own
@@ -36,10 +53,10 @@ export function useDashboardShell() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   // The user's suspension while it's in effect (null = none). Pages use it
   // to disable posting / messaging; the layouts show a banner.
-  const [suspension, setSuspension] = useState(null);
+  const [suspension, setSuspension] = useState(() => lastShell?.suspension ?? null);
   // True while the profile has no name (people who signed up before names were
   // required): MissingNameDialog asks for one over every page.
-  const [nameMissing, setNameMissing] = useState(false);
+  const [nameMissing, setNameMissing] = useState(() => lastShell?.nameMissing ?? false);
   const [toast, setToast] = useState({ message: "", visible: false });
   const [preview, setPreview] = useState({ src: "", title: "", visible: false });
   const [roleConfirm, setRoleConfirm] = useState({ visible: false, nextType: null });
@@ -60,8 +77,12 @@ export function useDashboardShell() {
     // directly, so those classes belong on the real <body>, not a wrapper div.
     // Sidebar starts collapsed so the menu is closed right after logging in;
     // the hamburger button (toggleSidebar) opens it.
-    document.body.classList.add("fixed-layout", "sidebar-collapsed");
+    // A fresh frame (after moving between the dashboard home and another page)
+    // keeps the menu as the person left it (menuClosed, top of this file).
+    document.body.classList.add("fixed-layout");
+    document.body.classList.toggle("sidebar-collapsed", menuClosed);
     return () => {
+      if (lastShell) menuClosed = document.body.classList.contains("sidebar-collapsed");
       document.body.classList.remove("fixed-layout", "sidebar-collapsed", "sidebar-open");
     };
   }, []);
@@ -110,13 +131,17 @@ export function useDashboardShell() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!active) return;
       if (!session) {
+        forgetShell();
         navigate("/login", { replace: true });
         return;
       }
       const meta = session.user.user_metadata || {};
       // A quick first value while the profile loads; the saved name from
-      // profiles (below) replaces it.
-      setDisplayName(meta.full_name || meta.username || session.user.email || "User");
+      // profiles (below) replaces it. Not needed when this tab already knows
+      // the person (lastShell): their saved name is already showing.
+      if (lastShell?.currentUserId !== session.user.id) {
+        setDisplayName(meta.full_name || meta.username || session.user.email || "User");
+      }
       setCurrentUserId(session.user.id);
 
       // profiles.account_type is the source of truth (it's what RLS checks
@@ -133,6 +158,7 @@ export function useDashboardShell() {
       // Signed in but no profile yet (e.g. a first Google sign-in): the
       // dashboard can't work without one, so finish the account first.
       if (!profileError && !profile) {
+        forgetShell();
         navigate("/complete-profile", { replace: true });
         return;
       }
@@ -142,6 +168,7 @@ export function useDashboardShell() {
       const archive = await getMyArchive(session.user.id);
       if (!active) return;
       if (archive) {
+        forgetShell();
         navigate("/archived", { replace: true });
         return;
       }
@@ -152,6 +179,7 @@ export function useDashboardShell() {
       const activeSuspension = await getActiveSuspension(session.user.id);
       if (!active) return;
       if (activeSuspension && !activeSuspension.ends_at) {
+        forgetShell();
         navigate("/appeal", { replace: true });
         return;
       }
@@ -172,6 +200,7 @@ export function useDashboardShell() {
       if (session) return;
       // Signed out: the next person on this browser starts with the usual look.
       forgetAppearance();
+      forgetShell();
       navigate("/login", { replace: true });
     });
 
@@ -180,6 +209,12 @@ export function useDashboardShell() {
       subscription.subscription.unsubscribe();
     };
   }, [navigate]);
+
+  // Keeps lastShell up to date, also after a change in Settings (name, picture).
+  useEffect(() => {
+    if (accountType === null || !currentUserId) return;
+    lastShell = { currentUserId, accountType, displayName, username, avatarPath, suspension, nameMissing };
+  }, [currentUserId, accountType, displayName, username, avatarPath, suspension, nameMissing]);
 
   // Real unread count (replaces the old hardcoded Inbox badge), refreshed on
   // load and whenever any message the RLS lets this user see gets inserted.
@@ -374,6 +409,7 @@ export function useDashboardShell() {
     event.preventDefault();
     await hangUp(undefined, "signed_out"); // a call in progress ends with the session
     await supabase.auth.signOut();
+    forgetShell();
     navigate("/login", { replace: true });
   }, [navigate]);
 
@@ -410,6 +446,8 @@ export function useDashboardShell() {
       return;
     }
 
+    // The fresh frame of the other dashboard starts with the new role.
+    if (lastShell) lastShell = { ...lastShell, accountType: nextType };
     navigate(nextType === "client" ? "/dashboard-client" : "/dashboard-freelancer", { replace: true });
   }, [accountType, currentUserId, navigate, showToast, requestRoleConfirm]);
 
