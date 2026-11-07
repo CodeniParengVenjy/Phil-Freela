@@ -2,13 +2,19 @@ import { useState } from "react";
 
 const DISMISSED_KEY = "philfreela-desktop-notice-dismissed";
 
-// True when a phone is showing the desktop version of the site: it has a
-// touch screen and a small screen (600px or less), yet the page is laid out
-// 768px or wider. Chrome does this when "Desktop site" is ticked; the text then
-// looks tiny and the phone layout never appears.
+// True when a phone is showing the desktop version of the site. Chrome does
+// this when "Desktop site" is ticked: it lays the page out at desktop width and
+// draws it shrunk to fit the screen, so the text looks tiny and the phone
+// layout never appears. The shrinking is the sure sign (the browser's zoom is
+// below 1 when the page opens): a tablet or a phone in its normal layout draws
+// the page at full size. (The old test went by screen size, so a small tablet
+// held sideways, 600px tall, got this bar wrongly; 2026-11-07.)
 function phoneShowingDesktopSize() {
-  const smallScreen = Math.min(window.screen.width, window.screen.height) <= 600;
-  return navigator.maxTouchPoints > 0 && smallScreen && window.innerWidth >= 768;
+  if (!(navigator.maxTouchPoints > 0) || window.innerWidth < 768) return false;
+  const zoom = window.visualViewport?.scale;
+  if (typeof zoom === "number") return zoom < 0.9;
+  // A browser without visualViewport: the old screen-size test.
+  return Math.min(window.screen.width, window.screen.height) <= 600;
 }
 
 function alreadyDismissed() {

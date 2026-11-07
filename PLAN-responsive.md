@@ -39,7 +39,13 @@ Good: no page scrolls sideways at any size; computers look fine.
    screens, a frame pinned to the screen's edges that can't be scrolled, a menu
    that scrolls by itself. DONE (see below).
 2. The wrong "Desktop site" bar (`DesktopSiteNotice.jsx`): only when the page is
-   really shrunk on a phone, not by screen size.
+   really shrunk on a phone, not by screen size. DONE: touch, laid out 768px or
+   wider, and `visualViewport.scale` below 0.9 when the page opens (the old
+   screen-size test is kept only for browsers without visualViewport). Tested: no
+   bar on tablets 1024x600, 960x600, 800x1280, 1250x780, a phone in its normal
+   layout or a laptop; the bar on a phone showing the page 980px wide and shrunk
+   (the viewport tag removed, as Chrome's Desktop site does), its text enlarged,
+   Got it hides it for the tab; 17 checks.
 3. Finger-sized buttons and readable text (`dashboard.css` only): on touch
    screens buttons at least 40px (icons 44px); smallest text 12px. Computers look
    the same.
