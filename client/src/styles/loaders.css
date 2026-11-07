@@ -448,9 +448,15 @@
   animation: pf-spin 16s linear infinite reverse;
 }
 
+/* The same drawing box as the top bar's logo (800 x 520), so the two match
+   when the logo flies into the top bar (styles/transitions.css). The words sit
+   left of the box's middle, so the box moves right and down a little to center
+   them in the rings (same size and place as before). */
 .pf-splash-logo {
   position: relative;
-  width: 136px;
+  left: 29px;
+  top: 5px;
+  width: 170px;
   height: auto;
   overflow: visible;
   animation: pf-float 3.2s ease-in-out infinite;

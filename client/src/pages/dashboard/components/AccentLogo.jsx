@@ -10,8 +10,9 @@
 //
 // The loading splash (components/Loaders.jsx) uses it too, with "shine": a
 // light glides across the letters every few seconds. The splash also gives
-// "Freela" the page's text color (accent-logo-freela, styles/loaders.css) and
-// a viewBox that puts the words in the middle.
+// "Freela" the page's text color (accent-logo-freela, styles/loaders.css). It
+// keeps this same drawing box (loaders.css centers the words), so its logo
+// can fly into the top bar's when the page is ready (styles/transitions.css).
 const FONT = "Brush Script MT, Segoe Script, Lucida Handwriting, cursive";
 
 export default function AccentLogo({ className = "", shine = false, viewBox = "0 0 800 520" }) {

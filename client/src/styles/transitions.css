@@ -104,6 +104,43 @@
   animation: none;
 }
 
+/* ---- The sign-in opening ----
+   When the dashboard or the admin panel has finished loading, the loading
+   splash fades away, its logo flies into the top bar, and the page rises in.
+   The splash's logo and the top bar's logo share the name "pf-logo"
+   (FlyingLogo in components/Loaders.jsx), so the browser moves one into the
+   other; z-index keeps the flying logo above everything else. The page's rise
+   is a plain animation on the page area, for a second after a fresh load
+   (body.pf-arriving, set in useDashboardShell.js and AdminLayout.jsx): React
+   doesn't play an "enter" for a part that sits inside new page elements. */
+::view-transition-group(pf-logo) {
+  z-index: 2;
+  animation-duration: 0.7s;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.25, 1);
+}
+
+::view-transition-old(pf-logo),
+::view-transition-new(pf-logo) {
+  animation-duration: 0.7s;
+}
+
+::view-transition-old(.pf-splash-out) {
+  animation: pf-splash-out 0.55s ease both;
+}
+
+body.pf-arriving .content-wrapper,
+body.pf-arriving .admin-shell main {
+  animation: pf-page-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+@keyframes pf-splash-out {
+  to { opacity: 0; }
+}
+
+@keyframes pf-page-in {
+  from { opacity: 0; transform: translateY(18px); }
+}
+
 /* Phones and computers set to reduce motion: a short plain fade, no band. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-image-pair(.pf-wipe) {
@@ -116,6 +153,20 @@
 
   ::view-transition-new(.pf-wipe) {
     animation: pf-wipe-fade-in 0.18s ease both;
+  }
+
+  /* The sign-in opening: no flight, the logo and the page just fade. */
+  ::view-transition-group(pf-logo) {
+    animation: none;
+  }
+
+  ::view-transition-old(.pf-splash-out) {
+    animation-duration: 0.2s;
+  }
+
+  body.pf-arriving .content-wrapper,
+  body.pf-arriving .admin-shell main {
+    animation: pf-wipe-fade-in 0.2s ease both;
   }
 }
 

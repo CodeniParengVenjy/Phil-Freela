@@ -40,21 +40,20 @@ function sectionOf(pathname) {
 // The old and the new page carry the same name, so the browser treats them as
 // one pair ("share") and transitions.css plays the wipe on that pair (its class
 // is "pf-wipe"). Nothing plays when only something inside the page changes
-// (update), or when the part comes or goes with no partner (enter, exit),
-// unless a layout asks for an "enter".
-function Wipe({ name, pageKey, enter, children }) {
+// (update), or when the part comes or goes with no partner (enter, exit).
+function Wipe({ name, pageKey, children }) {
   return (
-    <ViewTransition key={pageKey} name={name} share="pf-wipe" enter={enter} exit="none" update="none">
+    <ViewTransition key={pageKey} name={name} share="pf-wipe" enter="none" exit="none" update="none">
       {children}
     </ViewTransition>
   );
 }
 
 // A layout's page area (it wraps the <main> that holds the page).
-export default function PageTransition({ enter = "none", children }) {
+export default function PageTransition({ children }) {
   const { pathname } = useLocation();
   return (
-    <Wipe name="pf-page" pageKey={pageKeyOf(pathname)} enter={enter}>
+    <Wipe name="pf-page" pageKey={pageKeyOf(pathname)}>
       {children}
     </Wipe>
   );
@@ -110,7 +109,7 @@ export function ScreenTransition({ children }) {
   }, []);
 
   return (
-    <Wipe name="pf-screen" pageKey={sectionOf(location.pathname)} enter="none">
+    <Wipe name="pf-screen" pageKey={sectionOf(location.pathname)}>
       {children}
     </Wipe>
   );

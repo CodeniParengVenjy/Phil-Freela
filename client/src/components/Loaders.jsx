@@ -14,6 +14,7 @@
 //
 // The words can be written with or without "..." at the end: the dots are
 // taken off and three hopping dots are drawn instead.
+import { ViewTransition } from "react";
 import AccentLogo from "../pages/dashboard/components/AccentLogo";
 
 // "Saving..." becomes "Saving".
@@ -103,25 +104,45 @@ export function MessageText({ message }) {
 // checks who is signed in: the logo with a light gliding over it, two rings
 // around it and a bar. Only its background shows for the first quarter of a
 // second, so a fast load looks the same as before (loaders.css).
+//
+// When the page is ready, the "sign-in opening" plays (styles/transitions.css):
+// the splash fades away (its exit, "pf-splash-out") while its logo flies into
+// the top bar (FlyingLogo below).
 export function PageLoader({ label = "Getting your dashboard ready" }) {
   return (
-    <div className="pf-splash" role="status">
-      <span className="pf-splash-blob pf-splash-blob-a" aria-hidden="true"></span>
-      <span className="pf-splash-blob pf-splash-blob-b" aria-hidden="true"></span>
-      <div className="pf-splash-inner">
-        <div className="pf-splash-mark" aria-hidden="true">
-          <span className="pf-splash-halo"></span>
-          <span className="pf-splash-glow"><span className="pf-ring"></span></span>
-          <span className="pf-splash-dash"></span>
-          <AccentLogo className="pf-splash-logo" shine viewBox="-56 0 640 470" />
+    <ViewTransition exit="pf-splash-out" enter="none" update="none">
+      <div className="pf-splash" role="status">
+        <span className="pf-splash-blob pf-splash-blob-a" aria-hidden="true"></span>
+        <span className="pf-splash-blob pf-splash-blob-b" aria-hidden="true"></span>
+        <div className="pf-splash-inner">
+          <div className="pf-splash-mark" aria-hidden="true">
+            <span className="pf-splash-halo"></span>
+            <span className="pf-splash-glow"><span className="pf-ring"></span></span>
+            <span className="pf-splash-dash"></span>
+            <FlyingLogo>
+              <AccentLogo className="pf-splash-logo" shine />
+            </FlyingLogo>
+          </div>
+          <div className="pf-splash-bar" aria-hidden="true"><span></span></div>
+          <p className="pf-text">
+            <span className="pf-label">{withoutDots(label)}</span>
+            <Dots />
+          </p>
         </div>
-        <div className="pf-splash-bar" aria-hidden="true"><span></span></div>
-        <p className="pf-text">
-          <span className="pf-label">{withoutDots(label)}</span>
-          <Dots />
-        </p>
       </div>
-    </div>
+    </ViewTransition>
+  );
+}
+
+// The logo that flies from the splash into the top bar. The splash's logo and
+// the top bar's logo (dashboard and admin panel) are both wrapped in this: the
+// shared name "pf-logo" makes the browser move one into the other when the
+// splash makes way for the page. Nothing plays at any other time.
+export function FlyingLogo({ children }) {
+  return (
+    <ViewTransition name="pf-logo" share="pf-logo-fly" enter="none" exit="none" update="none">
+      {children}
+    </ViewTransition>
   );
 }
 

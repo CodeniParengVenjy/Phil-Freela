@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { fetchMyLink, switchToOtherAccount } from "../../../lib/accountSwitch";
 import { getPendingAdCount } from "../../../lib/adminMemberAds";
 import AdminCreatePassword from "../components/AdminCreatePassword";
-import { PageLoader } from "../../../components/Loaders";
+import { FlyingLogo, PageLoader } from "../../../components/Loaders";
 import PageTransition from "../../../components/PageTransition";
 import "../admin.css";
 
@@ -199,7 +199,12 @@ export default function AdminLayout() {
         return;
       }
 
-      setAdmin(adminRow);
+      // In a React transition, so the switch from the loading splash plays the
+      // sign-in opening (its logo flies into the top bar, styles/transitions.css),
+      // and the page area rises in meanwhile (body.pf-arriving).
+      document.body.classList.add("pf-arriving");
+      window.setTimeout(() => document.body.classList.remove("pf-arriving"), 1200);
+      startTransition(() => setAdmin(adminRow));
       // Nothing to count yet for an admin who still has to choose a password.
       if (!adminRow.must_change_password) {
         refreshPendingReports();
@@ -377,7 +382,10 @@ export default function AdminLayout() {
             }
           }}
           className="d-flex align-items-center gap-2 text-light text-decoration-none">
-          <img src="/logo-philfreela.svg" alt="PhilFreela" style={{ height: 28 }} />
+          {/* Where the loading splash's logo lands (components/Loaders.jsx). */}
+          <FlyingLogo>
+            <img src="/logo-philfreela.svg" alt="PhilFreela" style={{ height: 28 }} />
+          </FlyingLogo>
           <span className="fw-bold">Admin Panel</span>
         </Link>
         <div className="d-flex align-items-center gap-3">

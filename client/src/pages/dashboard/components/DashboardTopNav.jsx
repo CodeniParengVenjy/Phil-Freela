@@ -8,6 +8,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import ProBadge from "../../../components/ProBadge";
 import Avatar from "../../../components/Avatar";
 import AccentLogo from "./AccentLogo";
+import { FlyingLogo } from "../../../components/Loaders";
 import PictureSearchDialog from "./PictureSearchDialog";
 import SwitchToAdminDialog from "./SwitchToAdminDialog";
 import TopNavNotifications from "./TopNavNotifications";
@@ -132,7 +133,10 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
             <i className="bi bi-list fs-2 topbar-burger"></i>
           </button>
           <NavLink to={homeHref} onClick={handleLogoClick} className="navbar-brand d-flex align-items-center gap-2 m-0">
-            <AccentLogo className="logo-img" />
+            {/* Where the loading splash's logo lands (components/Loaders.jsx). */}
+            <FlyingLogo>
+              <AccentLogo className="logo-img" />
+            </FlyingLogo>
           </NavLink>
         </div>
 

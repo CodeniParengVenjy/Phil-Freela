@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getMyArchive } from "../../../lib/archives";
@@ -183,17 +183,28 @@ export function useDashboardShell() {
         navigate("/appeal", { replace: true });
         return;
       }
-      setSuspension(activeSuspension);
+      // A fresh load (the splash showed, nothing remembered yet): the page area
+      // rises in while the splash fades (body.pf-arriving, styles/transitions.css).
+      if (!lastShell) {
+        document.body.classList.add("pf-arriving");
+        window.setTimeout(() => document.body.classList.remove("pf-arriving"), 1200);
+      }
+      // In a React transition, so the switch from the loading splash to the
+      // dashboard plays the sign-in opening (the splash's logo flies into the
+      // top bar, styles/transitions.css).
+      startTransition(() => {
+        setSuspension(activeSuspension);
 
-      // Client is the default role: only an explicit "freelancer" record
-      // switches the dashboard to the freelancer view.
-      setAccountType(profile?.account_type === "freelancer" ? "freelancer" : "client");
-      setUsername(profile?.username || "");
-      // profiles.full_name is the name saved in Settings, so a changed name
-      // stays after a refresh. The username is the fallback if it's empty.
-      setDisplayName(profile?.full_name || profile?.username || meta.full_name || session.user.email || "User");
-      setAvatarPath(profile?.avatar_path || "");
-      setNameMissing(!!profile && !(profile.full_name || "").trim());
+        // Client is the default role: only an explicit "freelancer" record
+        // switches the dashboard to the freelancer view.
+        setAccountType(profile?.account_type === "freelancer" ? "freelancer" : "client");
+        setUsername(profile?.username || "");
+        // profiles.full_name is the name saved in Settings, so a changed name
+        // stays after a refresh. The username is the fallback if it's empty.
+        setDisplayName(profile?.full_name || profile?.username || meta.full_name || session.user.email || "User");
+        setAvatarPath(profile?.avatar_path || "");
+        setNameMissing(!!profile && !(profile.full_name || "").trim());
+      });
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {

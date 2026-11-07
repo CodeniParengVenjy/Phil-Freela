@@ -1,4 +1,4 @@
-# Opening animation and page transitions (plan, picked A + 4 on 2026-11-07)
+# Opening animation and page transitions (picked A + 4 on 2026-11-07, all 3 steps done)
 
 The user asked (2026-11-07): "can you do the animation fade in and fade out
 transitions and opening of the philfreela? plan it first some animation 100x
@@ -114,7 +114,14 @@ Page transition (the top bar and side menu stay still in all four):
    - `client/index.html`: a plain #090a0f screen from the very first moment,
      removed when the code starts, so the opening doesn't begin after a grey
      flash.
-3. The sign-in opening
+3. The sign-in opening. DONE, with these details:
+   - The splash logo now uses the same drawing box as the top bar's logo
+     (800 x 520; `loaders.css` moves it so it sits exactly where it was), so
+     the two match while it flies. `FlyingLogo` (in `Loaders.jsx`) wraps both
+     the splash logo and the top bar logos (dashboard and admin panel).
+   - React doesn't play an "enter" for a part that sits inside newly added page
+     elements, so the page's rise is a plain one-second animation on the page
+     area after a fresh load (`body.pf-arriving`).
    - `DashboardFreelancerRoute.jsx`, `DashboardClientRoute.jsx`: show the
      loading splash until the account is known, like `/dashboard/...` pages
      already do (no more "User" for a moment).
