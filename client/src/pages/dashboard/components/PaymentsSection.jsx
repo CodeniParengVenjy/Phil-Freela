@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { priceText } from "../../../lib/projectPrice";
 import {
@@ -19,10 +19,18 @@ const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium"
 //  - freelancer: the list, with Confirm received / Not received on a payment
 //    that is waiting for their answer
 // Props: project (a row from getProject), iAmClient, currentUserId, otherName,
-// otherId, showToast, openChat, and onReport(payment) (the Report link on a
-// payment answered "Not received"; left out = no link).
-export default function PaymentsSection({ project, iAmClient, currentUserId, otherName, otherId, showToast, openChat, onReport }) {
+// otherId, showToast, openChat, onReport(payment) (the Report link on a
+// payment answered "Not received"; left out = no link), and onPaymentsChange(list)
+// (optional: told each time the list is read, so the project page can unlock the
+// sent work as soon as a payment is confirmed).
+export default function PaymentsSection({ project, iAmClient, currentUserId, otherName, otherId, showToast, openChat, onReport, onPaymentsChange }) {
   const projectId = project.id;
+  // The latest onPaymentsChange, read by the list loader below without
+  // starting the live subscription again every time the page draws.
+  const onPaymentsChangeRef = useRef(onPaymentsChange);
+  useEffect(() => {
+    onPaymentsChangeRef.current = onPaymentsChange;
+  });
   // undefined while loading, then the list (newest first).
   const [payments, setPayments] = useState(undefined);
   const [paymentsError, setPaymentsError] = useState("");
@@ -53,6 +61,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
       }
       setPaymentsError("");
       setPayments(data);
+      onPaymentsChangeRef.current?.(data);
     };
     load();
     const stop = watchProjectPayments(projectId, load);

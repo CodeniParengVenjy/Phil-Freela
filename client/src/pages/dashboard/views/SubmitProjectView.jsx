@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { MAX_SUBMISSION_MESSAGE_LENGTH, getProject, submitProject } from "../../../lib/projects";
+import { MAX_SUBMISSION_MESSAGE_LENGTH, canPreview, getProject, personName, submitProject } from "../../../lib/projects";
+import { makeDeliverablePreview } from "../../../lib/aiService";
 import CensoredText from "../../../components/CensoredText";
 
 // "Attach your files" (screen 6), at /dashboard/submit-project/:projectId.
 // The freelancer sends the finished work: a file, a link, or both, plus an
 // optional message. This turns the project to Submitted and notifies the
 // client (see submit_project in database/supabase_projects_schema.sql).
+// Pay to unlock (PLAN-transaction-tracking.md, Step F): a file stays locked
+// until the freelancer confirms a payment on the project; until then the client
+// sees only the watermarked preview made here right after sending.
 export default function SubmitProjectView() {
   const { projectId } = useParams();
   const { currentUserId, showToast } = useOutletContext();
@@ -18,6 +22,8 @@ export default function SubmitProjectView() {
   const [message, setMessage] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // True while the AI service makes the client's watermarked preview.
+  const [makingPreview, setMakingPreview] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -38,12 +44,27 @@ export default function SubmitProjectView() {
     if (submitting) return;
     setSubmitting(true);
     const { error } = await submitProject(currentUserId, projectId, file, link, message);
-    setSubmitting(false);
     if (error) {
+      setSubmitting(false);
       showToast(error);
       return;
     }
-    showToast("Your work was sent! The client will review it.");
+    const clientName = personName(project.client, "The client");
+    if (file && canPreview(file.name) && !project.unlocked_at) {
+      // The work is sent; now the preview the client sees until they pay. If it
+      // fails, the work stays sent and the project page offers "Make the preview".
+      setMakingPreview(true);
+      try {
+        await makeDeliverablePreview(projectId);
+        showToast(`Your work was sent! ${clientName} sees a watermarked preview until you confirm their payment.`);
+      } catch {
+        showToast("Your work was sent, but the watermarked preview isn't ready yet. Open the project and press Make the preview.");
+      }
+    } else if (file && !project.unlocked_at) {
+      showToast(`Your work was sent! ${clientName} can open the file once you confirm their payment.`);
+    } else {
+      showToast("Your work was sent! The client will review it.");
+    }
     navigate(`/dashboard/project-details/${projectId}`);
   };
 
@@ -140,9 +161,20 @@ export default function SubmitProjectView() {
             <small className="text-secondary fs-8">{message.length}/{MAX_SUBMISSION_MESSAGE_LENGTH}</small>
           </div>
 
+          {/* Pay to unlock: what the client gets before and after paying. */}
+          <div className="p-3 rounded-3 border border-secondary border-opacity-25 bg-dark bg-opacity-50 d-flex gap-2 align-items-start" data-lock-note>
+            <i className="bi bi-lock-fill text-warning fs-5 flex-shrink-0"></i>
+            <p className="text-white-50 fs-7 mb-0">
+              {project.unlocked_at
+                ? `${personName(project.client, "The client")} already paid on this project, so they can open and download your file right away.`
+                : `Your file stays locked until ${personName(project.client, "the client")} pays and you confirm the payment. Until then they see only a watermarked preview and can't download it: a video's first 3 minutes, a photo, or a PDF's first 3 pages. ZIP and BLEND files can't be previewed, so they see only the file name. A link you paste is shown to them as it is.`}
+            </p>
+          </div>
+
           <div className="text-center pt-2">
             <button type="submit" className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow" disabled={submitting}>
-              <i className="bi bi-upload me-2"></i>{submitting ? "Uploading..." : "Upload Project Deliverable"}
+              <i className="bi bi-upload me-2"></i>
+              {makingPreview ? "Making the watermarked preview..." : submitting ? "Uploading..." : "Upload Project Deliverable"}
             </button>
           </div>
         </form>

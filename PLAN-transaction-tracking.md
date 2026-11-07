@@ -2,7 +2,8 @@
 
 Saved 2026-10-25 after the user's ideas on top of the GCash payments (see
 `PLAN-gcash-payments.md`, all 7 steps built). Step A is built and live (2026-10-25);
-B to H are not. To continue
+Step F (pay to unlock, F1 to F3 in one go) is built (2026-11-07, see its result
+below); B to E, G and H are not. To continue
 in a new Claude session, say: "Read PLAN-transaction-tracking.md and continue
 from the current step." Each step gets the user's OK before code.
 
@@ -248,7 +249,47 @@ Note for the other session: both sessions rebuild `user_notifications_type_check
 from a copy of the list; whoever applies last must start from the live list (now 26
 kinds, including price_proposed and price_agreed).
 
+## Step F result (2026-11-07): pay to unlock (DONE, F1 to F3 together)
+
+Why it came before B to E: the user sent a picture of a client watching a sent
+video with the player's Download menu and said "if the person is not paid yet, it
+must have water marks, and it is not downloadable". A short plan (database, AI
+service, website) was approved with "ok ok".
+
+- Database (`database/supabase_deliverable_lock_schema.sql`, test
+  `database/test_deliverable_lock.sql`, 22 checks): `projects.files_locked`,
+  `preview_path`, `unlocked_at`; a private bucket `deliverable-previews` with a read
+  rule for the project's two people and NO upload rule (only the AI service writes
+  there); the `deliverables` read rule now lets the client open the original only
+  when the work is not locked or the project is unlocked; `submit_project` locks
+  every file sent and clears the old preview; a trigger on `payments`
+  (`unlock_project_files`) sets `unlocked_at` when any payment on the project becomes
+  confirmed. The files sent before (5 on live, none paid) were locked too (the
+  user's choice) and got their previews made once with the service's own code.
+- AI service (`ai-service/deliverable_preview.py`, test
+  `ai-service/test_deliverable_preview.py`, 32 checks, two lines in `main.py`):
+  `POST /deliverables/preview {project_id}`, the project's freelancer only; video
+  at most 720p and the first 3 minutes with sound (FFmpeg overlay of one tiled
+  "PREVIEW · @username" picture, ultrafast, at most 1 Mbit/s), a picture at 1200 px,
+  a PDF's first 3 pages as one picture; saved as `<original name>-preview.mp4|jpg`;
+  asking again returns the same one. Differs from the plan: 3 minutes instead of 5,
+  because a hard 1080p video took 20 s per minute on one thread (about one Vercel
+  CPU), and 5 minutes could come close to Vercel's 300 seconds.
+- Website: `SubmitProjectView.jsx` (the lock note; the preview is made right after
+  sending), `ProjectDetailsView.jsx` (client before paying: notice + preview player
+  with no Download, picture-in-picture, cast or right-click, Locked badge instead of
+  View; freelancer: note + "Make the preview" when missing; the page reads the
+  project every 15 s while a preview is missing and again when a payment is
+  confirmed), `PaymentsSection.jsx` (optional `onPaymentsChange`), `lib/projects.js`,
+  `lib/aiService.js`; Terms "Who pays first" and the Security page say it.
+- Limits to say in the defense: a screenshot or a screen recording of the preview
+  can't be stopped (that is why the text covers the whole picture); a pasted link is
+  shown as it is; ZIP and Blender files show only their name; a dishonest
+  freelancer who never confirms keeps the file locked (the client's remedy is a
+  report, as before).
+
 ## Current step
 
-Step A is done. Next: Step B (request payment from a project only; the amount comes
-from the database), which needs its own detailed plan and the user's OK first.
+Steps A and F are done. Next: Step B (request payment from a project only; the
+amount comes from the database), which needs its own detailed plan and the user's OK
+first.

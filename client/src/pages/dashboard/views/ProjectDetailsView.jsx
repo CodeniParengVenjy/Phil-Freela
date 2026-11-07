@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import {
-  deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getProject, getRatingOfMe, isBlenderFile, markProjectDone,
-  openDeliverable, personName, projectStatuses, ratingDeadline, ratingStep, requestProjectChanges, todayInManila
+  canPreview, deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getPreviewLink, getProject, getRatingOfMe, isBlenderFile,
+  isLocked, markProjectDone, openDeliverable, personName, projectStatuses, ratingDeadline, ratingStep, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
+import { makeDeliverablePreview } from "../../../lib/aiService";
 import { profilePath } from "../../../lib/profileStats";
 import { hasRatedOffer } from "../../../lib/serviceReviews";
 import Avatar from "../../../components/Avatar";
@@ -85,23 +86,68 @@ export default function ProjectDetailsView() {
   // A submitted video or photo is shown right on the page ("video" /
   // "image"); other files ("file": PDF, ZIP, Blender) only get the View button.
   const submissionPath = project?.submission_path;
-  const mediaKind = deliverableKind(submissionPath);
+  // Pay to unlock (PLAN-transaction-tracking.md, Step F): until a payment on
+  // the project is confirmed, the client sees the watermarked preview (a video,
+  // or a picture; a PDF's preview is a picture of its first pages) with no
+  // download, never the original. The database refuses them the original anyway.
+  const previewOnly = isLocked(project) && project?.client_id === currentUserId;
+  // The file the player or picture shows: the preview, or the original.
+  const shownPath = previewOnly ? project?.preview_path : submissionPath;
+  const mediaKind = deliverableKind(shownPath);
   // The private link the player or photo uses, kept with the file it is for:
   // { path, link }, where link is null when it couldn't be made.
   const [media, setMedia] = useState(null);
   // The file the browser couldn't play or show (e.g. some .mov videos).
   const [failedPath, setFailedPath] = useState(null);
+  // True while the freelancer's "Make the preview" is working.
+  const [makingPreview, setMakingPreview] = useState(false);
 
   useEffect(() => {
-    if (!submissionPath || mediaKind === "file") return undefined;
+    if (!shownPath || mediaKind === "file") return undefined;
     let active = true;
-    getDeliverableLink(submissionPath).then((link) => {
-      if (active) setMedia({ path: submissionPath, link });
+    (previewOnly ? getPreviewLink : getDeliverableLink)(shownPath).then((link) => {
+      if (active) setMedia({ path: shownPath, link });
     });
     return () => {
       active = false;
     };
-  }, [submissionPath, mediaKind]);
+  }, [shownPath, mediaKind, previewOnly]);
+
+  // The preview is still being made (or making it failed): read the project
+  // again every 15 seconds until it is there.
+  const waitingForPreview = isLocked(project) && canPreview(submissionPath) && !project?.preview_path;
+  useEffect(() => {
+    if (!waitingForPreview) return undefined;
+    const timer = setInterval(() => {
+      getProject(projectId).then((data) => {
+        if (data) setProject(data);
+      });
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [waitingForPreview, projectId]);
+
+  // The freelancer asks for the preview again (it failed, or wasn't made).
+  const handleMakePreview = async () => {
+    setMakingPreview(true);
+    try {
+      await makeDeliverablePreview(project.id);
+      await reloadProject();
+      showToast(`The watermarked preview is ready. ${personName(project.client, "The client")} can watch it now.`);
+    } catch (error) {
+      showToast(error.message);
+    }
+    setMakingPreview(false);
+  };
+
+  // A payment on this project was just confirmed (live, or by the freelancer
+  // here): the database has unlocked the work, so read the project again.
+  const handlePaymentsChange = (list) => {
+    if (isLocked(project) && list.some((payment) => payment.status === "confirmed")) reloadProject();
+  };
+
+  const scrollToPayments = () => {
+    document.getElementById("payments-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleViewDeliverable = async () => {
     const problem = await openDeliverable(project.submission_path);
@@ -159,9 +205,15 @@ export default function ProjectDetailsView() {
   const overdue = project.status !== "done" && project.due_date < todayInManila();
   const hasSubmission = Boolean(project.submission_path || project.submission_link);
   // undefined while the link is loading, null when it couldn't be made.
-  const mediaLink = media?.path === submissionPath ? media.link : undefined;
-  const mediaWord = mediaKind === "video" ? "video" : "photo";
-  const mediaBroken = mediaLink === null || failedPath === submissionPath;
+  const mediaLink = media?.path === shownPath ? media.link : undefined;
+  const mediaWord = previewOnly ? "preview" : mediaKind === "video" ? "video" : "photo";
+  const mediaBroken = mediaLink === null || failedPath === shownPath;
+  // A PDF's preview is a tall picture of its first pages: it gets a box to
+  // scroll in, at full width, instead of being shrunk to fit.
+  const pagePreview = previewOnly && /\.pdf$/i.test(submissionPath || "");
+  // Stops the easy ways to save the preview (right-click, dragging it out).
+  // A screenshot can't be stopped; that is why the text covers the whole picture.
+  const noSaving = previewOnly ? { onContextMenu: (event) => event.preventDefault(), draggable: false } : {};
   // When rating closes for a Done project (null until it's Done).
   const deadline = project.status === "done" ? ratingDeadline(project) : null;
   // The rating step shown beside "Done" in the Status box (null until it's
@@ -285,37 +337,88 @@ export default function ProjectDetailsView() {
               <span className="text-white-50 fs-7">Sent by <strong className="text-white">{personName(project.freelancer, "the freelancer")}</strong> on {new Date(project.submitted_at).toLocaleDateString()}</span>
             </div>
 
+            {/* Pay to unlock, the client's side: what they see is a preview, and
+                how to get the original. */}
+            {previewOnly && (
+              <div className="p-3 rounded-3 border border-warning border-opacity-50 bg-warning bg-opacity-10 d-flex gap-2 align-items-start mb-3" data-locked-notice>
+                <i className="bi bi-lock-fill text-warning fs-5 flex-shrink-0"></i>
+                <div>
+                  <p className="text-white fw-semibold fs-7 mb-1">{canPreview(submissionPath) ? "Preview only" : "Locked until you pay"}</p>
+                  <p className="text-white-50 fs-7 mb-2">
+                    {canPreview(submissionPath)
+                      ? `This is a watermarked preview. The original file unlocks, to open and download, when ${otherName} confirms your payment.`
+                      : `This kind of file can't be previewed. It unlocks, to open and download, when ${otherName} confirms your payment.`}
+                  </p>
+                  <button type="button" className="btn btn-link text-role p-0 fs-7 fw-semibold text-decoration-none" onClick={scrollToPayments}>
+                    <i className="bi bi-arrow-down-circle me-1"></i>Go to Payments
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Pay to unlock, the freelancer's side. */}
+            {!iAmClient && isLocked(project) && (
+              <div className="p-3 rounded-3 border border-secondary border-opacity-25 bg-dark bg-opacity-50 d-flex gap-2 align-items-start mb-3" data-locked-note>
+                <i className="bi bi-lock-fill text-warning fs-5 flex-shrink-0"></i>
+                <div>
+                  <p className="text-white-50 fs-7 mb-0">
+                    {otherName} sees only {canPreview(submissionPath) ? "a watermarked preview of your file" : "the name of your file"}, with no download, until you confirm a payment on this project.
+                  </p>
+                  {waitingForPreview && (
+                    <div className="mt-2">
+                      <p className="text-white-50 fs-7 mb-2">The preview isn't ready yet, so {otherName} can't see your work.</p>
+                      <button type="button" className="btn btn-outline-role rounded-pill px-3 py-1 fs-7 fw-bold" onClick={handleMakePreview} disabled={makingPreview}>
+                        <i className="bi bi-magic me-1"></i>{makingPreview ? "Making the preview..." : "Make the preview"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* A submitted video plays right here, and a photo shows here. The
                 file row below (with View) stays for every kind of file. */}
-            {project.submission_path && mediaKind !== "file" && (
+            {previewOnly && waitingForPreview && (
+              <p className="text-secondary fs-7 mb-3"><i className="bi bi-hourglass-split me-1"></i>The watermarked preview is being made. It shows here in a minute.</p>
+            )}
+            {shownPath && mediaKind !== "file" && (
               <div className="mb-3">
                 {mediaLink === undefined && <p className="text-secondary fs-7 mb-0">Loading the {mediaWord}...</p>}
                 {mediaBroken && (
                   <p className="text-white-50 fs-7 mb-0">
-                    <i className="bi bi-exclamation-circle me-1"></i>This {mediaWord} can't be {mediaKind === "video" ? "played" : "shown"} here. Use View to open it.
+                    <i className="bi bi-exclamation-circle me-1"></i>
+                    {previewOnly
+                      ? "The preview can't be shown here right now. Please reload the page."
+                      : `This ${mediaWord} can't be ${mediaKind === "video" ? "played" : "shown"} here. Use View to open it.`}
                   </p>
                 )}
                 {mediaLink && !mediaBroken && mediaKind === "video" && (
                   // preload="metadata": only the length and the first picture
-                  // load until Play is pressed (kind to mobile data).
+                  // load until Play is pressed (kind to mobile data). The
+                  // preview's player has no Download, picture-in-picture or cast.
                   <video
                     src={mediaLink}
                     controls
                     preload="metadata"
-                    aria-label={`Submitted video for ${project.title}`}
+                    aria-label={previewOnly ? `Watermarked preview of the work for ${project.title}` : `Submitted video for ${project.title}`}
                     className="w-100 d-block rounded-3 bg-black"
                     style={{ maxHeight: 480 }}
-                    onError={() => setFailedPath(submissionPath)}
+                    onError={() => setFailedPath(shownPath)}
+                    {...(previewOnly ? { controlsList: "nodownload noremoteplayback", disablePictureInPicture: true, disableRemotePlayback: true } : {})}
+                    {...noSaving}
                   ></video>
                 )}
                 {mediaLink && !mediaBroken && mediaKind === "image" && (
-                  <img
-                    src={mediaLink}
-                    alt={`Submitted work for ${project.title}`}
-                    className="d-block mx-auto rounded-3"
-                    style={{ maxWidth: "100%", maxHeight: 480 }}
-                    onError={() => setFailedPath(submissionPath)}
-                  />
+                  <div className={pagePreview ? "rounded-3 bg-black" : undefined} style={pagePreview ? { maxHeight: 640, overflowY: "auto" } : undefined}>
+                    <img
+                      src={mediaLink}
+                      alt={previewOnly ? `Watermarked preview of the work for ${project.title}` : `Submitted work for ${project.title}`}
+                      className={`d-block mx-auto rounded-3${previewOnly ? " user-select-none" : ""}`}
+                      style={pagePreview ? { width: "100%" } : { maxWidth: "100%", maxHeight: 480 }}
+                      onError={() => setFailedPath(shownPath)}
+                      {...noSaving}
+                    />
+                  </div>
                 )}
               </div>
             )}
@@ -326,15 +429,22 @@ export default function ProjectDetailsView() {
                   <i className={`bi ${deliverableIcon(project.submission_path)} text-orange fs-2`}></i>
                   <span className="text-white fw-semibold text-break">{project.submission_path.split("/").pop()}</span>
                 </div>
-                <button type="button" className="btn btn-gradient-orange text-white rounded-pill px-3 fs-7 fw-bold flex-shrink-0" onClick={handleViewDeliverable}>
-                  <i className="bi bi-box-arrow-up-right me-1"></i> View
-                </button>
+                {previewOnly ? (
+                  <span className="badge rounded-pill bg-secondary text-white px-3 py-2 fs-8 flex-shrink-0" data-locked-badge>
+                    <i className="bi bi-lock-fill me-1"></i> Locked
+                  </span>
+                ) : (
+                  <button type="button" className="btn btn-gradient-orange text-white rounded-pill px-3 fs-7 fw-bold flex-shrink-0" onClick={handleViewDeliverable}>
+                    <i className="bi bi-box-arrow-up-right me-1"></i> View
+                  </button>
+                )}
               </div>
             )}
 
             {/* A Blender file can't be shown in the browser, and it can carry
-                scripts, so the page says how to open it safely. */}
-            {isBlenderFile(project.submission_path) && (
+                scripts, so the page says how to open it safely (once it can be
+                opened). */}
+            {isBlenderFile(project.submission_path) && !previewOnly && (
               <p className="text-white-50 fs-7 mb-3">
                 <i className="bi bi-shield-exclamation me-1"></i>
                 This is a Blender file. View downloads it. Open it in Blender and keep "Auto Run Python Scripts" off.
@@ -427,6 +537,7 @@ export default function ProjectDetailsView() {
           showToast={showToast}
           openChat={openChat}
           onReport={(payment) => setReportTarget({ type: "user", id: other?.id, name: otherName, payment })}
+          onPaymentsChange={handlePaymentsChange}
         />
       </div>
 

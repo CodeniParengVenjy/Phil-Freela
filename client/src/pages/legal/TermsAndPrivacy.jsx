@@ -128,9 +128,17 @@ function TermsOfService() {
           Because PhilFreela never holds the money, whoever goes first takes the risk: a client who pays first trusts the
           freelancer to deliver, and a freelancer who delivers first trusts the client to pay. To lower that risk, a client
           should look at the freelancer's profile (the Verified mark, ratings and finished projects) before paying a down
-          payment, and a freelancer can send a preview or a part of the work first, for example with a watermark on it,
-          before sending the full work. The Verified mark only means PhilFreela checked the person's ID and face scan. It
-          is not a promise that they will deliver or pay.
+          payment. The Verified mark only means PhilFreela checked the person's ID and face scan. It is not a promise that
+          they will deliver or pay.
+        </li>
+        <li>
+          <strong className="text-white">Work sent before payment stays locked.</strong> A file the freelancer uploads to a
+          project can't be opened or downloaded by the client until the freelancer confirms a payment on that project (any
+          payment, also a down payment). Until then the client sees only a watermarked preview that PhilFreela makes from the
+          real file: the first 3 minutes of a video, a smaller copy of a picture, or the first 3 pages of a PDF. A ZIP or
+          Blender file can't be previewed, so only its name is shown. A link the freelancer pastes is shown as it is, so a
+          freelancer who wants their work protected should upload the file instead. PhilFreela holds back only the file,
+          never the money.
         </li>
         <li>
           Done does not mean paid. The client marks a project Done after the freelancer sends the work, and that does not

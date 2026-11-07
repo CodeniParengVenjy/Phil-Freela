@@ -284,3 +284,16 @@ export async function matchMoodboard(image) {
   const body = await request("/moodboard/match", { method: "POST", headers: await authHeader(), body: form });
   return body.results || [];
 }
+
+// Pay to unlock (PLAN-transaction-tracking.md, Step F): asks the AI service to
+// make the watermarked preview of the work the freelancer just sent (a video
+// takes up to about a minute). The client sees only that preview until a
+// payment on the project is confirmed. Returns { preview_path }; throws with a
+// message to show when it couldn't be made. See ai-service/deliverable_preview.py.
+export async function makeDeliverablePreview(projectId) {
+  return request("/deliverables/preview", {
+    method: "POST",
+    headers: { ...(await authHeader()), "Content-Type": "application/json" },
+    body: JSON.stringify({ project_id: projectId })
+  });
+}

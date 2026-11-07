@@ -86,6 +86,24 @@ export async function checkDeliverable(file) {
 // True for a submitted Blender file (the Project page adds a note to it).
 export const isBlenderFile = (path) => /\.blend$/i.test(path || "");
 
+// Pay to unlock (PLAN-transaction-tracking.md, Step F). Until a payment on the
+// project is confirmed, the client gets only a watermarked preview that the AI
+// service makes from the real file (ai-service/deliverable_preview.py), kept in
+// its own private bucket; the database refuses them the original
+// (database/supabase_deliverable_lock_schema.sql).
+const PREVIEWS_BUCKET = "deliverable-previews";
+
+// True for a file the AI service can make a preview of: a video, a photo or a
+// PDF. A ZIP or a Blender file has none (the client sees only its name).
+export function canPreview(path) {
+  return deliverableKind(path) !== "file" || /\.pdf$/i.test(path || "");
+}
+
+// True while the sent file waits for a payment: the client sees the preview.
+export function isLocked(project) {
+  return Boolean(project?.files_locked) && !project?.unlocked_at;
+}
+
 // The name and picture of both people on a project.
 const PEOPLE_FIELDS =
   "client:profiles!projects_client_id_fkey(id, full_name, username, avatar_path), " +
@@ -160,6 +178,7 @@ export async function getProject(projectId) {
     .from("projects")
     .select(`id, title, note, status, started_at, due_date, completed_at,
       submission_path, submission_link, submission_message, submitted_at,
+      files_locked, preview_path, unlocked_at,
       agreed_amount, price_basis, price_status, price_source, price_proposed_by, price_agreed_at,
       job_post_id, client_id, freelancer_id, booking:bookings(service_id), ${PEOPLE_FIELDS}`)
     .eq("id", projectId)
@@ -220,6 +239,12 @@ const PLAYER_LINK_SECONDS = 60 * 60;
 // working after an hour. Returns the link, or null when it couldn't be made.
 export async function getDeliverableLink(path) {
   const { data, error } = await supabase.storage.from(DELIVERABLES_BUCKET).createSignedUrl(path, PLAYER_LINK_SECONDS);
+  return error ? null : data?.signedUrl || null;
+}
+
+// The same kind of private link, to the watermarked preview (pay to unlock).
+export async function getPreviewLink(path) {
+  const { data, error } = await supabase.storage.from(PREVIEWS_BUCKET).createSignedUrl(path, PLAYER_LINK_SECONDS);
   return error ? null : data?.signedUrl || null;
 }
 

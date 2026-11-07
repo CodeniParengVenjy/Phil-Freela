@@ -54,6 +54,10 @@ export default function Security() {
       <h5 className="text-white fw-bold mt-4 mb-2">Payments</h5>
       <ul className="text-secondary">
         <li>PhilFreela never holds or moves the money between a client and a freelancer. They pay each other in their own GCash app.</li>
+        <li>
+          A file a freelancer sends on a project stays locked until they confirm a payment on that project. Until then the
+          client gets only a watermarked preview made from the real file, and the database refuses them the file itself.
+        </li>
         <li>A freelancer's GCash number is shown only to a client who is working with them, with only the initials of the account name, and never on the public profile.</li>
         <li>When you pay PhilFreela for Premium, a Featured post or an ad, you pay on the checkout page of Xendit, a payment company. You type your payment details there, and PhilFreela never sees them.</li>
         <li>Only confirm a payment when the money is really in your GCash, and only pay people you trust. Check that the name GCash shows matches the person.</li>

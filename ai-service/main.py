@@ -24,6 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 import cv2
+from deliverable_preview import preview_router
 from docx import Document as DocxDocument
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
@@ -1454,3 +1455,8 @@ def moodboard_match(image: UploadFile = File(...), authorization: str | None = H
     except APIError:
         logging.exception("Moodboard matching failed")
         raise HTTPException(503, "Moodboard matching isn't available right now. Please try again.")
+
+
+# Pay to unlock (PLAN-transaction-tracking.md, Step F): the watermarked preview a
+# client sees until a payment on the project is confirmed (deliverable_preview.py).
+app.include_router(preview_router(supabase, get_user_id))
