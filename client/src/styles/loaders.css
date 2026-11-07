@@ -144,6 +144,10 @@
 .pf-dots i:nth-child(2) { animation-delay: 0.16s; }
 .pf-dots i:nth-child(3) { animation-delay: 0.32s; }
 
+/* Only the dots, in place of a number that is still loading. */
+.pf-dots-only { display: inline-flex; align-items: center; vertical-align: middle; }
+.pf-dots-only .pf-dots { margin-left: 0; }
+
 /* A part of a page (centered), a small line, and a whole page. */
 .pf-loader {
   display: flex;

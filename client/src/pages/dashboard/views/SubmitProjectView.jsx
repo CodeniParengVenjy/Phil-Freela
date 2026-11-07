@@ -3,6 +3,7 @@ import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom
 import { MAX_SUBMISSION_MESSAGE_LENGTH, canPreview, getProject, personName, submitProject } from "../../../lib/projects";
 import { makeDeliverablePreview } from "../../../lib/aiService";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // "Attach your files" (screen 6), at /dashboard/submit-project/:projectId.
 // The freelancer sends the finished work: a file, a link, or both, plus an
@@ -69,7 +70,7 @@ export default function SubmitProjectView() {
   };
 
   if (project === undefined) {
-    return <section className="dashboard-view active-view"><p className="text-secondary fs-7">Loading project...</p></section>;
+    return <section className="dashboard-view active-view"><Loader size="lg" label="Loading project" /></section>;
   }
 
   const notMine = project === null || project.freelancer_id !== currentUserId;

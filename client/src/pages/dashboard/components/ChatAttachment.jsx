@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { chatFileLink, fileIcon, formatSize, openChatFile } from "../../../lib/chatFiles";
+import { Busy } from "../../../components/Loaders";
 
 // Voice message links last an hour, plenty for listening while the chat is open.
 const VOICE_LINK_SECONDS = 60 * 60;
@@ -55,7 +56,7 @@ function VoicePlayer({ path }) {
     };
   }, [path]);
 
-  if (link === null) return <small className="text-white-50 fs-8 d-block mb-1"><i className="bi bi-mic-fill me-1"></i>Loading voice message...</small>;
+  if (link === null) return <small className="text-white-50 fs-8 d-block mb-1"><Busy>Loading voice message</Busy></small>;
   if (!link) return <small className="text-white-50 fs-8 d-block mb-1"><i className="bi bi-mic-mute-fill me-1"></i>Couldn't load this voice message.</small>;
   return <audio src={link} controls className="d-block mb-1" style={{ maxWidth: 260, width: "100%" }}></audio>;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_SKILLS, addSkillsFromText, fetchSkills, saveSkills } from "../../../lib/profile";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // The Skills box on a freelancer's own Profile. Their saved skills show as chips
 // (the same ones appear on their public page). "+ Add Skill" opens a box:
@@ -66,7 +67,7 @@ export default function SkillsBox({ userId, showToast }) {
         )}
       </div>
 
-      {skills === undefined && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+      {skills === undefined && <Loader size="sm" />}
       {skills === null && <p className="text-secondary fs-7 mb-0">Couldn't load your skills.</p>}
       {skills?.length === 0 && !adding && (
         <p className="text-secondary fs-7 mb-0">No skills yet. Add the ones clients should know about.</p>

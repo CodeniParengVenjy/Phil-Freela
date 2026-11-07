@@ -6,6 +6,7 @@ import {
   loadWatermarkSettings, saveWatermarkSettings, watermarkText
 } from "../../../lib/watermarkSettings";
 import { drawWatermark, loadWatermarkFont } from "../../../lib/watermarkPreview";
+import { Loader } from "../../../components/Loaders";
 
 const SAMPLE_PHOTO = "/images/Freelancers.png";
 const LOGO = "/email/logo.png";
@@ -82,7 +83,7 @@ export default function WatermarkSettingsForm({ userId, username, fullName, show
   };
 
   if (loadError) return <p className="text-danger fs-7">{loadError}</p>;
-  if (!settings) return <p className="text-secondary fs-7">Loading...</p>;
+  if (!settings) return <Loader size="sm" />;
 
   const pill = (active) => `btn btn-sm rounded-pill px-3 fw-semibold ${active ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`;
   const { premium } = settings;
@@ -268,7 +269,7 @@ export default function WatermarkSettingsForm({ userId, username, fullName, show
         <div className="rounded-3 overflow-hidden border border-secondary border-opacity-25 bg-black">
           <canvas ref={canvasRef} className="d-block w-100 h-auto" aria-label="Watermark preview on a sample photo"></canvas>
         </div>
-        {!pictures && <p className="text-secondary fs-8 mb-0 mt-1">Loading preview...</p>}
+        {!pictures && <Loader size="sm" label="Loading preview" className="mt-1" />}
       </div>
 
       <div>

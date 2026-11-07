@@ -8,7 +8,7 @@ import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
 import { JOB_STATES, budgetText, datesText, getJobType } from "../../../lib/jobTerms";
 import MediaCarousel from "../../dashboard/components/MediaCarousel";
 import HiringTrail from "../components/HiringTrail";
-import { SkeletonTableRows } from "../../../components/Loaders";
+import { SkeletonTableRows, LoadingDots } from "../../../components/Loaders";
 
 // The two kinds of listings share one page. Each tab says which table it
 // reads, which column holds the owner, and how its price is labeled.
@@ -185,7 +185,7 @@ export default function AdminListingsView() {
             className={`btn btn-sm rounded-pill px-3 fw-bold ${activeTab === key ? "btn-admin-orange" : "btn-outline-light"}`}
             onClick={() => switchTab(key)}
           >
-            {t.label} <span className="ms-1 opacity-75">({listings[key] ? listings[key].length : "…"})</span>
+            {t.label} <span className="ms-1 opacity-75">({listings[key] ? listings[key].length : <LoadingDots />})</span>
           </button>
         ))}
       </div>

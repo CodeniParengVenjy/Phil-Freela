@@ -12,6 +12,7 @@ import { formatPeso, formatReference, openReceipt, paymentStatuses } from "../..
 import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields, getViolation } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
+import { Loader, LoadingDots } from "../../../components/Loaders";
 
 const statusTabs = [
   { key: "pending", label: "Pending" },
@@ -452,7 +453,7 @@ export default function AdminReportsView() {
             className={`btn btn-sm rounded-pill px-3 fw-bold ${activeStatus === t.key ? "btn-admin-orange" : "btn-outline-light"}`}
             onClick={() => { setActiveStatus(t.key); setMessage({ text: "", type: "" }); }}
           >
-            {t.label} <span className="ms-1 opacity-75">({reports ? countFor(t.key) : "…"})</span>
+            {t.label} <span className="ms-1 opacity-75">({reports ? countFor(t.key) : <LoadingDots />})</span>
           </button>
         ))}
       </div>
@@ -462,7 +463,7 @@ export default function AdminReportsView() {
       )}
 
       {loadError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{loadError}</div>}
-      {!loadError && reports === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading reports...</div>}
+      {!loadError && reports === null && <div className="admin-card rounded-4 p-4"><Loader label="Loading reports" /></div>}
       {!loadError && reports !== null && visibleReports.length === 0 && (
         <div className="admin-card rounded-4 p-4 text-center text-white-50">
           <i className="bi bi-flag fs-1 d-block mb-2"></i>

@@ -4,6 +4,7 @@ import CensoredText from "../../../components/CensoredText";
 import { formatPeso } from "../../../lib/payments";
 import { onlinePaymentsReady, startFeatureCheckout } from "../../../lib/checkout";
 import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft } from "../../../lib/featured";
+import { Loader } from "../../../components/Loaders";
 
 // "Feature this post" (PLAN-monetization.md, Step 4, and PLAN-premium.md): the
 // owner of an offer or an open job post pays for 3, 7 or 14 days in the
@@ -108,7 +109,7 @@ export default function PromoPayDialog({ target, userId, until, onClose }) {
         </h5>
         <p className="text-secondary fs-7 mb-3 text-break"><CensoredText text={target.title} /></p>
 
-        {info === undefined && <p className="text-secondary fs-7 mb-3">Loading...</p>}
+        {info === undefined && <Loader size="sm" className="mb-3" />}
 
         {blocked && (
           <>

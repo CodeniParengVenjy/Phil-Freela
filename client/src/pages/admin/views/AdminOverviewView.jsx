@@ -10,6 +10,7 @@ import HiredList from "../components/HiredList";
 import RatingCard from "../components/RatingCard";
 import StatusCounts from "../components/StatusCounts";
 import TopRatedList from "../components/TopRatedList";
+import { Loader, LoadingDots } from "../../../components/Loaders";
 
 // One card per number returned by the admin_stats() database function. Every
 // card opens the page behind its number; the Users ones open the Users page
@@ -374,7 +375,7 @@ export default function AdminOverviewView() {
           </div>
 
           {trendError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{trendError}</div>}
-          {!trendError && (!trends || !stats) && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the graph...</div>}
+          {!trendError && (!trends || !stats) && <div className="admin-card rounded-4 p-4"><Loader label="Loading the graph" /></div>}
 
           {!trendError && trends && stats && (
             <div className={trendsLoading ? "admin-trends-loading" : ""} aria-busy={trendsLoading}>
@@ -437,13 +438,13 @@ export default function AdminOverviewView() {
                   <i className="bi bi-people-fill"></i>
                 </span>
                 <div>
-                  <div className="admin-stat-value">{stats ? stats.total_users : "..."}</div>
+                  <div className="admin-stat-value">{stats ? stats.total_users : <LoadingDots />}</div>
                   <div className="text-secondary fs-7">All Users</div>
                 </div>
               </Link>
               <Link to="/admin/users?presence=online&sort=online&dir=desc" className="admin-stat-link d-inline-block fs-8 text-success fw-semibold mt-1" style={{ marginLeft: 60 }}>
                 <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>
-                {stats ? stats.online_users : "..."} online now
+                {stats ? stats.online_users : <LoadingDots />} online now
               </Link>
             </div>
           </div>
@@ -451,7 +452,7 @@ export default function AdminOverviewView() {
             // Only a super admin can open the Admins page.
             const linked = !card.superAdminOnly || isSuperAdmin;
             // A dash if the database didn't send this number.
-            const number = stats ? ((card.value ? card.value(stats) : stats[card.key]) ?? "-") : "...";
+            const number = stats ? ((card.value ? card.value(stats) : stats[card.key]) ?? "-") : <LoadingDots />;
             const body = (
               <>
                 <span className={`admin-stat-icon admin-stat-${card.color}`}>
@@ -487,7 +488,7 @@ export default function AdminOverviewView() {
           </div>
 
           {ratingsError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{ratingsError}</div>}
-          {!ratingsError && !ratings && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the ratings...</div>}
+          {!ratingsError && !ratings && <div className="admin-card rounded-4 p-4"><Loader label="Loading the ratings" /></div>}
 
           {ratings && (
             <>
@@ -516,7 +517,7 @@ export default function AdminOverviewView() {
           </div>
 
           {topRatedError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{topRatedError}</div>}
-          {!topRatedError && !topRated && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the top rated...</div>}
+          {!topRatedError && !topRated && <div className="admin-card rounded-4 p-4"><Loader label="Loading the top rated" /></div>}
 
           {topRated && (
             <div className="row g-3">
@@ -543,7 +544,7 @@ export default function AdminOverviewView() {
           <ActivityGraph tabs={transactionTabs} />
 
           {transactionsError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{transactionsError}</div>}
-          {!transactionsError && !transactions && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the transactions...</div>}
+          {!transactionsError && !transactions && <div className="admin-card rounded-4 p-4"><Loader label="Loading the transactions" /></div>}
 
           {transactions && (
             <div className="row g-3">
@@ -617,7 +618,7 @@ export default function AdminOverviewView() {
           <ActivityGraph tabs={jobTabs} />
 
           {hiringError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{hiringError}</div>}
-          {!hiringError && !hiringTotals && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the job hiring numbers...</div>}
+          {!hiringError && !hiringTotals && <div className="admin-card rounded-4 p-4"><Loader label="Loading the job hiring numbers" /></div>}
 
           {hiringTotals && (
             <div className="row g-3">
@@ -668,7 +669,7 @@ export default function AdminOverviewView() {
           <ActivityGraph tabs={earningTabs} />
 
           {earningsError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{earningsError}</div>}
-          {!earningsError && !earnings && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the earnings...</div>}
+          {!earningsError && !earnings && <div className="admin-card rounded-4 p-4"><Loader label="Loading the earnings" /></div>}
 
           {earnings && (
             <div className="row g-3">

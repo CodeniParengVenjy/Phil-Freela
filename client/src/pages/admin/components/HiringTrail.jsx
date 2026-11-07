@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { avatarUrl } from "../../../lib/avatar";
 import { formatDay, projectStatuses } from "../../../lib/projects";
+import { Loader } from "../../../components/Loaders";
 
 // A round picture, or the first letter of the name when there is no picture (or
 // it fails to load). Also used by the Overview's list of hired freelancers.
@@ -54,7 +55,7 @@ export default function HiringTrail({ jobId }) {
       <h3 className="h6 fw-bold text-white mb-2">Hiring trail</h3>
 
       {failed && <p className="text-secondary fs-7 mb-0">Couldn't load who applied. Please try again.</p>}
-      {!failed && trail === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+      {!failed && trail === null && <Loader size="sm" />}
       {!failed && trail?.length === 0 && <p className="text-secondary fs-7 mb-0">Nobody has applied to this post yet.</p>}
 
       {!failed && trail?.length > 0 && (

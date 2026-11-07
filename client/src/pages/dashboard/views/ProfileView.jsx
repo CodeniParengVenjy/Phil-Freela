@@ -13,6 +13,7 @@ import CoverPhoto from "../../../components/CoverPhoto";
 import PictureViewer from "../../../components/PictureViewer";
 import { avatarUrl, coverUrl, fetchCoverPath } from "../../../lib/avatar";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 export default function ProfileView() {
   const { displayName, avatarPath, currentUserId, accountType, username, showToast, isPro } = useOutletContext();
@@ -67,7 +68,7 @@ export default function ProfileView() {
               {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
               <div data-tour="profile-description" className="text-start bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary border-opacity-25 mb-4">
                 <h5 className="text-white fw-bold mb-2"><i className="bi bi-text-paragraph text-orange me-2"></i> Description</h5>
-                {description === undefined && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+                {description === undefined && <Loader size="sm" />}
                 {description === null && <p className="text-secondary fs-7 mb-0">Couldn't load your description.</p>}
                 {description === "" && (
                   <p className="text-secondary fs-7 mb-0">

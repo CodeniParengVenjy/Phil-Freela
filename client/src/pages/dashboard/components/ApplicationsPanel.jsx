@@ -6,6 +6,7 @@ import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import HireDialog from "./HireDialog";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // Longest part of a cover note shown in the list.
 const NOTE_PREVIEW_LENGTH = 160;
@@ -84,7 +85,7 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
       </p>
 
       {failed && <p className="text-danger fs-7 mb-0">Couldn't load applications right now.</p>}
-      {!failed && rows === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+      {!failed && rows === null && <Loader size="sm" />}
       {!failed && rows?.length === 0 && (
         <p className="text-secondary fs-7 mb-0">
           {isFreelancer

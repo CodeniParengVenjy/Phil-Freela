@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { archiveDeletionDay, getMyArchive } from "../../lib/archives";
 import { resolvePostAuthRoute } from "../../lib/profile";
 import "../../styles/auth.css";
+import { Loader } from "../../components/Loaders";
 
 // Where an archived account lands after logging in (see resolvePostAuthRoute
 // and the dashboard's own check). An admin archived it, so it can't use anything
@@ -53,7 +54,7 @@ export default function ArchivedPage() {
             </Link>
 
             {archive === undefined ? (
-              <p className="text-secondary mb-0">Loading...</p>
+              <Loader size="sm" />
             ) : (
               <>
                 <i className="bi bi-archive-fill text-warning fs-1 d-block mb-2"></i>

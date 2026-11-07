@@ -14,6 +14,7 @@ import { fetchIsVerified } from "../../../lib/verification";
 import BlockedNotice from "../components/BlockedNotice";
 import MemberAdSlide from "../components/MemberAdSlide";
 import "../memberAds.css";
+import { Loader } from "../../../components/Loaders";
 
 const inputClass = "form-control bg-secondary bg-opacity-25 border-secondary text-white py-2";
 const pill = (active) => `btn btn-sm rounded-pill px-3 fw-semibold ${active ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`;
@@ -199,7 +200,7 @@ export default function AdvertiseView() {
             </p>
 
             {postingBlocked && <BlockedNotice suspension={suspension} what="post ads" />}
-            {!postingBlocked && isVerified === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+            {!postingBlocked && isVerified === null && <Loader size="sm" />}
 
             {!postingBlocked && isVerified === false && (
               <div className="text-center py-4">
@@ -288,7 +289,7 @@ export default function AdvertiseView() {
                 <small className="text-secondary fs-8 d-block mb-3">It can only open your own offer, job post or profile.</small>
 
                 <span className="form-label text-white fw-semibold fs-7 d-block">How long:</span>
-                {priceResult === undefined && <p className="text-secondary fs-8">Loading the prices...</p>}
+                {priceResult === undefined && <Loader size="sm" label="Loading the prices" />}
                 {priceResult?.error && <p className="text-danger fs-8" role="alert">{priceResult.error}</p>}
                 <div className="d-flex flex-wrap gap-2 mb-1" role="radiogroup" aria-label="How long">
                   {prices.map((option) => {
@@ -346,7 +347,7 @@ export default function AdvertiseView() {
               </p>
             )}
 
-            {ads === null && !adsError && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+            {ads === null && !adsError && <Loader size="sm" />}
             {adsError && <p className="text-danger fs-7 mb-0" role="alert">{adsError}</p>}
             {ads?.length === 0 && <p className="text-secondary fs-7 mb-0">You haven't sent an ad yet.</p>}
 

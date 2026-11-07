@@ -7,6 +7,7 @@ import {
 } from "../../../lib/payments";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import "../payments.css";
+import { Loader } from "../../../components/Loaders";
 
 // Settings > GCash Payment (freelancers only). The number and the name on the
 // GCash account. The name stays private (only you can read it): a client who has a
@@ -87,7 +88,7 @@ export default function GcashSettingsForm({ userId, showToast }) {
   };
 
   if (loadError) return <p className="text-danger fs-7">{loadError}</p>;
-  if (saved === undefined) return <p className="text-secondary fs-7">Loading your GCash details...</p>;
+  if (saved === undefined) return <Loader size="sm" label="Loading your GCash details" />;
 
   // What other people will see instead of the name, as it is typed.
   const tidyName = tidyAccountName(name);

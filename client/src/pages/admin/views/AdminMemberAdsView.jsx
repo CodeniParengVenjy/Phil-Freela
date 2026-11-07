@@ -8,6 +8,7 @@ import { useProIds } from "../../../lib/pro";
 import { MAX_REASON, MIN_REASON } from "../../../lib/promotions";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import MemberAdSlide from "../../dashboard/components/MemberAdSlide";
+import { Loader } from "../../../components/Loaders";
 
 const audienceLabel = (value) => AD_AUDIENCES.find((item) => item.value === value)?.label || "Everyone";
 const personLine = (person) => (person ? `${person.full_name} (@${person.username}, ${person.account_type})` : "a removed account");
@@ -158,7 +159,7 @@ export default function AdminMemberAdsView() {
       <h2 className="h6 fw-bold text-white mb-3">
         Waiting for review {waiting?.length > 0 && <span className="badge bg-warning text-dark rounded-pill ms-1">{waiting.length}</span>}
       </h2>
-      {waiting === null && !loadError && <div className="admin-card rounded-4 p-4 text-center text-white-50 mb-4">Loading ads...</div>}
+      {waiting === null && !loadError && <div className="admin-card rounded-4 p-4 mb-4"><Loader label="Loading ads" /></div>}
       {waiting?.length === 0 && <div className="admin-card rounded-4 p-4 text-center text-white-50 mb-4">Nothing is waiting for review.</div>}
       <div className="d-flex flex-column gap-3 mb-4">
         {waiting?.map((ad) => adCard(ad, asking?.id === ad.id && asking.kind === "reject" ? reasonBox(ad, "reject") : (

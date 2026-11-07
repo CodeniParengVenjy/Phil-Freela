@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchProfileStats, formatMemberSince, formatReplyTime } from "../../../lib/profileStats";
 import { trustLevel, trustPercent } from "../../../lib/ratings";
 import TrustRing from "../../../components/TrustRing";
+import { Loader } from "../../../components/Loaders";
 
 // The Performance box on a profile (Feature 5, Profile transparency): real
 // numbers worked out from the person's projects, ratings and chats, not typed
@@ -32,7 +33,7 @@ export default function PerformanceBox({ userId, role, className = "" }) {
     <div className={`glass-card rounded-4 p-4 border border-secondary border-opacity-25 ${className}`}>
       <h5 className="text-white fw-bold mb-3"><i className="bi bi-bar-chart-line text-warning me-2"></i> Performance</h5>
 
-      {stats === undefined && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+      {stats === undefined && <Loader size="sm" />}
       {stats === null && <p className="text-secondary fs-7 mb-0">Couldn't load these numbers right now.</p>}
 
       {stats && <TrustScore stats={stats} />}

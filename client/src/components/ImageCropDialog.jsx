@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Loader } from "./Loaders";
 
 // The popup that lets someone crop and zoom a picked photo before it is
 // uploaded (profile picture and cover photo, in Settings).
@@ -226,7 +227,7 @@ export default function ImageCropDialog({ file, title, aspect, outputWidth, roun
               }}
             />
           ) : (
-            <div className="position-absolute top-50 start-50 translate-middle text-secondary fs-7">Loading...</div>
+            <div className="position-absolute top-50 start-50 translate-middle"><Loader size="sm" /></div>
           )}
           {/* The circle guide: the corners outside it are dimmed (the saved picture is still square). */}
           {round && (

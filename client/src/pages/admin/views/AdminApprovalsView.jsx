@@ -8,6 +8,7 @@ import { SLIDES_SELECT } from "../../../lib/slides";
 import { removeReportedPicture, reportPictureKinds, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { saveSuspension } from "../../../lib/suspensions";
 import { buildPenalty, getViolation } from "../../../lib/violations";
+import { Loader, LoadingDots } from "../../../components/Loaders";
 
 const tabs = [
   { key: "pending", label: "Waiting" },
@@ -226,7 +227,7 @@ export default function AdminApprovalsView() {
             className={`btn btn-sm rounded-pill px-3 fw-bold ${activeTab === t.key ? "btn-admin-orange" : "btn-outline-light"}`}
             onClick={() => { setActiveTab(t.key); setMessage({ text: "", type: "" }); }}
           >
-            {t.label} <span className="ms-1 opacity-75">({requests ? (t.key === "pending" ? pendingList.length : decidedList.length) : "…"})</span>
+            {t.label} <span className="ms-1 opacity-75">({requests ? (t.key === "pending" ? pendingList.length : decidedList.length) : <LoadingDots />})</span>
           </button>
         ))}
       </div>
@@ -236,7 +237,7 @@ export default function AdminApprovalsView() {
       )}
 
       {loadError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{loadError}</div>}
-      {!loadError && requests === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading requests...</div>}
+      {!loadError && requests === null && <div className="admin-card rounded-4 p-4"><Loader label="Loading requests" /></div>}
       {!loadError && requests !== null && visible.length === 0 && (
         <div className="admin-card rounded-4 p-4 text-center text-white-50">
           <i className="bi bi-check2-circle fs-1 d-block mb-2"></i>

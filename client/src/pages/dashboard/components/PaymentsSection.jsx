@@ -7,6 +7,7 @@ import {
 } from "../../../lib/payments";
 import RecordPaymentDialog from "./RecordPaymentDialog";
 import "../payments.css";
+import { Loader } from "../../../components/Loaders";
 
 const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 
@@ -140,7 +141,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
   // Where to pay, for the client.
   const renderPayBox = () => {
     if (detailsError) return <p className="text-danger fs-7 mb-3">{detailsError}</p>;
-    if (details === undefined) return <p className="text-secondary fs-7 mb-3">Loading where to pay...</p>;
+    if (details === undefined) return <Loader size="sm" label="Loading where to pay" className="mb-3" />;
     if (details === null) {
       return (
         <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 mb-3">
@@ -278,7 +279,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
       )}
 
       {paymentsError && <p className="text-danger fs-7 mb-0">{paymentsError}</p>}
-      {!paymentsError && payments === undefined && <p className="text-secondary fs-7 mb-0">Loading the payments...</p>}
+      {!paymentsError && payments === undefined && <Loader size="sm" label="Loading the payments" />}
       {!paymentsError && payments?.length === 0 && (
         <p className="text-secondary fs-7 mb-0">
           {iAmClient

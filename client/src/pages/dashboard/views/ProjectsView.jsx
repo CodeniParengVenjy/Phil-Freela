@@ -7,6 +7,7 @@ import ServiceCard from "../components/ServiceCard";
 import DeletePostDialog from "../components/DeletePostDialog";
 import ApplicationsPanel from "../components/ApplicationsPanel";
 import ProjectsPanel from "../components/ProjectsPanel";
+import { Loader } from "../../../components/Loaders";
 
 export default function ProjectsView() {
   const { openChat, showToast, accountType, currentUserId } = useOutletContext();
@@ -58,7 +59,7 @@ export default function ProjectsView() {
               </div>
 
               {servicesError && <p className="text-danger fs-7 mb-0">Couldn't load your services right now.</p>}
-              {!servicesError && services === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+              {!servicesError && services === null && <Loader size="sm" />}
               {!servicesError && services?.length === 0 && <p className="text-secondary fs-7 mb-0">You haven't posted a service yet.</p>}
 
               <div className="row g-3">

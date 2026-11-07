@@ -17,6 +17,7 @@ import DeletePostDialog from "../components/DeletePostDialog";
 import BlockedNotice from "../components/BlockedNotice";
 import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
 import { isPostingBlocked } from "../../../lib/suspensions";
+import { Loader } from "../../../components/Loaders";
 
 // description and skill are here so the Edit form can be filled in from the list.
 const SERVICE_COLUMNS = "id, title, category, description, skill, price, image_url, media_type, created_at, updated_at";
@@ -292,7 +293,7 @@ export default function ServicesView() {
               </button>
             </div>
 
-            {isVerified === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+            {isVerified === null && <Loader size="sm" />}
 
             {isVerified === false && (
               <div className="text-center py-4">
@@ -432,7 +433,7 @@ export default function ServicesView() {
               )}
             </h5>
 
-            {services === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+            {services === null && <Loader size="sm" />}
             {services !== null && services.length === 0 && <p className="text-secondary fs-7 mb-0">You haven't posted a service yet.</p>}
             {isVerified === false && services?.length > 0 && (
               <p className="text-warning fs-8 mb-3">

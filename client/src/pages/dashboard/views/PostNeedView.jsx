@@ -15,6 +15,7 @@ import FeatureControl from "../components/FeatureControl";
 import PromoPayDialog from "../components/PromoPayDialog";
 import HiredFreelancers from "../components/HiredFreelancers";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
@@ -398,7 +399,7 @@ export default function PostNeedView() {
 
             {postingBlocked && <BlockedNotice suspension={suspension} what="post job listings" />}
 
-            {!postingBlocked && isVerified === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+            {!postingBlocked && isVerified === null && <Loader size="sm" />}
 
             {!postingBlocked && isVerified === false && (
               <div className="text-center py-4">
@@ -670,7 +671,7 @@ export default function PostNeedView() {
           <div data-tour="post-list" className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
             <h5 className="text-white fw-bold mb-3"><i className="bi bi-grid-fill text-warning me-2"></i> Your Active Listings</h5>
 
-            {posts === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+            {posts === null && <Loader size="sm" />}
             {posts !== null && posts.length === 0 && <p className="text-secondary fs-7 mb-0">You haven't posted a listing yet.</p>}
 
             <div className="d-flex flex-column gap-3">

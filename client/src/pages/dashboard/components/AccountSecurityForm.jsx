@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { changePassword, checkPasswordChange, getSignInInfo, signOutOtherDevices } from "../../../lib/accountSecurity";
+import { Loader } from "../../../components/Loaders";
 
 const emptyForm = { current: "", next: "", confirm: "" };
 
@@ -57,7 +58,7 @@ export default function AccountSecurityForm({ showToast }) {
     showToast(failed || "Your other devices were signed out.");
   };
 
-  if (info === null) return <p className="text-secondary fs-7">Loading...</p>;
+  if (info === null) return <Loader size="sm" />;
 
   const methods = [info.hasPassword && "Email and password", info.withGoogle && "Google"].filter(Boolean).join(", ");
   const inputType = showPasswords ? "text" : "password";

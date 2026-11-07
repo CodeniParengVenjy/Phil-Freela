@@ -20,6 +20,7 @@ import DeletePostDialog from "../components/DeletePostDialog";
 import HiredFreelancers from "../components/HiredFreelancers";
 import ReportDialog from "../components/ReportDialog";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // One client job post (opened from Find Jobs). Freelancers apply here with a
 // resume (a PDF, Word file or picture) and an optional note; the client then
@@ -127,7 +128,7 @@ export default function JobDetailsView() {
   };
 
   if (job === undefined) {
-    return <section className="dashboard-view active-view"><p className="text-secondary fs-7">Loading job...</p></section>;
+    return <section className="dashboard-view active-view"><Loader size="lg" label="Loading job" /></section>;
   }
 
   if (job === null) {

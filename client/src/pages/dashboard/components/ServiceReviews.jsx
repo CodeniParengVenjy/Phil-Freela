@@ -5,6 +5,7 @@ import { profilePath } from "../../../lib/profileStats";
 import { MAX_REVIEW_COMMENT_LENGTH, addServiceReview, fetchServiceReviews, getOfferProgress, removeOwnReview, summarizeReviews } from "../../../lib/serviceReviews";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // 1 to 5 small stars, read-only.
 function Stars({ value }) {
@@ -173,7 +174,7 @@ export default function ServiceReviews({ serviceId, reviews, loadError, onReview
         <p className="text-secondary fs-8 mb-3">This is your offer. Clients rate it here.</p>
       )}
 
-      {reviews === null && !loadError && <p className="text-secondary fs-7 mb-0">Loading ratings...</p>}
+      {reviews === null && !loadError && <Loader size="sm" label="Loading ratings" />}
       {loadError && <p className="text-danger fs-7 mb-0">{loadError}</p>}
       {reviews !== null && list.length === 0 && (
         <p className="text-secondary fs-7 mb-0">No ratings yet.{canRate && " Be the first to rate this offer."}</p>

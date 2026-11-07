@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { MAX_FEEDBACK_LENGTH, getMyRating, getProject, personName, rateProject, ratingDeadline } from "../../../lib/projects";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // The interactive star picker used to choose a rating (not the read-only
 // "★ 4.8 (5)" badge — that's components/StarRating.jsx). Each star is a
@@ -69,7 +70,7 @@ export default function FeedbackView() {
   }, [projectId, currentUserId]);
 
   if (project === undefined || myRating === undefined) {
-    return <section className="dashboard-view active-view"><p className="text-secondary fs-7">Loading...</p></section>;
+    return <section className="dashboard-view active-view"><Loader size="lg" label="Loading" /></section>;
   }
 
   const iAmClient = project?.client_id === currentUserId;

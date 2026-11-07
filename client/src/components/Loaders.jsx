@@ -26,6 +26,17 @@ function Dots() {
   return <span className="pf-dots" aria-hidden="true"><i></i><i></i><i></i></span>;
 }
 
+// Only the hopping dots, in place of a number that is still loading (the
+// admin Overview numbers, the counts on the admin tabs).
+export function LoadingDots() {
+  return (
+    <span className="pf-dots-only" role="status">
+      <span className="visually-hidden">Loading</span>
+      <Dots />
+    </span>
+  );
+}
+
 // Two accent rings turning against each other around a beating dot.
 function Orbit({ large = false }) {
   return (

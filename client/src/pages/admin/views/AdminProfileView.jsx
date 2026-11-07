@@ -6,6 +6,7 @@ import { userEmailSuggestionFor } from "../../../lib/adminEmail";
 import { fetchAdminProfile, saveAdminProfile } from "../../../lib/adminProfile";
 import { MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, noAutofill } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
+import { Loader } from "../../../components/Loaders";
 
 const emptyPasswords = { current: "", next: "", confirm: "" };
 
@@ -47,7 +48,7 @@ export default function AdminProfileView() {
   }, [adminId]);
 
   if (!profile || !info) {
-    return <p className="text-white-50 fs-7">Loading...</p>;
+    return <Loader label="Loading your profile" />;
   }
 
   const shownName = nameInput ?? profile.full_name;

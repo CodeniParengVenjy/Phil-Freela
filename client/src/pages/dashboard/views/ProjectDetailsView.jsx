@@ -12,6 +12,7 @@ import CensoredText from "../../../components/CensoredText";
 import PaymentsSection from "../components/PaymentsSection";
 import ProjectPriceBox from "../components/ProjectPriceBox";
 import ReportDialog from "../components/ReportDialog";
+import { Loader } from "../../../components/Loaders";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
 // My Projects or from a project notification. Both people on the project use
@@ -179,7 +180,7 @@ export default function ProjectDetailsView() {
   };
 
   if (project === undefined) {
-    return <section className="dashboard-view active-view"><p className="text-secondary fs-7">Loading project...</p></section>;
+    return <section className="dashboard-view active-view"><Loader size="lg" label="Loading project" /></section>;
   }
 
   if (project === null) {
@@ -478,7 +479,7 @@ export default function ProjectDetailsView() {
                 until both have rated, or until the time for rating is over. */}
             {project.status === "done" && (
               <div className="text-center pt-2">
-                {myRating === undefined && <p className="text-secondary fs-7 mb-0">Loading your rating...</p>}
+                {myRating === undefined && <Loader size="sm" label="Loading your rating" />}
                 {myRating === null && !deadline?.ended && (
                   <>
                     <Link to={`/dashboard/feedback/${project.id}`} className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow">

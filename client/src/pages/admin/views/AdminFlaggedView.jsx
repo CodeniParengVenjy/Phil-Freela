@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { fetchSlideText, slidePagePaths, slideUrl } from "../../../lib/slides";
 import { useWholePages } from "../../../lib/wholePages";
 import { withoutHiddenCharacters } from "../../../lib/portfolio";
+import { Loader } from "../../../components/Loaders";
 
 // A slide (photo, video or document), its uploader, and the service or
 // portfolio project it's in. page_count: a PDF's page pictures (step 11).
@@ -65,7 +66,8 @@ function TextBox({ text }) {
 // table. A document saved before previews existed has no row there, and its
 // public file is still the whole text, so that is the fallback.
 function SlideText({ slideId, filePath }) {
-  const [text, setText] = useState("Loading document...");
+  // null while the text loads.
+  const [text, setText] = useState(null);
   useEffect(() => {
     let active = true;
     supabase.from("slide_texts").select("body").eq("slide_id", slideId).maybeSingle()
@@ -76,7 +78,7 @@ function SlideText({ slideId, filePath }) {
       active = false;
     };
   }, [slideId, filePath]);
-  return <TextBox text={text} />;
+  return text === null ? <Loader size="sm" label="Loading document" /> : <TextBox text={text} />;
 }
 
 // One side of a comparison: a slide (the photo, the video, or a document's
@@ -101,7 +103,7 @@ function SlideCard({ label, slide, showPages = false }) {
             </div>
           ) : pages.length === 1 ? (pageLink(pages[0])
             ? <img src={pageLink(pages[0])} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />
-            : <div className="rounded-3 bg-black d-flex align-items-center justify-content-center text-white-50 fs-8" style={{ height: 260 }}>Loading page...</div>)
+            : <div className="rounded-3 bg-black d-flex align-items-center justify-content-center" style={{ height: 260 }}><Loader size="sm" label="Loading page" /></div>)
             : slide.media_type === "document" ? <SlideText slideId={slide.id} filePath={slide.file_path} />
             : slide.media_type === "video" ? <video src={slideUrl(slide.file_path)} controls preload="metadata" className="w-100 rounded-3 bg-black" style={mediaStyle} />
               : <img src={slideUrl(slide.file_path)} alt={label} className="w-100 rounded-3 bg-black" style={mediaStyle} />}
@@ -309,7 +311,7 @@ export default function AdminFlaggedView() {
         <p className={`admin-message ${message.type} fs-7 fw-semibold`} aria-live="polite">{message.text}</p>
       )}
       {loadError && <p className="text-danger fs-7">{loadError}</p>}
-      {!loadError && flagged === null && <p className="text-white-50 fs-7">Loading...</p>}
+      {!loadError && flagged === null && <Loader label="Loading flagged content" />}
       {flagged?.length === 0 && (
         <div className="admin-card rounded-4 p-4 text-center text-white-50 fs-7">
           <i className="bi bi-check2-circle fs-3 d-block mb-2"></i>

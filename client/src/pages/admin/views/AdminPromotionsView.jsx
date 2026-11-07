@@ -4,6 +4,7 @@ import { formatDay } from "../../../lib/billboards";
 import { formatPeso } from "../../../lib/payments";
 import { PROMO_KINDS, getAnsweredRequests, getPrices, getRunning } from "../../../lib/promotions";
 import PromotionSettings from "../components/PromotionSettings";
+import { Loader } from "../../../components/Loaders";
 
 const TABS = [
   { key: "running", label: "Running now" },
@@ -97,7 +98,7 @@ export default function AdminPromotionsView() {
       {tab === "running" && (
         <>
           {errors.running && <div className="admin-card rounded-4 p-4 text-center text-white-50">{errors.running}</div>}
-          {!errors.running && !running && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading what is running...</div>}
+          {!errors.running && !running && <div className="admin-card rounded-4 p-4"><Loader label="Loading what is running" /></div>}
           {running && (
             <div className="row g-3">
               <div className="col-12 col-lg-6">
@@ -160,7 +161,7 @@ export default function AdminPromotionsView() {
       {tab === "history" && (
         <>
           {errors.history && <div className="admin-card rounded-4 p-4 text-center text-white-50">{errors.history}</div>}
-          {!errors.history && !answered && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the history...</div>}
+          {!errors.history && !answered && <div className="admin-card rounded-4 p-4"><Loader label="Loading the history" /></div>}
           {!errors.history && answered?.length === 0 && (
             <div className="admin-card rounded-4 p-4 text-center text-white-50">Nothing has been paid yet.</div>
           )}
@@ -207,7 +208,7 @@ export default function AdminPromotionsView() {
       {tab === "settings" && (
         <>
           {errors.settings && <div className="admin-card rounded-4 p-4 text-center text-white-50">{errors.settings}</div>}
-          {!errors.settings && prices === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the settings...</div>}
+          {!errors.settings && prices === null && <div className="admin-card rounded-4 p-4"><Loader label="Loading the settings" /></div>}
           {prices !== null && (
             <PromotionSettings
               isSuperAdmin={isSuperAdmin}

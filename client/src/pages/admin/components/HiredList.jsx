@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { JOB_STATES } from "../../../lib/jobTerms";
 import { formatDay, projectStatuses } from "../../../lib/projects";
 import { Picture } from "./HiringTrail";
+import { Loader } from "../../../components/Loaders";
 
 // How many hires show before "Show all".
 const FIRST_SHOWN = 10;
@@ -48,7 +49,7 @@ export default function HiredList() {
       </div>
 
       {failed && <p className="text-secondary fs-7 mb-0">Couldn't load the hired freelancers. Please try again.</p>}
-      {!failed && hires === null && <p className="text-secondary fs-7 mb-0">Loading the hired freelancers...</p>}
+      {!failed && hires === null && <Loader size="sm" label="Loading the hired freelancers" />}
       {!failed && hires?.length === 0 && <p className="text-secondary fs-7 mb-0">Nobody has been hired from a job post yet.</p>}
 
       {!failed && shown?.length > 0 && (

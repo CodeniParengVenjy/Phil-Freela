@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ACCENT_PRESETS, GRADIENT_PRESETS, TEXT_SIZES, applyAppearance, fetchAppearance, isHexColor, readSavedAppearance, rememberAppearance, saveAppearance } from "../../../lib/appearance";
+import { Busy } from "../../../components/Loaders";
 
 // The usual accent of each role, shown on the "Default" choice.
 const ROLE_COLOR = { freelancer: "#ff6b00", client: "#06b6d4" };
@@ -219,7 +220,7 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
         <small className="text-secondary fs-8 d-block mt-2">
           {loaded
             ? "A color that is too close to the background is adjusted a little, so buttons and icons can still be seen."
-            : "Loading your appearance..."}
+            : <Busy>Loading your appearance</Busy>}
         </small>
       </div>
 

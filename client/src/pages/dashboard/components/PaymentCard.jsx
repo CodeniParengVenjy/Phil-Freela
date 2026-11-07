@@ -5,6 +5,7 @@ import {
 } from "../../../lib/payments";
 import RecordPaymentDialog from "./RecordPaymentDialog";
 import "../payments.css";
+import { Loader } from "../../../components/Loaders";
 
 const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 
@@ -105,7 +106,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
       {waitingForPayer && (
         <div className="mt-3">
           {detailsError && <p className="text-danger fs-7 mb-2">{detailsError}</p>}
-          {!detailsError && details === undefined && <p className="text-secondary fs-7 mb-2">Loading where to pay...</p>}
+          {!detailsError && details === undefined && <Loader size="sm" label="Loading where to pay" className="mb-2" />}
           {!detailsError && details === null && (
             <p className="text-white-50 fs-7 mb-2">{otherName} hasn't saved their GCash details, so there is nowhere to send the money. Message them.</p>
           )}

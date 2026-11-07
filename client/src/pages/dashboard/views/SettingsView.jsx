@@ -12,6 +12,7 @@ import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
 import GcashSettingsForm from "../components/GcashSettingsForm";
+import { Loader, Busy } from "../../../components/Loaders";
 
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
 // The tabs the opening tour points at by name (components/WelcomeGuide.jsx).
@@ -337,7 +338,7 @@ export default function SettingsView() {
                     <label htmlFor="availableForWork" className="form-check-label text-white fw-semibold fs-7">Available for work</label>
                     <p className="text-secondary fs-8 mb-0 mt-1">
                       {availableForWork === null
-                        ? "Loading..."
+                        ? <Busy>Loading</Busy>
                         : availableForWork
                           ? "Clients can book your services. Switch this off when you have enough work or are away."
                           : "Your profile and services say \"Not available right now\" and clients can't send you new bookings. They can still message you, and the bookings and projects you already have go on as usual."}
@@ -427,7 +428,7 @@ export default function SettingsView() {
                     />
                     <small className="text-secondary fs-8">
                       {savedDescription === null
-                        ? "Loading your description..."
+                        ? <Busy>Loading your description</Busy>
                         : `${shownDescription.length}/${MAX_DESCRIPTION_LENGTH} characters. Everyone who views your profile can see this.`}
                     </small>
                   </div>
@@ -456,7 +457,7 @@ export default function SettingsView() {
             ) : activeSubNav === "Appearance" ? (
               currentUserId
                 ? <AppearanceForm userId={currentUserId} accountType={accountType} showToast={showToast} />
-                : <p className="text-secondary fs-7">Loading...</p>
+                : <Loader size="sm" />
             ) : activeSubNav === "Privacy & Notifications" ? (
               <>
                 <div className="form-check form-switch">
@@ -472,7 +473,7 @@ export default function SettingsView() {
                   <label htmlFor="emailWhenOffline" className="form-check-label text-white fw-semibold fs-7">Email me when I'm offline</label>
                   <p className="text-secondary fs-8 mb-0 mt-1">
                     {emailWhenOffline === null
-                      ? "Loading..."
+                      ? <Busy>Loading</Busy>
                       : "When you're not on PhilFreela, we'll email you about the things ticked below (new messages at most once per chat every 30 minutes). Messages themselves are never put in the email."}
                   </p>
 

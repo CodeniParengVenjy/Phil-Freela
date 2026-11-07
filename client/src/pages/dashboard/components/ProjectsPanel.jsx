@@ -4,6 +4,7 @@ import { formatDay, getMyProjects, personName, projectStatuses, ratingStep, toda
 import Avatar from "../../../components/Avatar";
 import DueDateCalendar from "./DueDateCalendar";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // The "My Projects" box on the Projects page. Each card opens its project
 // page (the Project Details screen). Freelancers see the jobs they were hired
@@ -41,7 +42,7 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
       </p>
 
       {failed && <p className="text-danger fs-7 mb-0">Couldn't load your projects right now.</p>}
-      {!failed && projects === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+      {!failed && projects === null && <Loader size="sm" />}
       {/* The due dates of the same projects, on a calendar. */}
       {!failed && projects !== null && <DueDateCalendar projects={projects} today={today} />}
       {!failed && projects?.length === 0 && (

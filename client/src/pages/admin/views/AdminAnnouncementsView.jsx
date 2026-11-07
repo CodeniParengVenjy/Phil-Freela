@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { announcementAudiences, audienceLabel } from "../../../lib/announcements";
+import { Loader } from "../../../components/Loaders";
 
 const emptyForm = { title: "", message: "", audience: "all" };
 
@@ -120,7 +121,7 @@ export default function AdminAnnouncementsView() {
       <h2 className="h6 fw-bold text-white mb-3">Sent Announcements</h2>
 
       {loadError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{loadError}</div>}
-      {!loadError && announcements === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading announcements...</div>}
+      {!loadError && announcements === null && <div className="admin-card rounded-4 p-4"><Loader label="Loading announcements" /></div>}
       {!loadError && announcements?.length === 0 && (
         <div className="admin-card rounded-4 p-4 text-center text-white-50">
           <i className="bi bi-megaphone fs-1 d-block mb-2"></i>

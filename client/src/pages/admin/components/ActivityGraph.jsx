@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { GrowthChart, GrowthTable } from "./GrowthChart";
+import { Loader } from "../../../components/Loaders";
 
 // How many days the graph can cover.
 const RANGES = [7, 30, 90];
@@ -84,7 +85,7 @@ export default function ActivityGraph({ tabs }) {
         </div>
       )}
       {error === "failed" && <div className="admin-card rounded-4 p-4 text-center text-white-50">Failed to load the graph.</div>}
-      {!error && !activity && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading the graph...</div>}
+      {!error && !activity && <div className="admin-card rounded-4 p-4"><Loader label="Loading the graph" /></div>}
 
       {!error && activity && (
         <div className={loading ? "admin-trends-loading" : ""} aria-busy={loading}>

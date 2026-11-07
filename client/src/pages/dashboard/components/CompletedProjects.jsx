@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchProfileHistory, profilePath } from "../../../lib/profileStats";
 import Avatar from "../../../components/Avatar";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // How many show before "Show all".
 const SHOWN_AT_FIRST = 5;
@@ -37,7 +38,7 @@ export default function CompletedProjects({ userId, role }) {
     <div>
       <h5 className="text-white fw-bold mb-3"><i className="bi bi-check2-circle text-success me-2"></i> Completed Projects</h5>
 
-      {rows === undefined && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+      {rows === undefined && <Loader size="sm" />}
       {rows === null && <p className="text-secondary fs-7 mb-0">Couldn't load the completed projects right now.</p>}
       {rows?.length === 0 && <p className="text-secondary fs-7 mb-0">No completed projects yet.</p>}
 

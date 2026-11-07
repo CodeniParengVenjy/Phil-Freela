@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { formatEndDate } from "../../../lib/suspensions";
 import { getViolation } from "../../../lib/violations";
+import { Loader, LoadingDots } from "../../../components/Loaders";
 
 const statusTabs = [
   { key: "pending", label: "Pending" },
@@ -117,7 +118,7 @@ export default function AdminAppealsView() {
             className={`btn btn-sm rounded-pill px-3 fw-bold ${activeStatus === t.key ? "btn-admin-orange" : "btn-outline-light"}`}
             onClick={() => { setActiveStatus(t.key); setMessage({ text: "", type: "" }); }}
           >
-            {t.label} <span className="ms-1 opacity-75">({appeals ? countFor(t.key) : "…"})</span>
+            {t.label} <span className="ms-1 opacity-75">({appeals ? countFor(t.key) : <LoadingDots />})</span>
           </button>
         ))}
       </div>
@@ -127,7 +128,7 @@ export default function AdminAppealsView() {
       )}
 
       {loadError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{loadError}</div>}
-      {!loadError && appeals === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading appeals...</div>}
+      {!loadError && appeals === null && <div className="admin-card rounded-4 p-4"><Loader label="Loading appeals" /></div>}
       {!loadError && appeals !== null && visible.length === 0 && (
         <div className="admin-card rounded-4 p-4 text-center text-white-50">
           <i className="bi bi-envelope-paper fs-1 d-block mb-2"></i>

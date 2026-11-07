@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { fetchSlideText } from "../../../lib/slides";
 import ProtectedText from "./ProtectedText";
 import "./slides.css";
+import { Loader } from "../../../components/Loaders";
 
 // Stops the browser's "Save image/video as..." menu.
 const blockSaveMenu = (event) => event.preventDefault();
@@ -110,7 +111,7 @@ function DocumentSlide({ url, pages = [], fit, hiddenChars = 0, ownerName, seed 
           className="media-carousel-page"
           style={{ objectFit: fit }}
         />
-      ) : loaded === null ? "Loading document..." : loaded.error || (
+      ) : loaded === null ? <Loader size="sm" label="Loading document" /> : loaded.error || (
         <ProtectedText framed={false} text={loaded.text} hiddenChars={hiddenChars} seed={seed} />
       )}
       {(hasPages || loaded?.text) && (

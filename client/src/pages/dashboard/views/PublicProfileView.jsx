@@ -21,6 +21,7 @@ import CompletedProjects from "../components/CompletedProjects";
 import ReportDialog from "../components/ReportDialog";
 import ServiceCard from "../components/ServiceCard";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 const ROLE_LABELS = { freelancer: "Freelancer", client: "Client" };
 
@@ -30,7 +31,7 @@ const ROLE_LABELS = { freelancer: "Freelancer", client: "Client" };
 // switch roles. Reached from a person's name or picture anywhere on the site.
 export default function PublicProfileView() {
   const { userId } = useParams();
-  // key: start fresh (back to "Loading...") when moving from one person's page to another's.
+  // key: start fresh (back to the loading animation) when moving from one person's page to another's.
   return <PublicProfile key={userId} userId={userId} />;
 }
 
@@ -81,7 +82,7 @@ function PublicProfile({ userId }) {
   }, [userId]);
 
   if (person === undefined) {
-    return <section className="dashboard-view active-view"><p className="text-secondary fs-7">Loading...</p></section>;
+    return <section className="dashboard-view active-view"><Loader size="lg" label="Loading profile" /></section>;
   }
 
   if (person === null) {

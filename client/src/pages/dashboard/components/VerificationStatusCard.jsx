@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchLatestVerification } from "../../../lib/verification";
+import { Loader } from "../../../components/Loaders";
 
 // How each status looks on the card, and what the button says.
 const STATUS_INFO = {
@@ -38,7 +39,7 @@ export default function VerificationStatusCard({ userId }) {
         {info ? (
           <p className={`fs-7 fw-semibold mb-0 ${info.className}`}><i className={`bi ${info.icon} me-1`}></i>{info.text}</p>
         ) : (
-          <p className="text-secondary fs-7 mb-0">Loading...</p>
+          <Loader size="sm" />
         )}
       </div>
       {info?.button && (

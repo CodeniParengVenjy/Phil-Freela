@@ -6,6 +6,7 @@ import { banDeletionDay, formatEndDate, restrictionText, suspensionStatus } from
 import { getViolation } from "../../lib/violations";
 import { APPEAL_MAX_LENGTH, APPEAL_MIN_LENGTH, getAppealFor, sendAppeal } from "../../lib/appeals";
 import "../../styles/auth.css";
+import { Loader } from "../../components/Loaders";
 
 // Where suspended and banned users appeal. Banned users are sent here after
 // logging in, since it's the only page they can use; suspended users come
@@ -95,7 +96,7 @@ export default function AppealPage() {
             )}
           </div>
 
-          {suspension === undefined && <p className="text-secondary text-center mb-0">Loading...</p>}
+          {suspension === undefined && <Loader />}
 
           {suspension === null && (
             <div className="text-center">
@@ -129,7 +130,7 @@ export default function AppealPage() {
                 </p>
               )}
 
-              {appeal === undefined && <p className="text-secondary text-center mb-0">Loading...</p>}
+              {appeal === undefined && <Loader size="sm" className="justify-content-center" />}
 
               {/* Not appealed yet: the form. */}
               {appeal === null && (

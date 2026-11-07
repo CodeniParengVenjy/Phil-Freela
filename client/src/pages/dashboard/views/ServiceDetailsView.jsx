@@ -21,6 +21,7 @@ import MediaCarousel from "../components/MediaCarousel";
 import ReportDialog from "../components/ReportDialog";
 import ServiceReviews from "../components/ServiceReviews";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // One service offer (a "project offer"), opened from a card on Browse Services
 // or the AI search results, or from a freelancer's page. This is the only place
@@ -30,7 +31,7 @@ import CensoredText from "../../../components/CensoredText";
 // applying).
 export default function ServiceDetailsView() {
   const { serviceId } = useParams();
-  // key: start fresh (back to "Loading...") when moving from one offer to another.
+  // key: start fresh (back to the loading animation) when moving from one offer to another.
   return <ServiceDetails key={serviceId} serviceId={serviceId} />;
 }
 
@@ -126,7 +127,7 @@ function ServiceDetails({ serviceId }) {
   );
 
   if (service === undefined) {
-    return <section className="dashboard-view active-view"><p className="text-secondary fs-7">Loading offer...</p></section>;
+    return <section className="dashboard-view active-view"><Loader size="lg" label="Loading offer" /></section>;
   }
 
   if (service === null) {

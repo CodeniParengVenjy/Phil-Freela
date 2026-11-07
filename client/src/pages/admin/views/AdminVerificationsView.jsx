@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { AUTO_REJECT_HOURS, ID_TYPES, aiSuggestion, autoRejectTime, suggestionBadgeClass, suggestionLabels } from "../../../lib/verification";
 import AiSummaryCard from "../components/AiSummaryCard";
+import { Loader, Busy, LoadingDots } from "../../../components/Loaders";
 
 const statusTabs = [
   { key: "pending", label: "Pending" },
@@ -168,7 +169,7 @@ export default function AdminVerificationsView() {
             className={`btn btn-sm rounded-pill px-3 fw-bold ${activeStatus === t.key ? "btn-admin-orange" : "btn-outline-light"}`}
             onClick={() => { setActiveStatus(t.key); setOpenId(null); setMessage({ text: "", type: "" }); }}
           >
-            {t.label} <span className="ms-1 opacity-75">({verifications ? countFor(t.key) : "…"})</span>
+            {t.label} <span className="ms-1 opacity-75">({verifications ? countFor(t.key) : <LoadingDots />})</span>
           </button>
         ))}
       </div>
@@ -178,7 +179,7 @@ export default function AdminVerificationsView() {
       )}
 
       {loadError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{loadError}</div>}
-      {!loadError && verifications === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading verifications...</div>}
+      {!loadError && verifications === null && <div className="admin-card rounded-4 p-4"><Loader label="Loading verifications" /></div>}
       {!loadError && verifications !== null && visible.length === 0 && (
         <div className="admin-card rounded-4 p-4 text-center text-white-50">
           <i className="bi bi-person-vcard fs-1 d-block mb-2"></i>
@@ -241,7 +242,7 @@ export default function AdminVerificationsView() {
                               <img src={photoUrls[photo.path]} alt={photo.label} style={{ maxWidth: "100%", maxHeight: index < 2 ? 260 : 170, objectFit: "contain" }} />
                             </a>
                           ) : (
-                            <span className="text-white-50 fs-8">Loading...</span>
+                            <span className="text-white-50 fs-8"><Busy>Loading the photo</Busy></span>
                           )}
                         </div>
                         <p className="text-white-50 fs-8 mb-0 mt-1">{photo.label}</p>

@@ -8,6 +8,7 @@ import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // One booking: the other person, the service, the note, the date needed and
 // the status. The buttons depend on who is looking and on the status:
@@ -213,7 +214,7 @@ export default function BookingsView() {
         </p>
 
         {failed && <p className="text-danger fs-7 mb-0">Couldn't load your bookings right now.</p>}
-        {!failed && bookings === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+        {!failed && bookings === null && <Loader size="sm" />}
         {!failed && bookings?.length === 0 && (
           <p className="text-secondary fs-7 mb-0">
             {isFreelancer

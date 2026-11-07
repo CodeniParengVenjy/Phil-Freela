@@ -7,6 +7,7 @@ import {
   formatDay, getAllBillboards, getBillboardLinks, lastDayOf, postBillboard, setBillboardActive, setBillboardEnd, todayInManila
 } from "../../../lib/billboards";
 import { confirmCheckout, onlinePaymentsReady, startBillboardLink } from "../../../lib/checkout";
+import { Loader } from "../../../components/Loaders";
 
 // payOnline: the sponsor pays through a Xendit link instead of before posting.
 const emptyForm = () => ({ title: "", message: "", audience: "all", startDay: todayInManila(), endDay: "", sponsorName: "", amount: "", paymentRef: "", payOnline: false });
@@ -347,7 +348,7 @@ export default function AdminBillboardView() {
       <h2 className="h6 fw-bold text-white mb-3">Posted Billboards</h2>
 
       {loadError && <div className="admin-card rounded-4 p-4 text-center text-white-50">{loadError}</div>}
-      {!loadError && billboards === null && <div className="admin-card rounded-4 p-4 text-center text-white-50">Loading billboards...</div>}
+      {!loadError && billboards === null && <div className="admin-card rounded-4 p-4"><Loader label="Loading billboards" /></div>}
       {!loadError && billboards?.length === 0 && (
         <div className="admin-card rounded-4 p-4 text-center text-white-50">
           <i className="bi bi-easel2 fs-1 d-block mb-2"></i>

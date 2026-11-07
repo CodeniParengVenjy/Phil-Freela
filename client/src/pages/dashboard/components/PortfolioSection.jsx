@@ -11,6 +11,7 @@ import PortfolioViewer from "./PortfolioViewer";
 import ReportDialog from "./ReportDialog";
 import "./portfolio.css";
 import CensoredText from "../../../components/CensoredText";
+import { Loader } from "../../../components/Loaders";
 
 // Stops the browser's "Save image as..." menu on the cover pictures.
 const blockSaveMenu = (event) => event.preventDefault();
@@ -122,7 +123,7 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
       </div>
 
       {loadError && <p className="text-danger fs-7 mb-0">{loadError}</p>}
-      {!loadError && items === null && <p className="text-secondary fs-7 mb-0">Loading...</p>}
+      {!loadError && items === null && <Loader size="sm" />}
       {items?.length === 0 && (
         <p className="text-secondary fs-7 mb-0">
           {isOwner ? "You haven't added anything yet. Show clients your best work!" : "No portfolio projects yet."}

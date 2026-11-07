@@ -4,6 +4,7 @@ import { submitVerification } from "../../../lib/aiService";
 import { fetchLatestVerification, isPhone } from "../../../lib/verification";
 import PhoneQrPanel from "./PhoneQrPanel";
 import VerificationWizard from "./VerificationWizard";
+import { Loader } from "../../../components/Loaders";
 
 const LOAD_ERROR = "Couldn't load your verification status. Please refresh the page.";
 
@@ -72,7 +73,7 @@ export default function IdentityVerification() {
   };
 
   if (loadError) return <p className="text-warning fs-7 mb-0">{loadError}</p>;
-  if (latest === undefined || (hasWebcam === null && !onPhone)) return <p className="text-secondary fs-7 mb-0">Loading...</p>;
+  if (latest === undefined || (hasWebcam === null && !onPhone)) return <Loader size="sm" />;
 
   if (latest?.status === "approved") {
     return (
