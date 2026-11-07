@@ -4,6 +4,7 @@ import { checkVideoOwnership } from "../../../lib/aiService";
 import { MAX_VIDEO_BYTES, VIDEO_TYPES, isVideoFile, stageVideo, unstageVideo } from "../../../lib/slides";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import MediaDropzone from "./MediaDropzone";
+import { Busy } from "../../../components/Loaders";
 
 // The Video tab of Check Ownership (watermarking step 7): upload a video you
 // found. Every frame of a PhilFreela video carries the same invisible code,
@@ -68,7 +69,7 @@ export default function VideoOwnershipCheck() {
         />
         <div>
           <button type="button" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white" onClick={handleCheck} disabled={!file || checking}>
-            {checking ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Checking...</> : "Check Ownership"}
+            {checking ? <Busy kind="ai">Checking</Busy> : "Check Ownership"}
           </button>
           {checking && <p className="text-secondary fs-8 mb-0 mt-2">Uploading the video and reading its hidden code. This can take up to a minute.</p>}
         </div>

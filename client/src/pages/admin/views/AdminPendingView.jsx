@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getFriendlyErrorMessage } from "../../../lib/errors";
 import { resendConfirmation, useResendWait } from "../../../lib/resendConfirmation";
-import { SkeletonRows } from "../../../components/Loaders";
+import { SkeletonRows, Busy } from "../../../components/Loaders";
 
 // How often the list quietly checks again, so someone who has just confirmed
 // their email drops off without the admin pressing Refresh.
@@ -255,7 +255,7 @@ export default function AdminPendingView() {
                       aria-label={`Resend the confirmation email to ${person.email}`}
                     >
                       <i className="bi bi-envelope-arrow-up me-1"></i>
-                      {sending ? "Sending..." : wait > 0 ? `Resend in ${wait}s` : "Resend email"}
+                      {sending ? <Busy kind="send">Sending</Busy> : wait > 0 ? `Resend in ${wait}s` : "Resend email"}
                     </button>
                     <button
                       type="button"
@@ -304,7 +304,7 @@ export default function AdminPendingView() {
               </button>
               <button type="button" className="btn btn-danger btn-sm rounded-pill px-4 fw-bold" onClick={handleDelete} disabled={deleting}>
                 <i className="bi bi-trash me-1"></i>
-                {deleting ? "Deleting..." : "Delete"}
+                {deleting ? <Busy>Deleting</Busy> : "Delete"}
               </button>
             </div>
           </div>

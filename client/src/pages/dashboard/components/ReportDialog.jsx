@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { MAX_SCREENSHOTS, checkScreenshot, reasonsFor, reportReasons, sendReport } from "../../../lib/reports";
 import { messageSummary } from "../../../lib/reportMessages";
 import { formatPeso, formatReference } from "../../../lib/payments";
+import { Busy } from "../../../components/Loaders";
 
 // For "Stolen work", the reporter must say where the original is, in at
 // least this many characters (so "x" or "idk" isn't enough for an admin).
@@ -341,7 +342,7 @@ export default function ReportDialog({ target, onClose, onDone }) {
             Cancel
           </button>
           <button type="submit" className="btn btn-danger rounded-pill px-4 fw-bold" disabled={sending}>
-            {sending ? "Sending..." : "Send Report"}
+            {sending ? <Busy kind="send">Sending</Busy> : "Send Report"}
           </button>
         </div>
       </form>

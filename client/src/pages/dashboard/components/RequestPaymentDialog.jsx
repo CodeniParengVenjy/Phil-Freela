@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { MAX_PAYMENT_NOTE_LENGTH, getMyGcash, parseAmount, requestPayment } from "../../../lib/payments";
+import { Busy } from "../../../components/Loaders";
 
 // "Request payment" in a chat (PLAN-gcash-payments.md): the freelancer asks the
 // other person to pay, with an amount and a short note. The database writes a
@@ -128,7 +129,7 @@ export default function RequestPaymentDialog({ userId, conversationId, otherName
             Cancel
           </button>
           <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending || hasDetails === false}>
-            {sending ? "Sending..." : "Send request"}
+            {sending ? <Busy kind="send">Sending</Busy> : "Send request"}
           </button>
         </div>
       </form>

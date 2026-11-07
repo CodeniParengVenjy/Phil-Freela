@@ -8,7 +8,7 @@ import { SLIDES_SELECT } from "../../../lib/slides";
 import { removeReportedPicture, reportPictureKinds, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { saveSuspension } from "../../../lib/suspensions";
 import { buildPenalty, getViolation } from "../../../lib/violations";
-import { Loader, LoadingDots } from "../../../components/Loaders";
+import { Loader, LoadingDots, Busy } from "../../../components/Loaders";
 
 const tabs = [
   { key: "pending", label: "Waiting" },
@@ -326,7 +326,7 @@ export default function AdminApprovalsView() {
                 className={`btn ${dialog.mode === "approve" ? "btn-success" : "btn-secondary"} btn-sm rounded-pill px-3 fw-bold`}
                 disabled={busy}
               >
-                {busy ? "Working..." : dialog.mode === "approve" ? "Approve" : "Decline"}
+                {busy ? <Busy>Working</Busy> : dialog.mode === "approve" ? "Approve" : "Decline"}
               </button>
             </div>
           </form>

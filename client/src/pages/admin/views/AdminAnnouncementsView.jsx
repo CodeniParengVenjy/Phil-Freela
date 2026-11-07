@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { announcementAudiences, audienceLabel } from "../../../lib/announcements";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 const emptyForm = { title: "", message: "", audience: "all" };
 
@@ -110,7 +110,7 @@ export default function AdminAnnouncementsView() {
           </div>
         </div>
         <button type="submit" className="btn btn-admin-orange rounded-pill px-4 fw-bold mt-2" disabled={posting}>
-          <i className="bi bi-megaphone-fill me-1"></i> {posting ? "Posting..." : "Post Announcement"}
+          {posting ? <Busy kind="send">Posting</Busy> : <><i className="bi bi-megaphone-fill me-1"></i> Post Announcement</>}
         </button>
       </form>
 

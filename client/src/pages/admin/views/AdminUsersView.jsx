@@ -11,7 +11,7 @@ import { BAN_DELETE_DAYS, SUSPENSION_COLUMNS, banDeletionDay, blockedBadges, for
 import { buildPenalty, emptyViolationFields } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
 import AdminPagination from "../components/AdminPagination";
-import { SkeletonTableRows } from "../../../components/Loaders";
+import { SkeletonTableRows, Busy } from "../../../components/Loaders";
 
 // How many users one page of the table shows (the page numbers are under it).
 const USERS_PER_PAGE = 10;
@@ -748,7 +748,7 @@ export default function AdminUsersView() {
               </button>
               <button type="button" className="btn btn-admin-orange btn-sm rounded-pill px-4 fw-bold" onClick={confirmArchive} disabled={busy}>
                 <i className="bi bi-archive me-1"></i>
-                {busy ? "Working..." : isSuperAdmin ? "Archive account" : "Send for approval"}
+                {busy ? <Busy>Working</Busy> : isSuperAdmin ? "Archive account" : "Send for approval"}
               </button>
             </div>
           </div>
@@ -801,7 +801,7 @@ export default function AdminUsersView() {
               </button>
               <button type="button" className="btn btn-success btn-sm rounded-pill px-4 fw-bold" onClick={confirmLift} disabled={busy}>
                 <i className="bi bi-unlock me-1"></i>
-                {busy ? "Working..." : liftTarget.status === "banned" ? "Unban" : "Unsuspend"}
+                {busy ? <Busy>Working</Busy> : liftTarget.status === "banned" ? "Unban" : "Unsuspend"}
               </button>
             </div>
           </div>

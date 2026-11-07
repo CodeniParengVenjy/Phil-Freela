@@ -20,7 +20,7 @@ import DeletePostDialog from "../components/DeletePostDialog";
 import HiredFreelancers from "../components/HiredFreelancers";
 import ReportDialog from "../components/ReportDialog";
 import CensoredText from "../../../components/CensoredText";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 // One client job post (opened from Find Jobs). Freelancers apply here with a
 // resume (a PDF, Word file or picture) and an optional note; the client then
@@ -251,7 +251,7 @@ export default function JobDetailsView() {
         </div>
         <div>
           <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role" disabled={sending || iAmVerified === null}>
-            <i className="bi bi-send me-2"></i>{sending ? (checking ? "Checking your resume..." : "Sending...") : "Send Application"}
+            {sending ? (checking ? <Busy kind="ai">Checking your resume</Busy> : <Busy kind="send">Sending</Busy>) : <><i className="bi bi-send me-2"></i>Send Application</>}
           </button>
         </div>
       </form>

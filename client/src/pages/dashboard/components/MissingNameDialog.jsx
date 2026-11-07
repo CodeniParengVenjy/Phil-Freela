@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MAX_NAME_LENGTH, checkName, cleanName, saveDisplayName, noAutofill } from "../../../lib/profile";
+import { Busy } from "../../../components/Loaders";
 
 // Shown over every dashboard page to someone whose profile has no name (people
 // who signed up before names were required, like @apol). It can't be closed:
@@ -86,7 +87,7 @@ export default function MissingNameDialog({ userId, onSaved, onSignOut }) {
         )}
 
         <button type="submit" className="btn btn-gradient-role rounded-pill w-100 py-2 fw-bold text-white mt-3" disabled={saving}>
-          {saving ? "Saving..." : "Save name"}
+          {saving ? <Busy>Saving</Busy> : "Save name"}
         </button>
         <div className="text-center mt-3">
           <button type="button" className="btn btn-link text-white-50 text-decoration-none fs-8 p-0" onClick={onSignOut} disabled={saving}>

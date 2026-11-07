@@ -16,7 +16,7 @@ import { StarBadge } from "../../../components/StarRating";
 import RecommendationMarks from "../components/RecommendationMarks";
 import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
-import { SkeletonJobRows } from "../../../components/Loaders";
+import { SkeletonJobRows, Busy } from "../../../components/Loaders";
 
 // The pills above the list: all posts, or only one-time projects, or only ongoing jobs.
 const TYPE_FILTERS = [
@@ -186,7 +186,7 @@ export default function FindJobsView({ withRecommendations = false }) {
           </p>
           {recs.loading && (
             <p className="text-secondary fs-8 mb-0 mt-1">
-              <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Finding recommendations...
+              <Busy kind="ai">Finding recommendations</Busy>
             </p>
           )}
         </div>

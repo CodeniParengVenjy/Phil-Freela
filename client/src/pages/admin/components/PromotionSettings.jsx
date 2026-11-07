@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatPeso } from "../../../lib/payments";
 import { checkPrices, savePrice } from "../../../lib/promotions";
+import { Busy } from "../../../components/Loaders";
 
 // One option of the price list: its price, and for Featured posts and ads the
 // lower price a Premium member pays. Only a super admin can change them.
@@ -55,7 +56,7 @@ function PriceRow({ option, canEdit, onSaved, say }) {
           </div>
           <div className="col-12 col-md-2">
             <button type="button" className="btn btn-admin-orange btn-sm rounded-pill px-3 fw-bold" onClick={handleSave} disabled={saving || !changed}>
-              {saving ? "Saving..." : "Save"}
+              {saving ? <Busy>Saving</Busy> : "Save"}
             </button>
           </div>
         </>

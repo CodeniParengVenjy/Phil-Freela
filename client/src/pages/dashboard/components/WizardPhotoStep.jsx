@@ -3,6 +3,7 @@ import { shrinkImage } from "../../../lib/shrinkImage";
 import CameraCapture from "./CameraCapture";
 import MediaDropzone from "./MediaDropzone";
 import PhotoPreview from "./PhotoPreview";
+import { Busy } from "../../../components/Loaders";
 
 // Photo types the upload box accepts. Big phone photos are fine: every photo
 // is shrunk in the browser before it's sent (see lib/shrinkImage.js).
@@ -115,8 +116,8 @@ export default function WizardPhotoStep({ mode, instructions, prompt, cameraHint
       )}
 
       {/* The result of the instant check. */}
-      {preparing && <p className="text-secondary fs-7 mb-0"><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Preparing photo...</p>}
-      {side.status === "checking" && <p className="text-secondary fs-7 mb-0"><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Checking your photo...</p>}
+      {preparing && <p className="text-secondary fs-7 mb-0"><Busy>Preparing photo</Busy></p>}
+      {side.status === "checking" && <p className="text-secondary fs-7 mb-0"><Busy kind="ai">Checking your photo</Busy></p>}
       {side.status === "ok" && <p className="text-success fw-bold fs-7 mb-0"><i className="bi bi-check-circle-fill me-1"></i>Looks good!</p>}
       {side.status === "error" && <p className="text-warning fs-7 mb-0"><i className="bi bi-exclamation-triangle-fill me-1"></i>{side.message}</p>}
       {pickError && <p className="text-warning fs-7 mb-0"><i className="bi bi-exclamation-triangle-fill me-1"></i>{pickError}</p>}

@@ -7,7 +7,7 @@ import {
 } from "../../../lib/payments";
 import RecordPaymentDialog from "./RecordPaymentDialog";
 import "../payments.css";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 
@@ -226,7 +226,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
                 disabled={working}
                 onClick={() => handleAnswer(payment, asking.kind)}
               >
-                {working ? "Saving..." : asking.kind === "confirm" ? "Yes, I received it" : "Yes, it didn't arrive"}
+                {working ? <Busy>Saving</Busy> : asking.kind === "confirm" ? "Yes, I received it" : "Yes, it didn't arrive"}
               </button>
               <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 fs-7" disabled={working} onClick={() => setAsking(null)}>Cancel</button>
             </div>

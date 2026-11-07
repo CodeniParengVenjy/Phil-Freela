@@ -21,7 +21,7 @@ import VoiceRecorder from "../components/VoiceRecorder";
 import PaymentCard from "../components/PaymentCard";
 import RequestPaymentDialog from "../components/RequestPaymentDialog";
 import { listConversationPayments, watchConversationPayments } from "../../../lib/payments";
-import { SkeletonChat, SkeletonRows } from "../../../components/Loaders";
+import { SkeletonChat, SkeletonRows, Busy } from "../../../components/Loaders";
 
 // Same upload rules as the Post a Service media dropzone.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -899,7 +899,7 @@ export default function ChatView() {
                 Cancel
               </button>
               <button type="button" className="btn btn-gradient-role rounded-pill px-4 py-2 fw-bold text-white" onClick={confirmSendMedia} disabled={uploadingMedia}>
-                {uploadingMedia ? "Sending..." : "Send"}
+                {uploadingMedia ? <Busy kind="upload">Sending</Busy> : "Send"}
               </button>
             </div>
           </div>

@@ -7,7 +7,7 @@ import {
   formatDay, getAllBillboards, getBillboardLinks, lastDayOf, postBillboard, setBillboardActive, setBillboardEnd, todayInManila
 } from "../../../lib/billboards";
 import { confirmCheckout, onlinePaymentsReady, startBillboardLink } from "../../../lib/checkout";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 // payOnline: the sponsor pays through a Xendit link instead of before posting.
 const emptyForm = () => ({ title: "", message: "", audience: "all", startDay: todayInManila(), endDay: "", sponsorName: "", amount: "", paymentRef: "", payOnline: false });
@@ -337,7 +337,7 @@ export default function AdminBillboardView() {
           </div>
         </div>
         <button type="submit" className="btn btn-admin-orange rounded-pill px-4 fw-bold mt-3" disabled={posting}>
-          <i className="bi bi-easel2-fill me-1"></i> {posting ? "Posting..." : form.payOnline ? "Save and make payment link" : "Post Billboard"}
+          {posting ? <Busy kind="send">Posting</Busy> : <><i className="bi bi-easel2-fill me-1"></i> {form.payOnline ? "Save and make payment link" : "Post Billboard"}</>}
         </button>
       </form>
 

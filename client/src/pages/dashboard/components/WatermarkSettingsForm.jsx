@@ -6,7 +6,7 @@ import {
   loadWatermarkSettings, saveWatermarkSettings, watermarkText
 } from "../../../lib/watermarkSettings";
 import { drawWatermark, loadWatermarkFont } from "../../../lib/watermarkPreview";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 const SAMPLE_PHOTO = "/images/Freelancers.png";
 const LOGO = "/email/logo.png";
@@ -274,7 +274,7 @@ export default function WatermarkSettingsForm({ userId, username, fullName, show
 
       <div>
         <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role" disabled={saving || customMissing}>
-          {saving ? "Saving..." : "Save Watermark Settings"}
+          {saving ? <Busy>Saving</Busy> : "Save Watermark Settings"}
         </button>
       </div>
     </form>

@@ -6,7 +6,7 @@ import { banDeletionDay, formatEndDate, restrictionText, suspensionStatus } from
 import { getViolation } from "../../lib/violations";
 import { APPEAL_MAX_LENGTH, APPEAL_MIN_LENGTH, getAppealFor, sendAppeal } from "../../lib/appeals";
 import "../../styles/auth.css";
-import { Loader } from "../../components/Loaders";
+import { Loader, Busy } from "../../components/Loaders";
 
 // Where suspended and banned users appeal. Banned users are sent here after
 // logging in, since it's the only page they can use; suspended users come
@@ -158,7 +158,7 @@ export default function AppealPage() {
                     className="btn btn-gradient-orange w-100 rounded-3 fw-bold text-white py-2 mt-1"
                     disabled={sending || trimmed.length < APPEAL_MIN_LENGTH}
                   >
-                    {sending ? "Sending..." : "Send appeal"}
+                    {sending ? <Busy kind="send">Sending</Busy> : "Send appeal"}
                   </button>
                 </form>
               )}

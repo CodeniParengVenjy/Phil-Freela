@@ -195,7 +195,9 @@ export function isOriginalWork(item) {
 
 // Uploads the picked files ([{ key, file, promo }]) one at a time: each
 // request to the AI service must stay small, and it lets the page show
-// progress through onProgress("Checking ownership: 2 of 5..."). The words
+// progress through onProgress("Checking ownership: 2 of 5...", 0.2): the words,
+// and the share of the files already sent (it fills the button, Busy in
+// components/Loaders.jsx). The words
 // say "checking" because the request that uploads a file also runs the
 // ownership check on it (see ownershipPassedMessage). If one fails the rest
 // still go. Returns { slides, failed }: the saved slides, and a message per
@@ -208,7 +210,7 @@ export async function uploadSlides(target, items, userId, onProgress) {
       ? `Watermarking and checking video ${index + 1} of ${items.length} (up to 2 minutes)...`
       : isDocumentFile(file)
         ? `Watermarking and checking document ${index + 1} of ${items.length} (a PDF takes about a minute)...`
-        : `Checking ownership: ${index + 1} of ${items.length}...`);
+        : `Checking ownership: ${index + 1} of ${items.length}...`, index / items.length);
     try {
       slides.push(await uploadSlide(target, file, userId, promo));
     } catch (err) {

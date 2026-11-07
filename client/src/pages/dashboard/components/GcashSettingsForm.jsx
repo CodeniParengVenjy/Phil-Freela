@@ -7,7 +7,7 @@ import {
 } from "../../../lib/payments";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import "../payments.css";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 // Settings > GCash Payment (freelancers only). The number and the name on the
 // GCash account. The name stays private (only you can read it): a client who has a
@@ -139,7 +139,7 @@ export default function GcashSettingsForm({ userId, showToast }) {
 
         <div className="d-flex flex-wrap align-items-center gap-3">
           <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role" disabled={saving}>
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? <Busy>Saving</Busy> : "Save Changes"}
           </button>
           {saved && (
             <button type="button" className="btn btn-link text-danger text-decoration-none fs-7 p-0" onClick={() => setConfirmRemove(true)} disabled={saving}>

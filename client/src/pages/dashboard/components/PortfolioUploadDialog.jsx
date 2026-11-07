@@ -7,6 +7,7 @@ import {
 } from "../../../lib/portfolio";
 import { MAX_SLIDES, SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, addPickedFiles, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "./SlidePicker";
+import { Busy } from "../../../components/Loaders";
 
 // The "+ Add to Portfolio" popup (step 10: one form for everything): a title,
 // a short description, a category, up to 5 tags, and up to 10 files: photos,
@@ -32,6 +33,8 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
   const [saving, setSaving] = useState(false);
   // "Checking ownership: 2 of 5..." while the files are being sent.
   const [progress, setProgress] = useState("");
+  // The share of the files already sent (0 to 1); it fills the button.
+  const [uploadShare, setUploadShare] = useState(null);
 
   // Escape closes it, unless it's saving.
   useEffect(() => {
@@ -116,7 +119,10 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
     const items = hasWriting
       ? [...slideItems, { key: "writing", file: new File([text], "Writing.txt", { type: "text/plain" }), promo: false }]
       : slideItems;
-    const { slides, failed } = await uploadSlides({ portfolioItemId: project.id }, items, userId, setProgress);
+    const { slides, failed } = await uploadSlides({ portfolioItemId: project.id }, items, userId, (words, share) => {
+      setProgress(words);
+      setUploadShare(share);
+    });
     onSaved({ ...project, slides }, failed);
   };
 
@@ -281,7 +287,7 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
             Cancel
           </button>
           <button type="submit" className="btn btn-gradient-orange rounded-pill px-4 fw-bold text-white" disabled={saving || !title.trim() || !category || !hasContent}>
-            {saving ? progress || "Saving..." : "Add to Portfolio"}
+            {saving ? <Busy kind="upload" progress={uploadShare}>{progress || "Saving"}</Busy> : "Add to Portfolio"}
           </button>
         </div>
       </form>

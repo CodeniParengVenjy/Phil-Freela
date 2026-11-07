@@ -214,7 +214,7 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
             onClick={applyPickedColor}
             disabled={busy || boxColor === appearance.accent}
           >
-            {saving ? "Saving..." : "Use this color"}
+            {saving ? <Busy>Saving</Busy> : "Use this color"}
           </button>
         </div>
         <small className="text-secondary fs-8 d-block mt-2">
@@ -298,7 +298,7 @@ export default function AppearanceForm({ userId, accountType, showToast }) {
             onClick={applyPickedSecond}
             disabled={busy || secondBoxColor === appearance.accent2}
           >
-            {saving ? "Saving..." : "Use as second color"}
+            {saving ? <Busy>Saving</Busy> : "Use as second color"}
           </button>
         </div>
         </>

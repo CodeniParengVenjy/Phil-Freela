@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { checkTextOwnership } from "../../../lib/aiService";
 import { DOCUMENT_ACCEPT, MAX_DOCUMENT_BYTES, MAX_DOCUMENT_CHARACTERS } from "../../../lib/portfolio";
 import VerifiedBadge from "../../../components/VerifiedBadge";
+import { Busy } from "../../../components/Loaders";
 
 // The Text tab of Check Ownership (watermarking step 6): paste text you found,
 // or upload a TXT, DOCX or PDF file. The AI service first looks for the
@@ -76,7 +77,7 @@ export default function TextOwnershipCheck() {
         )}
         <div>
           <button type="button" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white" onClick={handleCheck} disabled={(!file && !text.trim()) || checking}>
-            {checking ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Checking...</> : "Check Ownership"}
+            {checking ? <Busy kind="ai">Checking</Busy> : "Check Ownership"}
           </button>
         </div>
         {error && <p className="text-danger fs-7 mb-0">{error}</p>}

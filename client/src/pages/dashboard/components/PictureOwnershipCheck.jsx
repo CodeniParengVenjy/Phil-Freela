@@ -5,6 +5,7 @@ import { shrinkImage } from "../../../lib/shrinkImage";
 import { slideUrl } from "../../../lib/slides";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import MediaDropzone from "./MediaDropzone";
+import { Busy } from "../../../components/Loaders";
 
 const PICTURE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 10 * 1024 * 1024; // shrunk before sending
@@ -79,7 +80,7 @@ export default function PictureOwnershipCheck() {
         />
         <div>
           <button type="button" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white" onClick={handleCheck} disabled={!file || checking}>
-            {checking ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Checking...</> : "Check Ownership"}
+            {checking ? <Busy kind="ai">Checking</Busy> : "Check Ownership"}
           </button>
           {checking && <p className="text-secondary fs-8 mb-0 mt-2">Reading the hidden code. This can take up to half a minute.</p>}
         </div>

@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { ARCHIVE_DELETE_DAYS, archiveDeletionDay } from "../../../lib/archives";
 import { formatUserNumber } from "../../../lib/userNumber";
-import { SkeletonTableRows } from "../../../components/Loaders";
+import { SkeletonTableRows, Busy } from "../../../components/Loaders";
 
 // Someone who signed up before names were required can have no name. In
 // sentences ("Restore ...'s account?") they are called by their @username.
@@ -195,12 +195,12 @@ export default function AdminArchivesView() {
               {dialog.kind === "delete" ? (
                 <button type="button" className="btn btn-danger btn-sm rounded-pill px-4 fw-bold" onClick={confirmDialog} disabled={busy}>
                   <i className="bi bi-trash me-1"></i>
-                  {busy ? "Deleting..." : "Delete forever"}
+                  {busy ? <Busy>Deleting</Busy> : "Delete forever"}
                 </button>
               ) : (
                 <button type="button" className="btn btn-success btn-sm rounded-pill px-4 fw-bold" onClick={confirmDialog} disabled={busy}>
                   <i className="bi bi-arrow-counterclockwise me-1"></i>
-                  {busy ? "Working..." : "Restore account"}
+                  {busy ? <Busy>Working</Busy> : "Restore account"}
                 </button>
               )}
             </div>

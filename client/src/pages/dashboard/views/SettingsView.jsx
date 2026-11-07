@@ -353,7 +353,7 @@ export default function SettingsView() {
                       <div className="d-flex flex-column gap-2">
                         <input type="file" className="d-none" ref={pictureInputRef} accept="image/jpeg,image/png,image/webp,image/gif" onChange={handlePicturePick} />
                         <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => pictureInputRef.current?.click()} disabled={uploadingPicture || !currentUserId}>
-                          {uploadingPicture ? "Uploading..." : "Upload Picture"}
+                          {uploadingPicture ? <Busy kind="upload">Uploading</Busy> : "Upload Picture"}
                         </button>
                         <small className="text-secondary fs-8">JPG, PNG, WebP or GIF. Max 5 MB. You can crop and zoom it before it's saved.</small>
                       </div>
@@ -366,7 +366,7 @@ export default function SettingsView() {
                     <div className="d-flex flex-wrap align-items-center gap-2">
                       <input type="file" className="d-none" ref={coverInputRef} accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleCoverPick} />
                       <button type="button" className="btn btn-secondary rounded-pill px-4 py-2 text-white fw-bold fs-7" onClick={() => coverInputRef.current?.click()} disabled={savingCover || coverPath === null}>
-                        {savingCover ? "Saving..." : "Upload Cover Photo"}
+                        {savingCover ? <Busy kind="upload">Saving</Busy> : "Upload Cover Photo"}
                       </button>
                       {coverPath && (
                         <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 py-2 fs-7" onClick={handleCoverRemove} disabled={savingCover}>
@@ -435,7 +435,7 @@ export default function SettingsView() {
 
                   <div>
                     <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role" disabled={saving || !currentUserId || savedDescription === null}>
-                      {saving ? "Saving..." : "Save Changes"}
+                      {saving ? <Busy>Saving</Busy> : "Save Changes"}
                     </button>
                   </div>
                 </form>
@@ -521,7 +521,7 @@ export default function SettingsView() {
                     disabled={deleting || deleteConfirmText !== username}
                     onClick={handleDeleteAccount}
                   >
-                    {deleting ? "Deleting..." : "Delete my account"}
+                    {deleting ? <Busy>Deleting</Busy> : "Delete my account"}
                   </button>
                 </div>
                 {deleteError && <p className="text-danger fs-8 mt-2 mb-0">{deleteError}</p>}

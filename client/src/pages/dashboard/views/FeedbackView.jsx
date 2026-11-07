@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { MAX_FEEDBACK_LENGTH, getMyRating, getProject, personName, rateProject, ratingDeadline } from "../../../lib/projects";
 import CensoredText from "../../../components/CensoredText";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 // The interactive star picker used to choose a rating (not the read-only
 // "★ 4.8 (5)" badge — that's components/StarRating.jsx). Each star is a
@@ -146,7 +146,7 @@ export default function FeedbackView() {
 
           <div className="text-center">
             <button type="submit" className="btn btn-gradient-orange btn-lg rounded-pill px-5 fw-bold text-white shadow-glow" disabled={sending || stars === 0}>
-              {sending ? "Sending..." : "Submit"}
+              {sending ? <Busy kind="send">Sending</Busy> : "Submit"}
             </button>
           </div>
         </form>

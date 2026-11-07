@@ -18,7 +18,7 @@ import MediaCarousel from "../components/MediaCarousel";
 import RecommendationMarks from "../components/RecommendationMarks";
 import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
-import { SkeletonServiceCards } from "../../../components/Loaders";
+import { SkeletonServiceCards, Busy } from "../../../components/Loaders";
 
 // withRecommendations (the client dashboard): the services the Hybrid
 // recommendation system picked ("Recommended for you", see lib/aiService.js)
@@ -199,7 +199,7 @@ export default function BrowseServicesView({ withRecommendations = false }) {
             </p>
             {recs.loading && (
               <p className="text-secondary fs-8 mb-0 mt-1">
-                <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Finding recommendations...
+                <Busy kind="ai">Finding recommendations</Busy>
               </p>
             )}
           </div>

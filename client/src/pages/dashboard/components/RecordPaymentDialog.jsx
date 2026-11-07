@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { checkReceiptFile, isValidReference, normalizeReference, parseAmount } from "../../../lib/payments";
 import "../payments.css";
+import { Busy } from "../../../components/Loaders";
 
 // "Record your payment": the amount, the GCash reference number and the receipt
 // screenshot (required: it is the client's proof on record). Shown over the
@@ -158,7 +159,7 @@ export default function RecordPaymentDialog({ title = "Record your payment", sub
             Cancel
           </button>
           <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending || !file}>
-            {sending ? "Sending..." : "Send record"}
+            {sending ? <Busy kind="send">Sending</Busy> : "Send record"}
           </button>
         </div>
       </form>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { agreePrice, priceSourceText, priceText, proposePrice } from "../../../lib/projectPrice";
+import { Busy } from "../../../components/Loaders";
 
 // The Price box of the project page (PLAN-transaction-tracking.md, Step A). A
 // project has ONE price. Usually it is already agreed when the project starts
@@ -86,7 +87,7 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
           </p>
           {!showForm && (
             <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={handleAgree} disabled={working}>
-              <i className="bi bi-check2-circle me-1"></i> {working ? "Agreeing..." : "Agree to this price"}
+              {working ? <Busy>Agreeing</Busy> : <><i className="bi bi-check2-circle me-1"></i> Agree to this price</>}
             </button>
           )}
         </>
@@ -108,7 +109,7 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
             disabled={working}
           />
           <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={working}>
-            {working ? "Sending..." : "Send price"}
+            {working ? <Busy kind="send">Sending</Busy> : "Send price"}
           </button>
           {editing && (
             <button type="button" className="btn btn-link text-white-50 fs-8 p-0" onClick={() => { setEditing(false); setError(""); }} disabled={working}>

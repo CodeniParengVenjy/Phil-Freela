@@ -14,7 +14,7 @@ import { fetchIsVerified } from "../../../lib/verification";
 import BlockedNotice from "../components/BlockedNotice";
 import MemberAdSlide from "../components/MemberAdSlide";
 import "../memberAds.css";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 const inputClass = "form-control bg-secondary bg-opacity-25 border-secondary text-white py-2";
 const pill = (active) => `btn btn-sm rounded-pill px-3 fw-semibold ${active ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`;
@@ -330,7 +330,7 @@ export default function AdvertiseView() {
                   className="btn btn-gradient-role btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow-role"
                   disabled={sending || prices.length === 0}
                 >
-                  {sending ? "Sending..." : "Submit for review"}
+                  {sending ? <Busy kind="send">Sending</Busy> : "Submit for review"}
                 </button>
                 <p className="text-secondary fs-8 mt-2 mb-0">Nothing is charged now. You get a notification when an admin answers, and you pay then.</p>
               </form>
@@ -384,7 +384,7 @@ export default function AdvertiseView() {
                             type="button" className="btn btn-sm btn-gradient-role rounded-pill px-3 fw-bold text-white"
                             onClick={() => handlePay(ad)} disabled={payOnline !== true || payingId === ad.id || spots === 0}
                           >
-                            {payingId === ad.id ? "Opening Xendit..." : amount !== null ? `Pay ${formatPeso(amount)} now` : "Pay now"}
+                            {payingId === ad.id ? <Busy kind="go">Opening Xendit</Busy> : amount !== null ? `Pay ${formatPeso(amount)} now` : "Pay now"}
                           </button>
                         )}
                         {withdrawingId === ad.id ? (

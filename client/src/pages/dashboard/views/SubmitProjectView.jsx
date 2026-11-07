@@ -3,7 +3,7 @@ import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom
 import { MAX_SUBMISSION_MESSAGE_LENGTH, canPreview, getProject, personName, submitProject } from "../../../lib/projects";
 import { makeDeliverablePreview } from "../../../lib/aiService";
 import CensoredText from "../../../components/CensoredText";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 // "Attach your files" (screen 6), at /dashboard/submit-project/:projectId.
 // The freelancer sends the finished work: a file, a link, or both, plus an
@@ -174,8 +174,7 @@ export default function SubmitProjectView() {
 
           <div className="text-center pt-2">
             <button type="submit" className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow" disabled={submitting}>
-              <i className="bi bi-upload me-2"></i>
-              {makingPreview ? "Making the watermarked preview..." : submitting ? "Uploading..." : "Upload Project Deliverable"}
+              {makingPreview ? <Busy kind="ai">Making the watermarked preview</Busy> : submitting ? <Busy kind="upload">Uploading</Busy> : <><i className="bi bi-upload me-2"></i>Upload Project Deliverable</>}
             </button>
           </div>
         </form>

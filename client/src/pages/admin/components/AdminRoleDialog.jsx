@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Busy } from "../../../components/Loaders";
 
 // What a super admin can do that a regular admin cannot. Kept in one list so
 // the Promote and Demote pop-ups always describe the same powers.
@@ -109,7 +110,7 @@ export default function AdminRoleDialog({ admin, newRole, busy, error, onConfirm
               disabled={busy}
             >
               <i className={`bi ${promoting ? "bi-shield-fill-check" : "bi-arrow-down-circle"} me-1`}></i>
-              {busy ? "Saving..." : promoting ? "Promote to super admin" : "Demote to admin"}
+              {busy ? <Busy>Saving</Busy> : promoting ? "Promote to super admin" : "Demote to admin"}
             </button>
           </div>
         </div>

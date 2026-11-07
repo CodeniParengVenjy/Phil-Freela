@@ -5,7 +5,7 @@ import {
 } from "../../../lib/payments";
 import RecordPaymentDialog from "./RecordPaymentDialog";
 import "../payments.css";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 
@@ -180,7 +180,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
               disabled={working}
               onClick={() => handleAnswer(asking)}
             >
-              {working ? "Saving..." : yesText[asking]}
+              {working ? <Busy>Saving</Busy> : yesText[asking]}
             </button>
             <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 fs-7" disabled={working} onClick={() => setAsking(null)}>
               {asking === "cancel" ? "Keep it" : "Cancel"}

@@ -4,7 +4,7 @@ import CensoredText from "../../../components/CensoredText";
 import { formatPeso } from "../../../lib/payments";
 import { onlinePaymentsReady, startFeatureCheckout } from "../../../lib/checkout";
 import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft } from "../../../lib/featured";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 // "Feature this post" (PLAN-monetization.md, Step 4, and PLAN-premium.md): the
 // owner of an offer or an open job post pays for 3, 7 or 14 days in the
@@ -169,7 +169,7 @@ export default function PromoPayDialog({ target, userId, until, onClose }) {
                 Cancel
               </button>
               <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending || amount === null}>
-                <i className="bi bi-lock-fill me-1"></i>{sending ? "Opening Xendit..." : `Pay ${formatPeso(amount)} online`}
+                {sending ? <Busy kind="go">Opening Xendit</Busy> : <><i className="bi bi-lock-fill me-1"></i>{`Pay ${formatPeso(amount)} online`}</>}
               </button>
             </div>
           </>

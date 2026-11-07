@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { rememberOtherAccount, switchToOtherAccount } from "../../../lib/accountSwitch";
+import { Busy } from "../../../components/Loaders";
 
 // "Switch to admin" when this browser doesn't have the admin login stored yet
 // (a new browser, or it ran out): asks for the admin email and password once,
@@ -76,7 +77,7 @@ export default function SwitchToAdminDialog({ open, link, onClose }) {
         <div className="d-flex gap-2 justify-content-center">
           <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 py-2 fw-bold" onClick={onClose} disabled={busy}>Cancel</button>
           <button type="submit" className="btn btn-gradient-role rounded-pill px-4 py-2 fw-bold text-white" disabled={busy || !email.trim() || !password}>
-            {busy ? "Switching..." : "Switch"}
+            {busy ? <Busy>Switching</Busy> : "Switch"}
           </button>
         </div>
       </form>

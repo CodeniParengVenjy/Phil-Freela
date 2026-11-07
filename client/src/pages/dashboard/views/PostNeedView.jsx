@@ -15,7 +15,7 @@ import FeatureControl from "../components/FeatureControl";
 import PromoPayDialog from "../components/PromoPayDialog";
 import HiredFreelancers from "../components/HiredFreelancers";
 import CensoredText from "../../../components/CensoredText";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
@@ -519,7 +519,7 @@ export default function PostNeedView() {
                   {/* What the AI is doing, one line at a time. */}
                   <small className="text-secondary fs-8 d-block mb-2" aria-live="polite">
                     {canSuggest && suggestState === "loading" ? (
-                      <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Reading your description for skills...</>
+                      <Busy kind="ai">Reading your description for skills</Busy>
                     ) : canSuggest && suggestState === "offline" ? (
                       <><i className="bi bi-robot me-1"></i>The AI can't be reached right now. You can type the skills yourself.</>
                     ) : canSuggest && suggestState === "done" && aiAnswer.skills.length + aiAnswer.more.length === 0 ? (
@@ -654,7 +654,7 @@ export default function PostNeedView() {
 
                 <div className="d-flex flex-wrap gap-2 pt-2">
                   <button type="submit" data-tour="post-submit" className="btn btn-gradient-role btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow-role" disabled={submitting}>
-                    {editing ? (submitting ? "Saving..." : "Save changes") : submitting ? "Publishing..." : pickedType.submit}
+                    {editing ? (submitting ? <Busy>Saving</Busy> : "Save changes") : submitting ? <Busy kind="send">Publishing</Busy> : pickedType.submit}
                   </button>
                   {editing && (
                     <button type="button" className="btn btn-outline-secondary text-white-50 btn-lg px-4 py-2 rounded-pill fw-bold" disabled={submitting} onClick={stopEditing}>

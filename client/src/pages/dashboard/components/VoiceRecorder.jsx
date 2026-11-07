@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_VOICE_SECONDS } from "../../../lib/chatFiles";
+import { Busy } from "../../../components/Loaders";
 
 // Recording formats to try, best first. Chrome and Firefox record WebM or
 // Ogg; Safari (iPhone) records MP4.
@@ -157,7 +158,7 @@ export default function VoiceRecorder({ onSend, onClose }) {
               </button>
               {stage === "recorded" && (
                 <button type="button" className="btn btn-gradient-role rounded-pill px-4 py-2 fw-bold text-white" onClick={handleSend} disabled={sending}>
-                  {sending ? "Sending..." : "Send"}
+                  {sending ? <Busy kind="send">Sending</Busy> : "Send"}
                 </button>
               )}
             </>

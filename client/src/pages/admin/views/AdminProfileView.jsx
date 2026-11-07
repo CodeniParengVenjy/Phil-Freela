@@ -6,7 +6,7 @@ import { userEmailSuggestionFor } from "../../../lib/adminEmail";
 import { fetchAdminProfile, saveAdminProfile } from "../../../lib/adminProfile";
 import { MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, noAutofill } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 const emptyPasswords = { current: "", next: "", confirm: "" };
 
@@ -233,7 +233,7 @@ export default function AdminProfileView() {
               )}
               <div>
                 <button type="submit" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" disabled={savingProfile || nothingToSave}>
-                  {savingProfile ? "Saving..." : "Save"}
+                  {savingProfile ? <Busy>Saving</Busy> : "Save"}
                 </button>
               </div>
             </form>
@@ -266,7 +266,7 @@ export default function AdminProfileView() {
               )}
               <div>
                 <button type="submit" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" disabled={savingPassword}>
-                  {savingPassword ? "Changing..." : "Change Password"}
+                  {savingPassword ? <Busy>Changing</Busy> : "Change Password"}
                 </button>
               </div>
             </form>
@@ -278,7 +278,7 @@ export default function AdminProfileView() {
               signed in on a shared computer and forgot to sign out.
             </p>
             <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-3" onClick={handleSignOutOthers} disabled={signingOut}>
-              <i className="bi bi-box-arrow-right me-1"></i>{signingOut ? "Signing out..." : "Sign out of my other devices"}
+              {signingOut ? <Busy>Signing out</Busy> : <><i className="bi bi-box-arrow-right me-1"></i>Sign out of my other devices</>}
             </button>
           </div>
         </div>
@@ -303,14 +303,14 @@ export default function AdminProfileView() {
                       <input id="switchUserPassword" type="password" className="form-control admin-input" autoComplete="off" value={userPassword} onChange={(e) => setUserPassword(e.target.value)} disabled={switching} />
                     </div>
                     <div className="d-flex gap-2">
-                      <button type="submit" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" disabled={switching || !shownUserEmail.trim() || !userPassword}>{switching ? "Switching..." : "Save and switch"}</button>
+                      <button type="submit" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" disabled={switching || !shownUserEmail.trim() || !userPassword}>{switching ? <Busy>Switching</Busy> : "Save and switch"}</button>
                       <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-3" onClick={() => setAskPassword(false)} disabled={switching}>Cancel</button>
                     </div>
                   </form>
                 ) : (
                   <div className="d-flex flex-wrap gap-2">
                     <button type="button" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" onClick={handleSwitch} disabled={switching}>
-                      <i className="bi bi-arrow-left-right me-1"></i>{switching ? "Switching..." : "Switch to my user account"}
+                      {switching ? <Busy>Switching</Busy> : <><i className="bi bi-arrow-left-right me-1"></i>Switch to my user account</>}
                     </button>
                     <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-3" onClick={handleUnlink} disabled={switching}>Unlink</button>
                   </div>
@@ -330,7 +330,7 @@ export default function AdminProfileView() {
                   <input id="linkUserPassword" type="password" className="form-control admin-input" autoComplete="off" value={userPassword} onChange={(e) => setUserPassword(e.target.value)} disabled={switching} />
                 </div>
                 <div>
-                  <button type="submit" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" disabled={switching || !shownUserEmail.trim() || !userPassword}>{switching ? "Linking..." : "Link my user account"}</button>
+                  <button type="submit" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" disabled={switching || !shownUserEmail.trim() || !userPassword}>{switching ? <Busy>Linking</Busy> : "Link my user account"}</button>
                 </div>
               </form>
             )}

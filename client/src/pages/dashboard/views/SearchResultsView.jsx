@@ -14,6 +14,7 @@ import RatingChip from "../../../components/RatingChip";
 import Avatar from "../../../components/Avatar";
 import PictureSearchDialog from "../components/PictureSearchDialog";
 import CensoredText from "../../../components/CensoredText";
+import { Busy } from "../../../components/Loaders";
 
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
 const JOB_COLUMNS = "id, title, category, budget, budget_type, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
@@ -186,7 +187,7 @@ export default function SearchResultsView() {
 
         {loading && (
           <p className="text-secondary fs-7 text-center py-4 mb-0">
-            <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Searching...
+            <Busy kind="ai">Searching</Busy>
           </p>
         )}
         {!loading && result.error && <p className="text-danger fs-7 text-center py-4 mb-0">{result.error}</p>}

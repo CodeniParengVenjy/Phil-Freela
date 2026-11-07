@@ -4,6 +4,7 @@ import { MAX_BOOKING_NOTE_LENGTH, createBooking } from "../../../lib/bookings";
 import { bookingPriceLine } from "../../../lib/projectPrice";
 import { todayInManila } from "../../../lib/projects";
 import CensoredText from "../../../components/CensoredText";
+import { Busy } from "../../../components/Loaders";
 
 // The Book popup. A client says what they need and the date they need it by;
 // "Send booking" asks the freelancer (see lib/bookings.js). It uses the same
@@ -107,7 +108,7 @@ export default function BookDialog({ target, onClose, onBooked }) {
             Cancel
           </button>
           <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={sending}>
-            {sending ? "Sending..." : "Send booking"}
+            {sending ? <Busy kind="send">Sending</Busy> : "Send booking"}
           </button>
         </div>
       </form>

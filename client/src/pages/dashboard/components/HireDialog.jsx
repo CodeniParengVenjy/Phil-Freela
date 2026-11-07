@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { hirePriceLine } from "../../../lib/projectPrice";
 import { MAX_PROJECT_NOTE_LENGTH, hireApplicant, todayInManila } from "../../../lib/projects";
+import { Busy } from "../../../components/Loaders";
 
 // The Hire popup on Projects & Resumes. The client writes a note for the
 // freelancer and picks the due date; Hire starts the project (screen 2).
@@ -111,7 +112,7 @@ export default function HireDialog({ applicant, onClose, onHired }) {
             Cancel
           </button>
           <button type="submit" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" disabled={hiring}>
-            {hiring ? "Hiring..." : "Hire"}
+            {hiring ? <Busy>Hiring</Busy> : "Hire"}
           </button>
         </div>
       </form>

@@ -5,6 +5,7 @@ import { ID_TYPES, idTypeHasBack } from "../../../lib/verification";
 import FaceScan from "./FaceScan";
 import PhotoPreview from "./PhotoPreview";
 import WizardPhotoStep from "./WizardPhotoStep";
+import { Busy } from "../../../components/Loaders";
 
 const EMPTY_SIDE = { file: null, status: "idle", message: "" };
 
@@ -243,7 +244,7 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
         </button>
         {current === "review" ? (
           <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white shadow-glow-role" onClick={handleSubmit} disabled={!consent || submitting}>
-            {submitting ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Sending...</> : "Submit for verification"}
+            {submitting ? <Busy kind="upload">Sending</Busy> : "Submit for verification"}
           </button>
         ) : (
           <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={() => setStepIndex(stepIndex + 1)} disabled={!canGoNext}>

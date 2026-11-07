@@ -17,7 +17,7 @@ import DeletePostDialog from "../components/DeletePostDialog";
 import BlockedNotice from "../components/BlockedNotice";
 import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
 import { isPostingBlocked } from "../../../lib/suspensions";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 // description and skill are here so the Edit form can be filled in from the list.
 const SERVICE_COLUMNS = "id, title, category, description, skill, price, image_url, media_type, created_at, updated_at";
@@ -37,6 +37,8 @@ export default function ServicesView() {
   const [submitting, setSubmitting] = useState(false);
   // "Checking ownership: 2 of 5..." while the slides are being sent.
   const [progress, setProgress] = useState("");
+  // The share of the files already sent (0 to 1); it fills the Publish button.
+  const [uploadShare, setUploadShare] = useState(null);
   const [services, setServices] = useState(null);
   // The service waiting in the "Delete this service?" pop-up (null = closed).
   const [serviceToDelete, setServiceToDelete] = useState(null);
@@ -242,10 +244,14 @@ export default function ServicesView() {
 
     // 2. Send the photos, videos and documents one at a time through the AI service.
     // If one fails, the service keeps the ones that worked.
-    const { slides, failed } = await uploadSlides({ serviceId: service.id }, slideItems, currentUserId, setProgress);
+    const { slides, failed } = await uploadSlides({ serviceId: service.id }, slideItems, currentUserId, (text, share) => {
+      setProgress(text);
+      setUploadShare(share);
+    });
 
     setSubmitting(false);
     setProgress("");
+    setUploadShare(null);
     setServices((prev) => [{ ...service, slides }, ...(prev || [])]);
     setTitle("");
     setCategory("");
@@ -414,7 +420,7 @@ export default function ServicesView() {
                     </button>
                   )}
                   <button type="submit" data-tour="service-publish" className="btn btn-gradient-orange btn-lg px-5 py-2 rounded-pill fw-bold text-white shadow-glow" disabled={submitting || atLimit}>
-                    {editing ? (submitting ? "Saving..." : "Save changes") : submitting ? progress || "Publishing..." : "Upload & Publish"}
+                    {editing ? (submitting ? <Busy>Saving</Busy> : "Save changes") : submitting ? <Busy kind="upload" progress={uploadShare}>{progress || "Publishing"}</Busy> : "Upload & Publish"}
                   </button>
                 </div>
               </form>

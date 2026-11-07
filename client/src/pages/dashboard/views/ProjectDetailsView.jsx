@@ -12,7 +12,7 @@ import CensoredText from "../../../components/CensoredText";
 import PaymentsSection from "../components/PaymentsSection";
 import ProjectPriceBox from "../components/ProjectPriceBox";
 import ReportDialog from "../components/ReportDialog";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
 // My Projects or from a project notification. Both people on the project use
@@ -369,7 +369,7 @@ export default function ProjectDetailsView() {
                     <div className="mt-2">
                       <p className="text-white-50 fs-7 mb-2">The preview isn't ready yet, so {otherName} can't see your work.</p>
                       <button type="button" className="btn btn-outline-role rounded-pill px-3 py-1 fs-7 fw-bold" onClick={handleMakePreview} disabled={makingPreview}>
-                        <i className="bi bi-magic me-1"></i>{makingPreview ? "Making the preview..." : "Make the preview"}
+                        {makingPreview ? <Busy kind="ai">Making the preview</Busy> : <><i className="bi bi-magic me-1"></i>Make the preview</>}
                       </button>
                     </div>
                   )}

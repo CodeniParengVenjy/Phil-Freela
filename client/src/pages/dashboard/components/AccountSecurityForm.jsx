@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { changePassword, checkPasswordChange, getSignInInfo, signOutOtherDevices } from "../../../lib/accountSecurity";
-import { Loader } from "../../../components/Loaders";
+import { Loader, Busy } from "../../../components/Loaders";
 
 const emptyForm = { current: "", next: "", confirm: "" };
 
@@ -108,7 +108,7 @@ export default function AccountSecurityForm({ showToast }) {
             )}
             <div>
               <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white" disabled={saving}>
-                {saving ? "Changing..." : "Change Password"}
+                {saving ? <Busy>Changing</Busy> : "Change Password"}
               </button>
             </div>
             <small className="text-secondary fs-8">
@@ -132,7 +132,7 @@ export default function AccountSecurityForm({ showToast }) {
           to an hour before it asks to sign in again.
         </p>
         <button type="button" className="btn btn-outline-role rounded-pill px-4 py-2 fw-bold" onClick={handleSignOutOthers} disabled={signingOut}>
-          {signingOut ? "Signing out..." : <><i className="bi bi-box-arrow-right me-2"></i>Sign out of my other devices</>}
+          {signingOut ? <Busy>Signing out</Busy> : <><i className="bi bi-box-arrow-right me-2"></i>Sign out of my other devices</>}
         </button>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { FEATURE_CODES, formatFeatureDate, getPromoPrices } from "../../../lib/featured";
 import { FREE_OFFERS, PRO_CODE, PRO_OFFERS, confirmProCheckout, countMyOffers, startProCheckout, useMyViews, useProStatus } from "../../../lib/pro";
 import "../pro.css";
+import { Busy } from "../../../components/Loaders";
 
 // The Premium page (views/ProView.jsx; it was "Freelancer Pro"; PLAN-monetization.md,
 // Step 5, and PLAN-premium.md), for clients and freelancers: two plan cards side
@@ -237,7 +238,7 @@ export default function ProPlans({ userId, accountType, onPaid }) {
             ) : (
               <button type="button" className="btn btn-gradient-role text-white rounded-pill py-2 fw-bold w-100" onClick={goPro} disabled={!pro.loaded || opening}>
                 {opening
-                  ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Opening the payment page...</>
+                  ? <Busy kind="go">Opening the payment page</Busy>
                   : <><i className="bi bi-gem me-2"></i>{isPro ? "Extend Premium" : "Get Premium"}</>}
               </button>
             )}

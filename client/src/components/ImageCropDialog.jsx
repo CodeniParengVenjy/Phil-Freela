@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Loader } from "./Loaders";
+import { Loader, Busy } from "./Loaders";
 
 // The popup that lets someone crop and zoom a picked photo before it is
 // uploaded (profile picture and cover photo, in Settings).
@@ -266,7 +266,7 @@ export default function ImageCropDialog({ file, title, aspect, outputWidth, roun
             Cancel
           </button>
           <button type="button" className="btn btn-gradient-role rounded-pill px-4 py-2 fw-bold text-white shadow-glow-role" onClick={handleConfirm} disabled={!ready || working}>
-            {working ? "Cropping..." : "Use this photo"}
+            {working ? <Busy>Cropping</Busy> : "Use this photo"}
           </button>
         </div>
       </div>

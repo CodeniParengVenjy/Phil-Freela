@@ -222,6 +222,7 @@
    buttons keep the color that can be read on the accent. */
 .btn-gradient-role:disabled:has(.pf-busy) { color: var(--accent-on); }
 .btn-outline-role:disabled:has(.pf-busy) { color: var(--accent-role); }
+.btn-admin-orange:disabled:has(.pf-busy) { color: #fff; }
 
 .btn:has(.pf-busy)::after {
   content: "";
