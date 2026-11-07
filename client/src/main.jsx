@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
+// The loading animations every page uses (components/Loaders.jsx).
+import './styles/loaders.css'
 import DesktopSiteNotice from './components/DesktopSiteNotice.jsx'
 
 createRoot(document.getElementById('root')).render(
