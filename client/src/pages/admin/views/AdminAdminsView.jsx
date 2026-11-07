@@ -8,6 +8,7 @@ import { adminEmailFor } from "../../../lib/adminEmail";
 import { noAutofill } from "../../../lib/profile";
 import { getCaptchaToken } from "../../../lib/captcha";
 import AdminRoleDialog from "../components/AdminRoleDialog";
+import { SkeletonTableRows } from "../../../components/Loaders";
 
 const emptyForm = { fullName: "", username: "", email: "" };
 
@@ -261,7 +262,7 @@ export default function AdminAdminsView() {
                 <tr><td colSpan={5} className="text-center text-white-50 py-4">{listError}</td></tr>
               )}
               {!listError && admins === null && (
-                <tr><td colSpan={5} className="text-center text-white-50 py-4">Loading admins...</td></tr>
+                <SkeletonTableRows rows={4} columns={5} label="Loading admins" />
               )}
               {!listError && admins?.map((admin) => (
                 <tr key={admin.id}>

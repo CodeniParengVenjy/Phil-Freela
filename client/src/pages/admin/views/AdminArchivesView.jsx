@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { ARCHIVE_DELETE_DAYS, archiveDeletionDay } from "../../../lib/archives";
 import { formatUserNumber } from "../../../lib/userNumber";
+import { SkeletonTableRows } from "../../../components/Loaders";
 
 // Someone who signed up before names were required can have no name. In
 // sentences ("Restore ...'s account?") they are called by their @username.
@@ -116,7 +117,7 @@ export default function AdminArchivesView() {
                 <tr><td colSpan={7} className="text-center text-white-50 py-4">{loadError}</td></tr>
               )}
               {!loadError && accounts === null && (
-                <tr><td colSpan={7} className="text-center text-white-50 py-4">Loading archived accounts...</td></tr>
+                <SkeletonTableRows rows={4} columns={7} label="Loading archived accounts" />
               )}
               {!loadError && accounts !== null && visible.length === 0 && (
                 <tr>

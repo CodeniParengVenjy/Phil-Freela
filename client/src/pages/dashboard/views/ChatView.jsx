@@ -21,6 +21,7 @@ import VoiceRecorder from "../components/VoiceRecorder";
 import PaymentCard from "../components/PaymentCard";
 import RequestPaymentDialog from "../components/RequestPaymentDialog";
 import { listConversationPayments, watchConversationPayments } from "../../../lib/payments";
+import { SkeletonChat, SkeletonRows } from "../../../components/Loaders";
 
 // Same upload rules as the Post a Service media dropzone.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -580,7 +581,7 @@ export default function ChatView() {
         </div>
 
         <div ref={streamRef} className="chat-body flex-grow-1 p-3 p-md-4 overflow-y-auto d-flex flex-column gap-3 bg-black bg-opacity-40">
-          {messages === null && <p className="text-secondary fs-7 text-center mb-0">Loading messages...</p>}
+          {messages === null && <SkeletonChat />}
           {messages !== null && messages.length === 0 && (
             <p className="text-secondary fs-7 text-center mb-0">No messages yet. Say hello!</p>
           )}
@@ -817,7 +818,7 @@ export default function ChatView() {
           >
             <h6 className="fw-bold mb-3">Forward to...</h6>
 
-            {forwardConversations === null && <p className="text-secondary fs-7">Loading conversations...</p>}
+            {forwardConversations === null && <SkeletonRows count={3} picture={36} boxed={false} label="Loading conversations" className="d-flex flex-column" />}
 
             {forwardConversations !== null && forwardConversations.length === 0 && (
               <p className="text-secondary fs-7 mb-0">No other conversations to forward to.</p>

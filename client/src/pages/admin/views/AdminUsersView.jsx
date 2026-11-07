@@ -11,6 +11,7 @@ import { BAN_DELETE_DAYS, SUSPENSION_COLUMNS, banDeletionDay, blockedBadges, for
 import { buildPenalty, emptyViolationFields } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
 import AdminPagination from "../components/AdminPagination";
+import { SkeletonTableRows } from "../../../components/Loaders";
 
 // How many users one page of the table shows (the page numbers are under it).
 const USERS_PER_PAGE = 10;
@@ -560,7 +561,7 @@ export default function AdminUsersView() {
                 <tr><td colSpan={7} className="text-center text-white-50 py-4">{loadError}</td></tr>
               )}
               {!loadError && users === null && (
-                <tr><td colSpan={7} className="text-center text-white-50 py-4">Loading users...</td></tr>
+                <SkeletonTableRows rows={6} columns={7} label="Loading users" />
               )}
               {!loadError && users !== null && visibleUsers.length === 0 && (
                 <tr><td colSpan={7} className="text-center text-white-50 py-4">No users found.</td></tr>

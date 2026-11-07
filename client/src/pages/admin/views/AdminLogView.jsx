@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import AdminPagination from "../components/AdminPagination";
+import { SkeletonRows } from "../../../components/Loaders";
 
 // How many lines one page of the timeline shows.
 const PAGE_SIZE = 10;
@@ -204,7 +205,7 @@ export default function AdminLogView() {
           <p className="text-center text-white-50 py-4 mb-0">{loadError}</p>
         )}
         {!loadError && !lines && (
-          <p className="text-center text-white-50 py-4 mb-0">Loading the activity log...</p>
+          <SkeletonRows count={6} picture={28} boxed={false} label="Loading the activity log" />
         )}
         {!loadError && lines?.length === 0 && (
           <p className="text-center text-white-50 py-4 mb-0">

@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { getMyAnnouncements } from "../../../lib/announcements";
 import { getMyNotifications, getNotificationsSeenAt, markNotificationsSeen, mergeNotifications, notificationIcons } from "../../../lib/notifications";
 import NotificationDialog from "../components/NotificationDialog";
+import { SkeletonRows } from "../../../components/Loaders";
 
 export default function NotificationsView() {
   const { currentUserId, unreadNotifications, refreshUnreadNotifications } = useOutletContext();
@@ -59,7 +60,7 @@ export default function NotificationsView() {
         <h3 data-tour="notifications" className="text-white fw-bold mb-4"><i className="bi bi-bell-fill text-warning me-2"></i> Notifications</h3>
 
         {loadError && <p className="text-secondary text-center mb-0">{loadError}</p>}
-        {!loadError && items === null && <p className="text-secondary text-center mb-0">Loading notifications...</p>}
+        {!loadError && items === null && <SkeletonRows count={4} picture={52} label="Loading notifications" className="d-flex flex-column gap-3" />}
         {!loadError && items?.length === 0 && (
           <div className="text-secondary text-center py-4">
             <i className="bi bi-bell-slash fs-1 d-block mb-2"></i>

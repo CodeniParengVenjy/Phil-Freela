@@ -18,6 +18,7 @@ import MediaCarousel from "../components/MediaCarousel";
 import RecommendationMarks from "../components/RecommendationMarks";
 import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
+import { SkeletonServiceCards } from "../../../components/Loaders";
 
 // withRecommendations (the client dashboard): the services the Hybrid
 // recommendation system picked ("Recommended for you", see lib/aiService.js)
@@ -228,7 +229,7 @@ export default function BrowseServicesView({ withRecommendations = false }) {
         </div>
 
         {error && <p className="text-danger fs-7 text-center py-4 mb-0">{error}</p>}
-        {!error && services === null && <p className="text-secondary fs-7 text-center py-4 mb-0">Loading services...</p>}
+        {!error && services === null && <SkeletonServiceCards />}
         {!error && services !== null && filtered.length === 0 && (
           <p className="text-secondary fs-7 text-center py-4 mb-0">No services found yet.</p>
         )}

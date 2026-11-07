@@ -16,6 +16,7 @@ import { StarBadge } from "../../../components/StarRating";
 import RecommendationMarks from "../components/RecommendationMarks";
 import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
+import { SkeletonJobRows } from "../../../components/Loaders";
 
 // The pills above the list: all posts, or only one-time projects, or only ongoing jobs.
 const TYPE_FILTERS = [
@@ -220,7 +221,7 @@ export default function FindJobsView({ withRecommendations = false }) {
         </div>
 
         {error && <p className="text-danger fs-7 text-center py-4 mb-0">{error}</p>}
-        {!error && jobs === null && <p className="text-secondary fs-7 text-center py-4 mb-0">Loading listings...</p>}
+        {!error && jobs === null && <SkeletonJobRows />}
         {!error && jobs !== null && filtered.length === 0 && (
           <p className="text-secondary fs-7 text-center py-4 mb-0">
             {jobs.length === 0

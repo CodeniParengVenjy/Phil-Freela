@@ -5,6 +5,7 @@ import { getMyNotifications, getNotificationsSeenAt, markNotificationsSeen, merg
 import { shortTimeAgo } from "../../../lib/chatTime";
 import TopNavIconMenu from "./TopNavIconMenu";
 import NotificationDialog from "./NotificationDialog";
+import { SkeletonRows } from "../../../components/Loaders";
 
 // How many of the newest notifications the bell's list shows.
 const LIST_SIZE = 6;
@@ -72,7 +73,7 @@ export default function TopNavNotifications({ currentUserId, unread, onRead }) {
 
         <div className="topbar-panel-list">
           {loadError && <p className="text-white-50 fs-7 text-center py-4 mb-0">Failed to load notifications.</p>}
-          {!loadError && items === null && <p className="text-white-50 fs-7 text-center py-4 mb-0">Loading...</p>}
+          {!loadError && items === null && <SkeletonRows count={4} picture={40} boxed={false} label="Loading notifications" className="d-flex flex-column py-1" />}
           {!loadError && items?.length === 0 && (
             <div className="text-white-50 fs-7 text-center py-4">
               <i className="bi bi-bell-slash fs-3 d-block mb-1"></i>

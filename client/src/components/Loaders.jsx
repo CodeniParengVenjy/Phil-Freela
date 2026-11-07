@@ -177,7 +177,7 @@ export function SkeletonJobRows({ count = 4, label = "Loading listings" }) {
 // A list of rows with a round picture and two lines of text: the inbox,
 // notifications, and the bell and chat menus in the top bar. "boxed" draws
 // each row in its own box like the inbox; without it the rows are plain, like
-// the menus.
+// the menus. picture={0} leaves the picture out.
 export function SkeletonRows({ count = 4, picture = 48, boxed = true, label = "Loading", className = "d-flex flex-column gap-2" }) {
   return (
     <SkeletonBox label={label} className={className}>
@@ -188,7 +188,7 @@ export function SkeletonRows({ count = 4, picture = 48, boxed = true, label = "L
             ? "p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-3"
             : "px-3 py-2 d-flex align-items-center gap-2"}
         >
-          <Skel className="pf-skel-circle" style={{ width: picture, height: picture }} />
+          {picture > 0 && <Skel className="pf-skel-circle" style={{ width: picture, height: picture }} />}
           <div className="flex-grow-1 d-flex flex-column gap-2 min-w-0">
             <Skel className="pf-skel-line" style={{ width: width(index, 1) }} />
             <Skel className="pf-skel-line pf-skel-line-sm" style={{ width: width(index, 3) }} />
@@ -222,21 +222,14 @@ export function SkeletonChat({ label = "Loading messages" }) {
 }
 
 // Admin tables: rows of shapes inside the table's own body. "columns" is the
-// table's number of columns; the first one gets a round picture and a name.
+// table's number of columns.
 export function SkeletonTableRows({ rows = 5, columns, label = "Loading" }) {
   return range(rows).map((row) => (
     <tr key={row} aria-hidden={row > 0 ? "true" : undefined}>
       {range(columns).map((column) => (
-        <td key={column}>
-          {column === 0 ? (
-            <div className="d-flex align-items-center gap-2">
-              {row === 0 && <span className="visually-hidden" role="status">{withoutDots(label)}</span>}
-              <Skel className="pf-skel-circle" style={{ width: 32, height: 32 }} />
-              <Skel className="pf-skel-line" style={{ width: width(row, 2), maxWidth: 140 }} />
-            </div>
-          ) : (
-            <Skel className="pf-skel-line" style={{ width: width(row, column), maxWidth: 120 }} />
-          )}
+        <td key={column} className="py-3">
+          {row === 0 && column === 0 && <span className="visually-hidden" role="status">{withoutDots(label)}</span>}
+          <Skel className="pf-skel-line" style={{ width: width(row, column), maxWidth: 140 }} />
         </td>
       ))}
     </tr>

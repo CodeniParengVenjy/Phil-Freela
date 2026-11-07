@@ -8,6 +8,7 @@ import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
 import { JOB_STATES, budgetText, datesText, getJobType } from "../../../lib/jobTerms";
 import MediaCarousel from "../../dashboard/components/MediaCarousel";
 import HiringTrail from "../components/HiringTrail";
+import { SkeletonTableRows } from "../../../components/Loaders";
 
 // The two kinds of listings share one page. Each tab says which table it
 // reads, which column holds the owner, and how its price is labeled.
@@ -252,7 +253,7 @@ export default function AdminListingsView() {
                 <tr><td colSpan={columnCount} className="text-center text-white-50 py-4">{loadError}</td></tr>
               )}
               {!loadError && currentList === null && (
-                <tr><td colSpan={columnCount} className="text-center text-white-50 py-4">Loading listings...</td></tr>
+                <SkeletonTableRows rows={6} columns={columnCount} label="Loading listings" />
               )}
               {!loadError && currentList !== null && visibleListings.length === 0 && (
                 <tr><td colSpan={columnCount} className="text-center text-white-50 py-4">No {tab.label.toLowerCase()} found.</td></tr>

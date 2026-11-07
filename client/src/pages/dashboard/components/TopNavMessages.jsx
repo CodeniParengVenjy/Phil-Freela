@@ -7,6 +7,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import CensoredText from "../../../components/CensoredText";
 import TopNavIconMenu from "./TopNavIconMenu";
+import { SkeletonRows } from "../../../components/Loaders";
 
 // How many of the latest chats the chat icon's list shows.
 const LIST_SIZE = 6;
@@ -104,7 +105,7 @@ export default function TopNavMessages({ currentUserId, unread }) {
 
       <div className="topbar-panel-list">
         {loadError && <p className="text-white-50 fs-7 text-center py-4 mb-0">Failed to load your chats.</p>}
-        {!loadError && chats === null && <p className="text-white-50 fs-7 text-center py-4 mb-0">Loading...</p>}
+        {!loadError && chats === null && <SkeletonRows count={4} picture={40} boxed={false} label="Loading your chats" className="d-flex flex-column py-1" />}
         {!loadError && chats?.length === 0 && (
           <div className="text-white-50 fs-7 text-center py-4">
             <i className="bi bi-chat-square-dots fs-3 d-block mb-1"></i>

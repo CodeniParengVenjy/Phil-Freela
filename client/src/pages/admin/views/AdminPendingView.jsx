@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getFriendlyErrorMessage } from "../../../lib/errors";
 import { resendConfirmation, useResendWait } from "../../../lib/resendConfirmation";
+import { SkeletonRows } from "../../../components/Loaders";
 
 // How often the list quietly checks again, so someone who has just confirmed
 // their email drops off without the admin pressing Refresh.
@@ -207,7 +208,7 @@ export default function AdminPendingView() {
 
       <div className="admin-card rounded-4 p-3 p-md-4">
         {loadError && <p className="text-center text-white-50 py-3 mb-0">{loadError}</p>}
-        {!loadError && people === null && <p className="text-center text-white-50 py-3 mb-0">Loading pending users...</p>}
+        {!loadError && people === null && <SkeletonRows count={4} picture={0} boxed={false} label="Loading pending users" />}
         {!loadError && people !== null && visiblePeople.length === 0 && (
           <p className="text-center text-white-50 py-3 mb-0">
             {people.length === 0 ? "Nobody is waiting on an email." : "No one matches that search."}

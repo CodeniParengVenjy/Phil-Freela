@@ -6,6 +6,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import { presenceStatus, usePresence } from "../../../lib/presence";
 import CensoredText from "../../../components/CensoredText";
+import { SkeletonRows } from "../../../components/Loaders";
 
 export default function InboxView() {
   const { currentUserId } = useOutletContext();
@@ -100,7 +101,7 @@ export default function InboxView() {
         {error && <p className="text-danger fs-7 text-center py-4 mb-0">{error}</p>}
 
         {!error && conversations === null && (
-          <p className="text-secondary fs-7 text-center py-4 mb-0">Loading conversations...</p>
+          <SkeletonRows count={5} picture={48} label="Loading conversations" />
         )}
 
         {!error && conversations !== null && filtered.length === 0 && (
