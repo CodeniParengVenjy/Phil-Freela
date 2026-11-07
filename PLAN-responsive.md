@@ -63,7 +63,14 @@ Good: no page scrolls sideways at any size; computers look fine.
    labels), no text under 12px left.
 4. Home page: the Billboard picture whole on phones (nothing cropped), a one-line
    welcome card on short screens, the Community Billboard stacked on phones and side
-   by side on tablets.
+   by side on tablets. DONE: the phones-only 16:7 box is gone (the picture keeps its
+   4:1 shape everywhere); from 768px on a short screen the Billboard picture sits
+   beside its text (the rule wide screens already had, `min(68%, 110vh)`); on short
+   screens the welcome card is one compact line (no PHILFREELA PORTAL tag, no second
+   line, title 1.1 to 1.4rem); the "Sponsored by" and "Ad by" labels have 12px
+   corners instead of a pill (two lines looked like a fat pill). The Community
+   Billboard was already stacked on phones and side by side from 768px. Tested for
+   both roles at 390, 844x390, 800x1170, 1024x530, 1250x510 and 1366x650: 56 checks.
 5. Page by page (chat with a taller message area and the typing box always in
    view, project page, Settings, Profile, Post a Project, offer page, Find Jobs,
    Browse Services). Waits until the other session's "loaders" edits in those

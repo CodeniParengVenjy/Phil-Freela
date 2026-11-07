@@ -814,6 +814,22 @@ a.sidebar-identity:hover {
   .sidebar-footer {
     padding-top: 0.5rem !important;
   }
+
+  /* The dashboard home's welcome card: one compact line (no PHILFREELA PORTAL
+     tag, no second line), so the jobs or freelancers start higher. */
+  .welcome-banner.glass-card {
+    padding: 0.6rem 1rem !important;
+  }
+
+  .welcome-banner .badge,
+  .welcome-banner p {
+    display: none !important;
+  }
+
+  .welcome-banner .welcome-title {
+    font-size: clamp(1.1rem, 2vw, 1.4rem);
+    margin-bottom: 0 !important;
+  }
 }
 
 /* Settings: the line between the menu and the form only makes sense side by
@@ -1553,11 +1569,16 @@ a.sidebar-identity:hover {
   background: #000;
 }
 
-/* Phones: taller, so the picture isn't a thin strip. */
-@media (max-width: 767.98px) {
-  .dashboard-billboard-picture {
-    aspect-ratio: 16 / 7;
-  }
+/* (Phones keep the 4:1 shape too. A taller 16:7 box used to crop the
+   picture's sides, and the words in a banner run edge to edge, so they were
+   cut off, e.g. "...me to PhilFreela"; PLAN-responsive.md step 4.) */
+
+/* A label that can wrap onto two lines (Sponsored by..., Ad by ... with the
+   Verified and Premium badges): rounded corners instead of a pill, so two lines
+   don't make a fat pill. On one line it still looks like a pill. */
+.dashboard-billboard .badge.rounded-pill.text-wrap,
+.member-ad-body .badge.rounded-pill.text-wrap {
+  border-radius: 0.75rem !important;
 }
 
 /* Wide screens: stacked, the picture alone was about half of the window and
@@ -1567,6 +1588,25 @@ a.sidebar-identity:hover {
    screen, and the headline and message sit beside it. Both can then be seen
    without scrolling. Narrower screens keep the stacked board above. */
 @media (min-width: 1200px) {
+  .dashboard-billboard-slide.has-picture {
+    display: flex;
+    align-items: center;
+  }
+
+  .dashboard-billboard-slide.has-picture .dashboard-billboard-picture {
+    flex: none;
+    width: min(68%, 110vh);
+  }
+
+  .dashboard-billboard-slide.has-picture .dashboard-billboard-text {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+/* The same on a short screen from 768px wide (a tablet held sideways): the
+   picture beside the text, so the board doesn't fill the whole screen. */
+@media (min-width: 768px) and (max-height: 600px) {
   .dashboard-billboard-slide.has-picture {
     display: flex;
     align-items: center;
