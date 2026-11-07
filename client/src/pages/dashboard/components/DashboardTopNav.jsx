@@ -136,8 +136,10 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           </NavLink>
         </div>
 
-        {/* (data-tour = a part the opening tour points at, components/WelcomeGuide.jsx) */}
-        <form data-tour="search" className={`d-none d-md-flex mx-auto position-relative search-nav-box${dropping ? " is-dropping" : ""}`} style={{ width: 380 }} role="search" onSubmit={handleSearch}>
+        {/* (data-tour = a part the opening tour points at, components/WelcomeGuide.jsx)
+            From 992px wide; it shrinks to fit rather than push the buttons onto
+            a second line (dashboard.css, .topbar-search). */}
+        <form data-tour="search" className={`d-none d-lg-flex mx-auto position-relative search-nav-box topbar-search${dropping ? " is-dropping" : ""}`} role="search" onSubmit={handleSearch}>
           <i className="bi bi-search search-icon text-secondary"></i>
           <input
             name="q"
@@ -158,8 +160,9 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
         </form>
 
         <div className="d-flex align-items-center gap-2 gap-sm-3">
-          {/* Phones have no room for the box: this opens the Search page. */}
-          <NavLink to="/dashboard/search" data-tour="search" className="nav-link text-white-50 hover-orange d-md-none" aria-label="Search" title="Search">
+          {/* Phones and tablets held upright have no room for the box: this
+              opens the Search page. */}
+          <NavLink to="/dashboard/search" data-tour="search" className="nav-link text-white-50 hover-orange d-lg-none" aria-label="Search" title="Search">
             <i className="bi bi-search fs-5"></i>
           </NavLink>
           {/* (No "Join as Freelancer" / "Become a Client" / "Services" links here:
@@ -176,7 +179,7 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
               a button in plain sight on big screens, and an item in the menu below
               for phones. Everyone else has no adminLink and sees neither. */}
           {adminLink && (
-            <button type="button" className="btn btn-outline-warning btn-sm rounded-pill fw-semibold d-none d-md-inline-flex align-items-center gap-1" onClick={handleSwitchToAdmin}>
+            <button type="button" className="btn btn-outline-warning btn-sm rounded-pill fw-semibold d-none d-lg-inline-flex align-items-center gap-1 text-nowrap" onClick={handleSwitchToAdmin}>
               <i className="bi bi-shield-lock"></i> Switch to admin
             </button>
           )}
@@ -184,8 +187,10 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
           <div className="dropdown">
             <button data-tour="account" className="btn btn-dark border border-secondary border-opacity-50 rounded-pill d-flex align-items-center gap-2 px-2 px-sm-3 py-1 dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
               <Avatar path={avatarPath} name={displayName} size={32} />
-              <span className="fw-semibold fs-7 text-truncate d-none d-sm-inline">
-                {displayName}
+              {/* From 768px wide. A long name is cut short with "..." and the
+                  badges stay visible. */}
+              <span className="fw-semibold fs-7 d-none d-md-inline-flex align-items-center topbar-account-name">
+                <span className="text-truncate">{displayName}</span>
                 <VerifiedBadge verified={isVerified} />
                 {/* Premium right now (the layout knows: lib/pro.js, useProStatus). */}
                 <ProBadge pro={isPro} />

@@ -284,6 +284,30 @@ svg.logo-img {
   }
 }
 
+/* The top bar never breaks onto a second line (Bootstrap lets a navbar wrap,
+   which on a tablet held upright pushed the bell, chat and account button down
+   over the page). Instead the search box shrinks, and a long name is cut short
+   with "...". Below 992px the bar has a search button instead of the box
+   (DashboardTopNav.jsx). */
+#topNavbar > .container-fluid {
+  flex-wrap: nowrap;
+  column-gap: 12px;
+}
+
+.topbar-search {
+  flex: 0 1 380px;
+  min-width: 160px;
+}
+
+.topbar-account-name {
+  max-width: 200px;
+  min-width: 0;
+}
+
+.topbar-account-name > .text-truncate {
+  min-width: 0;
+}
+
 /* Phones: a bigger logo in the top bar. At 38px its letters were only about
    29px tall in the 70px bar. Under 360px wide there is no room for 56px, so
    the logo is smaller there and the side space and round buttons are trimmed
@@ -329,21 +353,33 @@ svg.logo-img {
   font-size: 0.9rem;
 }
 
-/* App Body Layout */
+/* App Body Layout. The frame under the top bar is pinned to the screen's four
+   edges, so it always reaches the real bottom of the screen (no height
+   arithmetic with the screen's size). "clip" (not just hidden): nothing can
+   scroll the frame itself. On a short tablet screen the side menu used to be
+   taller than the frame, and a tap that brought a menu link into view scrolled
+   the whole frame up, leaving an empty strip at the bottom (2026-11-07). */
 .app-container {
-  margin-top: var(--navbar-h);
-  height: calc(100vh - var(--navbar-h));
-  height: calc(100dvh - var(--navbar-h));
+  position: fixed;
+  top: var(--navbar-h);
+  right: 0;
+  bottom: 0;
+  left: 0;
   overflow: hidden;
+  overflow: clip;
 }
 
-/* Fixated Sidebar */
+/* Fixated Sidebar. When its links don't fit (a short screen), the menu
+   scrolls by itself. */
 .sidebar-wrapper {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
   background: rgba(14, 17, 26, 0.95);
   backdrop-filter: blur(12px);
   height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 1000;
 }
@@ -701,11 +737,16 @@ a.sidebar-identity:hover {
 
 /* Responsive adjustments */
 @media (max-width: 991.98px) {
+  /* height: auto, so top and bottom decide its height. With the 100% height
+     from above, the menu was a whole screen tall but started under the top
+     bar, so its last 70px (the footer, or on a phone held sideways the last
+     links) were below the screen and couldn't be reached. */
   .sidebar-wrapper {
     position: fixed;
     top: var(--navbar-h);
     bottom: 0;
     left: 0;
+    height: auto;
     margin-left: calc(-1 * var(--sidebar-w));
   }
 
@@ -729,6 +770,48 @@ a.sidebar-identity:hover {
 
 .sidebar-backdrop {
   display: none;
+}
+
+/* Short screens (a tablet or a phone held sideways, about 600px tall or
+   less): a slimmer top bar (56px instead of 70px) and a tighter side menu, so
+   more of the page fits and the menu needs less scrolling. Every size that
+   depends on the bar's height reads --navbar-h, so it all follows. The menu
+   links stay 44px tall, big enough for a finger. */
+@media (max-height: 600px) {
+  :root {
+    --navbar-h: 56px;
+  }
+
+  #topNavbar {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  #topNavbar .logo-img {
+    height: 40px;
+  }
+
+  .sidebar-inner {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  .sidebar-inner > .nav {
+    gap: 0.35rem !important;
+  }
+
+  .sidebar-identity {
+    padding: 8px 12px;
+    margin-bottom: 2px;
+  }
+
+  .sidebar-pill-btn {
+    padding: 8px 18px;
+  }
+
+  .sidebar-footer {
+    padding-top: 0.5rem !important;
+  }
 }
 
 /* Settings: the line between the menu and the form only makes sense side by
