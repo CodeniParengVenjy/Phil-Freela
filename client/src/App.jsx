@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Homepage from "./pages/homepage/Homepage";
 import Login from "./pages/login/Login";
@@ -62,6 +63,12 @@ import PageNotFound from "./components/PageNotFound";
 function App() {
   // Sets the browser tab title for whichever page is open.
   usePageTitle();
+
+  // The plain dark screen from index.html comes off once the first page is
+  // drawn: it only covers the moment before the site's code runs.
+  useEffect(() => {
+    document.getElementById("boot-screen")?.remove();
+  }, []);
 
   return (
     <Routes>

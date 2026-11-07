@@ -94,7 +94,15 @@ Page transition (the top bar and side menu stay still in all four):
    - `main.jsx`: loads the style file. `package.json`: React `^19.3.0` (the
      lock file already has 19.3.0; this stops a fresh install from picking
      19.2, which has no `<ViewTransition>`).
-2. The opening
+2. The opening. DONE (Signature), with these details:
+   - About 3.1 s until the homepage takes clicks (the cover is gone), then the
+     homepage finishes settling and the opening is taken away at about 3.9 s
+     (ending earlier cut the homepage's own entrance short, a visible jump).
+   - The homepage's words rise only once the logo is on its way, so they don't
+     show under the logo. The flying logo lands exactly on the top bar's
+     picture (measured: 0 px off, laptop and phone).
+   - The first dark screen in `index.html` is taken off by `App.jsx` once the
+     first page is drawn.
    - New `client/src/components/OpeningIntro.jsx` and
      `client/src/styles/opening.css`: the chosen opening as a cover over the
      homepage. It plays the first time in a visit (remembered in

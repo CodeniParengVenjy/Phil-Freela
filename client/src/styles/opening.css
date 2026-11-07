@@ -1,0 +1,116 @@
+/* ──────────────────────────────────────
+   PhilFreela – The opening (components/OpeningIntro.jsx)
+   ──────────────────────────────────────
+   The "Signature" opening the user picked (PLAN-opening-transitions.md): the
+   logo writes itself, fills, the tagline appears, then the logo flies into the
+   homepage's top bar. The movements are in OpeningIntro.jsx; these rules only
+   place things. The homepage is always dark, so these colors are fixed. */
+
+/* Above everything on the homepage, including its top bar and phone menu. */
+.pf-opening {
+  position: fixed;
+  inset: 0;
+  z-index: 1090;
+  cursor: pointer;
+}
+
+/* The dark cover, in the site's own near-black (the same as the first screen
+   in index.html), with a soft light in the middle that fades in. */
+.pf-opening-cover {
+  position: absolute;
+  inset: 0;
+  background: #090a0f;
+}
+
+.pf-opening-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(70% 70% at 50% 45%, rgba(40, 46, 66, 0.6), transparent 72%);
+  animation: pf-opening-light 0.6s ease both;
+}
+
+.pf-opening-stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.pf-opening-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 18px);
+}
+
+/* The logo flies from its top-left corner (OpeningIntro.jsx works out the
+   flight from there). */
+.pf-opening-fly {
+  transform-origin: 0 0;
+}
+
+.pf-opening-logo {
+  display: block;
+  width: clamp(240px, 40vw, 460px);
+  height: auto;
+  overflow: visible;
+}
+
+.pf-opening-tagline {
+  margin: 0;
+  padding: 0 16px;
+  font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(15px, 1.7vw, 21px);
+  line-height: 1.4;
+  color: #e2e8f0;
+  text-align: center;
+}
+
+/* Each word moves on its own. */
+.pf-opening-tagline span {
+  display: inline-block;
+  white-space: pre;
+}
+
+.pf-opening-highlight {
+  background: linear-gradient(90deg, #ff6b00, #ffb347);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pf-opening-skip {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(15, 18, 26, 0.75);
+  color: #e2e8f0;
+  font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.pf-opening-skip:hover,
+.pf-opening-skip:focus-visible {
+  border-color: #ff9a3d;
+  color: #fff;
+}
+
+@keyframes pf-opening-light {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-opening-cover::after {
+    animation: none;
+  }
+}

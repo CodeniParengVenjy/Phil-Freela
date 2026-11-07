@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { resolvePostAuthRoute } from "../../lib/profile";
 import "./homepage.css";
+import OpeningIntro from "../../components/OpeningIntro";
 
 export default function Homepage() {
   // Where the logo goes: "/" for visitors, or the signed-in user's own
@@ -12,6 +13,10 @@ export default function Homepage() {
   // link the super admin sent them, PLAN-premium.md): ?sponsor=paid or canceled.
   const [searchParams, setSearchParams] = useSearchParams();
   const sponsor = searchParams.get("sponsor");
+  // The opening (components/OpeningIntro.jsx) brings these in at its end: the
+  // whole page, and the top bar's logo, where its flying logo lands.
+  const pageRef = useRef(null);
+  const logoRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -33,7 +38,11 @@ export default function Homepage() {
   const dashboardHref = logoHref === "/" ? "/login" : logoHref;
 
   return (
-    <div className="bg-dark text-light">
+    <div className="bg-dark text-light" ref={pageRef}>
+      {/* The opening, the first time in a visit (not when back from a sponsor
+          payment, whose message has to show at once). */}
+      <OpeningIntro pageRef={pageRef} logoRef={logoRef} skip={sponsor === "paid" || sponsor === "canceled"} />
+
       <nav className="navbar navbar-expand-lg sticky-top border-bottom border-secondary border-opacity-25" id="mainNavbar">
         <div className="container px-lg-4">
           <div className="d-flex align-items-center gap-3">
@@ -41,7 +50,7 @@ export default function Homepage() {
               <i className="bi bi-list fs-1 text-warning"></i>
             </button>
             <Link className="navbar-brand d-flex align-items-center gap-2" to={logoHref}>
-              <img src="/logo-philfreela.svg" alt="PhilFreela" className="logo-img" />
+              <img ref={logoRef} src="/logo-philfreela.svg" alt="PhilFreela" className="logo-img" />
             </Link>
           </div>
 
