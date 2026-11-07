@@ -426,9 +426,11 @@ export default function ProjectDetailsView() {
 
             {project.submission_path && (
               <div className="p-3 rounded-3 bg-black bg-opacity-50 border border-secondary border-opacity-50 d-flex align-items-center justify-content-between gap-3 mb-3">
-                <div className="d-flex align-items-center gap-3 overflow-hidden">
+                <div className="d-flex align-items-center gap-3 overflow-hidden min-w-0">
                   <i className={`bi ${deliverableIcon(project.submission_path)} text-orange fs-2`}></i>
-                  <span className="text-white fw-semibold text-break">{project.submission_path.split("/").pop()}</span>
+                  {/* One line ending in "..." (on a phone the long saved name used to
+                      break across three lines); the whole name shows on hover. */}
+                  <span className="text-white fw-semibold text-truncate min-w-0" title={project.submission_path.split("/").pop()}>{project.submission_path.split("/").pop()}</span>
                 </div>
                 {previewOnly ? (
                   <span className="badge rounded-pill bg-secondary text-white px-3 py-2 fs-8 flex-shrink-0" data-locked-badge>

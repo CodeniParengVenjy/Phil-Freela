@@ -49,7 +49,9 @@ export default function CompletedProjects({ userId, role }) {
           return (
             // The list has no id of its own, so the position keeps the keys apart.
             <div key={`${row.completed_at}-${index}`} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25">
-              <div className="d-flex align-items-start gap-3">
+              {/* Picture | text | Open project; on a phone the button goes under the
+                  text (dashboard.css, .completed-project-row). */}
+              <div className="completed-project-row">
                 <Avatar path={row.other_avatar_path} name={otherName} size={44} to={path} />
                 <div className="flex-grow-1 overflow-hidden">
                   <h6 className="text-white fw-bold mb-1 text-break"><CensoredText text={row.title} /></h6>

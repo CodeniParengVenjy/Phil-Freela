@@ -658,11 +658,50 @@ a.sidebar-identity:hover {
 }
 
 /* The chat window fills the screen height on phones instead of a fixed
-   680px that ran past the bottom. */
+   680px that ran past the bottom. --page-pad is the page's own padding above
+   and below it (p-3 = 2rem; phones 1.5rem; from 768px p-md-4 = 3rem; short
+   screens 1.5rem, see the max-height: 600px block). It used to be 2rem
+   everywhere, so from 768px the page scrolled 16px under the typing box. */
 .chat-card {
+  --page-pad: 2rem;
   height: 680px;
-  height: min(680px, calc(100vh - var(--navbar-h) - 2rem));
-  height: min(680px, calc(100dvh - var(--navbar-h) - 2rem));
+  height: min(680px, calc(100vh - var(--navbar-h) - var(--page-pad)));
+  height: min(680px, calc(100dvh - var(--navbar-h) - var(--page-pad)));
+}
+
+@media (max-width: 575.98px) {
+  .chat-card {
+    --page-pad: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .chat-card {
+    --page-pad: 3rem;
+  }
+}
+
+/* Completed Projects (My Profile and public profiles): the picture, the text
+   and the Open project button in a row. On a phone the button goes under the
+   text, so the text keeps the card's width; beside it, the title and the
+   client's review were squeezed into a column a few words wide. */
+.completed-project-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+  align-items: start;
+}
+
+@media (max-width: 575.98px) {
+  .completed-project-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .completed-project-row > .btn {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 /* Lets text inside a flex row shrink and end in "..." instead of pushing
@@ -829,6 +868,22 @@ a.sidebar-identity:hover {
   .welcome-banner .welcome-title {
     font-size: clamp(1.1rem, 2vw, 1.4rem);
     margin-bottom: 0 !important;
+  }
+
+  /* Less padding around every page (12px, as on phones), so more of it fits. */
+  main.content-wrapper {
+    padding: 0.75rem !important;
+  }
+
+  /* Chat: the window keeps that smaller padding in its height, and a slimmer
+     header and typing bar leave more room for the messages. */
+  .chat-card {
+    --page-pad: 1.5rem;
+  }
+
+  .chat-header,
+  .chat-footer {
+    padding: 0.4rem 0.75rem !important;
   }
 }
 

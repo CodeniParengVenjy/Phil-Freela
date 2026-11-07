@@ -74,7 +74,23 @@ Good: no page scrolls sideways at any size; computers look fine.
 5. Page by page (chat with a taller message area and the typing box always in
    view, project page, Settings, Profile, Post a Project, offer page, Find Jobs,
    Browse Services). Waits until the other session's "loaders" edits in those
-   files are committed.
+   files are committed. DONE (after the loaders work was committed):
+   - Chat: `.chat-card` subtracts the page's real padding (`--page-pad`: 1.5rem on
+     phones, 2rem, 3rem from 768px; it was 2rem everywhere, so from 768px the page
+     scrolled 16px under the typing box); on short screens the page padding is
+     0.75rem on every page and the chat header and typing bar are slimmer. Message
+     area: phone sideways 146 -> 192px, tablet 1024x530 286 -> 332px, 1250x510
+     266 -> 312px; the typing box sits fully on screen with no page scroll at 9
+     sizes (18 checks).
+   - My Profile / public profiles, Completed Projects (`CompletedProjects.jsx`,
+     `.completed-project-row`): a grid; on phones the Open project button goes under
+     the text (the title and review were squeezed into a column about 80px wide).
+   - Project page: the sent file's name is one line ending in "..." with the whole
+     name in its title (it broke across three lines on a phone).
+   - Settings, Post a Project, the offer page, the project page, Find Jobs and
+     Browse Services looked right on a phone (full-length pictures) once steps 1-4
+     were in; nothing else changed there. Tested: 20 checks (phones 390 and 360,
+     tablet 800, laptop 1366).
 6. Checks after each step: phone upright and sideways, tablet upright, tablet
    sideways 1024 and 1250, laptop 1366 and 1536, desktop 1920, light mode; then
    commit and push each step.
