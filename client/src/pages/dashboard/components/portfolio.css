@@ -67,7 +67,7 @@
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.6);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -88,7 +88,7 @@
   padding: 0.75rem;
   background: linear-gradient(180deg, #1c2130 0%, #11141d 100%);
   color: rgba(226, 232, 240, 0.85);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.45;
   overflow: hidden;
   text-align: left;
@@ -110,7 +110,7 @@
   border-radius: 999px;
   background: rgba(245, 158, 11, 0.95);
   color: #111;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -127,7 +127,7 @@
   display: block;
   margin-top: 0.1rem;
   color: rgba(148, 163, 184, 0.9);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -450,7 +450,7 @@ a.sidebar-identity:hover {
 
 .sidebar-identity .role-badge {
   display: inline-block;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -733,7 +733,9 @@ a.sidebar-identity:hover {
 
 .fs-7 { font-size: 0.85rem; }
 .fs-8 { font-size: 0.75rem; }
-.fs-9 { font-size: 0.65rem; }
+/* 0.75rem (12px), the smallest text on the dashboard (PLAN-responsive.md,
+   step 3). It was 0.65rem, about 10px. */
+.fs-9 { font-size: 0.75rem; }
 
 /* Responsive adjustments */
 @media (max-width: 991.98px) {
@@ -1471,7 +1473,8 @@ a.sidebar-identity:hover {
 }
 
 .trust-ring-lg { width: 120px; height: 120px; }
-.trust-ring-sm { width: 40px; height: 40px; }
+/* 44px (it was 40px), so its "100%" fits at 12px, the smallest text. */
+.trust-ring-sm { width: 44px; height: 44px; }
 
 .trust-ring-track,
 .trust-ring-arc {
@@ -1504,7 +1507,7 @@ a.sidebar-identity:hover {
 }
 
 .trust-ring-lg .trust-ring-value { font-size: 1.6rem; }
-.trust-ring-sm .trust-ring-value { font-size: 0.62rem; }
+.trust-ring-sm .trust-ring-value { font-size: 0.75rem; }
 
 /* The "(optional)" hint inside the feedback box, in light grey so it can be
    read on the dark box (light mode sets its own color in theme.css). */
@@ -1823,5 +1826,95 @@ a.sidebar-identity:hover {
     0% { transform: scale(0.6); opacity: 0; }
     70% { transform: scale(1.08); }
     100% { transform: scale(1); opacity: 1; }
+  }
+}
+
+/* ──────────────────────────────────────
+   Responsive dashboard, step 3 (PLAN-responsive.md): readable text everywhere
+   and finger-sized buttons on touch screens. Only on the dashboard
+   (body.fixed-layout); a computer with a mouse looks the same except a few
+   labels that were under 12px.
+   ────────────────────────────────────── */
+
+/* Bootstrap sizes badges and <small> in em, so inside small text they shrank
+   (a badge in 12px text was 9px, a category chip 10px). Never under 12px now.
+   A badge or <small> with its own fs- size class keeps that size. */
+body.fixed-layout .badge:not([class*="fs-"]) {
+  font-size: max(0.75em, 0.75rem);
+}
+
+body.fixed-layout small:not([class*="fs-"]),
+body.fixed-layout .small:not([class*="fs-"]) {
+  font-size: max(0.875em, 0.75rem);
+}
+
+/* Touch screens (phones and tablets; "coarse" = a finger, not a mouse). */
+@media (pointer: coarse) {
+  /* Small buttons (All / Projects / Jobs, View offer, Feature, Extend, the
+     small icon buttons) were 31px tall: at least 40px now. */
+  body.fixed-layout .btn-sm {
+    min-height: 40px;
+    min-width: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The search button in the top bar (phones and tablets held upright): as
+     big as the bell and chat buttons. */
+  body.fixed-layout #topNavbar a[aria-label="Search"] {
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The camera button inside the search box: 36px (the box is 38px tall). */
+  body.fixed-layout .search-scan-button {
+    width: 36px;
+    height: 36px;
+    right: 2px;
+  }
+
+  body.fixed-layout .nav-search-input.has-scan-button {
+    padding-right: 44px !important;
+  }
+
+  /* The dots under the Billboard: the dot you see stays 10px, the area you
+     can tap around it is 32px (a see-through border). */
+  body.fixed-layout .dashboard-billboard-dots {
+    gap: 0;
+    padding-bottom: 4px;
+  }
+
+  body.fixed-layout .dashboard-billboard-dot {
+    width: 32px;
+    height: 32px;
+    border: 11px solid transparent;
+    background-clip: padding-box;
+  }
+
+  /* Small text links (Back to..., Advertise here) and the little x buttons
+     (a skill chip's remove, a pop-up's close): an invisible area around them
+     makes them easier to tap, without moving anything. */
+  body.fixed-layout .content-wrapper a:has(> .bi-arrow-left),
+  body.fixed-layout .community-billboard a[href="/dashboard/advertise"],
+  body.fixed-layout .btn-close {
+    position: relative;
+  }
+
+  body.fixed-layout .content-wrapper a:has(> .bi-arrow-left)::after,
+  body.fixed-layout .community-billboard a[href="/dashboard/advertise"]::after,
+  body.fixed-layout .btn-close::after {
+    content: "";
+    position: absolute;
+    inset: -10px -8px;
+  }
+
+  /* The remove button on a picked photo (Add a photo or video): 36px. */
+  body.fixed-layout .slide-picker-remove {
+    width: 36px;
+    height: 36px;
   }
 }

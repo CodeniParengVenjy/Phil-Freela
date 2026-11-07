@@ -48,7 +48,19 @@ Good: no page scrolls sideways at any size; computers look fine.
    Got it hides it for the tab; 17 checks.
 3. Finger-sized buttons and readable text (`dashboard.css` only): on touch
    screens buttons at least 40px (icons 44px); smallest text 12px. Computers look
-   the same.
+   the same. DONE: under `@media (pointer: coarse)` and `body.fixed-layout`:
+   `.btn-sm` at least 40x40, the top bar's search button 40x40, the camera button
+   36px, Billboard dots 32px to tap (10px dot), an invisible tap area (`::after`,
+   -10px) on Back links (`a:has(> .bi-arrow-left)`), "Advertise here" and every
+   `.btn-close`, the photo picker's remove button 36px. Text: `.fs-9` and the
+   menu's role label 0.75rem, badges and `<small>` never under 12px unless they
+   have their own fs- class, the small trust ring 44px so "100%" fits at 12px,
+   the 0.68/0.7/0.72rem labels in portfolio.css, slides.css and calls.css 0.75rem.
+   Only the notification count bubbles and the calendar's "+n" stay smaller.
+   Tested: 38 checks (touch phone 390 and tablets 1250x510 and 800, laptop 1366
+   unchanged), and the 18-page check: small taps on a phone 80 -> 24 (the rest are
+   links the measuring can't see the invisible area of, and checkboxes with
+   labels), no text under 12px left.
 4. Home page: the Billboard picture whole on phones (nothing cropped), a one-line
    welcome card on short screens, the Community Billboard stacked on phones and side
    by side on tablets.
