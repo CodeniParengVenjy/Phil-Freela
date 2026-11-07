@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { fetchMyLink, switchToOtherAccount } from "../../../lib/accountSwitch";
 import { getPendingAdCount } from "../../../lib/adminMemberAds";
 import AdminCreatePassword from "../components/AdminCreatePassword";
+import { PageLoader } from "../../../components/Loaders";
 import "../admin.css";
 
 const ADMIN_COLUMNS = "id, full_name, username, role, must_change_password";
@@ -273,7 +274,8 @@ export default function AdminLayout() {
   };
 
   if (!admin) {
-    return <div className="admin-shell min-vh-100" />;
+    // The loading splash while we check that this is an admin.
+    return <PageLoader label="Opening the admin panel" />;
   }
 
   const adminName = admin.full_name || admin.username || "Admin";
