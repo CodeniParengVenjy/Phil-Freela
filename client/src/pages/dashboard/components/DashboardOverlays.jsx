@@ -1,6 +1,7 @@
 import CallDialog from "./CallDialog";
 import MissingNameDialog from "./MissingNameDialog";
 import WelcomeGuide from "./WelcomeGuide";
+import { Busy } from "../../../components/Loaders";
 
 // Identical between the freelancer and client dashboards -- the image
 // preview modal, the role-switch confirmation, the toast notification, the
@@ -82,7 +83,7 @@ export default function DashboardOverlays({ preview, onClosePreview, toast, onCl
       <div className="toast-container position-fixed bottom-0 end-0 p-3" style={{ zIndex: 1100 }}>
         <div className={`toast align-items-center text-white bg-orange border-0${toast.visible ? " show" : ""}`} role="alert">
           <div className="d-flex">
-            <div className="toast-body fw-semibold fs-7">{toast.message}</div>
+            <div className="toast-body fw-semibold fs-7">{toast.kind ? <Busy kind={toast.kind}>{toast.message}</Busy> : toast.message}</div>
             <button type="button" className="btn-close btn-close-white me-2 m-auto" aria-label="Close" onClick={onCloseToast}></button>
           </div>
         </div>

@@ -8,7 +8,7 @@ import { adminEmailFor } from "../../../lib/adminEmail";
 import { noAutofill } from "../../../lib/profile";
 import { getCaptchaToken } from "../../../lib/captcha";
 import AdminRoleDialog from "../components/AdminRoleDialog";
-import { SkeletonTableRows } from "../../../components/Loaders";
+import { SkeletonTableRows, MessageText } from "../../../components/Loaders";
 
 const emptyForm = { fullName: "", username: "", email: "" };
 
@@ -206,7 +206,7 @@ export default function AdminAdminsView() {
       )}
 
       {message.text && (
-        <p className={`admin-message ${message.type} fs-7 fw-semibold`} aria-live="polite">{message.text}</p>
+        <p className={`admin-message ${message.type} fs-7 fw-semibold`} aria-live="polite"><MessageText message={message} /></p>
       )}
 
       {isSuperAdmin && showForm && (

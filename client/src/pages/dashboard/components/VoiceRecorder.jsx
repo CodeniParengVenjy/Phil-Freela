@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_VOICE_SECONDS } from "../../../lib/chatFiles";
-import { Busy } from "../../../components/Loaders";
+import { Busy, Loader } from "../../../components/Loaders";
 
 // Recording formats to try, best first. Chrome and Firefox record WebM or
 // Ogg; Safari (iPhone) records MP4.
@@ -126,7 +126,7 @@ export default function VoiceRecorder({ onSend, onClose }) {
       >
         <h6 className="fw-bold mb-3"><i className="bi bi-mic-fill text-role me-2"></i>Voice message</h6>
 
-        {stage === "starting" && <p className="text-secondary fs-7 mb-3">Starting the microphone...</p>}
+        {stage === "starting" && <Loader size="sm" label="Starting the microphone" className="mb-3" />}
 
         {stage === "recording" && (
           <div className="mb-3">

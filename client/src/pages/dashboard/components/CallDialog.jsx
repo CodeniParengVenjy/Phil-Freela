@@ -3,6 +3,7 @@ import Avatar from "../../../components/Avatar";
 import { acceptCall, hangUp, switchCamera, toggleCamera, toggleMute, useCall } from "../../../lib/calls";
 import ReportDialog from "./ReportDialog";
 import "./calls.css";
+import { Busy, Dots, Orbit } from "../../../components/Loaders";
 
 const STAGE_TEXT = { starting: "Starting...", calling: "Calling...", connecting: "Connecting..." };
 // After this long on "Connecting...", explain that a weak internet is slower.
@@ -92,9 +93,9 @@ function CallWindow({ call, small, onToggleSize, onReport }) {
             <div className="fw-semibold fs-7 text-truncate">{other.name}</div>
             <div className={`fs-8 ${stage === "ended" || call.reconnecting ? "text-warning" : "text-secondary"}`}>
               {stage === "ended" ? call.message
-                : live && call.reconnecting ? "Reconnecting..."
+                : live && call.reconnecting ? <Busy kind="ping">Reconnecting</Busy>
                 : live ? <CallTimer since={call.connectedAt} />
-                : STAGE_TEXT[stage]}
+                : STAGE_TEXT[stage] && <Busy kind="ping">{STAGE_TEXT[stage]}</Busy>}
             </div>
           </div>
           {/* Report the other person (needs the call's row, so not while
@@ -129,8 +130,7 @@ function CallWindow({ call, small, onToggleSize, onReport }) {
               {/* Loading while the camera turns on and the devices connect. */}
               {(stage === "starting" || stage === "connecting") && (
                 <span className="fs-8 text-white-50 d-flex align-items-center gap-2 px-3 text-center">
-                  <span className="spinner-border spinner-border-sm flex-shrink-0" aria-hidden="true"></span>
-                  {stage === "starting" ? "Starting..." : <ConnectingText since={call.connectingAt} />}
+                  <Busy kind="ping">{stage === "starting" ? "Starting" : <ConnectingText since={call.connectingAt} />}</Busy>
                 </span>
               )}
             </div>
@@ -138,12 +138,12 @@ function CallWindow({ call, small, onToggleSize, onReport }) {
 
           {/* The connection dropped: waiting for it to come back. */}
           {live && call.reconnecting && (
-            <CallLoading strong text="Reconnecting..." note={small ? "" : "Your internet or theirs is weak. The call will continue when it's back."} />
+            <CallLoading strong text="Reconnecting" note={small ? "" : "Your internet or theirs is weak. The call will continue when it's back."} />
           )}
 
           {/* Laggy (frozen video, lost sound): shown until it recovers. */}
           {live && call.weak && !call.reconnecting && (
-            <CallLoading text="Weak connection..." note={small ? "" : "Waiting for a better connection."} />
+            <CallLoading text="Weak connection" note={small ? "" : "Waiting for a better connection."} />
           )}
 
           {/* Your own camera, small in the corner. The front camera is
@@ -223,20 +223,22 @@ function StreamPlayer({ stream, audioOnly = false, muted = false, className }) {
     : <video ref={ref} autoPlay playsInline muted={muted} className={className} />;
 }
 
-// A loading cover over the call: a spinner, a short title and an optional
+// A loading cover over the call: the orbit (components/Loaders.jsx), a short
+// title with hopping dots and an optional
 // note. `strong` covers the video completely (the call dropped); otherwise
 // the frozen video still shows faintly behind it.
 function CallLoading({ text, note, strong = false }) {
   return (
     <div className={`call-loading${strong ? " call-loading-strong" : ""}`} role="status">
-      <span className="spinner-border text-light" aria-hidden="true"></span>
-      <span className="fw-semibold fs-7">{text}</span>
+      <Orbit />
+      <span className="fw-semibold fs-7 d-inline-flex align-items-center">{text}<Dots /></span>
       {note && <span className="fs-8 text-white-50 px-3 text-center">{note}</span>}
     </div>
   );
 }
 
-// "Connecting...", and after a while "Still connecting..." with the reason.
+// "Connecting", and after a while "Still connecting" with the reason (the
+// hopping dots come after the words, Busy in components/Loaders.jsx).
 function ConnectingText({ since }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -244,8 +246,8 @@ function ConnectingText({ since }) {
     return () => clearInterval(timer);
   }, []);
   return since && now - since > SLOW_CONNECT_MS
-    ? "Still connecting... a weak internet can take longer."
-    : "Connecting...";
+    ? "Still connecting. A weak internet can take longer"
+    : "Connecting";
 }
 
 // "3:12" since the call connected, counting up every second.

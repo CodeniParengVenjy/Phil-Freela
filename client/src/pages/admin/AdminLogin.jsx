@@ -5,6 +5,7 @@ import { getFriendlyErrorMessage } from "../../lib/errors";
 import { useCaptcha } from "../../lib/captcha";
 import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
+import { Busy, MessageText } from "../../components/Loaders";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ export default function AdminLogin() {
         throw new Error("This account is not an admin.");
       }
 
-      setMessage({ text: "Signed in! Redirecting...", type: "success" });
+      setMessage({ text: "Signed in! Redirecting...", type: "success", kind: "go" });
       navigate("/admin");
     } catch (error) {
       setMessage({ text: getFriendlyErrorMessage(error), type: "error" });
@@ -150,12 +151,12 @@ export default function AdminLogin() {
             <CaptchaBox captcha={captcha} />
 
             <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting || captcha.waiting}>
-              {captcha.waiting ? "Checking you're human..." : "Sign In"}
+              {captcha.waiting ? <Busy>Checking you're human</Busy> : "Sign In"}
             </button>
           </form>
 
           {message.text && (
-            <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">{message.text}</p>
+            <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite"><MessageText message={message} /></p>
           )}
 
           {canResend && (

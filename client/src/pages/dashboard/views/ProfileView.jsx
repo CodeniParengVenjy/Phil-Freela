@@ -112,7 +112,7 @@ export default function ProfileView() {
 
           <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
             <h5 className="text-white fw-bold mb-3"><i className="bi bi-shield-check text-success me-2"></i> Verifications</h5>
-            {verified === null && <div className="text-secondary fs-7 mb-2">Checking identity...</div>}
+            {verified === null && <Loader size="sm" label="Checking identity" className="mb-2" />}
             {verified === true && (
               <div className="d-flex align-items-center gap-2 mb-2 text-success fs-7">
                 <i className="bi bi-check-circle-fill"></i> Identity Verified

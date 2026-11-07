@@ -4,6 +4,7 @@ import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
 import { getPasswordStrengthMessage } from "../../lib/validators";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import "../../styles/auth.css";
+import { Busy, MessageText } from "../../components/Loaders";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -112,7 +113,7 @@ export default function ResetPassword() {
 
           {isSupabaseConfigured && !ready && !linkError && (
             <p className="auth-message text-center fs-7 fw-semibold mb-0" aria-live="polite">
-              Verifying your reset link...
+              <Busy>Verifying your reset link</Busy>
             </p>
           )}
 
@@ -186,7 +187,7 @@ export default function ResetPassword() {
 
           {message.text && (
             <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">
-              {message.text}
+              <MessageText message={message} />
             </p>
           )}
 

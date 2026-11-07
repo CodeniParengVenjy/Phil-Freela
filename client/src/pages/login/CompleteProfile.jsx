@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { MAX_NAME_LENGTH, checkName, cleanName, dashboardRouteFor, resolvePostAuthRoute, noAutofill } from "../../lib/profile";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import "../../styles/auth.css";
+import { Busy, MessageText } from "../../components/Loaders";
 
 // profiles.username is varchar(60) in the database.
 const MAX_USERNAME_LENGTH = 60;
@@ -130,7 +131,7 @@ export default function CompleteProfile() {
             <p className="text-warning fw-extrabold tracking-widest fs-8 text-uppercase mb-1">PHILFREELA ACCESS PORTAL</p>
             <h1 className="fw-black text-white h3 mb-1">Complete Your Profile</h1>
             <p className="text-secondary fs-7 mb-0">
-              {user ? `Signed in as ${user.email}. Just a few details to finish your account.` : "Checking your account..."}
+              {user ? `Signed in as ${user.email}. Just a few details to finish your account.` : <Busy>Checking your account</Busy>}
             </p>
           </div>
 
@@ -209,7 +210,7 @@ export default function CompleteProfile() {
 
           {message.text && (
             <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">
-              {message.text}
+              <MessageText message={message} />
             </p>
           )}
 

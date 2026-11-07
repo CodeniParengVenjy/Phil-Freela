@@ -9,6 +9,7 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import PhotoPreview from "./PhotoPreview";
+import { Busy } from "../../../components/Loaders";
 
 // Scans one picture: asks the AI service who matches, then loads each
 // freelancer and their matching picture under the normal database rules.
@@ -124,8 +125,8 @@ export default function PictureSearchDialog({ picture, onClose, currentUserId, o
 
         {scanning && (
           <p className="text-secondary fs-7 text-center py-4 mb-0" role="status">
-            <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-            Scanning the picture and comparing it with every verified freelancer's portfolio. This can take a few seconds, longer the first time.
+            <Busy kind="ai">Scanning the picture</Busy>
+            <span className="d-block mt-2">Comparing it with every verified freelancer's portfolio. This can take a few seconds, longer the first time.</span>
           </p>
         )}
         {error && <p className="text-danger fs-7 text-center py-4 mb-0">{error}</p>}

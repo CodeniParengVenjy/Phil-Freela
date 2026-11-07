@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { createPhoneLink } from "../../../lib/aiService";
 import { PUBLIC_APP_URL, fetchLatestVerification } from "../../../lib/verification";
+import { Busy, Loader } from "../../../components/Loaders";
 
 // How often the computer checks whether the phone has finished.
 const CHECK_EVERY_MS = 3000;
@@ -95,7 +96,7 @@ export default function PhoneQrPanel({ userId, onDone, compact = false }) {
         </>
       )}
 
-      {!error && !link && <p className="text-secondary fs-7">Making your QR code...</p>}
+      {!error && !link && <Loader size="sm" label="Making your QR code" className="justify-content-center mb-3" />}
 
       {link && !expired && (
         <>
@@ -103,8 +104,8 @@ export default function PhoneQrPanel({ userId, onDone, compact = false }) {
             <QRCodeSVG value={phoneUrl} size={compact ? 150 : 200} />
           </div>
           <p className="text-light-50 fs-7 mb-1">
-            <span className="spinner-grow spinner-grow-sm text-info me-2" aria-hidden="true"></span>
-            Waiting for your phone... <span className="fw-bold text-white">{formatCountdown(msLeft)}</span> left
+            <Busy kind="ping">Waiting for your phone</Busy>{" "}
+            <span className="fw-bold text-white">{formatCountdown(msLeft)}</span> left
           </p>
           <p className="text-secondary fs-9 mb-0 text-break">
             Can't scan it? Open this link on your phone: <span className="text-info">{phoneUrl}</span>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { headYaw, loadFaceTracker, measureFace } from "../../../lib/faceTracker";
+import { Busy } from "../../../components/Loaders";
 
 // How the scan decides, using how far the head is turned in degrees (headYaw
 // in lib/faceTracker.js; 0 = facing the camera). Sample photos of people
@@ -325,7 +326,7 @@ export default function FaceScan({ onComplete, onCancel }) {
             </svg>
             {status === "loading" && (
               <div className="position-absolute top-50 start-50 translate-middle text-white fs-7">
-                <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Starting the face scan...
+                <Busy>Starting the face scan</Busy>
               </div>
             )}
           </div>

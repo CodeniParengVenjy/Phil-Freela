@@ -6,6 +6,7 @@ import { getFriendlyErrorMessage } from "../../lib/errors";
 import { useCaptcha } from "../../lib/captcha";
 import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
+import { Busy, MessageText } from "../../components/Loaders";
 
 // "Forgot password" for admins. It sends the same Supabase reset email users
 // get, to the admin's own email. The link opens /reset-password, which sends
@@ -40,7 +41,7 @@ export default function AdminForgotPassword() {
     }
 
     setSubmitting(true);
-    setMessage({ text: "Sending reset link...", type: "" });
+    setMessage({ text: "Sending reset link...", type: "", kind: "send" });
 
     const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo: `${window.location.origin}/reset-password`,
@@ -104,12 +105,12 @@ export default function AdminForgotPassword() {
             <CaptchaBox captcha={captcha} />
 
             <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting || captcha.waiting}>
-              {captcha.waiting ? "Checking you're human..." : "Send Reset Link"}
+              {captcha.waiting ? <Busy>Checking you're human</Busy> : "Send Reset Link"}
             </button>
           </form>
 
           {message.text && (
-            <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">{message.text}</p>
+            <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite"><MessageText message={message} /></p>
           )}
 
           <div className="text-center pt-4 mt-3 border-top border-secondary border-opacity-25">

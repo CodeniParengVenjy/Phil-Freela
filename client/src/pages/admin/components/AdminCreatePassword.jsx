@@ -4,6 +4,7 @@ import { getPasswordStrengthMessage } from "../../../lib/validators";
 import { getFriendlyErrorMessage } from "../../../lib/errors";
 import { DEFAULT_ADMIN_PASSWORD } from "../../../lib/adminPassword";
 import "../../../styles/auth.css";
+import { MessageText } from "../../../components/Loaders";
 
 // Shown instead of the Admin Panel while a new admin is still on the default
 // password. onDone re-reads their admin row and answers true once the
@@ -85,7 +86,7 @@ export default function AdminCreatePassword({ adminName, onDone, onSignOut }) {
           </form>
 
           {message.text && (
-            <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">{message.text}</p>
+            <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite"><MessageText message={message} /></p>
           )}
 
           <div className="text-center pt-4 mt-3 border-top border-secondary border-opacity-25">

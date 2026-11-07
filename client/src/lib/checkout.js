@@ -121,7 +121,8 @@ export function useFeatureCheckoutReturn(showToast) {
   useEffect(() => {
     if (!checkoutId) return undefined;
     let active = true;
-    const say = (text) => toastRef.current?.(text);
+    // kind: the moving picture for a message that is still waiting (Busy).
+    const say = (text, kind) => toastRef.current?.(text, kind);
     const done = (text) => {
       say(text);
       navigateRef.current(pathname, { replace: true });
@@ -130,7 +131,7 @@ export function useFeatureCheckoutReturn(showToast) {
       done("Payment canceled. Nothing was paid.");
       return undefined;
     }
-    say("Checking your payment with Xendit...");
+    say("Checking your payment with Xendit...", "ping");
     (async () => {
       // Xendit may need a few seconds to confirm a payment.
       for (let attempt = 0; attempt < 4; attempt += 1) {

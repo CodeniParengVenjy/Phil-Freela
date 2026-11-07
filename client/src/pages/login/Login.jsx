@@ -8,6 +8,7 @@ import { renderGoogleButton } from "../../lib/googleSignIn";
 import { useCaptcha } from "../../lib/captcha";
 import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
+import { Busy, MessageText } from "../../components/Loaders";
 
 const initialForm = {
   fullName: "",
@@ -143,7 +144,7 @@ export default function Login() {
     }
 
     setGoogleSubmitting(true);
-    setMessage({ text: "Redirecting to Google...", type: "" });
+    setMessage({ text: "Redirecting to Google...", type: "", kind: "go" });
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -635,7 +636,7 @@ export default function Login() {
               className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2"
               disabled={submitting || captcha.waiting}
             >
-              {captcha.waiting ? "Checking you're human..." : isSignup ? "Create Account" : "Sign In"}
+              {captcha.waiting ? <Busy>Checking you're human</Busy> : isSignup ? "Create Account" : "Sign In"}
             </button>
           </form>
 
@@ -667,7 +668,7 @@ export default function Login() {
               no internet). Box errors are drawn by <FieldError> above. */}
           {message.text && !message.field && (
             <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">
-              {message.text}
+              <MessageText message={message} />
             </p>
           )}
 

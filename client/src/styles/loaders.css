@@ -198,6 +198,14 @@
 /* Inside a button they take the button's own text color. */
 .btn .pf-busy .pf-icon { color: inherit; }
 .btn .pf-busy { --pf-dot: currentColor; }
+
+/* The same on a pop-up message (it sits on the accent color) and on a green
+   "done, taking you there" line on the sign-in pages. */
+.toast .pf-busy .pf-icon,
+.auth-message.success .pf-busy .pf-icon { color: inherit; }
+.toast .pf-busy,
+.auth-message.success .pf-busy { --pf-dot: currentColor; }
+.toast .pf-ring { --pf-c1: currentColor; --pf-c2: currentColor; }
 .btn .pf-ring { --pf-c1: currentColor; --pf-c2: currentColor; background-color: transparent; }
 .btn .pf-ring::before {
   content: "";

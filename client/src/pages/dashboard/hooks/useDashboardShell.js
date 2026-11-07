@@ -190,8 +190,10 @@ export function useDashboardShell() {
     if (!error) setUnreadCount(data ?? 0);
   }, []);
 
-  const showToast = useCallback((message) => {
-    setToast({ message, visible: true });
+  // kind (optional): a message that is still waiting gets a moving picture
+  // ("ping" while a payment is checked, Busy in components/Loaders.jsx).
+  const showToast = useCallback((message, kind) => {
+    setToast({ message, kind, visible: true });
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 3000);
   }, []);

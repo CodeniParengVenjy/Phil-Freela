@@ -6,6 +6,7 @@ import { getPasswordStrengthMessage } from "../../lib/validators";
 import { useCaptcha } from "../../lib/captcha";
 import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
+import { Busy, MessageText } from "../../components/Loaders";
 
 export default function AdminSetup() {
   const navigate = useNavigate();
@@ -59,7 +60,7 @@ export default function AdminSetup() {
 
       if (adminError) throw new Error("An admin account already exists. Setup is locked.");
 
-      setMessage({ text: "Admin account created! Redirecting to sign in...", type: "success" });
+      setMessage({ text: "Admin account created! Redirecting to sign in...", type: "success", kind: "go" });
       setTimeout(() => navigate("/admin/login"), 1200);
     } catch (error) {
       setMessage({ text: error.message, type: "error" });
@@ -110,12 +111,12 @@ export default function AdminSetup() {
             <CaptchaBox captcha={captcha} />
 
             <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting || captcha.waiting}>
-              {captcha.waiting ? "Checking you're human..." : "Create Admin Account"}
+              {captcha.waiting ? <Busy>Checking you're human</Busy> : "Create Admin Account"}
             </button>
           </form>
 
           {message.text && (
-            <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">{message.text}</p>
+            <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite"><MessageText message={message} /></p>
           )}
 
           <div className="text-center pt-4 mt-3 border-top border-secondary border-opacity-25">

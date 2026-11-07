@@ -152,10 +152,10 @@ export default function ProPlans({ userId, accountType, onPaid }) {
     <div className="d-flex flex-column gap-4">
       {result && (
         <div className={`p-3 rounded-3 border ${result.className} d-flex flex-wrap align-items-center gap-2`} role="status">
+          {/* While Xendit is asked: the radar ping and hopping dots. */}
           {result.icon === "spinner"
-            ? <span className="spinner-border spinner-border-sm text-secondary" aria-hidden="true"></span>
-            : <i className={`bi ${result.icon}`}></i>}
-          <span className="text-white fs-7 flex-grow-1">{result.text}</span>
+            ? <span className="text-white fs-7 flex-grow-1"><Busy kind="ping">{result.text}</Busy></span>
+            : <><i className={`bi ${result.icon}`}></i><span className="text-white fs-7 flex-grow-1">{result.text}</span></>}
           {(shown.state === "open" || shown.state === "error") && (
             <button type="button" className="btn btn-sm btn-outline-secondary text-white-50 rounded-pill px-3 fs-8 fw-bold" onClick={checkAgain}>
               Check again

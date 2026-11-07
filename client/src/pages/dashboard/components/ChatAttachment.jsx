@@ -35,7 +35,7 @@ function FileCard({ message, showToast }) {
       <i className={`bi ${fileIcon(message.attachment_name)} fs-2 text-role flex-shrink-0`}></i>
       <span className="overflow-hidden">
         <span className="d-block fw-semibold fs-7 text-truncate">{message.attachment_name || "File"}</span>
-        <small className="text-white-50 fs-8">{opening ? "Opening..." : formatSize(message.attachment_size)}</small>
+        <small className="text-white-50 fs-8">{opening ? <Busy>Opening</Busy> : formatSize(message.attachment_size)}</small>
       </span>
     </button>
   );

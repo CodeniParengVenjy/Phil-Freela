@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { checkPhoneLink, submitFromPhone } from "../../lib/aiService";
 import VerificationWizard from "../dashboard/components/VerificationWizard";
 import "../dashboard/dashboard.css";
+import { Loader } from "../../components/Loaders";
 
 // The page the QR code opens on the phone (/verify-phone/<token>). No login:
 // the one-time token in the link is the key, and the AI service checks it
@@ -37,7 +38,7 @@ export default function VerifyPhone() {
         </div>
 
         <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
-          {stage === "checking" && <p className="text-secondary fs-7 mb-0">Checking your link...</p>}
+          {stage === "checking" && <Loader size="sm" label="Checking your link" />}
 
           {stage === "invalid" && (
             <div className="text-center">

@@ -6,6 +6,7 @@ import { getFriendlyErrorMessage } from "../../lib/errors";
 import { useCaptcha } from "../../lib/captcha";
 import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
+import { Busy, MessageText } from "../../components/Loaders";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -37,7 +38,7 @@ export default function ForgotPassword() {
     }
 
     setSubmitting(true);
-    setMessage({ text: "Sending reset link...", type: "" });
+    setMessage({ text: "Sending reset link...", type: "", kind: "send" });
 
     const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo: `${window.location.origin}/reset-password`,
@@ -108,13 +109,13 @@ export default function ForgotPassword() {
               className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2"
               disabled={submitting || captcha.waiting}
             >
-              {captcha.waiting ? "Checking you're human..." : "Send Reset Link"}
+              {captcha.waiting ? <Busy>Checking you're human</Busy> : "Send Reset Link"}
             </button>
           </form>
 
           {message.text && (
             <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">
-              {message.text}
+              <MessageText message={message} />
             </p>
           )}
 

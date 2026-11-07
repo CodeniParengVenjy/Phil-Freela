@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Busy } from "../../../components/Loaders";
 
 // Live webcam preview with a Capture button. The camera turns on when this
 // appears and off again after capturing or when it's closed, so the camera
@@ -74,7 +75,7 @@ export default function CameraCapture({ mirror = false, hint, onCapture, onCance
       <div className="d-flex gap-2">
         {!error && (
           <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={capture} disabled={!ready}>
-            <i className="bi bi-camera-fill me-1"></i> {ready ? "Capture" : "Starting camera..."}
+            {ready ? <><i className="bi bi-camera-fill me-1"></i> Capture</> : <Busy>Starting camera</Busy>}
           </button>
         )}
         <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-4 fw-bold" onClick={onCancel}>

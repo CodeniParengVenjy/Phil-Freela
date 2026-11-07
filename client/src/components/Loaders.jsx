@@ -22,7 +22,7 @@ function withoutDots(text) {
 }
 
 // The three hopping dots after the words.
-function Dots() {
+export function Dots() {
   return <span className="pf-dots" aria-hidden="true"><i></i><i></i><i></i></span>;
 }
 
@@ -38,7 +38,7 @@ export function LoadingDots() {
 }
 
 // Two accent rings turning against each other around a beating dot.
-function Orbit({ large = false }) {
+export function Orbit({ large = false }) {
   return (
     <span className={`pf-orbit${large ? " pf-orbit-lg" : ""}`} aria-hidden="true">
       <span className="pf-ring"></span>
@@ -87,6 +87,16 @@ export function Busy({ kind = "ring", progress, className = "", children }) {
       <Dots />
     </span>
   );
+}
+
+// The status line under a sign-in form (and the admin forms built the same
+// way). While something is in progress (type "") or the page is about to move
+// on (a kind is given, like "go" for "Redirecting..."), the words get the
+// moving picture and the hopping dots; other messages stay plain words.
+export function MessageText({ message }) {
+  return message.type === "" || message.kind
+    ? <Busy kind={message.kind}>{message.text}</Busy>
+    : message.text;
 }
 
 // The splash that covers the screen while the dashboard or the admin panel
