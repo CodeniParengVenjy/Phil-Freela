@@ -182,6 +182,30 @@ builds on it.
 3. apply `supabase_receipt_check_finish.sql` (the browser can no longer call
    the old typed-reference functions); check with a rolled-back probe.
 
+## Done (2026-11-08, after the user's "go go go")
+
+1. Migration `receipt_check` applied; table, columns, row security and who may
+   run what checked on live.
+2. Step 3 pushed (5439699), Step 4 words pushed (a0457de); the live bundle has
+   record_receipt_payment, and phil-freela.pages.dev/ai/receipts/read answers
+   401 without a login.
+3. Migration `receipt_check_finish` applied after a rolled-back trial (5/5): the
+   browser can no longer call any record_payment / record_chat_payment, only
+   the two receipt functions (which still call them as the owner).
+4. Study guide rebuilt from the newest sources (the 64-page 1a032f8d folder,
+   not ed999b03): new section 4.11 The GCash receipt check, the AI list, the
+   models table, a limit, a panel question; 67 pages, copied to Downloads,
+   PhilFreela-Diagrams and OneDrive.
+
+## Still open
+
+- Never tried with a real GCash screenshot or a real login on the live site.
+  The first real receipt may show label words or a date format the reader
+  doesn't know yet; it then says "couldn't read", and the patterns in
+  receipt_check.py need that wording added.
+- A reading that is never sent leaves its clean copy in the client's own
+  private folder (only they can open it).
+
 ## Current step
 
-Waiting for the user's go to apply Step 1; Step 3 is ready in the working tree.
+Finished. Next: try it on the live site with a real GCash receipt.
