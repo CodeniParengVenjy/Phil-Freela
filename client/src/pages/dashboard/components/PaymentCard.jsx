@@ -1,29 +1,33 @@
 import { useEffect, useState } from "react";
 import {
   cancelPaymentRequest, confirmPayment, formatGcashNumber, formatPeso, formatReference, getRequestPayDetails,
-  markNotReceived, openReceipt, paymentStatuses, recordChatPayment
+  isShortPayment, markNotReceived, openReceipt, paymentBadge, recordChatPayment
 } from "../../../lib/payments";
 import RecordPaymentDialog from "./RecordPaymentDialog";
+import ShortPaymentForm from "./ShortPaymentForm";
 import "../payments.css";
 import { Loader, Busy } from "../../../components/Loaders";
 
 const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 
 // A payment request card in a chat (PLAN-gcash-payments.md). One card changes as
-// the payment moves: Requested, Payment sent, Confirmed, Not received, Cancelled.
+// the payment moves: Requested, Payment sent, Confirmed (or Received less,
+// PLAN-short-payment.md), Not received, Cancelled. The payer can add a tip.
 //   payment: the row from the payments table
 //   currentUserId: who is looking. The freelancer is payment.freelancer_id (asked
 //     for the money); the person asked to pay is payment.client_id.
 //   otherName: the other person in the chat
 //   onChanged(): called after anything changed here, so the chat reads the payment again
-//   onReport(payment): the Report button on a payment answered "Not received"
+//   onReport(payment): the Report button on a payment answered "Not received" or "Received less"
 export default function PaymentCard({ payment, currentUserId, otherName, showToast, onChanged, onReport }) {
   const iAmPayer = payment.client_id === currentUserId;
-  const status = paymentStatuses[payment.status] || { label: payment.status, className: "bg-secondary text-white" };
+  const status = paymentBadge(payment);
+  const short = isShortPayment(payment);
+  const tip = Number(payment.tip_amount || 0);
   const [details, setDetails] = useState(undefined);
   const [detailsError, setDetailsError] = useState("");
   const [recording, setRecording] = useState(false);
-  // The two-step question before an answer or a cancel: "confirm" | "not_received" | "cancel" | null.
+  // The two-step question before an answer or a cancel: "confirm" | "short" | "not_received" | "cancel" | null.
   const [asking, setAsking] = useState(null);
   const [working, setWorking] = useState(false);
 
@@ -51,8 +55,15 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
     }
   };
 
-  const handleRecord = ({ amount, reference, receiptFile }) =>
-    recordChatPayment({ userId: currentUserId, paymentId: payment.id, amount, reference, receiptFile });
+  const handleRecord = ({ amount, tip: tipPart, reference, receiptFile }) =>
+    recordChatPayment({ userId: currentUserId, paymentId: payment.id, amount, tip: tipPart, reference, receiptFile });
+
+  // "Received less" was saved.
+  const handleShortDone = () => {
+    setAsking(null);
+    onChanged();
+    showToast("Saved. They were told what arrived.");
+  };
 
   const handleRecorded = () => {
     setRecording(false);
@@ -99,7 +110,10 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         <span className="fs-9 fw-bold text-uppercase text-white-50" style={{ letterSpacing: "0.06em" }}>Payment request</span>
         <span className={`badge rounded-pill px-3 py-2 ${status.className}`}>{status.label}</span>
       </div>
-      <div className="fs-3 fw-bold lh-1">{formatPeso(payment.amount)}</div>
+      <div className="fs-3 fw-bold lh-1">
+        {formatPeso(payment.amount)}
+        {tip > 0 && <span className="text-white-50 fw-normal fs-8 ms-2">incl. {formatPeso(tip)} tip</span>}
+      </div>
       {payment.note && <p className="text-white-50 fs-7 mb-0 mt-1 text-break">{payment.note}</p>}
 
       {/* The person asked to pay: where to send it. */}
@@ -154,8 +168,16 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         </p>
       )}
       {payment.status === "sent" && iAmPayer && <p className="text-white-50 fs-7 mb-0 mt-2">Waiting for {otherName} to check their GCash and confirm.</p>}
-      {payment.status === "confirmed" && (
+      {payment.status === "confirmed" && !short && (
         <p className="text-success fs-7 mb-0 mt-2"><i className="bi bi-check-circle-fill me-1"></i>{iAmPayer ? `${otherName} confirmed this payment.` : "You confirmed this payment."}</p>
+      )}
+      {short && (
+        <p className="text-warning fs-7 mb-0 mt-2" data-short-note>
+          <i className="bi bi-exclamation-triangle-fill me-1"></i>
+          {iAmPayer
+            ? `${otherName} checked their GCash: only ${formatPeso(payment.received_amount)} arrived, not ${formatPeso(payment.amount)}. Message them to sort it out.`
+            : `You said only ${formatPeso(payment.received_amount)} arrived, not ${formatPeso(payment.amount)}.`}
+        </p>
       )}
       {payment.status === "not_received" && (
         <p className="text-danger fs-7 mb-0 mt-2">
@@ -169,8 +191,15 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         <p className="text-white-50 fs-7 mb-0 mt-2">{iAmPayer ? `${otherName} cancelled this request.` : "You cancelled this request."}</p>
       )}
 
+      {/* "Received less": what really arrived. */}
+      {asking === "short" && (
+        <div className="mt-3">
+          <ShortPaymentForm payment={payment} onDone={handleShortDone} onCancel={() => setAsking(null)} />
+        </div>
+      )}
+
       {/* The two-step question. */}
-      {asking && (
+      {asking && asking !== "short" && (
         <div className="p-2 rounded-3 border border-secondary border-opacity-50 mt-3">
           <p className="text-white fs-7 mb-2">{questionText[asking]}</p>
           <div className="d-flex flex-wrap gap-2">
@@ -196,22 +225,25 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
             <button type="button" className="btn btn-success text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => setAsking("confirm")}>
               <i className="bi bi-check-lg me-1"></i> Confirm received
             </button>
+            <button type="button" className="btn btn-dark border border-warning text-warning rounded-pill px-3 fs-7 fw-bold" onClick={() => setAsking("short")}>
+              <i className="bi bi-dash-circle me-1"></i> Received less
+            </button>
             <button type="button" className="btn btn-dark border border-danger text-danger rounded-pill px-3 fs-7 fw-bold" onClick={() => setAsking("not_received")}>
               <i className="bi bi-x-lg me-1"></i> Not received
             </button>
           </div>
-          <small className="text-secondary fs-8 d-block mt-2">Open your GCash history first. Confirm only when the amount and reference match.</small>
+          <small className="text-secondary fs-8 d-block mt-2">Open your GCash history first. Confirm only when the amount and reference match. If less arrived, use Received less.</small>
         </div>
       )}
 
-      {(payment.receipt_path || (payment.status === "not_received" && onReport)) && (
+      {(payment.receipt_path || ((payment.status === "not_received" || short) && onReport)) && (
         <div className="d-flex flex-wrap gap-2 mt-3">
           {payment.receipt_path && (
             <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-8 fw-bold" onClick={handleViewReceipt}>
               <i className="bi bi-receipt me-1"></i> View receipt
             </button>
           )}
-          {payment.status === "not_received" && onReport && (
+          {(payment.status === "not_received" || short) && onReport && (
             <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 fs-8" onClick={() => onReport(payment)}>
               <i className="bi bi-flag me-1"></i> Report
             </button>
@@ -224,6 +256,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
           subtitle={`Paid to ${otherName} in the GCash app`}
           otherName={otherName}
           defaultAmount={String(payment.amount)}
+          requestedAmount={Number(payment.amount)}
           hint="Filled in from the request. Change it if you sent a different amount."
           submit={handleRecord}
           onClose={() => setRecording(false)}

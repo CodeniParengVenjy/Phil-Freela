@@ -1,22 +1,33 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { checkReceiptFile, isValidReference, normalizeReference, parseAmount } from "../../../lib/payments";
+import { checkReceiptFile, formatPeso, isValidReference, MAX_PAYMENT_AMOUNT, normalizeReference, parseAmount } from "../../../lib/payments";
 import "../payments.css";
 import { Busy } from "../../../components/Loaders";
 
-// "Record your payment": the amount, the GCash reference number and the receipt
-// screenshot (required: it is the client's proof on record). Shown over the
-// project page after the client has paid in the GCash app, and over a chat's
-// payment card later (PLAN-gcash-payments.md). The parent mounts it only while
-// it is open, so every opening starts empty.
-//   submit({ amount, reference, receiptFile }) -> { error } or { id }; it saves
-//           the payment (lib/payments.js). Its error sentence is shown here.
+// "Record your payment": the amount, an optional tip, the GCash reference number
+// and the receipt screenshot (required: it is the client's proof on record).
+// Shown over the project page after the client has paid in the GCash app, and
+// over a chat's payment card (PLAN-gcash-payments.md, PLAN-short-payment.md).
+// The parent mounts it only while it is open, so every opening starts empty.
+//   submit({ amount, tip, reference, receiptFile }) -> { error } or { id }; it
+//           saves the payment (lib/payments.js). amount is everything sent in
+//           GCash (price + tip). Its error sentence is shown here.
 //   onRecorded(): called after a payment was recorded.
-//   defaultAmount: what the amount box starts with ("" for a project; the
-//           requested amount for a chat request).
+//   defaultAmount: what the amount box starts with ("" when nothing is known;
+//           what is left to pay on a project; the requested amount on a chat card).
+//   maxAmount: on a one-time project with an agreed price, what is left to pay.
+//           The amount can't be more (the extra goes in the tip box), and a tip
+//           is only allowed when the amount pays all of it. The database checks
+//           the same thing; checking here too saves a wasted receipt upload.
+//   requestedAmount: on a chat card, what was asked for (only a warning).
+//   tipOnly: the project is fully paid, so this payment can only be a tip.
 //   hint: a small line under the amount (e.g. the job's budget).
-export default function RecordPaymentDialog({ title = "Record your payment", subtitle, otherName, defaultAmount = "", hint, submit, onClose, onRecorded }) {
+export default function RecordPaymentDialog({
+  title = "Record your payment", subtitle, otherName, defaultAmount = "", maxAmount = null, requestedAmount = null,
+  tipOnly = false, hint, submit, onClose, onRecorded
+}) {
   const [amount, setAmount] = useState(defaultAmount);
+  const [tipText, setTipText] = useState("");
   const [reference, setReference] = useState("");
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -38,6 +49,27 @@ export default function RecordPaymentDialog({ title = "Record your payment", sub
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [sending, onClose]);
 
+  // What is typed, read as amounts (null = not a valid amount yet). An empty tip
+  // box means no tip.
+  const price = tipOnly ? 0 : parseAmount(amount);
+  const tip = tipText.trim() === "" ? 0 : parseAmount(tipText);
+  const total = price !== null && tip !== null ? Math.round((price + tip) * 100) / 100 : null;
+
+  // A small line under the amount while typing: how it compares with what is
+  // left to pay (project) or what was asked for (chat card).
+  let amountNote = null;
+  if (!tipOnly && price !== null) {
+    if (maxAmount !== null && price > maxAmount) {
+      amountNote = { text: `Only ${formatPeso(maxAmount)} is left to pay. Put anything extra in the Tip box.` };
+    } else if (maxAmount !== null && price < maxAmount) {
+      amountNote = { text: `${formatPeso(Math.round((maxAmount - price) * 100) / 100)} will still be left to pay. You can pay the rest later.` };
+    } else if (requestedAmount !== null && price < requestedAmount) {
+      amountNote = { text: `That is less than the ${formatPeso(requestedAmount)} requested.` };
+    } else if (requestedAmount !== null && price > requestedAmount) {
+      amountNote = { text: `That is more than the ${formatPeso(requestedAmount)} requested. If the extra is a tip, put it in the Tip box.` };
+    }
+  }
+
   const handlePick = (event) => {
     const picked = event.target.files?.[0];
     event.target.value = ""; // so picking the same file again still works
@@ -52,27 +84,32 @@ export default function RecordPaymentDialog({ title = "Record your payment", sub
     setPreview(URL.createObjectURL(picked));
   };
 
+  // The same rules as the database, in plain words. "" when everything is fine.
+  const findProblem = (cleanReference) => {
+    if (price === null) return "Enter the amount you sent: more than 0, up to 2 decimals.";
+    if (tip === null) return "Enter the tip as an amount, like 100, or leave the Tip box empty.";
+    if (tipOnly && tip <= 0) return "This project is fully paid. Enter the tip you sent.";
+    if (total > MAX_PAYMENT_AMOUNT) return "The total can be at most 1,000,000 pesos.";
+    if (maxAmount !== null && price > maxAmount) return `Only ${formatPeso(maxAmount)} is left to pay. Put anything extra in the Tip box.`;
+    if (maxAmount !== null && tip > 0 && price < maxAmount) return `A tip can be added only when you pay everything that is left (${formatPeso(maxAmount)}).`;
+    if (!isValidReference(cleanReference)) return "The GCash reference number is 13 digits. You can copy it from your GCash receipt.";
+    if (!file) return "Attach your receipt screenshot to continue.";
+    return "";
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (sending) return;
-    const parsedAmount = parseAmount(amount);
     const cleanReference = normalizeReference(reference);
-    if (parsedAmount === null) {
-      setError("Enter the amount you sent: more than 0 and at most 1,000,000 pesos, up to 2 decimals.");
-      return;
-    }
-    if (!isValidReference(cleanReference)) {
-      setError("The GCash reference number is 13 digits. You can copy it from your GCash receipt.");
-      return;
-    }
-    if (!file) {
-      setError("Attach your receipt screenshot to continue.");
+    const problem = findProblem(cleanReference);
+    if (problem) {
+      setError(problem);
       return;
     }
 
     setSending(true);
     setError("");
-    const result = await submit({ amount: parsedAmount, reference: cleanReference, receiptFile: file });
+    const result = await submit({ amount: total, tip, reference: cleanReference, receiptFile: file });
     setSending(false);
     if (result.error) {
       setError(result.error);
@@ -101,23 +138,58 @@ export default function RecordPaymentDialog({ title = "Record your payment", sub
         onSubmit={handleSubmit}
         noValidate
       >
-        <h5 id="record-payment-title" className="fw-bold mb-1">{title}</h5>
+        <h5 id="record-payment-title" className="fw-bold mb-1">{tipOnly ? "Record your tip" : title}</h5>
         {subtitle && <p className="text-secondary fs-7 mb-3 text-break">{subtitle}</p>}
 
-        <label htmlFor="payAmount" className="form-label text-white-50 fw-semibold fs-7">Amount (₱)</label>
+        {!tipOnly && (
+          <div className="mb-3">
+            <label htmlFor="payAmount" className="form-label text-white-50 fw-semibold fs-7">
+              {maxAmount !== null ? "For the project (₱)" : "Amount (₱)"}
+            </label>
+            <input
+              id="payAmount"
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              className="form-control bg-secondary bg-opacity-25 border-secondary text-white mb-1"
+              placeholder="1,500.00"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              maxLength={14}
+              disabled={sending}
+            />
+            <small className="text-secondary fs-8 d-block">{hint || "The amount you sent in GCash."}</small>
+            {amountNote && <small className="text-warning fs-8 d-block mt-1" data-amount-note>{amountNote.text}</small>}
+          </div>
+        )}
+
+        <label htmlFor="payTip" className="form-label text-white-50 fw-semibold fs-7">
+          {tipOnly ? "Tip (₱)" : "Tip (₱, optional)"}
+        </label>
         <input
-          id="payAmount"
+          id="payTip"
           type="text"
           inputMode="decimal"
           autoComplete="off"
           className="form-control bg-secondary bg-opacity-25 border-secondary text-white mb-1"
-          placeholder="1,500.00"
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
+          placeholder={tipOnly ? "100.00" : "0.00"}
+          value={tipText}
+          onChange={(event) => setTipText(event.target.value)}
           maxLength={14}
           disabled={sending}
         />
-        <small className="text-secondary fs-8 d-block mb-3">{hint || "The amount you sent in GCash."}</small>
+        <small className="text-secondary fs-8 d-block mb-3">
+          {tipOnly
+            ? `A thank-you on top of the agreed price, sent to ${otherName || "them"} in GCash.`
+            : "Extra you sent on top, as a thank-you. Leave it empty for no tip."}
+        </small>
+
+        {!tipOnly && tip > 0 && total !== null && (
+          <p className="text-white fs-7 mb-3" data-pay-total>
+            Total you sent in GCash: <strong>{formatPeso(total)}</strong>{" "}
+            <span className="text-white-50">({formatPeso(price)} + {formatPeso(tip)} tip)</span>
+          </p>
+        )}
 
         <label htmlFor="payReference" className="form-label text-white-50 fw-semibold fs-7">GCash reference no.</label>
         <input

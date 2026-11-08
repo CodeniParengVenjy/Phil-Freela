@@ -5,6 +5,7 @@ import {
   isLocked, markProjectDone, openDeliverable, personName, projectStatuses, ratingDeadline, ratingStep, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
 import { makeDeliverablePreview } from "../../../lib/aiService";
+import { unlocksWhenFullyPaid } from "../../../lib/payments";
 import { profilePath } from "../../../lib/profileStats";
 import { hasRatedOffer } from "../../../lib/serviceReviews";
 import Avatar from "../../../components/Avatar";
@@ -347,8 +348,13 @@ export default function ProjectDetailsView() {
                   <p className="text-white fw-semibold fs-7 mb-1">{canPreview(submissionPath) ? "Preview only" : "Locked until you pay"}</p>
                   <p className="text-white-50 fs-7 mb-2">
                     {canPreview(submissionPath)
-                      ? `This is a watermarked preview. The original file unlocks, to open and download, when ${otherName} confirms your payment.`
-                      : `This kind of file can't be previewed. It unlocks, to open and download, when ${otherName} confirms your payment.`}
+                      ? "This is a watermarked preview. The original file unlocks, to open and download, "
+                      : "This kind of file can't be previewed. It unlocks, to open and download, "}
+                    {/* A one-time project with an agreed price opens only when fully
+                        paid (PLAN-short-payment.md); others on any confirmed payment. */}
+                    {unlocksWhenFullyPaid(project)
+                      ? `when the agreed price is fully paid and ${otherName} has confirmed it.`
+                      : `when ${otherName} confirms your payment.`}
                   </p>
                   <button type="button" className="btn btn-link text-role p-0 fs-7 fw-semibold text-decoration-none" onClick={scrollToPayments}>
                     <i className="bi bi-arrow-down-circle me-1"></i>Go to Payments
@@ -363,7 +369,8 @@ export default function ProjectDetailsView() {
                 <i className="bi bi-lock-fill text-warning fs-5 flex-shrink-0"></i>
                 <div>
                   <p className="text-white-50 fs-7 mb-0">
-                    {otherName} sees only {canPreview(submissionPath) ? "a watermarked preview of your file" : "the name of your file"}, with no download, until you confirm a payment on this project.
+                    {otherName} sees only {canPreview(submissionPath) ? "a watermarked preview of your file" : "the name of your file"}, with no download,{" "}
+                    {unlocksWhenFullyPaid(project) ? "until the agreed price is fully paid (what you confirm)." : "until you confirm a payment on this project."}
                   </p>
                   {waitingForPreview && (
                     <div className="mt-2">

@@ -101,6 +101,65 @@ export const paymentStatuses = {
   cancelled: { label: "Cancelled", className: "bg-secondary text-white" }
 };
 
+// A payment the freelancer answered "Received less" (PLAN-short-payment.md):
+// confirmed, but less arrived than the client recorded.
+export const isShortPayment = (payment) =>
+  payment.status === "confirmed" && payment.received_amount != null && Number(payment.received_amount) < Number(payment.amount);
+
+// The badge of one payment: a short one shows "Received less" instead of "Confirmed".
+export const paymentBadge = (payment) =>
+  isShortPayment(payment)
+    ? { label: "Received less", className: "bg-warning text-dark" }
+    : paymentStatuses[payment.status] || { label: payment.status, className: "bg-secondary text-white" };
+
+// Money is added up in centavos, so 0.1 + 0.2 never turns into 0.30000000000000004.
+const cents = (value) => Math.round(Number(value || 0) * 100);
+
+// A project's balance (PLAN-short-payment.md). Only a one-time project with an
+// agreed price has one; for any other project this returns null. The same rule
+// as the database (project_paid_amount()): what counts toward the price is the
+// smaller of what arrived and (amount - tip), so when less arrived, the tip is
+// the first thing missing.
+//   agreed      the agreed price
+//   paid        what the freelancer confirmed toward the price
+//   waiting     what the client recorded and the freelancer hasn't answered yet
+//   left        what is still unpaid (agreed - paid)
+//   leftForNew  what a new payment may still pay (agreed - paid - waiting)
+//   tips        tips that really arrived
+//   fullyPaid   nothing is left
+export function projectMoney(project, payments) {
+  if (!project || project.price_status !== "agreed" || project.price_basis !== "project" || !payments) return null;
+  const agreed = cents(project.agreed_amount);
+  let paid = 0;
+  let waiting = 0;
+  let tips = 0;
+  for (const payment of payments) {
+    const pricePart = cents(payment.amount) - cents(payment.tip_amount);
+    if (payment.status === "confirmed") {
+      const arrived = cents(payment.received_amount ?? payment.amount);
+      const toward = Math.min(arrived, pricePart);
+      paid += toward;
+      tips += arrived - toward;
+    } else if (payment.status === "sent") {
+      waiting += pricePart;
+    }
+  }
+  const left = Math.max(agreed - paid, 0);
+  return {
+    agreed: agreed / 100,
+    paid: paid / 100,
+    waiting: waiting / 100,
+    left: left / 100,
+    leftForNew: Math.max(left - waiting, 0) / 100,
+    tips: tips / 100,
+    fullyPaid: left === 0
+  };
+}
+
+// True when the project's original file opens only once it is fully paid (the
+// user's choice, 2026-11-08). Any other project opens on any confirmed payment.
+export const unlocksWhenFullyPaid = (project) => project?.price_status === "agreed" && project?.price_basis === "project";
+
 // ---------------------------------------------------------------------------
 // The receipt picture (client)
 // ---------------------------------------------------------------------------
@@ -222,7 +281,7 @@ export async function getPayDetails(projectId) {
   return { data: data?.[0] || null };
 }
 
-const PAYMENT_FIELDS = "id, project_id, conversation_id, client_id, freelancer_id, amount, note, reference_no, receipt_path, status, created_at, answered_at";
+const PAYMENT_FIELDS = "id, project_id, conversation_id, client_id, freelancer_id, amount, tip_amount, received_amount, note, reference_no, receipt_path, status, created_at, answered_at";
 
 // The payments of one project, newest first: { data } or { error }.
 export async function listProjectPayments(projectId) {
@@ -240,15 +299,17 @@ export async function listProjectPayments(projectId) {
 
 // "I've paid". The receipt picture goes up first, then the database records the
 // payment and tells the freelancer; if the database refuses (a reused reference,
-// a wrong amount...), the picture is removed again so no unused file stays.
-// Returns { id } or { error }.
-export async function recordPayment({ userId, projectId, amount, reference, receiptFile }) {
+// more than is left to pay...), the picture is removed again so no unused file
+// stays. amount is everything sent in GCash (price + tip), tip the tip part (0
+// for none). Returns { id } or { error }.
+export async function recordPayment({ userId, projectId, amount, tip = 0, reference, receiptFile }) {
   const upload = await uploadReceipt(userId, receiptFile);
   if (upload.error) return { error: upload.error };
 
   const { data, error } = await supabase.rpc("record_payment", {
     target_project: projectId,
     pay_amount: amount,
+    pay_tip: tip,
     pay_reference: reference,
     pay_receipt_path: upload.path
   });
@@ -274,6 +335,18 @@ export async function markNotReceived(paymentId) {
   const { error } = await supabase.rpc("mark_payment_not_received", { target_payment: paymentId });
   if (error) {
     console.error("Answering the payment failed:", error);
+    return plainMessage(error, "Couldn't save that answer. Please try again.");
+  }
+  return "";
+}
+
+// "Received less": only gotAmount arrived in the freelancer's GCash (less than
+// the client recorded). The database saves the payment as confirmed with that
+// amount and tells the client what is still unpaid. "" or a message.
+export async function confirmShortPayment(paymentId, gotAmount) {
+  const { error } = await supabase.rpc("confirm_short_payment", { target_payment: paymentId, got_amount: gotAmount });
+  if (error) {
+    console.error("Saving what arrived failed:", error);
     return plainMessage(error, "Couldn't save that answer. Please try again.");
   }
   return "";
@@ -348,14 +421,16 @@ export async function getRequestPayDetails(paymentId) {
 }
 
 // "I've paid" on a card: the receipt goes up first, then the database records
-// the payment; if it refuses, the picture is removed again. { id } or { error }.
-export async function recordChatPayment({ userId, paymentId, amount, reference, receiptFile }) {
+// the payment; if it refuses, the picture is removed again. amount is everything
+// sent (price + tip), tip the tip part. { id } or { error }.
+export async function recordChatPayment({ userId, paymentId, amount, tip = 0, reference, receiptFile }) {
   const upload = await uploadReceipt(userId, receiptFile);
   if (upload.error) return { error: upload.error };
 
   const { error } = await supabase.rpc("record_chat_payment", {
     target_payment: paymentId,
     pay_amount: amount,
+    pay_tip: tip,
     pay_reference: reference,
     pay_receipt_path: upload.path
   });

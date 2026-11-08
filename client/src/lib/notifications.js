@@ -91,6 +91,10 @@ export const notificationIcons = {
   payment_sent: { icon: "bi-cash-coin", className: "bg-warning text-dark" },
   payment_confirmed: { icon: "bi-cash-stack", className: "bg-success text-white" },
   payment_not_received: { icon: "bi-exclamation-circle-fill", className: "bg-danger text-white" },
+  // Less arrived than the client recorded, or a project was marked Done with
+  // money unpaid (database/supabase_short_payment_schema.sql).
+  payment_short: { icon: "bi-exclamation-triangle-fill", className: "bg-warning text-dark" },
+  payment_unpaid: { icon: "bi-hourglass-split", className: "bg-warning text-dark" },
   // A freelancer asked for payment in a chat (database/supabase_chat_payments_schema.sql).
   payment_requested: { icon: "bi-wallet2", className: "bg-info text-dark" },
   // The price of a project was proposed or agreed (database/supabase_project_price_schema.sql).
@@ -119,6 +123,8 @@ export const notificationLinkLabels = {
   payment_sent: "View payment",
   payment_confirmed: "View payment",
   payment_not_received: "View payment",
+  payment_short: "View payment",
+  payment_unpaid: "Pay the rest",
   payment_requested: "Open chat",
   price_proposed: "Open project",
   price_agreed: "Open project",

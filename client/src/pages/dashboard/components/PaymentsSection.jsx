@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { priceText } from "../../../lib/projectPrice";
 import {
-  confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, listProjectPayments,
-  markNotReceived, openReceipt, paymentStatuses, recordPayment, watchProjectPayments
+  confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, isShortPayment, listProjectPayments,
+  markNotReceived, openReceipt, paymentBadge, projectMoney, recordPayment, watchProjectPayments
 } from "../../../lib/payments";
 import RecordPaymentDialog from "./RecordPaymentDialog";
+import ShortPaymentForm from "./ShortPaymentForm";
 import "../payments.css";
 import { Loader, Busy } from "../../../components/Loaders";
 
@@ -17,11 +18,13 @@ const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium"
 //  - client: where to pay (the initials of the freelancer's GCash name and their
 //    number), "I've paid",
 //    and the list of payments
-//  - freelancer: the list, with Confirm received / Not received on a payment
-//    that is waiting for their answer
+//  - freelancer: the list, with Confirm received / Received less / Not received
+//    on a payment that is waiting for their answer
+//  - both, on a one-time project with an agreed price: the balance ("Paid ₱700
+//    of ₱1,500, ₱800 left"), PLAN-short-payment.md. The client can add a tip.
 // Props: project (a row from getProject), iAmClient, currentUserId, otherName,
 // otherId, showToast, openChat, onReport(payment) (the Report link on a
-// payment answered "Not received"; left out = no link), and onPaymentsChange(list)
+// payment answered "Not received" or "Received less"; left out = no link), and onPaymentsChange(list)
 // (optional: told each time the list is read, so the project page can unlock the
 // sent work as soon as a payment is confirmed).
 export default function PaymentsSection({ project, iAmClient, currentUserId, otherName, otherId, showToast, openChat, onReport, onPaymentsChange }) {
@@ -44,8 +47,10 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
   const [detailsError, setDetailsError] = useState("");
   // The freelancer's own check: have they saved GCash details? (undefined = loading)
   const [mineSaved, setMineSaved] = useState(undefined);
+  // The record window: false (closed), "pay" (a payment) or "tip" (a tip alone,
+  // once the project is fully paid).
   const [recording, setRecording] = useState(false);
-  // The answer the freelancer is about to give: { id, kind: "confirm" | "not_received" }.
+  // The answer the freelancer is about to give: { id, kind: "confirm" | "short" | "not_received" }.
   const [asking, setAsking] = useState(null);
   const [working, setWorking] = useState(false);
 
@@ -101,6 +106,9 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
   // The project's agreed price (the Price box above), shown as a hint ("" while
   // there is none).
   const agreedPrice = project.price_status === "agreed" ? priceText(project.agreed_amount, project.price_basis) : "";
+  // The balance: null when the project has no agreed one-time price (or the
+  // list is still loading). The same rule as the database.
+  const money = projectMoney(project, payments);
 
   const copyNumber = async () => {
     try {
@@ -111,13 +119,20 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     }
   };
 
-  const handleRecord = ({ amount, reference, receiptFile }) =>
-    recordPayment({ userId: currentUserId, projectId, amount, reference, receiptFile });
+  const handleRecord = ({ amount, tip, reference, receiptFile }) =>
+    recordPayment({ userId: currentUserId, projectId, amount, tip, reference, receiptFile });
 
   const handleRecorded = () => {
     setRecording(false);
     setReloadKey((n) => n + 1);
     showToast(`Payment recorded. ${otherName} was told and will check their GCash.`);
+  };
+
+  // "Received less" was saved (or refused).
+  const handleShortDone = (problem) => {
+    setAsking(null);
+    setReloadKey((n) => n + 1);
+    showToast(problem || "Saved. The client was told what arrived and what is still unpaid.");
   };
 
   const handleAnswer = async (payment, kind) => {
@@ -173,22 +188,110 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
           letters should match these initials ({details.initials}). If they don't, don't send. Message {otherName} first.
         </p>
         {agreedPrice && <p className="text-secondary fs-8 mb-2">Agreed price: {agreedPrice}.</p>}
-        <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={() => setRecording(true)}>
+        {renderPayAction()}
+      </div>
+    );
+  };
+
+  // The client's button under "Pay via GCash". With a balance it depends on what
+  // is left: pay the rest, wait for the freelancer, or (fully paid) a tip alone.
+  const renderPayAction = () => {
+    if (!money) {
+      return (
+        <>
+          <p className="text-secondary fs-8 mb-2">Want to add a tip? Send it in the same GCash payment and put it in the Tip box when you record it.</p>
+          <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={() => setRecording("pay")}>
+            <i className="bi bi-check2-circle me-1"></i> I've paid
+          </button>
+        </>
+      );
+    }
+    if (money.fullyPaid) {
+      return (
+        <>
+          <p className="text-success fs-7 mb-2"><i className="bi bi-check-circle-fill me-1"></i>Fully paid. Thank you!</p>
+          <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 py-1 fs-8 fw-bold" onClick={() => setRecording("tip")}>
+            <i className="bi bi-gift me-1"></i> Record a tip
+          </button>
+        </>
+      );
+    }
+    if (money.leftForNew === 0) {
+      return (
+        <p className="text-white-50 fs-7 mb-0">
+          <i className="bi bi-hourglass-split me-1"></i>
+          The rest ({formatPeso(money.waiting)}) is recorded and waiting for {otherName} to check their GCash.
+        </p>
+      );
+    }
+    return (
+      <>
+        <p className="text-white fs-7 mb-1">Left to pay: <strong data-left-to-pay>{formatPeso(money.leftForNew)}</strong></p>
+        <p className="text-secondary fs-8 mb-2">
+          You can pay it all at once or in parts. Want to add a tip? Send it with the last payment and put it in the Tip box.
+        </p>
+        <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={() => setRecording("pay")}>
           <i className="bi bi-check2-circle me-1"></i> I've paid
         </button>
+      </>
+    );
+  };
+
+  // The balance bar, for both people (one-time project with an agreed price).
+  const renderBalance = () => {
+    if (!money) return null;
+    const percent = money.agreed > 0 ? Math.min(100, Math.round((money.paid / money.agreed) * 100)) : 0;
+    return (
+      <div className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 mb-3" data-balance>
+        <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2">
+          <span className="text-white fs-7">
+            Paid <strong>{formatPeso(money.paid)}</strong> of {formatPeso(money.agreed)}
+          </span>
+          {money.fullyPaid
+            ? <span className="badge rounded-pill bg-success text-white px-3 py-2">Fully paid</span>
+            : <span className="text-warning fw-semibold fs-7">{formatPeso(money.left)} left</span>}
+        </div>
+        <div
+          className="progress bg-secondary bg-opacity-25"
+          style={{ height: 8 }}
+          role="progressbar"
+          aria-label="How much of the agreed price is paid"
+          aria-valuenow={percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div className={`progress-bar ${money.fullyPaid ? "bg-success" : "bg-role"}`} style={{ width: `${percent}%` }}></div>
+        </div>
+        {(money.waiting > 0 || money.tips > 0) && (
+          <p className="text-white-50 fs-8 mb-0 mt-2">
+            {money.waiting > 0 && <>{formatPeso(money.waiting)} recorded, waiting for {iAmClient ? otherName : "you"} to check GCash.</>}
+            {money.waiting > 0 && money.tips > 0 && " "}
+            {money.tips > 0 && <>Tips received: {formatPeso(money.tips)}.</>}
+          </p>
+        )}
+        {!money.fullyPaid && project.files_locked && !project.unlocked_at && (
+          <p className="text-secondary fs-8 mb-0 mt-1">
+            {iAmClient ? "The original file" : "Your original file"} opens for {iAmClient ? "you" : "the client"} when the agreed price is fully paid.
+          </p>
+        )}
       </div>
     );
   };
 
   // One recorded payment.
   const renderPayment = (payment) => {
-    const status = paymentStatuses[payment.status] || { label: payment.status, className: "bg-secondary text-white" };
+    const status = paymentBadge(payment);
+    const short = isShortPayment(payment);
+    const tip = Number(payment.tip_amount || 0);
     const waitingForMe = !iAmClient && payment.status === "sent";
     const isAsking = asking?.id === payment.id;
     return (
-      <div key={payment.id} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25" data-payment-status={payment.status}>
+      <div key={payment.id} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25" data-payment-status={short ? "short" : payment.status}>
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-          <span className="text-white fw-bold fs-5">{formatPeso(payment.amount)}</span>
+          <span className="text-white fw-bold fs-5">
+            {formatPeso(payment.amount)}
+            {tip > 0 && <span className="text-white-50 fw-normal fs-8 ms-2">incl. {formatPeso(tip)} tip</span>}
+          </span>
           <span className={`badge rounded-pill px-3 py-2 ${status.className}`}>{status.label}</span>
         </div>
         <p className="text-white-50 fs-8 mb-2">
@@ -200,8 +303,16 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
         {payment.status === "sent" && iAmClient && (
           <p className="text-white-50 fs-7 mb-2">Waiting for {otherName} to check their GCash and confirm.</p>
         )}
-        {payment.status === "confirmed" && (
+        {payment.status === "confirmed" && !short && (
           <p className="text-success fs-7 mb-2"><i className="bi bi-check-circle-fill me-1"></i>{iAmClient ? `${otherName} confirmed this payment.` : "You confirmed this payment."}</p>
+        )}
+        {short && (
+          <p className="text-warning fs-7 mb-2" data-short-note>
+            <i className="bi bi-exclamation-triangle-fill me-1"></i>
+            {iAmClient
+              ? `${otherName} checked their GCash: only ${formatPeso(payment.received_amount)} arrived, not ${formatPeso(payment.amount)}. Message them to sort it out.`
+              : `You said only ${formatPeso(payment.received_amount)} arrived, not ${formatPeso(payment.amount)}.`}
+          </p>
         )}
         {payment.status === "not_received" && (
           <p className="text-danger fs-7 mb-2">
@@ -212,7 +323,9 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
           </p>
         )}
 
-        {isAsking ? (
+        {isAsking && asking.kind === "short" ? (
+          <ShortPaymentForm payment={payment} onDone={handleShortDone} onCancel={() => setAsking(null)} />
+        ) : isAsking ? (
           <div className="p-2 rounded-3 border border-secondary border-opacity-50 mb-2">
             <p className="text-white fs-7 mb-2">
               {asking.kind === "confirm"
@@ -237,11 +350,14 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
               <button type="button" className="btn btn-success text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => setAsking({ id: payment.id, kind: "confirm" })}>
                 <i className="bi bi-check-lg me-1"></i> Confirm received
               </button>
+              <button type="button" className="btn btn-dark border border-warning text-warning rounded-pill px-3 fs-7 fw-bold" onClick={() => setAsking({ id: payment.id, kind: "short" })}>
+                <i className="bi bi-dash-circle me-1"></i> Received less
+              </button>
               <button type="button" className="btn btn-dark border border-danger text-danger rounded-pill px-3 fs-7 fw-bold" onClick={() => setAsking({ id: payment.id, kind: "not_received" })}>
                 <i className="bi bi-x-lg me-1"></i> Not received
               </button>
             </div>
-            <small className="text-secondary fs-8 d-block mt-2">Open your GCash history first. Confirm only when the amount and reference match.</small>
+            <small className="text-secondary fs-8 d-block mt-2">Open your GCash history first. Confirm only when the amount and reference match. If less arrived, use Received less.</small>
           </div>
         )}
 
@@ -249,12 +365,17 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
           <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-8 fw-bold" onClick={() => handleViewReceipt(payment)}>
             <i className="bi bi-receipt me-1"></i> View receipt
           </button>
-          {payment.status === "not_received" && iAmClient && otherId && openChat && (
+          {short && iAmClient && money && money.leftForNew > 0 && details && (
+            <button type="button" className="btn btn-gradient-role text-white rounded-pill px-3 fs-8 fw-bold" onClick={() => setRecording("pay")}>
+              <i className="bi bi-cash-coin me-1"></i> Pay the rest ({formatPeso(money.leftForNew)})
+            </button>
+          )}
+          {(payment.status === "not_received" || short) && iAmClient && otherId && openChat && (
             <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-8 fw-bold" onClick={() => openChat(otherId)}>
               <i className="bi bi-chat-dots-fill me-1"></i> Message
             </button>
           )}
-          {payment.status === "not_received" && onReport && (
+          {(payment.status === "not_received" || short) && onReport && (
             <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 fs-8" onClick={() => onReport(payment)}>
               <i className="bi bi-flag me-1"></i> Report
             </button>
@@ -267,6 +388,8 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
   return (
     <div className="pt-4 mt-4 border-top border-secondary border-opacity-25" aria-labelledby="payments-heading" role="region">
       <h4 id="payments-heading" className="text-white fw-bold mb-3"><i className="bi bi-cash-coin text-role me-2"></i> Payments</h4>
+
+      {renderBalance()}
 
       {iAmClient && renderPayBox()}
 
@@ -293,7 +416,12 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
         <RecordPaymentDialog
           subtitle={`Paid to ${otherName} in the GCash app`}
           otherName={otherName}
-          hint={agreedPrice ? `Agreed price: ${agreedPrice}. Enter what you sent.` : undefined}
+          tipOnly={recording === "tip"}
+          defaultAmount={money ? String(money.leftForNew) : ""}
+          maxAmount={money ? money.leftForNew : null}
+          hint={money
+            ? `${formatPeso(money.leftForNew)} is left to pay. Enter what you sent for the project.`
+            : agreedPrice ? `Agreed price: ${agreedPrice}. Enter what you sent.` : undefined}
           submit={handleRecord}
           onClose={() => setRecording(false)}
           onRecorded={handleRecorded}

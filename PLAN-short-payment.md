@@ -126,6 +126,33 @@ How the tip works (my defaults, from decision 3):
   trigger `projects_remind_unpaid_on_done`; notification kinds 28
   (`payment_short`, `payment_unpaid`).
 
+## Step 2 result (2026-11-08) (DONE)
+
+- `lib/payments.js`: `projectMoney()` (the same balance rule as the database,
+  added up in centavos), `isShortPayment`, `paymentBadge`, `unlocksWhenFullyPaid`,
+  `confirmShortPayment`; `recordPayment` / `recordChatPayment` send `pay_tip`;
+  the payment fields include `tip_amount`, `received_amount`.
+- `PaymentsSection.jsx`: the balance bar (both people), "Left to pay", "Fully
+  paid. Thank you!" + Record a tip, "the rest is waiting", the third answer
+  Received less, the short payment's badge and sentence, Pay the rest, Message and
+  Report on a short payment.
+- `RecordPaymentDialog.jsx`: "For the project" + "Tip (optional)", warnings while
+  typing (less than left / more than left / less or more than requested), the
+  total line, a tip-only window; the same rules as the database are checked
+  before the receipt is uploaded.
+- New `ShortPaymentForm.jsx`: the "How much arrived?" box. It is a box in place
+  of the answer buttons (like the existing Yes/Cancel question), not a separate
+  window as the plan first said.
+- `PaymentCard.jsx` (chat): tip, Received less, short sentence, Report.
+- `ProjectDetailsView.jsx`: the lock notices say "when the agreed price is fully
+  paid" where that rule applies.
+- `notifications.js`: icons and button words for `payment_short`, `payment_unpaid`.
+- Tested in a real browser against a pretend database (scratchpad
+  `browser/short.test.mjs`, 51/51): client and freelancer, tip refused with a part
+  payment, Received less, unlock only when fully paid, tip alone after, a project
+  with no price, chat card, light mode and phone width. Not yet tried by real
+  people on the live site.
+
 ## Current step
 
-Step 2 (screens), then Step 3 (words).
+Step 3 (words: Terms, System Functions, study guide).
