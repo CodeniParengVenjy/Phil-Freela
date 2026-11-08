@@ -153,6 +153,22 @@ How the tip works (my defaults, from decision 3):
   with no price, chat card, light mode and phone width. Not yet tried by real
   people on the live site.
 
+## Step 3 result (2026-11-08) (DONE)
+
+- Terms (`TermsAndPrivacy.jsx`): Payments (tip, Received less, report on a short
+  payment), Who pays first ("Work sent before payment stays locked" now says fully
+  paid for an agreed one-time price; new "When less arrives than was recorded";
+  the Done reminder).
+- `PhilFreela-System-Functions.md`: the payment scope paragraph.
+- Study guide PDF, now 60 pages, replaced in Downloads, `PhilFreela-Diagrams/`
+  and OneDrive (the 59-page one is backed up in this session's scratchpad
+  `study/guide-59pages-backup.pdf`): the Terms copy matches the site again, the
+  Stage 9 lock box says fully paid, a new "short payments and tips" box, a panel
+  answer "Does GCash tell PhilFreela if the payment is short (kulang)?", and the
+  cheat sheet / loose ends lines. Built from a copy of the earlier session's
+  `study/` folder (patch script `patch-short.cjs` there).
+
 ## Current step
 
-Step 3 (words: Terms, System Functions, study guide).
+All 3 steps done. Left: a real test by two people on the live site (pay part,
+Received less, pay the rest with a tip, see the file unlock).

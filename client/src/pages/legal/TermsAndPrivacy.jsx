@@ -97,10 +97,11 @@ function TermsOfService() {
           card the freelancer sends in a chat. They are not on the public profile.
         </li>
         <li>
-          The client pays in their own GCash app, then records the payment on PhilFreela: the amount, the 13-digit GCash
-          reference number and a screenshot of the receipt. The freelancer checks their own GCash and answers Confirm
-          received or Not received. PhilFreela cannot see GCash, so it cannot check, hold, refund or guarantee any
-          payment. The receipt is the client's proof on record, not a check by PhilFreela.
+          The client pays in their own GCash app, then records the payment on PhilFreela: the amount (and a tip, if they
+          added one), the 13-digit GCash reference number and a screenshot of the receipt. The freelancer checks their own
+          GCash and answers Confirm received, Received less (with the amount that really arrived) or Not received.
+          PhilFreela cannot see GCash, so it cannot check, hold, refund or guarantee any payment. The receipt is the
+          client's proof on record, not a check by PhilFreela.
         </li>
         <li>Only confirm a payment when the money is in your GCash. Only pay people you trust, and check that the name GCash shows is the name on the payment card.</li>
         <li>
@@ -108,8 +109,8 @@ function TermsOfService() {
           them can open the receipt.
         </li>
         <li>
-          A payment answered Not received can be sent with a report, so an admin can see the amount, the reference and the
-          receipt. Admins can't read anyone's payments otherwise. Sending a fake or edited receipt, confirming a payment
+          A payment answered Not received or Received less can be sent with a report, so an admin can see the amount, the
+          reference and the receipt. Admins can't read anyone's payments otherwise. Sending a fake or edited receipt, confirming a payment
           that didn't arrive, or asking for payment for work you won't do can get your account suspended or banned.
         </li>
         <li>Payments made outside a project or a chat request are not recorded and are not covered by PhilFreela in any way.</li>
@@ -133,16 +134,26 @@ function TermsOfService() {
         </li>
         <li>
           <strong className="text-white">Work sent before payment stays locked.</strong> A file the freelancer uploads to a
-          project can't be opened or downloaded by the client until the freelancer confirms a payment on that project (any
-          payment, also a down payment). Until then the client sees only a watermarked preview that PhilFreela makes from the
+          project can't be opened or downloaded by the client until it is paid. When the project has an agreed price for the
+          whole project, that means until what the freelancer confirmed covers the whole agreed price (a down payment alone
+          doesn't open it). When there is no agreed price, or the price is per day or per month, any payment the freelancer
+          confirms opens it. Until then the client sees only a watermarked preview that PhilFreela makes from the
           real file: the first 3 minutes of a video, a smaller copy of a picture, or the first 3 pages of a PDF. A ZIP or
           Blender file can't be previewed, so only its name is shown. A link the freelancer pastes is shown as it is, so a
           freelancer who wants their work protected should upload the file instead. PhilFreela holds back only the file,
           never the money.
         </li>
         <li>
+          <strong className="text-white">When less arrives than was recorded.</strong> If less money arrives in the
+          freelancer's GCash than the client recorded, the freelancer answers Received less and enters how much arrived. Only
+          what arrived counts as paid. The project page shows both people what is paid and what is still left, and the client
+          can pay the rest. A client can't record more than is left to pay on the project. Anything extra goes in the Tip box:
+          a tip is optional and goes to the freelancer in the same GCash payment.
+        </li>
+        <li>
           Done does not mean paid. The client marks a project Done after the freelancer sends the work, and that does not
-          wait for payment. A payment can be recorded before the project is Done, or after it.
+          wait for payment. A payment can be recorded before the project is Done, or after it. If a project with an agreed
+          price is marked Done while part of the price is still unpaid, the client gets a reminder.
         </li>
       </ul>
 
