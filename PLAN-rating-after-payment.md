@@ -84,4 +84,13 @@ Terms (Ratings), System Functions (Scope paragraph), study guide.
   hidden-until date, freelancer unpaid/never paid/both times over, reload after
   a confirmed payment, rating page, offer box, My Projects cards, light mode,
   phone width). Lint: only the two old warnings; build clean.
-- Step 3: Terms and System Functions done; study guide next.
+- Step 3: done. Terms and System Functions (ae33352); study guide rebuilt
+  (71 pages: Stage 10 "Rate after payment" with a Say-it line, the Terms copy,
+  the cheat sheet, the AI table and Q 26), published to Downloads,
+  PhilFreela-Diagrams and OneDrive. It is built from the other session's 22:22
+  sources, with the receipt-check section 4.11 put back (that rebuild had left
+  it out).
+
+## Current step
+
+Done, except Step 1b (the notification wording), which waits for the user's go.
