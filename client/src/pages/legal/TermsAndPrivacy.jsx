@@ -97,11 +97,19 @@ function TermsOfService() {
           card the freelancer sends in a chat. They are not on the public profile.
         </li>
         <li>
-          The client pays in their own GCash app, then records the payment on PhilFreela: the amount (and a tip, if they
-          added one), the 13-digit GCash reference number and a screenshot of the receipt. The freelancer checks their own
-          GCash and answers Confirm received, Received less (with the amount that really arrived) or Not received.
-          PhilFreela cannot see GCash, so it cannot check, hold, refund or guarantee any payment. The receipt is the
-          client's proof on record, not a check by PhilFreela.
+          The client pays in their own GCash app, then records the payment on PhilFreela by adding a screenshot of the
+          GCash receipt (and saying which part was a tip, if they added one). PhilFreela's AI reads the amount sent, the
+          13-digit reference number, the date and the initials of the person paid from the screenshot; nobody types them.
+          The freelancer checks their own GCash and answers Confirm received, Received less (with the amount that really
+          arrived) or Not received. PhilFreela cannot see GCash, so it cannot hold, refund or guarantee any payment. The
+          receipt is the client's proof on record.
+        </li>
+        <li>
+          The AI also looks for signs of a fake receipt. A receipt that is not a GCash receipt, was already used, shows two
+          different amounts, is dated in the future or before the project, or was sent to someone else can't be sent.
+          Smaller signs (only the initials or only the number differs, a picture saved by an editing app) let it through,
+          but the freelancer is told to look at it carefully. This check can be wrong and a careful fake can pass it, so it
+          does not replace the freelancer checking their own GCash.
         </li>
         <li>Only confirm a payment when the money is in your GCash. Only pay people you trust, and check that the name GCash shows is the name on the payment card.</li>
         <li>
@@ -265,6 +273,13 @@ function PrivacyPolicy() {
           receipt screenshot, and when it was recorded and answered. Only the two people on a payment can read it. The
           receipt picture is kept in private storage. Admins can read a payment, and open its receipt, only when one of the
           two people sends it with a report.
+        </li>
+        <li>
+          Receipt checks: when a client adds a receipt screenshot, PhilFreela's AI service reads it and keeps what it read
+          (the amount, the reference number, the date and time, the initials GCash printed), a fingerprint of the file so the
+          same file can't be used twice, and its verdict with the reasons. The picture itself is kept, as a fresh copy with
+          nothing hidden in the file, only when the receipt can be sent. The client can see their own checks; the verdict
+          and its reasons are shown on the payment to both people, and to an admin when the payment is sent with a report.
         </li>
         <li>
           Fees you pay PhilFreela: for Premium, a Featured post or an ad, which are all paid on Xendit, the amount, when

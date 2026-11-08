@@ -159,12 +159,29 @@ builds on it.
 - Step 2 (AI service): `receipt_check.py`, `POST /receipts/read`,
   `test_receipt_check.py` 66/66 (patterns, 24 made-up screenshots read by
   the real reader, the route with a pretend database).
-- Step 3 (screens): waits for the short-payment session's screen step
-  (same files: RecordPaymentDialog.jsx, PaymentsSection.jsx, PaymentCard.jsx,
-  lib/payments.js), then builds on it.
-- Step 4 (words): after Step 3.
+- Step 2 is live on Vercel (570413c; /receipts/read is in openapi.json).
+- Step 3 (screens): built on the short-payment screens (aa58b9a) and tested
+  in a browser against a pretend backend, 40/40 (screenshot -> reading ->
+  tip -> record; blocked, unreadable, check; reader offline; an older slow
+  answer never replaces a newer one; tip only; the freelancer's note; the chat
+  card; phone width in dark and light). Files: lib/aiService.js
+  (readReceipt), lib/payments.js (readReceiptScreenshot, recordPayment and
+  recordChatPayment take a check id, new payment columns, the old upload and
+  reference helpers removed), RecordPaymentDialog.jsx (rewritten),
+  new ReceiptCheckNote.jsx, PaymentsSection.jsx, PaymentCard.jsx,
+  AdminReportsView.jsx, payments.css. NOT committed yet on purpose: it needs
+  the Step 1 database first (it reads the new columns), and the other session's
+  push would carry a commit live.
+- Step 4 (words): after the short-payment session commits its words.
+
+## Order once the user gives the go
+
+1. apply_migration `receipt_check` (supabase_receipt_check_schema.sql), check
+   the table, columns and functions exist.
+2. Commit and push Step 3; check the live bundle has it.
+3. apply `supabase_receipt_check_finish.sql` (the browser can no longer call
+   the old typed-reference functions); check with a rolled-back probe.
 
 ## Current step
 
-Step 1 waiting for the user's go to apply; Step 3 waiting for the
-short-payment screens to be committed.
+Waiting for the user's go to apply Step 1; Step 3 is ready in the working tree.
