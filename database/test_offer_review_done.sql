@@ -126,8 +126,8 @@ begin
   -- Booked the freelancer's OTHER offer, done.
   insert into public.bookings (client_id, freelancer_id, service_id, title, due_date, status, responded_at)
     values (cb, fr, svc2, 'Second test offer', current_date, 'accepted', now()) returning id into bk2;
-  insert into public.projects (booking_id, client_id, freelancer_id, title, due_date, status, submitted_at, completed_at)
-    values (bk2, cb, fr, 'Second test offer', current_date, 'done', now(), now());
+  insert into public.projects (booking_id, client_id, freelancer_id, title, due_date, status, submitted_at, completed_at, unlocked_at)
+    values (bk2, cb, fr, 'Second test offer', current_date, 'done', now(), now(), now());
   set local role authenticated;
   perform set_config('request.jwt.claim.sub', cb::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', cb, 'role', 'authenticated')::text, true);

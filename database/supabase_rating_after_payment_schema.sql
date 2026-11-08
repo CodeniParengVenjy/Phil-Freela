@@ -157,3 +157,59 @@ begin
   return new_id;
 end;
 $$;
+
+
+-- 4. The "A rating is waiting for you" notification: its date is the same
+--    moment rating_is_visible() uses (not always 14 days after Done), and a
+--    client who hasn't paid yet is told they can rate back once their payment
+--    is confirmed. Everything else is as in supabase_blind_ratings_schema.sql.
+create or replace function public.notify_project_rated()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  rater_name text;
+  proj record;
+  closes_on text;
+  other_rated boolean;
+  must_pay boolean;
+begin
+  select coalesce(nullif(full_name, ''), username, 'Someone') into rater_name
+    from public.profiles where id = new.rater_id;
+  select title, client_id, completed_at, unlocked_at into proj
+    from public.projects where id = new.project_id;
+  closes_on := to_char(
+    (greatest(proj.completed_at,
+              case when proj.unlocked_at <= proj.completed_at + public.rating_window() then proj.unlocked_at end)
+      + public.rating_window()) at time zone 'Asia/Manila',
+    'FMMonth FMDD');
+  -- The client is rated by the freelancer before paying: they rate back only once it's paid.
+  must_pay := new.ratee_id = proj.client_id and proj.unlocked_at is null;
+  select exists (
+    select 1 from public.project_ratings r
+    where r.project_id = new.project_id and r.rater_id = new.ratee_id
+  ) into other_rated;
+
+  if other_rated then
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.ratee_id, 'project_rated', 'You got a new rating',
+      rater_name || ' rated you ' || new.stars || E'★ for "' || coalesce(proj.title, 'a project') || '".'
+        || case when new.feedback is not null and btrim(new.feedback) <> '' then E'\n\n"' || new.feedback || '"' else '' end,
+      '/dashboard/project-details/' || new.project_id
+    );
+  else
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.ratee_id, 'project_rated', 'A rating is waiting for you',
+      rater_name || ' rated you for "' || coalesce(proj.title, 'a project') || '". It stays hidden until you rate them too'
+        || coalesce(', or until ' || closes_on, '') || '.'
+        || case when must_pay then E'\n\nYou can rate them once your payment for this project is confirmed.' else '' end,
+      '/dashboard/project-details/' || new.project_id
+    );
+  end if;
+  return new;
+end;
+$$;

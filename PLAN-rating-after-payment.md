@@ -66,13 +66,22 @@ Terms (Ratings), System Functions (Scope paragraph), study guide.
 
 ## Progress
 
-- Step 1: written; rolled-back trial on live with the schema, 23/23. NOT
-  applied yet: apply_migration was refused by Claude Code's auto-mode check, so
-  it needs the user's typed go (migration name `rating_after_payment`).
-- Step 2: built; browser test against a pretend database 32/32 (unpaid client
-  with and without an agreed price, paid late, hidden-until date, freelancer
-  unpaid/never paid/both times over, reload after a confirmed payment, rating
-  page, offer box, My Projects cards, light mode, phone width). Lint: only the
-  two old warnings; build clean. Safe to go live before Step 1 (it is only
-  stricter than the database).
-- Step 3: Terms and System Functions done; study guide after Step 1 is live.
+- Step 1: APPLIED on live as migration `rating_after_payment` after the user's
+  "go" (2026-11-08). Checked on live: the insert rule has the payment part,
+  rating_is_visible and add_service_review are the new ones, who may call them
+  is unchanged, the 7 + 2 old ratings are untouched; test_rating_after_payment.sql
+  23/23 and test_blind_ratings.sql 29/29 against the live rule (rolled back, no
+  leftovers).
+- Step 1b (found while testing): the "A rating is waiting for you"
+  notification still gave a date 14 days after Done and told an unpaid client to
+  rate back. Section 4 of the schema file fixes it (date = the blind timer, plus
+  "You can rate them once your payment for this project is confirmed." for an
+  unpaid client); rolled-back trial 4/4. NOT applied: apply_migration was
+  refused by Claude Code's auto-mode check, so it needs the user's typed go
+  (migration name `rating_after_payment_notice`).
+- Step 2: built and live (ae33352); browser test against a pretend database
+  32/32 (unpaid client with and without an agreed price, paid late,
+  hidden-until date, freelancer unpaid/never paid/both times over, reload after
+  a confirmed payment, rating page, offer box, My Projects cards, light mode,
+  phone width). Lint: only the two old warnings; build clean.
+- Step 3: Terms and System Functions done; study guide next.
