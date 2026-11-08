@@ -65,7 +65,8 @@ export async function addServiceReview(serviceId, stars, comment) {
 }
 
 // Where a client stands with an offer, from their own bookings of it:
-//   "done"   a project from booking it is Done, so they can rate it
+//   "done"   a project from booking it is Done and paid, so they can rate it
+//   "unpaid" a project from it is Done, but its payment isn't confirmed yet
 //   "booked" booked, but no project from it is Done yet
 //   "none"   never booked (or every booking was declined or cancelled)
 // If the request fails it answers "done" and lets the database decide when
@@ -73,13 +74,16 @@ export async function addServiceReview(serviceId, stars, comment) {
 export async function getOfferProgress(serviceId, clientId) {
   const { data, error } = await supabase
     .from("bookings")
-    .select("status, project:projects(status)")
+    .select("status, project:projects(status, unlocked_at)")
     .eq("service_id", serviceId)
     .eq("client_id", clientId);
   if (error) return "done";
-  // A booking has at most one project (accepted bookings only).
+  // A booking has at most one project (accepted bookings only). The project
+  // must be Done AND paid (unlocked_at: the freelancer confirmed the payment).
   const projects = (data || []).flatMap((booking) => [].concat(booking.project || []));
-  if (projects.some((project) => project.status === "done")) return "done";
+  const doneOnes = projects.filter((project) => project.status === "done");
+  if (doneOnes.some((project) => project.unlocked_at)) return "done";
+  if (doneOnes.length > 0) return "unpaid";
   if ((data || []).some((booking) => booking.status === "pending" || booking.status === "accepted")) return "booked";
   return "none";
 }

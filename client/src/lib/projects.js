@@ -165,7 +165,7 @@ export async function hireApplicant(applicationId, note, dueDate) {
 export function getMyProjects(userId, asFreelancer) {
   return supabase
     .from("projects")
-    .select(`id, title, status, started_at, due_date, completed_at, ratings:project_ratings(rater_id), ${PEOPLE_FIELDS}`)
+    .select(`id, title, status, started_at, due_date, completed_at, unlocked_at, ratings:project_ratings(rater_id), ${PEOPLE_FIELDS}`)
     .eq(asFreelancer ? "freelancer_id" : "client_id", userId)
     .order("started_at", { ascending: false });
 }
@@ -290,17 +290,42 @@ export const MAX_FEEDBACK_LENGTH = 1000;
 // How many days each side has to rate after the project is marked Done.
 // The database enforces the same number (rating_window() in that file).
 export const RATING_WINDOW_DAYS = 14;
+const RATING_WINDOW_MS = RATING_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+// A moment as { day: "October 21", ended: true once it has passed }.
+function closingDay(time) {
+  const at = new Date(time);
+  return { day: at.toLocaleDateString(undefined, { month: "long", day: "numeric" }), ended: at <= new Date() };
+}
 
 // When rating closes for a Done project, or null if it isn't Done:
 //   day    the date it closes, like "October 21"
 //   ended  true once that moment has passed
-export function ratingDeadline(project) {
+//   waitingForPayment  true when it's the client and the payment isn't
+//          confirmed yet: they can't rate until it is
+// Rate only after a successful payment (database/supabase_rating_after_payment_schema.sql):
+// the client rates once the project is Done AND paid (unlocked_at: the
+// freelancer confirmed it, the whole agreed one-time price), and their 14 days
+// start from whichever came later. The freelancer's 14 days start at Done,
+// paid or not, so a client who never pays can still be rated.
+export function ratingDeadline(project, iAmClient = false) {
   if (!project?.completed_at) return null;
-  const closesAt = new Date(new Date(project.completed_at).getTime() + RATING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  return {
-    day: closesAt.toLocaleDateString(undefined, { month: "long", day: "numeric" }),
-    ended: closesAt <= new Date()
-  };
+  const done = new Date(project.completed_at).getTime();
+  if (!iAmClient) return closingDay(done + RATING_WINDOW_MS);
+  if (!project.unlocked_at) return { waitingForPayment: true, day: "", ended: false };
+  return closingDay(Math.max(done, new Date(project.unlocked_at).getTime()) + RATING_WINDOW_MS);
+}
+
+// When a one-sided (blind) rating becomes visible, the same rule as
+// rating_is_visible() in the database: 14 days after Done, or 14 days after
+// the payment when it came within those first 14 days. Returns
+// { day, ended }, or null if the project isn't Done.
+export function ratingReveal(project) {
+  if (!project?.completed_at) return null;
+  const done = new Date(project.completed_at).getTime();
+  const paid = project.unlocked_at ? new Date(project.unlocked_at).getTime() : null;
+  const start = paid !== null && paid <= done + RATING_WINDOW_MS ? Math.max(done, paid) : done;
+  return closingDay(start + RATING_WINDOW_MS);
 }
 
 // The rating step of a Done project in a few words, shown beside its status
@@ -310,13 +335,18 @@ export function ratingDeadline(project) {
 //   iRated     they sent their own rating
 //   seeTheirs  the database handed over the other person's rating (it only
 //              does once both have rated, or the time for rating is over)
+//   iAmClient  the signed-in user is the project's client (they rate only
+//              once the payment is confirmed)
 // Returns { label, icon, badgeClass, textClass }, or null when the project
 // isn't Done.
-export function ratingStep(project, iRated, seeTheirs) {
-  const deadline = project?.status === "done" ? ratingDeadline(project) : null;
+export function ratingStep(project, iRated, seeTheirs, iAmClient = false) {
+  const deadline = project?.status === "done" ? ratingDeadline(project, iAmClient) : null;
   if (!deadline) return null;
   if (iRated && seeTheirs) {
     return { label: "Both rated: ratings are shown", icon: "bi-eye-fill", badgeClass: "bg-success text-white", textClass: "text-success" };
+  }
+  if (deadline.waitingForPayment && !iRated) {
+    return { label: "Rating opens once your payment is confirmed", icon: "bi-hourglass-split", badgeClass: "bg-warning text-dark", textClass: "text-warning" };
   }
   if (deadline.ended) {
     return { label: "Rating closed", icon: "bi-lock-fill", badgeClass: "bg-secondary text-white", textClass: "text-secondary" };

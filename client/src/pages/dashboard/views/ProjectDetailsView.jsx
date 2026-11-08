@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import {
   canPreview, deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getPreviewLink, getProject, getRatingOfMe, isBlenderFile,
-  isLocked, markProjectDone, openDeliverable, personName, projectStatuses, ratingDeadline, ratingStep, requestProjectChanges, todayInManila
+  isLocked, markProjectDone, openDeliverable, personName, projectStatuses, ratingDeadline, ratingReveal, ratingStep, requestProjectChanges, todayInManila
 } from "../../../lib/projects";
 import { makeDeliverablePreview } from "../../../lib/aiService";
 import { unlocksWhenFullyPaid } from "../../../lib/payments";
@@ -67,11 +67,13 @@ export default function ProjectDetailsView() {
     };
   }, [project?.status, project?.id, currentUserId]);
 
-  // A Done project from a booked offer: the client can now rate that offer on
-  // its page too. undefined while checking, true / false = rated it or not
+  // A Done and paid project from a booked offer: the client can now rate that
+  // offer on its page too (the payment must be confirmed first, like the
+  // project rating). undefined while checking, true / false = rated it or not
   // (null when it couldn't be checked: then no link).
   const offerId = project?.booking?.service_id;
-  const clientOfDoneOffer = project?.status === "done" && project?.client_id === currentUserId && Boolean(offerId);
+  const clientOfDoneOffer = project?.status === "done" && project?.client_id === currentUserId && Boolean(offerId)
+    && Boolean(project?.unlocked_at);
   const [offerRated, setOfferRated] = useState(undefined);
 
   useEffect(() => {
@@ -142,9 +144,10 @@ export default function ProjectDetailsView() {
   };
 
   // A payment on this project was just confirmed (live, or by the freelancer
-  // here): the database has unlocked the work, so read the project again.
+  // here): the database may have unlocked the work, which also opens the
+  // client's rating, so read the project again.
   const handlePaymentsChange = (list) => {
-    if (isLocked(project) && list.some((payment) => payment.status === "confirmed")) reloadProject();
+    if (!project.unlocked_at && list.some((payment) => payment.status === "confirmed")) reloadProject();
   };
 
   const scrollToPayments = () => {
@@ -216,11 +219,17 @@ export default function ProjectDetailsView() {
   // Stops the easy ways to save the preview (right-click, dragging it out).
   // A screenshot can't be stopped; that is why the text covers the whole picture.
   const noSaving = previewOnly ? { onContextMenu: (event) => event.preventDefault(), draggable: false } : {};
-  // When rating closes for a Done project (null until it's Done).
-  const deadline = project.status === "done" ? ratingDeadline(project) : null;
+  // When rating closes for a Done project (null until it's Done). The client's
+  // opens only once the payment is confirmed (deadline.waitingForPayment until then).
+  const deadline = project.status === "done" ? ratingDeadline(project, iAmClient) : null;
+  // The same for the other person, and when a one-sided rating stops being hidden.
+  const theirDeadline = project.status === "done" ? ratingDeadline(project, !iAmClient) : null;
+  const reveal = project.status === "done" ? ratingReveal(project) : null;
+  // A one-time agreed price must be paid in full before the client can rate.
+  const fullPriceNeeded = project.price_status === "agreed" && project.price_basis === "project";
   // The rating step shown beside "Done" in the Status box (null until it's
   // Done, and while the ratings are still loading).
-  const rating = myRating === undefined ? null : ratingStep(project, Boolean(myRating), Boolean(theirRating));
+  const rating = myRating === undefined ? null : ratingStep(project, Boolean(myRating), Boolean(theirRating), iAmClient);
 
   // The "Project" box: short status of the work, or where to attach it.
   const renderWorkBox = () => {
@@ -489,7 +498,22 @@ export default function ProjectDetailsView() {
             {project.status === "done" && (
               <div className="text-center pt-2">
                 {myRating === undefined && <Loader size="sm" label="Loading your rating" />}
-                {myRating === null && !deadline?.ended && (
+                {/* The client rates only after a successful payment
+                    (database/supabase_rating_after_payment_schema.sql). */}
+                {myRating === null && deadline?.waitingForPayment && (
+                  <>
+                    <p className="text-white-50 fs-7 mb-3">
+                      <i className="bi bi-hourglass-split text-warning me-1"></i>
+                      {fullPriceNeeded
+                        ? `You can rate ${otherName} once the agreed price is fully paid and ${otherName} confirms it.`
+                        : `You can rate ${otherName} once ${otherName} confirms your payment.`}
+                    </p>
+                    <button type="button" className="btn btn-outline-role rounded-pill px-4 fw-bold" onClick={scrollToPayments}>
+                      <i className="bi bi-cash-coin me-1"></i> Go to payment
+                    </button>
+                  </>
+                )}
+                {myRating === null && !deadline?.waitingForPayment && !deadline?.ended && (
                   <>
                     <Link to={`/dashboard/feedback/${project.id}`} className="btn btn-gradient-orange btn-lg rounded-pill px-5 py-3 fw-bold text-white shadow-glow">
                       <i className="bi bi-star-fill me-2"></i> Add your ratings and feedback
@@ -505,9 +529,9 @@ export default function ProjectDetailsView() {
                 {myRating && (
                   <p className="text-white-50 fs-7 mb-0">
                     <i className="bi bi-star-fill text-warning me-1"></i> You rated {otherName} {myRating.stars}/5.
-                    {!theirRating && !deadline?.ended && (
+                    {!theirRating && reveal && !reveal.ended && (
                       <span className="d-block fs-8 mt-1">
-                        <i className="bi bi-eye-slash-fill me-1"></i> Hidden from {otherName} until they rate you too, or until {deadline?.day}.
+                        <i className="bi bi-eye-slash-fill me-1"></i> Hidden from {otherName} until they rate you too, or until {reveal.day}.
                       </span>
                     )}
                   </p>
@@ -518,7 +542,11 @@ export default function ProjectDetailsView() {
                     {theirRating.feedback && <span className="d-block fst-italic mt-1">"<CensoredText text={theirRating.feedback} />"</span>}
                   </p>
                 )}
-                {myRating !== undefined && !theirRating && deadline?.ended && (
+                {/* The freelancer's side: the client can rate only once their payment is confirmed. */}
+                {myRating !== undefined && !theirRating && theirDeadline?.waitingForPayment && (
+                  <p className="text-secondary fs-8 mt-2 mb-0">{otherName} can rate you once you confirm their payment.</p>
+                )}
+                {myRating !== undefined && !theirRating && theirDeadline?.ended && reveal?.ended && (
                   <p className="text-secondary fs-8 mt-2 mb-0">{otherName} didn't rate this project.</p>
                 )}
                 {/* The offer the client booked can be rated now that the work is done

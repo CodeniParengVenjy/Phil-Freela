@@ -99,7 +99,9 @@ begin
   end;
 
   reset role;
-  update public.projects set status = 'done', completed_at = now() where id = pj;
+  -- Done and paid (unlocked_at): since supabase_rating_after_payment_schema.sql
+  -- the payment must be confirmed too; test_rating_after_payment.sql tests that part.
+  update public.projects set status = 'done', completed_at = now(), unlocked_at = now() where id = pj;
   set local role authenticated;
   begin
     r1 := public.add_service_review(svc, 5, '  Great work!  ');

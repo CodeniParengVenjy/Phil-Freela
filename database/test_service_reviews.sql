@@ -45,8 +45,10 @@ begin
     values (ca, fr, svc, 'Test booking', current_date, 'accepted', now()), (cb, fr, svc, 'Test booking', current_date, 'accepted', now())
     returning id, client_id
   )
-  insert into public.projects (booking_id, client_id, freelancer_id, title, due_date, status, submitted_at, completed_at)
-  select b.id, b.client_id, fr, 'Test booking', current_date, 'done', now(), now() from b;
+  -- unlocked_at: the payment was confirmed (supabase_rating_after_payment_schema.sql:
+  -- an offer is rated only once its project is Done AND paid).
+  insert into public.projects (booking_id, client_id, freelancer_id, title, due_date, status, submitted_at, completed_at, unlocked_at)
+  select b.id, b.client_id, fr, 'Test booking', current_date, 'done', now(), now(), now() from b;
 
   -- ===== The table and its rules =====
   select relrowsecurity into ok from pg_class where oid = 'public.service_reviews'::regclass;

@@ -60,9 +60,10 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
           const overdue = p.status !== "done" && p.due_date < today;
           // The rating step of a Done project (null until it's Done). The
           // list only holds the ratings this user may see: their own, and the
-          // other person's once it is no longer hidden.
+          // other person's once it is no longer hidden. A client's rating opens
+          // only once the payment is confirmed.
           const ratings = p.ratings || [];
-          const rating = ratingStep(p, ratings.some((r) => r.rater_id === currentUserId), ratings.some((r) => r.rater_id !== currentUserId));
+          const rating = ratingStep(p, ratings.some((r) => r.rater_id === currentUserId), ratings.some((r) => r.rater_id !== currentUserId), !isFreelancer);
           return (
             <Link
               key={p.id}

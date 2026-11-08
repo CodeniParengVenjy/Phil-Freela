@@ -207,9 +207,16 @@ function TermsOfService() {
         meant to reflect real completed work.
       </p>
       <p className="text-secondary">
+        A client rates only after a successful payment: the project must be done and the freelancer must have confirmed
+        the payment (with an agreed one-time price, the whole price). The client's 14 days start from whichever comes
+        later, the project being marked done or the payment being confirmed. The freelancer can rate the client once the
+        project is marked done, paid or not. If a freelancer doesn't answer a payment that was really sent, the client
+        can report it.
+      </p>
+      <p className="text-secondary">
         A client can also rate and comment on a freelancer's offer, but only one they booked, and only once the project
-        from that booking is marked done. That rating shows on the offer's page right away. Each client rates an offer
-        once, and can remove their own rating and write a new one.
+        from that booking is marked done and its payment is confirmed. That rating shows on the offer's page right away.
+        Each client rates an offer once, and can remove their own rating and write a new one.
       </p>
       <p className="text-secondary">
         A profile also shows a track record other people can see: how many projects were marked done, how many of

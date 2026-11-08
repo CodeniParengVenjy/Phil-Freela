@@ -76,14 +76,17 @@ export default function FeedbackView() {
   const iAmClient = project?.client_id === currentUserId;
   const other = project && (iAmClient ? project.freelancer : project.client);
   const otherName = personName(other, iAmClient ? "the freelancer" : "the client");
-  // When rating closes for this project (null if it isn't Done).
-  const deadline = project?.status === "done" ? ratingDeadline(project) : null;
+  // When rating closes for this project (null if it isn't Done). A client can
+  // rate only once the payment is confirmed (deadline.waitingForPayment until then).
+  const deadline = project?.status === "done" ? ratingDeadline(project, iAmClient) : null;
 
   // Can't rate: the project isn't found or isn't the user's, it isn't Done
-  // yet, it's already been rated, or the time for rating is over.
-  if (!project || project.status !== "done" || myRating || deadline?.ended) {
+  // yet, it's already been rated, the client's payment isn't confirmed yet,
+  // or the time for rating is over.
+  if (!project || project.status !== "done" || myRating || deadline?.waitingForPayment || deadline?.ended) {
     let reason = "This project can't be rated right now.";
     if (myRating) reason = `You already rated this project ${myRating.stars}★. Thanks for the feedback!`;
+    else if (deadline?.waitingForPayment) reason = `You can rate ${otherName} once your payment for this project is confirmed.`;
     else if (deadline?.ended) reason = `The rating period for this project ended on ${deadline.day}.`;
 
     return (

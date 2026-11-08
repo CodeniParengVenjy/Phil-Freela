@@ -36,11 +36,13 @@ begin
     values (f, 'Blind test video editing', 'video-editing', 'A test service.') returning id into svc;
   insert into public.job_posts (client_id, title, category, description, start_date, due_date)
     values (c, 'Blind test job', 'video-editing', 'A test job.', (now() at time zone 'Asia/Manila')::date, (now() at time zone 'Asia/Manila')::date + 7) returning id into job;
-  insert into public.projects (client_id, freelancer_id, title, status, started_at, due_date, submitted_at, completed_at)
-    values (c, f, 'Blind promo video', 'done', now() - interval '5 days', current_date, now() - interval '1 day', now())
+  -- p1 and p2 are paid (unlocked_at): since supabase_rating_after_payment_schema.sql
+  -- the client rates only after the payment is confirmed.
+  insert into public.projects (client_id, freelancer_id, title, status, started_at, due_date, submitted_at, completed_at, unlocked_at)
+    values (c, f, 'Blind promo video', 'done', now() - interval '5 days', current_date, now() - interval '1 day', now(), now())
     returning id into p1;
-  insert into public.projects (client_id, freelancer_id, title, status, started_at, due_date, submitted_at, completed_at)
-    values (c, f, 'Blind old poster', 'done', now() - interval '5 days', current_date, now() - interval '1 day', now())
+  insert into public.projects (client_id, freelancer_id, title, status, started_at, due_date, submitted_at, completed_at, unlocked_at)
+    values (c, f, 'Blind old poster', 'done', now() - interval '5 days', current_date, now() - interval '1 day', now(), now())
     returning id into p2;
   insert into public.projects (client_id, freelancer_id, title, status, started_at, due_date, submitted_at)
     values (c, f, 'Blind unfinished logo', 'submitted', now() - interval '5 days', current_date, now() - interval '1 day')

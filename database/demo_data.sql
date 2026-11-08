@@ -171,10 +171,13 @@ begin
     due := today - rec.due_ago;
     submitted := ((due + rec.sub_offset)::timestamp + time '15:00') at time zone 'Asia/Manila';
 
+    -- unlocked_at = paid: a client rates only after the payment is confirmed
+    -- (supabase_rating_after_payment_schema.sql).
     insert into public.projects (client_id, freelancer_id, title, status, started_at, due_date,
-      submission_link, submission_message, submitted_at, completed_at)
+      submission_link, submission_message, submitted_at, completed_at, unlocked_at)
     values (rec.client, rec.freelancer, rec.title, 'done', submitted - interval '6 days', due,
-      'https://example.com/demo-work', 'Here is the finished work. Thank you!', submitted, submitted + interval '1 day')
+      'https://example.com/demo-work', 'Here is the finished work. Thank you!', submitted, submitted + interval '1 day',
+      submitted + interval '1 day')
     returning id into pid;
 
     insert into public.project_ratings (project_id, rater_id, ratee_id, stars, feedback, created_at) values

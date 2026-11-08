@@ -18,7 +18,8 @@ function Stars({ value }) {
 
 // The "Ratings and comments" part of an offer's page (Service Details). The
 // average and the list are for everyone; a client whose project from booking
-// this offer is Done, and who hasn't rated it yet, also gets the box to pick
+// this offer is Done and paid (the freelancer confirmed the payment), and who
+// hasn't rated it yet, also gets the box to pick
 // stars and write a comment (see lib/serviceReviews.js and
 // database/supabase_offer_review_done_schema.sql). Opened with
 // #offer-ratings in the address (the link on a Done project), it scrolls here.
@@ -166,6 +167,9 @@ export default function ServiceReviews({ serviceId, reviews, loadError, onReview
       )}
       {askProgress && !mine && progress === "booked" && (
         <p className="text-secondary fs-8 mb-3"><i className="bi bi-hourglass-split me-1"></i>You can rate this offer once your project from it is done.</p>
+      )}
+      {askProgress && !mine && progress === "unpaid" && (
+        <p className="text-secondary fs-8 mb-3"><i className="bi bi-hourglass-split me-1"></i>You can rate this offer once your payment for the project is confirmed.</p>
       )}
       {!canRate && accountType !== "client" && (
         <p className="text-secondary fs-8 mb-3">Only client accounts can rate and comment on an offer.</p>
