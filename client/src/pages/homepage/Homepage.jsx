@@ -17,6 +17,8 @@ export default function Homepage() {
   // whole page, and the top bar's logo, where its flying logo lands.
   const pageRef = useRef(null);
   const logoRef = useRef(null);
+  // The phone menu (Bootstrap's offcanvas, below).
+  const mobileNavRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -30,6 +32,18 @@ export default function Homepage() {
       }
     });
     return () => { active = false; };
+  }, []);
+
+  // The phone menu stops the page from scrolling while it is open, and Bootstrap
+  // lets the page scroll again when the menu closes. Its links (Sign In, Join as
+  // Freelancer, Become a Client) open another page while the menu is still open,
+  // so the homepage was gone before that could happen, and the sign-in page then
+  // couldn't be scrolled on a phone: a phone held sideways couldn't reach its
+  // Sign In button (2026-11-08). Closing the menu when the homepage goes (also
+  // after the browser's Back button) lets Bootstrap undo the lock.
+  useEffect(() => {
+    const menu = mobileNavRef.current;
+    return () => window.bootstrap?.Offcanvas.getInstance(menu)?.hide();
   }, []);
 
   // Links that open "the app": a signed-in person goes to their own dashboard,
@@ -77,7 +91,7 @@ export default function Homepage() {
         </div>
       )}
 
-      <div className="offcanvas offcanvas-start bg-dark text-white border-end border-secondary border-opacity-25" tabIndex="-1" id="mobileNav" aria-labelledby="mobileNavLabel">
+      <div ref={mobileNavRef} className="offcanvas offcanvas-start bg-dark text-white border-end border-secondary border-opacity-25" tabIndex="-1" id="mobileNav" aria-labelledby="mobileNavLabel">
         <div className="offcanvas-header border-bottom border-secondary border-opacity-25">
           <div className="d-flex align-items-center gap-2">
             <img src="/logo-philfreela.svg" alt="PhilFreela" style={{ height: 38 }} />
