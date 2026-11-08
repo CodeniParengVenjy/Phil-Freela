@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import {
   cancelPaymentRequest, confirmPayment, formatGcashNumber, formatPeso, formatReference, getRequestPayDetails,
-  isShortPayment, markNotReceived, openReceipt, paymentBadge, recordChatPayment
+  isShortPayment, markNotReceived, openReceipt, paymentBadge, readReceiptScreenshot, recordChatPayment
 } from "../../../lib/payments";
+import ReceiptCheckNote from "./ReceiptCheckNote";
 import RecordPaymentDialog from "./RecordPaymentDialog";
 import ShortPaymentForm from "./ShortPaymentForm";
 import "../payments.css";
@@ -55,8 +56,10 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
     }
   };
 
-  const handleRecord = ({ amount, tip: tipPart, reference, receiptFile }) =>
-    recordChatPayment({ userId: currentUserId, paymentId: payment.id, amount, tip: tipPart, reference, receiptFile });
+  // The record window: the AI reads the screenshot for this request, then the
+  // payment is recorded from that reading (PLAN-receipt-ai.md).
+  const handleRead = (file) => readReceiptScreenshot({ paymentId: payment.id, file });
+  const handleRecord = ({ checkId, tip: tipPart }) => recordChatPayment({ paymentId: payment.id, checkId, tip: tipPart });
 
   // "Received less" was saved.
   const handleShortDone = () => {
@@ -167,6 +170,11 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
           {payment.status === "confirmed" && payment.answered_at && <>{" · "}Confirmed {when(payment.answered_at)}</>}
         </p>
       )}
+      {payment.reference_no && (
+        <div className="mt-2">
+          <ReceiptCheckNote payment={payment} forFreelancer={!iAmPayer} />
+        </div>
+      )}
       {payment.status === "sent" && iAmPayer && <p className="text-white-50 fs-7 mb-0 mt-2">Waiting for {otherName} to check their GCash and confirm.</p>}
       {payment.status === "confirmed" && !short && (
         <p className="text-success fs-7 mb-0 mt-2"><i className="bi bi-check-circle-fill me-1"></i>{iAmPayer ? `${otherName} confirmed this payment.` : "You confirmed this payment."}</p>
@@ -255,9 +263,8 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         <RecordPaymentDialog
           subtitle={`Paid to ${otherName} in the GCash app`}
           otherName={otherName}
-          defaultAmount={String(payment.amount)}
           requestedAmount={Number(payment.amount)}
-          hint="Filled in from the request. Change it if you sent a different amount."
+          read={handleRead}
           submit={handleRecord}
           onClose={() => setRecording(false)}
           onRecorded={handleRecorded}

@@ -257,6 +257,34 @@ export async function checkResume(file) {
   return null;
 }
 
+// The receipt reader's answer when it can't be reached or is too slow.
+const READER_BUSY = "The receipt reader can't be reached right now. Your GCash payment is safe: add the screenshot again in a few minutes.";
+
+// Reads a GCash receipt screenshot (ai-service/receipt_check.py,
+// PLAN-receipt-ai.md): what is on it and whether it looks real. projectId for a
+// payment on a project, paymentId for a chat payment request. Returns
+// { check_id, verdict: "ok" | "check" | "blocked" | "unreadable", reasons,
+// reference, amount, paid_at, name, initials }. Throws an Error with a sentence
+// to show when the service is offline or too slow (45 seconds: an idle service
+// needs a few seconds to wake up) or refuses (not your project...). There is no
+// typed fallback on purpose: a payment is recorded only from a receipt the AI read.
+export async function readReceipt({ projectId, paymentId, file }) {
+  const form = new FormData();
+  form.append("file", file, file.name || "receipt.jpg");
+  if (projectId) form.append("project_id", projectId);
+  if (paymentId) form.append("payment_id", paymentId);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45000);
+  try {
+    return await request("/receipts/read", { method: "POST", headers: await authHeader(), body: form, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted || error.message === OFFLINE) throw new Error(READER_BUSY);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Wakes the AI service while the apply form is open, so the first check
 // doesn't have to wait for it to start. It asks for nothing that matters and
 // never fails.

@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import { priceText } from "../../../lib/projectPrice";
 import {
   confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, isShortPayment, listProjectPayments,
-  markNotReceived, openReceipt, paymentBadge, projectMoney, recordPayment, watchProjectPayments
+  markNotReceived, openReceipt, paymentBadge, projectMoney, readReceiptScreenshot, recordPayment, watchProjectPayments
 } from "../../../lib/payments";
+import ReceiptCheckNote from "./ReceiptCheckNote";
 import RecordPaymentDialog from "./RecordPaymentDialog";
 import ShortPaymentForm from "./ShortPaymentForm";
 import "../payments.css";
@@ -119,8 +120,10 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     }
   };
 
-  const handleRecord = ({ amount, tip, reference, receiptFile }) =>
-    recordPayment({ userId: currentUserId, projectId, amount, tip, reference, receiptFile });
+  // The record window: the AI reads the screenshot for this project, then the
+  // payment is recorded from that reading (PLAN-receipt-ai.md).
+  const handleRead = (file) => readReceiptScreenshot({ projectId, file });
+  const handleRecord = ({ checkId, tip }) => recordPayment({ projectId, checkId, tip });
 
   const handleRecorded = () => {
     setRecording(false);
@@ -299,6 +302,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
           {" · "}Recorded {when(payment.created_at)}
           {payment.answered_at && <>{" · "}Answered {when(payment.answered_at)}</>}
         </p>
+        <ReceiptCheckNote payment={payment} forFreelancer={!iAmClient} />
 
         {payment.status === "sent" && iAmClient && (
           <p className="text-white-50 fs-7 mb-2">Waiting for {otherName} to check their GCash and confirm.</p>
@@ -417,11 +421,8 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
           subtitle={`Paid to ${otherName} in the GCash app`}
           otherName={otherName}
           tipOnly={recording === "tip"}
-          defaultAmount={money ? String(money.leftForNew) : ""}
           maxAmount={money ? money.leftForNew : null}
-          hint={money
-            ? `${formatPeso(money.leftForNew)} is left to pay. Enter what you sent for the project.`
-            : agreedPrice ? `Agreed price: ${agreedPrice}. Enter what you sent.` : undefined}
+          read={handleRead}
           submit={handleRecord}
           onClose={() => setRecording(false)}
           onRecorded={handleRecorded}

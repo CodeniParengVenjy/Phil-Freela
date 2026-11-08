@@ -9,6 +9,7 @@ import { avatarUrl, coverUrl } from "../../../lib/avatar";
 import { getScreenshotLinks, removeReportedPicture, reportListingTables, reportPictureKinds, reportReasonLabel, reportTargetLabels } from "../../../lib/reports";
 import { messageSummary } from "../../../lib/reportMessages";
 import { formatPeso, formatReference, openReceipt, paymentStatuses } from "../../../lib/payments";
+import ReceiptCheckNote from "../../dashboard/components/ReceiptCheckNote";
 import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/suspensions";
 import { buildPenalty, emptyViolationFields, getViolation } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
@@ -187,6 +188,8 @@ function ReportedPayment({ payment, reporterName }) {
           {" · "}recorded {when(payment.created_at)}
           {payment.answered_at && <>{" · "}answered {when(payment.answered_at)}</>}
         </p>
+        {/* What the AI read on the receipt and what it thought (PLAN-receipt-ai.md). */}
+        <ReceiptCheckNote payment={payment} />
         <button type="button" className="btn btn-sm btn-outline-light rounded-pill px-3" onClick={viewReceipt}>
           <i className="bi bi-receipt me-1"></i>View receipt
         </button>
@@ -246,7 +249,7 @@ export default function AdminReportsView() {
           .from("reports")
           // report_messages: the chat messages the reporter ticked (empty for most reports).
           // target_title / target_owner_id: a copy of the reported post's title and owner, kept for when the post is gone.
-          .select("id, reporter_id, target_type, target_id, target_title, target_owner_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, report_messages(id, from_reporter, body, attachment_type, attachment_name, is_call, edited, flagged, sent_at), payment:payments(id, amount, reference_no, receipt_path, status, created_at, answered_at), reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
+          .select("id, reporter_id, target_type, target_id, target_title, target_owner_id, reason, details, status, admin_note, reviewed_at, created_at, call_id, evidence_paths, reported_path, report_messages(id, from_reporter, body, attachment_type, attachment_name, is_call, edited, flagged, sent_at), payment:payments(id, amount, reference_no, receipt_path, status, created_at, answered_at, paid_at, receipt_initials, ai_verdict, ai_reasons), reporter:profiles!reports_reporter_id_fkey(full_name, username), reviewer:admins!reports_reviewed_by_fkey(full_name)")
           .order("created_at", { ascending: false })
           .order("sent_at", { referencedTable: "report_messages", ascending: true }),
         supabase.from("user_suspensions").select("user_id, ends_at"),

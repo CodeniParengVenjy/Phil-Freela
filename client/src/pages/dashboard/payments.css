@@ -17,3 +17,20 @@
   font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   letter-spacing: 0.02em;
 }
+
+/* What the AI read on a receipt (the record window, PLAN-receipt-ai.md): the
+   name of each thing on the left, what was read on the right. */
+.pay-reading {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+}
+.pay-reading dt {
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+.pay-reading dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

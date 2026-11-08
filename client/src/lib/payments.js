@@ -1,10 +1,13 @@
+import { readReceipt } from "./aiService";
 import { supabase } from "./supabaseClient";
 import { shrinkImage } from "./shrinkImage";
 
 // GCash payments, see database/supabase_payments_schema.sql and
 // PLAN-gcash-payments.md. PhilFreela never touches the money: a freelancer saves
 // a GCash number and the name on the account (others see only its initials), the
-// client pays in the GCash app and records it here, and the freelancer checks their
+// client pays in the GCash app and records it here with a screenshot of the
+// receipt, which the AI reads (amount, reference number, date, initials) and
+// checks for signs of a fake (PLAN-receipt-ai.md), and the freelancer checks their
 // own GCash and answers.
 // The browser can only READ payments; every change goes through a database
 // function that checks who is asking and what status the payment is in.
@@ -51,10 +54,6 @@ export function formatReference(reference) {
   const match = /^(\d{4})(\d{3})(\d{6})$/.exec(reference || "");
   return match ? `${match[1]} ${match[2]} ${match[3]}` : reference || "";
 }
-
-// The reference number as typed: spaces are fine, the rest must be 13 digits.
-export const normalizeReference = (input) => String(input ?? "").replace(/\s+/g, "");
-export const isValidReference = (reference) => /^\d{13}$/.test(reference);
 
 // The name on the GCash account: letters (accents too), spaces, dots, hyphens
 // and apostrophes, 2 to 60 characters, no double spaces. The same rule as the
@@ -178,30 +177,38 @@ function checkPicture(file, maxBytes, what) {
 
 export const checkReceiptFile = (file) => checkPicture(file, MAX_RECEIPT_BYTES, "your receipt screenshot");
 
-// Redraws the picture as a plain JPEG (this also makes sure it really is a
-// picture and strips anything hidden inside the file), then uploads it into the
-// person's own folder of a private bucket. Returns { path } or { error }.
-async function uploadPicture(bucket, userId, file, maxSide, prefix) {
-  let picture;
+// The AI service takes at most 4 MB (Vercel's limit per request). A bigger
+// screenshot is first redrawn smaller as a JPEG in the browser.
+const MAX_READ_BYTES = 4 * 1024 * 1024;
+
+// "Add screenshot": the AI service reads the receipt (PLAN-receipt-ai.md). It
+// reads the amount, the reference number, the date and the initials, checks for
+// signs of a fake, and keeps a clean copy of the picture itself, so the browser
+// uploads nothing and types nothing. projectId or paymentId (a chat request).
+// Returns { data } (see readReceipt in aiService.js) or { error }.
+export async function readReceiptScreenshot({ projectId, paymentId, file }) {
   try {
-    picture = await shrinkImage(file, maxSide);
+    const picture = file.size > MAX_READ_BYTES ? await shrinkImage(file, 2000) : file;
+    return { data: await readReceipt({ projectId, paymentId, file: picture }) };
   } catch (error) {
-    return { error: error.message };
+    return { error: error.message || "Couldn't read that receipt. Please try again." };
   }
-  const path = `${userId}/${prefix}-${Date.now()}.jpg`;
-  const { error } = await supabase.storage.from(bucket).upload(path, picture, { contentType: "image/jpeg" });
-  if (error) {
-    console.error(`Uploading to ${bucket} failed:`, error);
-    return { error: "Couldn't upload that picture. Please try again." };
-  }
-  return { path };
 }
 
-export const uploadReceipt = (userId, file) => uploadPicture(RECEIPT_BUCKET, userId, file, 1600, "receipt");
+// The receipt check's verdict on a recorded payment, for both people:
+// { tone, text } or null for a payment from before the check existed.
+export function receiptCheckLabel(payment) {
+  if (payment.ai_verdict === "ok") return { tone: "success", icon: "bi-shield-check", text: "Receipt checked by AI: no signs of a fake." };
+  if (payment.ai_verdict === "check") return { tone: "warning", icon: "bi-exclamation-triangle-fill", text: "Receipt checked by AI: look at it carefully." };
+  return null;
+}
 
-// If removing an unused file fails it only leaves the file behind, so it is
-// never an error for the person.
-export const removeReceiptFile = (path) => (path ? supabase.storage.from(RECEIPT_BUCKET).remove([path]) : null);
+// "the date on it ... is in the future" -> "The date on it ... is in the future."
+export const asSentence = (reason) => (reason ? `${reason.charAt(0).toUpperCase()}${reason.slice(1)}${/[.!?]$/.test(reason) ? "" : "."}` : "");
+
+// A date and time on a receipt, shown in Philippine time like GCash prints it.
+export const receiptTime = (value) =>
+  new Date(value).toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" });
 
 // A link that opens a private picture for an hour (null when it couldn't be made).
 async function signedLink(bucket, path) {
@@ -281,7 +288,7 @@ export async function getPayDetails(projectId) {
   return { data: data?.[0] || null };
 }
 
-const PAYMENT_FIELDS = "id, project_id, conversation_id, client_id, freelancer_id, amount, tip_amount, received_amount, note, reference_no, receipt_path, status, created_at, answered_at";
+const PAYMENT_FIELDS = "id, project_id, conversation_id, client_id, freelancer_id, amount, tip_amount, received_amount, note, reference_no, receipt_path, status, created_at, answered_at, paid_at, receipt_initials, ai_verdict, ai_reasons";
 
 // The payments of one project, newest first: { data } or { error }.
 export async function listProjectPayments(projectId) {
@@ -297,25 +304,20 @@ export async function listProjectPayments(projectId) {
   return { data: data || [] };
 }
 
-// "I've paid". The receipt picture goes up first, then the database records the
-// payment and tells the freelancer; if the database refuses (a reused reference,
-// more than is left to pay...), the picture is removed again so no unused file
-// stays. amount is everything sent in GCash (price + tip), tip the tip part (0
-// for none). Returns { id } or { error }.
-export async function recordPayment({ userId, projectId, amount, tip = 0, reference, receiptFile }) {
-  const upload = await uploadReceipt(userId, receiptFile);
-  if (upload.error) return { error: upload.error };
-
-  const { data, error } = await supabase.rpc("record_payment", {
+// "I've paid", after the AI read the receipt (readReceiptScreenshot). The
+// database takes the amount, the reference number and the saved picture from the
+// AI's reading (checkId), never from the browser; the client only says which part
+// of the amount is a tip (0 for none). It then records the payment and tells the
+// freelancer, or refuses (a reused reference, more than is left to pay...).
+// Returns { id } or { error }.
+export async function recordPayment({ projectId, checkId, tip = 0 }) {
+  const { data, error } = await supabase.rpc("record_receipt_payment", {
     target_project: projectId,
-    pay_amount: amount,
-    pay_tip: tip,
-    pay_reference: reference,
-    pay_receipt_path: upload.path
+    receipt_check: checkId,
+    pay_tip: tip
   });
   if (error) {
     console.error("Recording the payment failed:", error);
-    await removeReceiptFile(upload.path);
     return { error: plainMessage(error, "Couldn't record that payment. Please try again.") };
   }
   return { id: data };
@@ -420,23 +422,16 @@ export async function getRequestPayDetails(paymentId) {
   return { data: data?.[0] || null };
 }
 
-// "I've paid" on a card: the receipt goes up first, then the database records
-// the payment; if it refuses, the picture is removed again. amount is everything
-// sent (price + tip), tip the tip part. { id } or { error }.
-export async function recordChatPayment({ userId, paymentId, amount, tip = 0, reference, receiptFile }) {
-  const upload = await uploadReceipt(userId, receiptFile);
-  if (upload.error) return { error: upload.error };
-
-  const { error } = await supabase.rpc("record_chat_payment", {
+// "I've paid" on a card, after the AI read the receipt: the same as
+// recordPayment, for a chat payment request. { id } or { error }.
+export async function recordChatPayment({ paymentId, checkId, tip = 0 }) {
+  const { error } = await supabase.rpc("record_chat_receipt_payment", {
     target_payment: paymentId,
-    pay_amount: amount,
-    pay_tip: tip,
-    pay_reference: reference,
-    pay_receipt_path: upload.path
+    receipt_check: checkId,
+    pay_tip: tip
   });
   if (error) {
     console.error("Recording the chat payment failed:", error);
-    await removeReceiptFile(upload.path);
     return { error: plainMessage(error, "Couldn't record that payment. Please try again.") };
   }
   return { id: paymentId };
