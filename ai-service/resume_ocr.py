@@ -171,6 +171,35 @@ def read_picture(image, seconds=SECONDS):
     return "\n".join(rows), len(boxes), timed_out
 
 
+def read_boxes(image, seconds=SECONDS):
+    """Like read_picture, but keeps where each piece of text was found, for
+    pictures where the place matters (the GCash receipt check, receipt_check.py,
+    puts a label and its value back on one row). Returns (boxes, timed_out);
+    each box is {"text", "left", "right", "middle", "height"} in pixels of the
+    picture it was read from, from the top of the picture down."""
+    started = time.monotonic()
+    height, width = image.shape[:2]
+    if max(height, width) < SMALL_PICTURE_SIDE:
+        scale = FINDER_SIDE / max(height, width)
+        image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+    found = []
+    timed_out = False
+    for box in _find_lines(image):
+        if time.monotonic() - started > seconds:
+            timed_out = True
+            break
+        text = _read_line(_straighten(image, box))
+        if text:
+            found.append({
+                "text": text,
+                "left": float(box[:, 0].min()),
+                "right": float(box[:, 0].max()),
+                "middle": float(box[:, 1].mean()),
+                "height": float(box[:, 1].max() - box[:, 1].min()),
+            })
+    return found, timed_out
+
+
 def read_scanned_pdf(data, seconds=SECONDS):
     """The same for a PDF made of pictures: its first pages are drawn and read.
     Returns (text, lines, timed_out)."""

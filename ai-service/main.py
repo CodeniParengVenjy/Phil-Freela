@@ -14,9 +14,11 @@ Run it:
     .venv\\Scripts\\python -m uvicorn main:app --port 8000
 """
 
+import hashlib
 import io
 import logging
 import os
+import re
 import tempfile
 import time
 import uuid
@@ -44,6 +46,8 @@ from listing_search import search_listings
 from moodboard import match_moodboard
 from page_blur import blur_pages
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
+from receipt_check import MAX_RECEIPT_BYTES, UnreadablePicture, initials_text, read_receipt
+from receipt_check import judge as judge_receipt
 from recommendations import recommend
 from resume_check import MAX_RESUME_BYTES, check_resume
 from similarity import image_embedding
@@ -1416,6 +1420,163 @@ def check_resume_upload(file: UploadFile = File(...), authorization: str | None 
     if len(data) > MAX_RESUME_BYTES:
         raise HTTPException(400, "That file is too big (max 4 MB).")
     return check_resume(data)
+
+
+# ---------------------------------------------------------------------------
+# GCash receipt check (see receipt_check.py and PLAN-receipt-ai.md): the client
+# adds only the screenshot. This reads it (reference number, amount, date and
+# time, the initials GCash printed), looks for signs of a fake, keeps a clean
+# copy and writes what it read into receipt_checks. The website then records
+# the payment from that row (record_receipt_payment() in
+# database/supabase_receipt_check_schema.sql), so nobody types the reference
+# or the amount.
+# ---------------------------------------------------------------------------
+
+RECEIPTS_BUCKET = "receipts"
+RECEIPT_STORED_SIDE = 1600  # the same size the website used to save receipts at
+
+
+def _uuid_or_none(value):
+    """A uuid sent by the website, checked, or None when none was sent."""
+    if not value:
+        return None
+    try:
+        return str(uuid.UUID(value))
+    except ValueError:
+        raise HTTPException(400, "That payment can't be found.")
+
+
+def _timestamp(text):
+    """A time from the database ("2026-11-08T03:12:45.12345+00:00") as a datetime.
+    Python 3.10 only reads 3 or 6 digits after the seconds, so they are padded."""
+    match = re.match(r"^(.*?T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(.*)$", text)
+    if not match:
+        return datetime.fromisoformat(text)
+    head, fraction, zone = match.groups()
+    fraction = ("." + (fraction + "000000")[:6]) if fraction else ""
+    return datetime.fromisoformat(head + fraction + (zone or "+00:00").replace("Z", "+00:00"))
+
+
+@app.post("/receipts/read")
+def read_receipt_upload(
+    file: UploadFile = File(...),
+    project_id: str | None = Form(default=None),
+    payment_id: str | None = Form(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Reads a GCash receipt screenshot for a payment on a project (project_id)
+    or for a chat payment request (payment_id) and looks for signs of a fake.
+    {"check_id", "verdict": "ok" | "check" | "blocked" | "unreadable", "reasons":
+    [short sentences], "reference", "amount", "paid_at", "name", "initials"}.
+    Only "ok" and "check" can be recorded: the website sends check_id to
+    record_receipt_payment() or record_chat_receipt_payment()."""
+    user_id = get_user_id(authorization)
+    project_id, payment_id = _uuid_or_none(project_id), _uuid_or_none(payment_id)
+    if bool(project_id) == bool(payment_id):
+        raise HTTPException(400, "Say which project or payment request this receipt is for.")
+
+    data = file.file.read(MAX_RECEIPT_BYTES + 1)
+    if len(data) > MAX_RECEIPT_BYTES:
+        raise HTTPException(400, "That screenshot is too big (max 4 MB).")
+    # Opening it with Pillow checks the real contents, not just the file name.
+    try:
+        picture = Image.open(io.BytesIO(data))
+        picture.load()
+    except Exception:
+        raise HTTPException(400, "That file isn't a picture. Add a screenshot of your GCash receipt.")
+    if picture.format not in ALLOWED_FORMATS:
+        raise HTTPException(400, "The screenshot must be a JPG, PNG or WebP picture.")
+
+    # Who is paying whom, and since when (a receipt can't be older than that).
+    if project_id:
+        rows = (
+            supabase.table("projects").select("client_id, freelancer_id, started_at")
+            .eq("id", project_id).limit(1).execute().data
+        )
+        if not rows or rows[0]["client_id"] != user_id:
+            raise HTTPException(403, "Only the client of this project can record a payment.")
+        freelancer_id, earliest, earliest_what, requested = rows[0]["freelancer_id"], rows[0]["started_at"], "the project started", None
+    else:
+        rows = (
+            supabase.table("payments").select("client_id, freelancer_id, conversation_id, status, amount, created_at")
+            .eq("id", payment_id).limit(1).execute().data
+        )
+        if not rows or rows[0]["client_id"] != user_id or not rows[0]["conversation_id"]:
+            raise HTTPException(403, "Only the person asked to pay can record this payment.")
+        if rows[0]["status"] != "requested":
+            raise HTTPException(409, "This request was already paid or cancelled.")
+        freelancer_id, earliest, earliest_what, requested = rows[0]["freelancer_id"], rows[0]["created_at"], "the payment was asked for", rows[0]["amount"]
+    gcash = (
+        supabase.table("gcash_accounts").select("gcash_number, account_name")
+        .eq("freelancer_id", freelancer_id).limit(1).execute().data
+    )
+    gcash = gcash[0] if gcash else {}
+
+    try:
+        reading = read_receipt(data)
+    except UnreadablePicture:
+        raise HTTPException(400, "That picture can't be opened. Add a screenshot of your GCash receipt.")
+
+    picture_hash = hashlib.sha256(data).hexdigest()
+    reuse = supabase.rpc("receipt_reuse", {
+        "pic_hash": picture_hash,
+        "ref": reading["reference"],
+        "pay_amount": reading["amount"],
+        "pay_time": reading["paid_at"].isoformat() if reading["paid_at"] else None,
+        "target_freelancer": freelancer_id,
+    }).execute().data
+    verdict, reasons = judge_receipt(
+        reading,
+        account_name=gcash.get("account_name"),
+        gcash_number=gcash.get("gcash_number"),
+        earliest=_timestamp(earliest),
+        earliest_what=earliest_what,
+        requested_amount=requested,
+        reuse=reuse[0] if reuse else {},
+    )
+    sendable = verdict in ("ok", "check")
+
+    # Only a receipt that may be sent is kept: a fresh JPEG (nothing hidden in the
+    # file is copied over) in the client's own folder of the private bucket.
+    receipt_path = None
+    try:
+        if sendable:
+            receipt_path = f"{user_id}/receipt-{int(time.time() * 1000)}.jpg"
+            stored = to_clean_jpeg(picture.convert("RGB"), max_side=RECEIPT_STORED_SIDE)
+            supabase.storage.from_(RECEIPTS_BUCKET).upload(receipt_path, stored, {"content-type": "image/jpeg"})
+        check = supabase.table("receipt_checks").insert({
+            "client_id": user_id,
+            "project_id": project_id,
+            "payment_id": payment_id,
+            "receipt_path": receipt_path,
+            "picture_hash": picture_hash,
+            "reference_no": reading["reference"] if sendable else None,
+            "amount": reading["amount"] if sendable else None,
+            "paid_at": reading["paid_at"].isoformat() if sendable else None,
+            "receipt_name": (reading["name"] or "")[:80] or None,
+            "receipt_initials": initials_text(reading["initials"])[:30] or None,
+            "verdict": verdict,
+            "reasons": reasons,
+        }).execute().data[0]
+    except Exception:
+        logger.exception("Saving a receipt check failed")
+        if receipt_path:
+            try:
+                supabase.storage.from_(RECEIPTS_BUCKET).remove([receipt_path])
+            except Exception:
+                pass
+        raise HTTPException(503, "Couldn't save your receipt. Please try again.")
+
+    return {
+        "check_id": check["id"],
+        "verdict": verdict,
+        "reasons": reasons,
+        "reference": reading["reference"],
+        "amount": reading["amount"],
+        "paid_at": reading["paid_at"].isoformat() if reading["paid_at"] else None,
+        "name": reading["name"],
+        "initials": initials_text(reading["initials"]) or None,
+    }
 
 
 # ---------------------------------------------------------------------------
