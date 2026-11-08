@@ -118,6 +118,28 @@ export async function chatFileLink(path, seconds) {
   return error ? null : data.signedUrl;
 }
 
+// Downloads a whole chat file (a voice message) into the browser, so it plays
+// from memory without stopping to load on a slow connection. null if it failed.
+export async function downloadChatFile(path) {
+  const { data, error } = await supabase.storage.from(BUCKET).download(path);
+  return error ? null : data;
+}
+
+// Chrome saves voice recordings without their length, so the player shows no
+// total time and can't jump to a spot. Asking for a spot far past the end
+// makes the browser work the length out; then the player goes back to the
+// start. Call it from the <audio> element's onLoadedMetadata.
+export function showVoiceLength(audio) {
+  if (Number.isFinite(audio.duration)) return;
+  const backToStart = () => {
+    if (!Number.isFinite(audio.duration)) return;
+    audio.removeEventListener("durationchange", backToStart);
+    audio.currentTime = 0;
+  };
+  audio.addEventListener("durationchange", backToStart);
+  audio.currentTime = 1e101;
+}
+
 // Opens a document in a new tab (PDF and TXT show in the browser; the others
 // download). The link only works for 60 seconds. Returns "" or a message.
 export async function openChatFile(path) {

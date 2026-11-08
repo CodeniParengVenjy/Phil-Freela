@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MAX_VOICE_SECONDS } from "../../../lib/chatFiles";
+import { MAX_VOICE_SECONDS, showVoiceLength } from "../../../lib/chatFiles";
 import { Busy, Loader } from "../../../components/Loaders";
 
 // Recording formats to try, best first. Chrome and Firefox record WebM or
@@ -10,6 +10,17 @@ const FORMATS = [
   { mime: "audio/mp4", extension: "m4a" },
   { mime: "audio/ogg;codecs=opus", extension: "ogg" }
 ];
+
+// How the microphone is opened. The browser's default is made for calls: echo
+// cancelling and noise suppression, which on many phones and laptop mics cut
+// words off and made voice messages "nagputol-putol" (choppy). A voice message
+// goes one way, so both are off; automatic volume stays on so a soft voice is
+// still heard. One channel is enough for a voice.
+const MICROPHONE = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: true };
+
+// 64 kbps is clear for a voice and keeps a 2-minute message under 1 MB, so it
+// loads quickly on mobile data.
+const BITS_PER_SECOND = 64000;
 
 // 75 -> "1:15"
 function formatClock(seconds) {
@@ -44,7 +55,7 @@ export default function VoiceRecorder({ onSend, onClose }) {
       }
 
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({ audio: MICROPHONE });
       } catch {
         if (!cancelled) {
           setStage("error");
@@ -58,7 +69,7 @@ export default function VoiceRecorder({ onSend, onClose }) {
       }
 
       const chunks = [];
-      const recorder = new MediaRecorder(stream, { mimeType: format.mime });
+      const recorder = new MediaRecorder(stream, { mimeType: format.mime, audioBitsPerSecond: BITS_PER_SECOND });
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunks.push(event.data);
       };
@@ -72,7 +83,9 @@ export default function VoiceRecorder({ onSend, onClose }) {
         setRecording({ blob, mime, extension: format.extension, url: URL.createObjectURL(blob) });
         setStage("recorded");
       };
-      recorder.start();
+      // Hands over the sound every second instead of all at the end, so what
+      // was said is kept even if the phone interrupts the recording.
+      recorder.start(1000);
       recorderRef.current = recorder;
       setStage("recording");
 
@@ -139,7 +152,7 @@ export default function VoiceRecorder({ onSend, onClose }) {
 
         {stage === "recorded" && recording && (
           <div className="mb-3">
-            <audio src={recording.url} controls className="w-100"></audio>
+            <audio src={recording.url} controls className="w-100" onLoadedMetadata={(event) => showVoiceLength(event.currentTarget)}></audio>
             <small className="text-secondary fs-8 d-block mt-1">Listen back, then send it or discard it.</small>
           </div>
         )}

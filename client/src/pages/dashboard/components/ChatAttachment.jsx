@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
-import { chatFileLink, fileIcon, formatSize, openChatFile } from "../../../lib/chatFiles";
+import { downloadChatFile, fileIcon, formatSize, openChatFile, showVoiceLength } from "../../../lib/chatFiles";
 import { Busy } from "../../../components/Loaders";
 
-// Voice message links last an hour, plenty for listening while the chat is open.
-const VOICE_LINK_SECONDS = 60 * 60;
-
 // A file or voice message inside a chat bubble (lib/chatFiles.js). Both are
-// private, so each one gets its own short-lived link instead of a public one.
+// private: a document opens through its own short-lived link, and a voice
+// message is downloaded by the signed-in person (never a public link).
 export default function ChatAttachment({ message, showToast }) {
   if (message.attachment_type === "audio") return <VoicePlayer path={message.attachment_url} />;
   return <FileCard message={message} showToast={showToast} />;
@@ -41,22 +39,36 @@ function FileCard({ message, showToast }) {
   );
 }
 
-// A voice message: the audio player, once its private link is ready.
+// A voice message: the audio player, once the whole recording is downloaded.
+// Playing it from the browser's memory means it never stops halfway to load
+// more on a slow connection (it used to stream, and cut in and out).
 function VoicePlayer({ path }) {
-  // null while the link loads, "" if it failed.
+  // null while it downloads, "" if it failed, otherwise a local blob: link.
   const [link, setLink] = useState(null);
 
   useEffect(() => {
     let active = true;
-    chatFileLink(path, VOICE_LINK_SECONDS).then((url) => {
-      if (active) setLink(url || "");
+    let url = "";
+    downloadChatFile(path).then((blob) => {
+      if (!active) return;
+      url = blob ? URL.createObjectURL(blob) : "";
+      setLink(url);
     });
     return () => {
       active = false;
+      if (url) URL.revokeObjectURL(url); // frees the memory when the message leaves the screen
     };
   }, [path]);
 
   if (link === null) return <small className="text-white-50 fs-8 d-block mb-1"><Busy>Loading voice message</Busy></small>;
   if (!link) return <small className="text-white-50 fs-8 d-block mb-1"><i className="bi bi-mic-mute-fill me-1"></i>Couldn't load this voice message.</small>;
-  return <audio src={link} controls className="d-block mb-1" style={{ maxWidth: 260, width: "100%" }}></audio>;
+  return (
+    <audio
+      src={link}
+      controls
+      className="d-block mb-1"
+      style={{ maxWidth: 260, width: "100%" }}
+      onLoadedMetadata={(event) => showVoiceLength(event.currentTarget)}
+    ></audio>
+  );
 }
