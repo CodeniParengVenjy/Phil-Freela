@@ -59,7 +59,7 @@ export default function AdminPendingView() {
   // Shows the list the database sent (or says it couldn't).
   const showList = useCallback((data, error) => {
     if (error) {
-      setLoadError("Failed to load pending users.");
+      setLoadError("Failed to load pending accounts.");
       return;
     }
     const list = data.filter((person) => !deletedIds.current.has(person.id));
@@ -173,7 +173,7 @@ export default function AdminPendingView() {
 
   return (
     <section>
-      <h1 className="h4 fw-bold mb-1">Pending Users</h1>
+      <h1 className="h4 fw-bold mb-1">Pending Accounts</h1>
       <p className="text-secondary fs-7 mb-3">
         People who signed up with an email but haven't opened the confirmation link yet, so they can't sign in.
         Each new email cancels the older ones: tell them to use the newest email and to check their Spam folder.
@@ -208,7 +208,7 @@ export default function AdminPendingView() {
 
       <div className="admin-card rounded-4 p-3 p-md-4">
         {loadError && <p className="text-center text-white-50 py-3 mb-0">{loadError}</p>}
-        {!loadError && people === null && <SkeletonRows count={4} picture={0} boxed={false} label="Loading pending users" />}
+        {!loadError && people === null && <SkeletonRows count={4} picture={0} boxed={false} label="Loading pending accounts" />}
         {!loadError && people !== null && visiblePeople.length === 0 && (
           <p className="text-center text-white-50 py-3 mb-0">
             {people.length === 0 ? "Nobody is waiting on an email." : "No one matches that search."}

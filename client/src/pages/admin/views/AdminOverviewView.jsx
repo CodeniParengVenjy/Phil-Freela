@@ -12,26 +12,129 @@ import StatusCounts from "../components/StatusCounts";
 import TopRatedList from "../components/TopRatedList";
 import { Loader, LoadingDots } from "../../../components/Loaders";
 
-// One card per number returned by the admin_stats() database function. Every
-// card opens the page behind its number; the Users ones open the Users page
-// already filtered or sorted (it reads ?role=, ?verified=, ?sort= from the
-// address). The Users card is drawn separately below because it shows two
-// numbers in one: all users and who is online right now.
+// The number cards, sorted into groups so related numbers sit together under
+// their own heading. Each card is one number returned by the admin_stats()
+// database function, and opens the page behind it; the Users ones open the
+// Users page already filtered or sorted (it reads ?role=, ?verified=, ?sort=
+// from the address). The "all_users" card is drawn on its own (AllUsersCard)
+// because it shows two numbers in one: all users and who is online right now.
 //   to: where the card goes (superAdminOnly cards are plain, not links, for a
 //       regular admin, like the sidebar).
 //   value: a number worked out from the stats, for ones the database doesn't send.
-const statCards = [
-  { key: "freelancers", label: "Current Freelancers", icon: "bi-person-workspace", color: "orange", to: "/admin/users?role=freelancer" },
-  { key: "clients", label: "Current Clients", icon: "bi-briefcase-fill", color: "cyan", to: "/admin/users?role=client" },
-  { key: "verified_users", label: "Verified Users", icon: "bi-patch-check-fill", color: "green", to: "/admin/users?verified=verified" },
-  { key: "not_verified", label: "Not Verified Users", icon: "bi-person-x-fill", color: "red", to: "/admin/users?verified=unverified", value: (stats) => stats.total_users - stats.verified_users },
-  { key: "new_this_week", label: "New Users This Week", icon: "bi-person-plus-fill", color: "green", to: "/admin/users?sort=joined&dir=desc" },
-  { key: "pending_users", label: "Pending Users", icon: "bi-hourglass-split", color: "orange", to: "/admin/pending" },
-  { key: "services", label: "Services Posted", icon: "bi-grid-fill", color: "orange", to: "/admin/listings" },
-  { key: "job_posts", label: "Job Posts", icon: "bi-megaphone-fill", color: "cyan", to: "/admin/listings" },
-  { key: "admins", label: "Admins", icon: "bi-shield-lock-fill", color: "cyan", to: "/admin/admins", superAdminOnly: true },
-  { key: "open_reports", label: "Open Reports", icon: "bi-flag-fill", color: "red", to: "/admin/reports" }
+//   col: how wide each card in the group is (Bootstrap columns).
+const statGroups = [
+  {
+    key: "users",
+    title: "Users",
+    note: "Everyone with an account, by role, and who joined in the last 7 days.",
+    col: "col-12 col-sm-6 col-xl-3",
+    cards: [
+      { key: "all_users" },
+      { key: "freelancers", label: "Current Freelancers", icon: "bi-person-workspace", color: "orange", to: "/admin/users?role=freelancer" },
+      { key: "clients", label: "Current Clients", icon: "bi-briefcase-fill", color: "cyan", to: "/admin/users?role=client" },
+      { key: "new_this_week", label: "New Users This Week", icon: "bi-person-plus-fill", color: "green", to: "/admin/users?sort=joined&dir=desc" }
+    ]
+  },
+  {
+    key: "accounts",
+    title: "Account status",
+    note: "Who has a verified ID, who doesn't yet, and sign-ups still waiting on their confirmation email.",
+    col: "col-12 col-sm-6 col-lg-4",
+    cards: [
+      { key: "verified_users", label: "Verified Users", icon: "bi-patch-check-fill", color: "green", to: "/admin/users?verified=verified" },
+      { key: "not_verified", label: "Not Verified Users", icon: "bi-person-x-fill", color: "red", to: "/admin/users?verified=unverified", value: (stats) => stats.total_users - stats.verified_users },
+      { key: "pending_users", label: "Pending Accounts", icon: "bi-hourglass-split", color: "orange", to: "/admin/pending" }
+    ]
+  },
+  {
+    key: "listings",
+    title: "Listings",
+    note: "Services freelancers offer and jobs clients post.",
+    half: true,
+    col: "col-12 col-sm-6",
+    cards: [
+      { key: "services", label: "Services Posted", icon: "bi-grid-fill", color: "orange", to: "/admin/listings" },
+      { key: "job_posts", label: "Job Posts", icon: "bi-megaphone-fill", color: "cyan", to: "/admin/listings" }
+    ]
+  },
+  {
+    key: "safety",
+    title: "Reports and admins",
+    note: "Reports waiting for an admin, and the admin team.",
+    half: true,
+    col: "col-12 col-sm-6",
+    cards: [
+      { key: "open_reports", label: "Open Reports", icon: "bi-flag-fill", color: "red", to: "/admin/reports" },
+      { key: "admins", label: "Admins", icon: "bi-shield-lock-fill", color: "cyan", to: "/admin/admins", superAdminOnly: true }
+    ]
+  }
 ];
+
+// All users, and the ones online right now (seen in the last 2 minutes).
+function AllUsersCard({ stats }) {
+  return (
+    <div className="admin-card admin-stat-card is-link rounded-4 p-3">
+      <Link to="/admin/users" className="admin-stat-link d-flex align-items-center gap-3">
+        <span className="admin-stat-icon admin-stat-orange">
+          <i className="bi bi-people-fill"></i>
+        </span>
+        <div>
+          <div className="admin-stat-value">{stats ? stats.total_users : <LoadingDots />}</div>
+          <div className="text-secondary fs-7">All Users</div>
+        </div>
+      </Link>
+      <Link to="/admin/users?presence=online&sort=online&dir=desc" className="admin-stat-link d-inline-block fs-8 text-success fw-semibold mt-1" style={{ marginLeft: 60 }}>
+        <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>
+        {stats ? stats.online_users : <LoadingDots />} online now
+      </Link>
+    </div>
+  );
+}
+
+// One number card. A plain card (not a link) when this admin can't open the page behind it.
+function StatCard({ card, stats, isSuperAdmin }) {
+  // Only a super admin can open the Admins page.
+  const linked = !card.superAdminOnly || isSuperAdmin;
+  // A dash if the database didn't send this number.
+  const number = stats ? ((card.value ? card.value(stats) : stats[card.key]) ?? "-") : <LoadingDots />;
+  const body = (
+    <>
+      <span className={`admin-stat-icon admin-stat-${card.color}`}>
+        <i className={`bi ${card.icon}`}></i>
+      </span>
+      <div>
+        <div className="admin-stat-value">{number}</div>
+        <div className="text-secondary fs-7">{card.label}</div>
+      </div>
+    </>
+  );
+  return linked ? (
+    <Link to={card.to} className="admin-card admin-stat-card is-link admin-stat-link rounded-4 p-3 d-flex align-items-center gap-3">
+      {body}
+    </Link>
+  ) : (
+    <div className="admin-card admin-stat-card rounded-4 p-3 d-flex align-items-center gap-3">{body}</div>
+  );
+}
+
+// One group: its heading, a short line on what it counts, then its cards.
+function StatGroup({ group, stats, isSuperAdmin }) {
+  return (
+    <section aria-labelledby={`stat-group-${group.key}`}>
+      <h2 id={`stat-group-${group.key}`} className="h6 fw-bold text-white mb-0">{group.title}</h2>
+      <p className="text-secondary fs-7 mb-2">{group.note}</p>
+      <div className="row g-3">
+        {group.cards.map((card) => (
+          <div key={card.key} className={group.col}>
+            {card.key === "all_users"
+              ? <AllUsersCard stats={stats} />
+              : <StatCard card={card} stats={stats} isSuperAdmin={isSuperAdmin} />}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 // The growth graph under the cards: one line per kind, day by day. The tabs pick
 // what is counted. Colors follow the thing counted: orange is freelancers and
@@ -428,54 +531,16 @@ export default function AdminOverviewView() {
         </div>
       )}
 
+      {/* The number cards in their groups. Users and Account status take the full
+          width; Listings and Reports and admins (two cards each) sit side by side
+          on a wide screen. */}
       {view === "overview" && !error && (
-        <div className="row g-3">
-          {/* All users, and the ones online right now (seen in the last 2 minutes). */}
-          <div className="col-12 col-sm-6 col-xl-4">
-            <div className="admin-card admin-stat-card is-link rounded-4 p-3">
-              <Link to="/admin/users" className="admin-stat-link d-flex align-items-center gap-3">
-                <span className="admin-stat-icon admin-stat-orange">
-                  <i className="bi bi-people-fill"></i>
-                </span>
-                <div>
-                  <div className="admin-stat-value">{stats ? stats.total_users : <LoadingDots />}</div>
-                  <div className="text-secondary fs-7">All Users</div>
-                </div>
-              </Link>
-              <Link to="/admin/users?presence=online&sort=online&dir=desc" className="admin-stat-link d-inline-block fs-8 text-success fw-semibold mt-1" style={{ marginLeft: 60 }}>
-                <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>
-                {stats ? stats.online_users : <LoadingDots />} online now
-              </Link>
+        <div className="row g-4">
+          {statGroups.map((group) => (
+            <div key={group.key} className={group.half ? "col-12 col-xl-6" : "col-12"}>
+              <StatGroup group={group} stats={stats} isSuperAdmin={isSuperAdmin} />
             </div>
-          </div>
-          {statCards.map((card) => {
-            // Only a super admin can open the Admins page.
-            const linked = !card.superAdminOnly || isSuperAdmin;
-            // A dash if the database didn't send this number.
-            const number = stats ? ((card.value ? card.value(stats) : stats[card.key]) ?? "-") : <LoadingDots />;
-            const body = (
-              <>
-                <span className={`admin-stat-icon admin-stat-${card.color}`}>
-                  <i className={`bi ${card.icon}`}></i>
-                </span>
-                <div>
-                  <div className="admin-stat-value">{number}</div>
-                  <div className="text-secondary fs-7">{card.label}</div>
-                </div>
-              </>
-            );
-            return (
-              <div key={card.key} className="col-12 col-sm-6 col-xl-4">
-                {linked ? (
-                  <Link to={card.to} className="admin-card admin-stat-card is-link admin-stat-link rounded-4 p-3 d-flex align-items-center gap-3">
-                    {body}
-                  </Link>
-                ) : (
-                  <div className="admin-card admin-stat-card rounded-4 p-3 d-flex align-items-center gap-3">{body}</div>
-                )}
-              </div>
-            );
-          })}
+          ))}
         </div>
       )}
 

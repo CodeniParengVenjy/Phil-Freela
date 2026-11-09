@@ -19,7 +19,7 @@ const sidebarItems = [
     id: "people", icon: "bi-person-lines-fill", label: "People",
     links: [
       { to: "/admin/users", icon: "bi-people-fill", label: "Users" },
-      { to: "/admin/pending", icon: "bi-hourglass-split", label: "Pending Users", badge: "users" },
+      { to: "/admin/pending", icon: "bi-hourglass-split", label: "Pending Accounts", badge: "users" },
       { to: "/admin/verifications", icon: "bi-person-vcard-fill", label: "Verifications", badge: "verifications" },
       { to: "/admin/archives", icon: "bi-archive-fill", label: "Archives" }
     ]
@@ -88,7 +88,7 @@ export default function AdminLayout() {
   const [pendingFlagged, setPendingFlagged] = useState(0);
   // Number shown on the Approvals link (super admins only).
   const [pendingApprovals, setPendingApprovals] = useState(0);
-  // Number shown on the Pending Users link: people who signed up but haven't
+  // Number shown on the Pending Accounts link: people who signed up but haven't
   // confirmed their email.
   const [pendingUsers, setPendingUsers] = useState(0);
   // Number shown on the Community Billboard link: member ads waiting for an admin.
@@ -309,7 +309,7 @@ export default function AdminLayout() {
     .map((item) => (item.links?.length === 1 ? item.links[0] : item));
 
   // Pending counts beside the links. Red = waiting for an admin decision;
-  // amber (Pending Users) = waiting on the person's own email.
+  // amber (Pending Accounts) = waiting on the person's own email.
   const badges = {
     users: { count: pendingUsers, amber: true },
     reports: { count: pendingReports },
