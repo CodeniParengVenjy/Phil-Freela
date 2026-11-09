@@ -14,6 +14,7 @@ import PaymentsSection from "../components/PaymentsSection";
 import ProjectPriceBox from "../components/ProjectPriceBox";
 import ReportDialog from "../components/ReportDialog";
 import DueBadge from "../components/DueBadge";
+import LateBlockNotice from "../components/LateBlockNotice";
 import { Loader, Busy } from "../../../components/Loaders";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
@@ -293,6 +294,9 @@ export default function ProjectDetailsView() {
             {iAmClient ? `Message ${otherName} to ask about it.` : "Submit your work or message the client."}
           </div>
         )}
+        {/* Work not sent by the due date: the freelancer can't apply to this
+            client's job posts until the client allows it (lib/lateBlock.js). */}
+        <LateBlockNotice projectId={project.id} isClient={iAmClient} otherName={otherName} showToast={showToast} />
 
         <div className="row g-3">
           <div className="col-md-6">

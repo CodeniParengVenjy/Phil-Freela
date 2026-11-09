@@ -10,6 +10,7 @@ import ProBadge from "../../../components/ProBadge";
 import { wakeAiService } from "../../../lib/aiService";
 import { MAX_NOTE_LENGTH, RESUME_ACCEPT, applicantsText, applyToJob, getMyApplicationForJob, openResume, resumeIcon, useApplicantCounts, withdrawApplication } from "../../../lib/applications";
 import { formatDay } from "../../../lib/projects";
+import { getBlockingLateProject } from "../../../lib/lateBlock";
 import { HIRES_FIELD, budgetText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
@@ -83,6 +84,22 @@ export default function JobDetailsView() {
   // How many freelancers applied (undefined until the database answers). It is
   // asked again after this freelancer applies or withdraws (`application`).
   const applicantCount = useApplicantCounts(job ? [job.id] : [], application?.id).get(job?.id);
+
+  // A project for this client that the freelancer didn't send by its due date
+  // (and the client hasn't allowed them again): then they can't apply to this
+  // client's posts, and the apply box says why (lib/lateBlock.js).
+  const [lateProject, setLateProject] = useState(null);
+  const clientId = job?.client?.id;
+  useEffect(() => {
+    if (accountType !== "freelancer" || !clientId || !currentUserId || clientId === currentUserId) return undefined;
+    let active = true;
+    getBlockingLateProject(currentUserId, clientId).then((found) => {
+      if (active) setLateProject(found);
+    });
+    return () => {
+      active = false;
+    };
+  }, [accountType, clientId, currentUserId]);
 
   // Counts this visit for the job's owner (Premium shows them how many people
   // opened it; the database leaves out the owner's own visits).
@@ -220,6 +237,17 @@ export default function JobDetailsView() {
     }
     if (isPostingBlocked(suspension)) {
       return <BlockedNotice suspension={suspension} what="apply to jobs" compact />;
+    }
+    // Missed a due date on this client's project: the database refuses the
+    // application, so say why instead of showing the form.
+    if (lateProject) {
+      return (
+        <p className="text-secondary fs-7 mb-0">
+          <i className="bi bi-slash-circle text-warning me-1"></i> You can't apply to {clientName}'s job posts: the work for your project "
+          <CensoredText text={lateProject.title} />" (due {formatDay(lateProject.due_date)}) wasn't sent on time. {clientName} can allow you to apply again from that project's page.{" "}
+          <Link to={`/dashboard/project-details/${lateProject.id}`} className="text-role fw-bold text-decoration-none">Open project</Link>
+        </p>
+      );
     }
     if (iAmVerified === false) {
       return (
