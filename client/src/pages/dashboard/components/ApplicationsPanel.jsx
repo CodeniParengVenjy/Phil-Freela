@@ -47,7 +47,8 @@ function FitReasons({ pick }) {
   if (pick.skills_total > 0) {
     reasons.push({
       icon: "bi-tools",
-      text: `Has ${pick.skills_matched.length} of ${plural(pick.skills_total, "skill")}`,
+      // "(1 related)": a skill of the same kind of work, not the skill itself (it counts half).
+      text: `Has ${pick.skills_matched.length} of ${plural(pick.skills_total, "skill")}${pick.skills_related ? ` (${pick.skills_related} related)` : ""}`,
       title: pick.skills_matched.length ? `Has: ${pick.skills_matched.join(", ")}` : "None of the required skills were found"
     });
   }

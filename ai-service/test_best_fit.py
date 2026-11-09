@@ -48,9 +48,29 @@ check("in between is in between", 0.4 < bf.resume_score(0.35) < 0.6, bf.resume_s
 check("unknown resume gets the middle score", bf.resume_score(None) == bf.UNKNOWN_RESUME)
 
 skills = ["Logo Design", "Adobe Illustrator", "Packaging Design"]
-matched = bf.matched_skills(skills, ["Logo Design"], ["illustrator"])
+exact, related = bf.skill_matches(skills, "graphic-design", ["Logo Design"], ["illustrator"])
 check("skills found in the resume and on the profile (typed differently) both count",
-      matched == ["Logo Design", "Adobe Illustrator"], matched)
+      exact == ["Logo Design", "Adobe Illustrator"], exact)
+check("a skill they lack, but of the same kind of work, is related",
+      related == [("Packaging Design", "Logo Design")], related)
+
+# The case the user saw on live: an invitation job, a graphic designer's resume.
+exact, related = bf.skill_matches(["Creative Designer", "Invitation Design"], "graphic-design",
+                                  ["Graphic Design", "Canva", "Adobe Photoshop"], ["Video Editor"])
+check("'Invitation Design' is related to Graphic Design (same kind of work)", ("Invitation Design", "Graphic Design") in related, related)
+check("a typed skill not on the list ('Creative Designer') takes the job's category", ("Creative Designer", "Graphic Design") in related, related)
+exact, related = bf.skill_matches(["Invitation Design"], "graphic-design", ["Python", "Web Development", "Bookkeeping"], [])
+check("unrelated skills give nothing", exact == [] and related == [], (exact, related))
+exact, related = bf.skill_matches(["Event Hosting Help"], "other", ["Data Entry"], ["Some Other Thing"])
+check("the mixed 'other' group never makes skills related", related == [], related)
+
+one_exact = bf.score_applicant(applicant("e", similarity=0.5, resume_skills=["Invitation Design"]), ["Invitation Design"], "graphic-design")
+one_related = bf.score_applicant(applicant("r", similarity=0.5, resume_skills=["Graphic Design"]), ["Invitation Design"], "graphic-design")
+one_none = bf.score_applicant(applicant("n", similarity=0.5, resume_skills=["Python"]), ["Invitation Design"], "graphic-design")
+check("the exact skill beats a related one, which beats none", one_exact["fit"] > one_related["fit"] > one_none["fit"],
+      (one_exact["fit"], one_related["fit"], one_none["fit"]))
+check("a related skill is named in the list and counted",
+      one_related["skills_matched"] == ["Invitation Design (related: Graphic Design)"] and one_related["skills_related"] == 1, one_related)
 
 # The resume that fits the job beats a better record with an unrelated resume.
 ranked = bf.rank([

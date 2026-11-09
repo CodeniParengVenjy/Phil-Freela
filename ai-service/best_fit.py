@@ -5,7 +5,7 @@ recommendation system (feature 1 in PhilFreela-System-Functions.md):
 - content-based filtering: each applicant's resume is compared with the job
   post by meaning (the pretrained all-MiniLM-L6-v2 model, text_embedder.py),
   and the job's required skills are looked for in the resume and on the
-  freelancer's profile;
+  freelancer's profile (the skill itself, or one of the same kind of work);
 - the ranking/scoring algorithm: their rating, completed projects and how fast
   they reply (the same helpers as recommendations.py).
 
@@ -35,6 +35,7 @@ from listing_search import post_text, vector_text
 from recommendations import completed_score, rating_score, response_score
 from resume_check import read_text
 from skills import match_skill, skills_in_text
+from skills_list import SKILLS
 from text_embedder import embed_texts
 
 log = logging.getLogger("best_fit")
@@ -64,6 +65,20 @@ MATCH_REASON = 0.38
 # A resume the AI couldn't read (or hasn't read yet) gets this middle score,
 # not 0: the freelancer shouldn't lose points because a picture was blurry.
 UNKNOWN_RESUME = 0.5
+
+# Required skills (the user, 2026-11-10: a designer with Graphic Design, Canva and
+# Photoshop got "0 of 2 skills" on a job asking for "Invitation Design"):
+# - the freelancer has the skill itself (any spelling): it counts fully;
+# - they have another skill of the SAME KIND OF WORK (its category in
+#   skills_list.py, the site's own categories): it counts half. A skill the
+#   client typed that isn't on the list takes the job post's category.
+# Comparing the short skill names by meaning was tried first and dropped: the
+# model put "Invitation Design" and "Graphic Design" at only 0.26, below
+# unrelated pairs such as "Graphic Design" and "Video Editing" (0.39).
+RELATED_CREDIT = 0.5
+# Each known skill's kind of work. "other" is a mixed group, so it never makes
+# two skills related.
+KIND_OF = {name.lower(): category for name, category, _ in SKILLS if category != "other"}
 
 PART_WORDS = 80  # words per part of a resume
 MAX_PARTS = 10  # only the first 800 words count (a resume is 1-3 pages)
@@ -126,14 +141,32 @@ def standard(skill):
     return (match_skill(skill) or skill).strip().lower()
 
 
-def matched_skills(job_skills, resume_skills, profile_skills):
-    """The job's required skills (as the client wrote them) that the freelancer
-    has, in the resume or on their profile."""
-    have = {standard(s) for s in list(resume_skills) + list(profile_skills or [])}
-    return [s for s in job_skills if standard(s) in have]
+def skill_matches(job_skills, job_category, resume_skills, profile_skills):
+    """Which of the job's required skills (as the client wrote them) the
+    freelancer has, from their resume and their profile:
+    (exact, related), where exact is a list of job skills they have, and
+    related is a list of (job skill, their skill of the same kind of work)."""
+    theirs = list(resume_skills) + list(profile_skills or [])
+    have = {standard(s) for s in theirs}
+    # The first of their skills for each kind of work (by its standard name).
+    kinds = {}
+    for skill in theirs:
+        kind = KIND_OF.get(standard(skill))
+        if kind and kind not in kinds:
+            kinds[kind] = match_skill(skill) or skill
+
+    exact, related = [], []
+    for skill in job_skills:
+        if standard(skill) in have:
+            exact.append(skill)
+        else:
+            kind = KIND_OF.get(standard(skill), job_category if job_category != "other" else None)
+            if kind in kinds:
+                related.append((skill, kinds[kind]))
+    return exact, related
 
 
-def score_applicant(applicant, job_skills):
+def score_applicant(applicant, job_skills, job_category=None):
     """One applicant's score (0..1) and what the website shows about it.
 
     applicant: a row of applicant_records plus "similarity" (resume to job,
@@ -143,7 +176,9 @@ def score_applicant(applicant, job_skills):
     if not job_skills:
         weights["resume"] += weights.pop("skills")
 
-    matched = matched_skills(job_skills, applicant.get("resume_skills") or [], applicant.get("profile_skills"))
+    exact, related = skill_matches(job_skills, job_category, applicant.get("resume_skills") or [], applicant.get("profile_skills"))
+    # Shown in the "Has 2 of 3 skills" hint: a related one says what it is.
+    matched = exact + [f"{skill} (related: {theirs})" for skill, theirs in related]
     stars = applicant.get("avg_stars")
     stars = float(stars) if stars is not None else None
     ratings = applicant.get("rating_count") or 0
@@ -152,7 +187,7 @@ def score_applicant(applicant, job_skills):
 
     factors = {
         "resume": resume_score(applicant.get("similarity")),
-        "skills": len(matched) / len(job_skills) if job_skills else 0.0,
+        "skills": (len(exact) + RELATED_CREDIT * len(related)) / len(job_skills) if job_skills else 0.0,
         "rating": rating_score(stars, ratings),
         "completed": completed_score(completed),
         "response": response_score(reply),
@@ -166,6 +201,7 @@ def score_applicant(applicant, job_skills):
         "read": applicant.get("read", "ok"),
         "resume_match": similarity is not None and similarity >= MATCH_REASON,
         "skills_matched": matched,
+        "skills_related": len(related),
         "skills_total": len(job_skills),
         "rating_count": ratings,
         "avg_stars": round(stars, 1) if stars is not None else None,
@@ -175,10 +211,10 @@ def score_applicant(applicant, job_skills):
     }
 
 
-def rank(applicants, job_skills):
+def rank(applicants, job_skills, job_category=None):
     """Everyone scored, best first. Two equal scores (to 3 decimals): whoever
     applied first goes first, so applying early still counts."""
-    scored = [score_applicant(a, job_skills) for a in applicants]
+    scored = [score_applicant(a, job_skills, job_category) for a in applicants]
     scored.sort(key=lambda s: (-round(s["score"], 3), s["applied_at"]))
     for s in scored:
         del s["score"]
@@ -249,4 +285,4 @@ def best_fit(supabase, user_id, job_id):
         a["read"] = "pending" if not row else ("ok" if row["read_ok"] else "unreadable")
         pending += a["read"] == "pending"
 
-    return {"results": rank(applicants, job_skills), "pending": pending}
+    return {"results": rank(applicants, job_skills, job.get("category")), "pending": pending}

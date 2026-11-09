@@ -1608,7 +1608,8 @@ def get_recommendations(authorization: str | None = Header(default=None)):
 def get_best_fit(job_id: str, authorization: str | None = Header(default=None)):
     """The freelancers who applied to this job post, best fit first:
     {"results": [{application_id, fit (0-100), read ("ok", "unreadable",
-    "pending"), resume_match, skills_matched, skills_total, rating_count,
+    "pending"), resume_match, skills_matched (a related skill reads "X (related:
+    Y)"), skills_related, skills_total, rating_count,
     avg_stars, completed, fast_reply, applied_at}], "pending": resumes still
     to be read (ask again)}. Only the client who posted the job may ask.
     Returns ids only; the website loads the applications itself, under the
