@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { checkResume } from "./aiService";
 import { shrinkImage } from "./shrinkImage";
@@ -178,6 +179,44 @@ export function getApplicantsForMyJobs(clientId) {
     .select(`id, resume_path, cover_note, created_at, ${PROJECT_FIELD}, job:job_posts!inner(id, title, client_id, due_date, budget, budget_type), freelancer:profiles(id, full_name, username, avatar_path)`)
     .eq("job.client_id", clientId)
     .order("created_at", { ascending: false });
+}
+
+// "12 applied": how many freelancers applied to each job post, as a Map of job
+// id -> number (applicant_count, database/supabase_best_fit_schema.sql,
+// Section 1). One request for the whole list, asked again only when the posts
+// on the page change. It is a separate request on purpose: if the database
+// can't answer (for example before that SQL is run) the Map stays empty and the
+// pages simply show no count, while the posts themselves still load.
+// refresh: when this value changes the counts are asked again (the job page
+// passes the freelancer's own application, so applying or withdrawing updates it).
+export function useApplicantCounts(jobIds, refresh = null) {
+  const key = [...new Set(jobIds.filter(Boolean))].sort().join(",");
+  const [counts, setCounts] = useState(() => new Map());
+
+  useEffect(() => {
+    if (!key) return undefined;
+    let active = true;
+    supabase
+      .from("job_posts")
+      .select("id, applicant_count")
+      .in("id", key.split(","))
+      .then(({ data, error }) => {
+        if (!active) return;
+        setCounts(error ? new Map() : new Map(data.map((row) => [row.id, row.applicant_count])));
+      });
+    return () => {
+      active = false;
+    };
+  }, [key, refresh]);
+
+  return counts;
+}
+
+// The words for a job's applicant count. A freelancer is told when nobody has
+// applied yet ("Be the first to apply"); the job's owner reads "No applicants yet".
+export function applicantsText(count, forOwner = false) {
+  if (count === 0) return forOwner ? "No applicants yet" : "Be the first to apply";
+  return `${count} applied`;
 }
 
 // Opens a resume through a link that stops working after 60 seconds, so a

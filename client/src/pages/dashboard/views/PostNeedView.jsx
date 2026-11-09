@@ -7,6 +7,7 @@ import { isPostingBlocked } from "../../../lib/suspensions";
 import { fetchIsVerified } from "../../../lib/verification";
 import { useFeatureStatus } from "../../../lib/featured";
 import { claimFreeFeature, getFreeFeature, useMyViews } from "../../../lib/pro";
+import { applicantsText, useApplicantCounts } from "../../../lib/applications";
 import { formatDay, todayInManila } from "../../../lib/projects";
 import { BUDGET_TYPES, HIRES_FIELD, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, datesText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import BlockedNotice from "../components/BlockedNotice";
@@ -94,6 +95,8 @@ export default function PostNeedView() {
   // the "Feature this post" pay window (null = closed).
   const featured = useFeatureStatus(currentUserId);
   const [postToFeature, setPostToFeature] = useState(null);
+  // How many freelancers applied to each of the client's posts ("12 applied").
+  const applicantCounts = useApplicantCounts((posts || []).map((p) => p.id));
   // Premium's perks on this list: how many people opened each post, and the free
   // Featured post every 30 days ({ available } once read; null otherwise).
   const views = useMyViews(currentUserId);
@@ -716,7 +719,16 @@ export default function PostNeedView() {
                       {p.updated_at && ` • Edited ${new Date(p.updated_at).toLocaleDateString()}`}
                     </p>
                     <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-calendar-event me-1"></i>{datesText(p)}</p>
-                    <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-people me-1"></i>{hired} of {p.freelancers_needed} hired</p>
+                    <p className="text-white-50 fs-8 mb-0 mt-1">
+                      <i className="bi bi-people me-1"></i>{hired} of {p.freelancers_needed} hired
+                      {/* How many applied; it opens this post's applicants, best fit first. */}
+                      {applicantCounts.has(p.id) && (
+                        <>
+                          {" • "}
+                          <Link to={`/dashboard/projects?job=${p.id}`} className="text-white-50 text-decoration-underline">{applicantsText(applicantCounts.get(p.id), true)}</Link>
+                        </>
+                      )}
+                    </p>
                     {/* Who they are, and a button to each one's project. */}
                     <HiredFreelancers hires={hiresOf(p)} />
                     {/* Only an open post can be Featured (a filled or expired one is hidden from freelancers anyway). */}

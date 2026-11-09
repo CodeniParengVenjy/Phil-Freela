@@ -9,6 +9,7 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { useRatingSummaries } from "../../../lib/ratings";
 import { useFeatureStatus } from "../../../lib/featured";
 import { useProIds } from "../../../lib/pro";
+import { applicantsText, useApplicantCounts } from "../../../lib/applications";
 import ProBadge from "../../../components/ProBadge";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
@@ -89,6 +90,8 @@ export default function FindJobsView({ withRecommendations = false }) {
   const ratings = useRatingSummaries((jobs || []).map((job) => job.client?.id));
   // Which job posts someone paid to feature (and are still running).
   const featured = useFeatureStatus();
+  // How many freelancers applied to each post ("12 applied"), in one request.
+  const applicantCounts = useApplicantCounts((jobs || []).map((job) => job.id));
 
   const filtered = useMemo(() => {
     if (!jobs) return [];
@@ -150,9 +153,15 @@ export default function FindJobsView({ withRecommendations = false }) {
             <span className="badge bg-role-subtle text-role px-3 py-1 rounded-pill">{getJobType(job.job_type).short}</span>
             {budgetText(job) && <span className="text-warning">{budgetText(job)}</span>}
           </div>
-          {/* When the work starts and is due. */}
-          {datesText(job) && (
-            <p className="text-white-50 fs-8 mb-0 mt-2"><i className="bi bi-calendar-event me-1"></i>{datesText(job)}</p>
+          {/* When the work starts and is due, and how many freelancers applied
+              (no count until the database answers). */}
+          {(datesText(job) || applicantCounts.has(job.id)) && (
+            <p className="text-white-50 fs-8 mb-0 mt-2 d-flex flex-wrap column-gap-3 row-gap-1">
+              {datesText(job) && <span><i className="bi bi-calendar-event me-1"></i>{datesText(job)}</span>}
+              {applicantCounts.has(job.id) && (
+                <span><i className="bi bi-file-earmark-person me-1"></i>{applicantsText(applicantCounts.get(job.id))}</span>
+              )}
+            </p>
           )}
           {/* Picked by the AI: marked, with why. */}
           {picked.has(job.id) && <RecommendationMarks pick={picked.get(job.id)} personalized={recs.personalized} want="jobs" />}

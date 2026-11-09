@@ -8,7 +8,7 @@ import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import { recordView, useProIds } from "../../../lib/pro";
 import ProBadge from "../../../components/ProBadge";
 import { wakeAiService } from "../../../lib/aiService";
-import { MAX_NOTE_LENGTH, RESUME_ACCEPT, applyToJob, getMyApplicationForJob, openResume, resumeIcon, withdrawApplication } from "../../../lib/applications";
+import { MAX_NOTE_LENGTH, RESUME_ACCEPT, applicantsText, applyToJob, getMyApplicationForJob, openResume, resumeIcon, useApplicantCounts, withdrawApplication } from "../../../lib/applications";
 import { formatDay } from "../../../lib/projects";
 import { HIRES_FIELD, budgetText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import Avatar from "../../../components/Avatar";
@@ -80,6 +80,9 @@ export default function JobDetailsView() {
   const clientVerified = clientVerifiedIds.has(job?.client?.id);
   // Whether the client has Premium right now (the gold Premium badge by their name).
   const clientPremium = useProIds().has(job?.client?.id);
+  // How many freelancers applied (undefined until the database answers). It is
+  // asked again after this freelancer applies or withdraws (`application`).
+  const applicantCount = useApplicantCounts(job ? [job.id] : [], application?.id).get(job?.id);
 
   // Counts this visit for the job's owner (Premium shows them how many people
   // opened it; the database leaves out the owner's own visits).
@@ -158,7 +161,9 @@ export default function JobDetailsView() {
       return (
         <>
           <p className="text-secondary fs-7 mb-0">
-            This is your job post. {hired} of {job.freelancers_needed} hired so far. Freelancers who apply show up in <Link to="/dashboard/projects" className="text-role fw-bold text-decoration-none">Projects & Resumes</Link>.
+            This is your job post. {hired} of {job.freelancers_needed} hired so far. Freelancers who apply show up in{" "}
+            {/* ?job= opens the Applications box on this post's applicants. */}
+            <Link to={`/dashboard/projects?job=${job.id}`} className="text-role fw-bold text-decoration-none">Projects & Resumes</Link>.
           </p>
           {/* Who was hired from this post, with each one's project. */}
           <HiredFreelancers hires={hiresOf(job)} showEmpty />
@@ -293,6 +298,10 @@ export default function JobDetailsView() {
               {job.start_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-event me-1"></i>Starts {formatDay(job.start_date)}</span>}
               {job.due_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-check me-1"></i>Due {formatDay(job.due_date)}</span>}
               {job.freelancers_needed > 1 && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-people me-1"></i>Needs {job.freelancers_needed} freelancers</span>}
+              {/* How many freelancers applied (shown once the database answers). */}
+              {applicantCount !== undefined && (
+                <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-file-earmark-person me-1"></i>{applicantsText(applicantCount, isOwnJob)}</span>
+              )}
             </div>
           </div>
           {isOwnJob && (
