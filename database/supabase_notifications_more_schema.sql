@@ -142,3 +142,151 @@ begin
   return new;
 end;
 $$;
+
+
+-- =====================================================================
+-- Section 2. Job post filled / job post closed (Steps N2 and N3)
+-- =====================================================================
+-- A job post is open, filled or expired (job_state(), never stored): filled =
+-- it has as many hired projects as freelancers_needed; expired = its due date
+-- passed (Manila) without being filled. Nobody was told when either happened.
+-- Now the client gets:
+--   * "Job post filled" the moment the last needed freelancer is hired;
+--   * "Job post closed" the morning after its due date passes (a daily job at
+--     8:00 AM Manila), once per post and due date, so editing the dates and
+--     letting it expire again sends a new one.
+
+-- 2a. The two new kinds (the Section 1 list plus job_filled and job_expired).
+alter table public.user_notifications
+  drop constraint if exists user_notifications_type_check,
+  add constraint user_notifications_type_check check (type = any (array[
+    'verification_approved', 'verification_rejected', 'suspension', 'suspension_lifted',
+    'appeal_accepted', 'appeal_rejected', 'report_resolved', 'report_dismissed',
+    'project_hired', 'project_submitted', 'project_done', 'project_changes', 'project_rated',
+    'booking_requested', 'booking_accepted', 'booking_declined', 'booking_cancelled',
+    'school_id_pass', 'payment_sent', 'payment_confirmed', 'payment_not_received',
+    'payment_requested', 'promotion_approved', 'promotion_rejected',
+    'price_proposed', 'price_agreed', 'payment_short', 'payment_unpaid',
+    'application_new', 'job_filled', 'job_expired'
+  ]));
+
+-- 2b. A hire filled the post. It fires when the number of hired projects
+--     becomes EQUAL to freelancers_needed, so it happens once; if the client
+--     raises the number and fills it again, it happens again.
+create or replace function public.notify_job_filled()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  job public.job_posts%rowtype;
+  hired integer;
+begin
+  if new.job_post_id is null then
+    return new; -- a project from a booking, not from a job post
+  end if;
+  select * into job from public.job_posts j where j.id = new.job_post_id;
+  if not found then
+    return new;
+  end if;
+
+  select count(*) into hired from public.projects p where p.job_post_id = job.id;
+  if hired = job.freelancers_needed then
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      job.client_id,
+      'job_filled',
+      'Job post filled',
+      'Your job post "' || job.title || '" is filled: you hired '
+        || case when hired = 1 then 'the freelancer it needed' else 'the ' || hired || ' freelancers it needed' end
+        || '. It no longer shows on Find Jobs.',
+      '/dashboard/job-details/' || job.id
+    );
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.notify_job_filled() from public, anon, authenticated;
+
+create or replace trigger notify_job_filled
+  after insert on public.projects
+  for each row execute function public.notify_job_filled();
+
+-- 2c. A small log of the notices the daily job already sent, so nothing is
+--     sent twice. due_date is part of the key: a post (or, in Step N4, a
+--     project) with a new date gets fresh notices. Only the database
+--     functions use it: row level security is on and there are no policies.
+--     When the table is first made, the posts that are ALREADY expired are
+--     written in as told, so the first run doesn't send old news.
+do $$
+begin
+  if to_regclass('public.scheduled_notices') is null then
+    create table public.scheduled_notices (
+      kind text not null,        -- job_expired (Step N4 adds the project ones)
+      target_id uuid not null,   -- the job post (or project)
+      due_date date not null,    -- its due date when the notice went out
+      sent_at timestamptz not null default now(),
+      primary key (kind, target_id, due_date)
+    );
+    alter table public.scheduled_notices enable row level security;
+    revoke all on public.scheduled_notices from anon, authenticated;
+
+    insert into public.scheduled_notices (kind, target_id, due_date)
+    select 'job_expired', j.id, j.due_date
+    from public.job_posts j
+    where public.job_state(j.id) = 'expired';
+  end if;
+end;
+$$;
+
+comment on table public.scheduled_notices is
+  'Notices the daily job (send_daily_notices) already sent, one per kind, item and due date. Only database functions use it.';
+
+-- 2d. The daily job. Today it sends "Job post closed"; Step N4 adds the
+--     due-date reminders and late notices to this same function.
+--     Gives back how many notices it sent.
+create or replace function public.send_daily_notices()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  sent integer := 0;
+  post record;
+begin
+  -- Job posts that closed because their due date passed (filled ones don't count).
+  for post in
+    select j.id, j.client_id, j.title, j.due_date
+    from public.job_posts j
+    where public.job_state(j.id) = 'expired'
+      and not exists (
+        select 1 from public.scheduled_notices s
+        where s.kind = 'job_expired' and s.target_id = j.id and s.due_date = j.due_date
+      )
+  loop
+    insert into public.scheduled_notices (kind, target_id, due_date)
+    values ('job_expired', post.id, post.due_date);
+
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      post.client_id,
+      'job_expired',
+      'Job post closed',
+      'Your job post "' || post.title || '" closed because its due date passed. Edit it to reopen it.',
+      '/dashboard/job-details/' || post.id
+    );
+    sent := sent + 1;
+  end loop;
+
+  return sent;
+end;
+$$;
+
+revoke all on function public.send_daily_notices() from public, anon, authenticated;
+
+-- 2e. Every day at 8:00 AM Manila (pg_cron uses UTC: 00:00 UTC = 8:00 AM).
+--     Scheduling the same name again only updates it.
+select cron.schedule('daily-notices', '0 0 * * *', 'select public.send_daily_notices()');

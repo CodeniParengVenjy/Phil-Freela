@@ -156,7 +156,9 @@ files; if N1 needs something there, send that session a message (ListAgents, Sen
 
 - 2026-11-10: the user approved the plan with "ok", and added to N1: "if someone applies, it notifies
   and it counts, to inform there is someone applied". So N1 also has a "new applicants" count.
-- N1 built (website pushed, database NOT applied yet, waits for the user's go):
+- N1 built and LIVE: website pushed (719ccbf); database applied 2026-11-10 after the user's "go go go"
+  (migration `notifications_new_applicant`), then test_notifications_more.sql 15/15 against the live rule
+  (rolled back, nothing left), and the API refuses mark_applicants_seen for signed-out visitors (401).
   - Database (supabase_notifications_more_schema.sql, Section 1): notification type `application_new`;
     `job_applications.seen_at` (empty = new; old applications count as seen); `mark_applicants_seen(job)`
     (only the post's owner; no job = all their posts); trigger `notify_new_applicant`;
@@ -168,6 +170,14 @@ files; if N1 needs something there, send that session a message (ListAgents, Sen
     the tags stay for that visit). Mocked-network check 25/25 (dark, light, light + yellow accent).
     ApplicationsPanel.jsx was edited after the best-fit session's commit ac4ff16, as agreed with it.
   - Until the SQL is applied the new requests fail quietly: no number, no tags, nothing breaks.
+- N2 + N3 built (website pushed, database Section 2 NOT applied yet, waits for the user's go):
+  - Database (Section 2): types `job_filled`, `job_expired`; trigger `notify_job_filled` after insert on
+    projects (fires when hired = freelancers_needed); table `scheduled_notices` (the sent log, RLS on, no
+    policies; when it is first made the posts ALREADY expired are written in as told, so the first run sends
+    no old news: 4 posts on 2026-11-10); `send_daily_notices()` (named so because N4 adds the reminders to
+    the same function; the plan called it send_due_reminders); pg_cron job `daily-notices` at `0 0 * * *`
+    (8:00 AM Manila). Rolled-back trial on live: Section 2 test 14/14, nothing left behind.
+  - Website: bell icons + "View post" for both (client/src/lib/notifications.js).
 - Found while testing (not part of this plan): Supabase Vault on live is EMPTY (no `email_function_url`,
   no `email_hook_secret`), and `email_log` has no rows, so "Email me when I'm offline" has never sent
   an email. Told the user.

@@ -161,3 +161,135 @@ begin
   raise exception 'Notifications test results (all undone):%', res;
 end;
 $t$;
+
+
+-- =====================================================================
+-- Section 2 test: job post filled / job post closed (run AFTER Section 2).
+-- Same way: borrows a real client and freelancer, makes up posts and
+-- projects, ends with an error that undoes everything.
+-- =====================================================================
+do $t$
+declare
+  res text := '';
+  c uuid; f uuid;
+  today date := (now() at time zone 'Asia/Manila')::date;
+  ja uuid;   -- needs 2 freelancers
+  jb uuid;   -- needs 1 freelancer
+  jx uuid;   -- its due date passed yesterday, nobody hired: expired
+  jy uuid;   -- due in 10 days: open
+  jz uuid;   -- due date passed, but filled
+  n int;
+begin
+  -- A stand-in email sender (undone at the end), so no email can go out.
+  create or replace function public.queue_offline_email(recipient uuid, email_topic text, details jsonb)
+  returns void language plpgsql as $f$ begin null; end; $f$;
+
+  select p.id into c from public.profiles p where p.account_type = 'client' order by p.created_at limit 1;
+  select p.id into f from public.profiles p where p.account_type = 'freelancer' and p.id <> c order by p.created_at limit 1;
+  if c is null or f is null then
+    raise exception 'needs a client and a freelancer';
+  end if;
+
+  -- ===== Filled =====
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date, freelancers_needed)
+    values (c, 'Notiftest team', 'Graphic Design', 'A test post.', today, today + 10, 2) returning id into ja;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date, freelancers_needed)
+    values (c, 'Notiftest solo', 'Graphic Design', 'A test post.', today, today + 10, 1) returning id into jb;
+
+  insert into public.projects (client_id, freelancer_id, title, due_date, job_post_id) values (c, f, 'Notiftest team 1', today + 10, ja);
+  select count(*) into n from public.user_notifications where type = 'job_filled' and link = '/dashboard/job-details/' || ja;
+  res := res || case when n = 0 then E'\nPASS  1. 1 of 2 hired: no "filled" notice yet'
+                     else E'\nFAIL  1. 1 of 2 hired already sent ' || n || ' "filled" notice(s)' end;
+
+  insert into public.projects (client_id, freelancer_id, title, due_date, job_post_id) values (c, f, 'Notiftest team 2', today + 10, ja);
+  select count(*) into n from public.user_notifications
+  where user_id = c and type = 'job_filled' and title = 'Job post filled'
+    and message = 'Your job post "Notiftest team" is filled: you hired the 2 freelancers it needed. It no longer shows on Find Jobs.'
+    and link = '/dashboard/job-details/' || ja;
+  res := res || case when n = 1 then E'\nPASS  2. 2 of 2 hired: the client got one "Job post filled" notice'
+                     else E'\nFAIL  2. 2 of 2 hired: expected 1 "filled" notice, found ' || n end;
+
+  insert into public.projects (client_id, freelancer_id, title, due_date, job_post_id) values (c, f, 'Notiftest team 3', today + 10, ja);
+  select count(*) into n from public.user_notifications where type = 'job_filled' and link = '/dashboard/job-details/' || ja;
+  res := res || case when n = 1 then E'\nPASS  3. a hire past the number sends no second notice'
+                     else E'\nFAIL  3. found ' || n || ' "filled" notices after a third hire' end;
+
+  insert into public.projects (client_id, freelancer_id, title, due_date, job_post_id) values (c, f, 'Notiftest solo 1', today + 10, jb);
+  select count(*) into n from public.user_notifications
+  where type = 'job_filled' and link = '/dashboard/job-details/' || jb
+    and message like '%you hired the freelancer it needed.%';
+  res := res || case when n = 1 then E'\nPASS  4. a post that needed 1: "you hired the freelancer it needed"'
+                     else E'\nFAIL  4. the 1-freelancer post: found ' || n || ' matching notice(s)' end;
+
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest booking', today + 10);
+  select count(*) into n from public.user_notifications where user_id = c and type = 'job_filled' and created_at = now();
+  res := res || case when n = 2 then E'\nPASS  5. a project from a booking (no job post) sends nothing'
+                     else E'\nFAIL  5. expected 2 "filled" notices in this test, found ' || n end;
+
+  -- ===== Closed (expired) =====
+  select count(*) into n from public.job_posts j
+  where public.job_state(j.id) = 'expired'
+    and not exists (select 1 from public.scheduled_notices s where s.kind = 'job_expired' and s.target_id = j.id and s.due_date = j.due_date);
+  res := res || case when n = 0 then E'\nPASS  6. the posts that were already expired count as told (no old news)'
+                     else E'\nFAIL  6. ' || n || ' already-expired post(s) would get a notice' end;
+
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date, created_at)
+    values (c, 'Notiftest expired', 'Graphic Design', 'A test post.', today - 10, today - 1, now() - interval '10 days') returning id into jx;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date)
+    values (c, 'Notiftest open', 'Graphic Design', 'A test post.', today, today + 10) returning id into jy;
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date, created_at)
+    values (c, 'Notiftest filled late', 'Graphic Design', 'A test post.', today - 10, today - 1, now() - interval '10 days') returning id into jz;
+  insert into public.projects (client_id, freelancer_id, title, due_date, job_post_id) values (c, f, 'Notiftest filled late 1', today + 3, jz);
+
+  select public.send_daily_notices() into n;
+  res := res || case when n = 1 then E'\nPASS  7. the daily job sent exactly 1 notice'
+                     else E'\nFAIL  7. the daily job sent ' || n || ' notice(s), expected 1' end;
+
+  select count(*) into n from public.user_notifications
+  where user_id = c and type = 'job_expired' and title = 'Job post closed'
+    and message = 'Your job post "Notiftest expired" closed because its due date passed. Edit it to reopen it.'
+    and link = '/dashboard/job-details/' || jx;
+  res := res || case when n = 1 then E'\nPASS  8. the expired post got one "Job post closed" notice'
+                     else E'\nFAIL  8. the expired post got ' || n || ' notice(s)' end;
+
+  select count(*) into n from public.user_notifications
+  where type = 'job_expired' and link in ('/dashboard/job-details/' || jy, '/dashboard/job-details/' || jz);
+  res := res || case when n = 0 then E'\nPASS  9. an open post and a filled post get no "closed" notice'
+                     else E'\nFAIL  9. an open or filled post got ' || n || ' "closed" notice(s)' end;
+
+  select public.send_daily_notices() into n;
+  res := res || case when n = 0 then E'\nPASS 10. running it again sends nothing'
+                     else E'\nFAIL 10. running it again sent ' || n end;
+
+  -- The client changed the dates and it expired again: a new notice.
+  update public.job_posts set due_date = today - 2 where id = jx;
+  perform public.send_daily_notices();
+  select count(*) into n from public.user_notifications where type = 'job_expired' and link = '/dashboard/job-details/' || jx;
+  res := res || case when n = 2 then E'\nPASS 11. a new due date that passes again sends a new notice'
+                     else E'\nFAIL 11. after a new due date passed, found ' || n || ' notice(s), expected 2' end;
+
+  -- ===== Who can use it =====
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin
+    perform public.send_daily_notices();
+    res := res || E'\nFAIL 12. a signed-in user could run the daily job';
+  exception when insufficient_privilege then
+    res := res || E'\nPASS 12. a signed-in user cannot run the daily job';
+  end;
+  begin
+    select count(*) into n from public.scheduled_notices;
+    res := res || E'\nFAIL 13. a signed-in user could read the sent log (' || n || ' rows)';
+  exception when insufficient_privilege then
+    res := res || E'\nPASS 13. a signed-in user cannot read the sent log';
+  end;
+  reset role;
+
+  select count(*) into n from cron.job where jobname = 'daily-notices' and schedule = '0 0 * * *'
+    and command = 'select public.send_daily_notices()';
+  res := res || case when n = 1 then E'\nPASS 14. the daily job is scheduled for 8:00 AM Manila (00:00 UTC)'
+                     else E'\nFAIL 14. the daily job is not scheduled as expected' end;
+
+  raise exception 'Section 2 test results (all undone):%', res;
+end;
+$t$;

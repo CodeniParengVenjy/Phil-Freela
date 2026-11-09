@@ -105,7 +105,11 @@ export const notificationIcons = {
   promotion_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" },
   // A freelancer applied to the client's job post
   // (database/supabase_notifications_more_schema.sql, Section 1).
-  application_new: { icon: "bi-person-plus-fill", className: "bg-info text-dark" }
+  application_new: { icon: "bi-person-plus-fill", className: "bg-info text-dark" },
+  // The client's job post was filled, or closed because its due date passed
+  // (Section 2 of the same file; the closed one comes from the 8:00 AM daily job).
+  job_filled: { icon: "bi-people-fill", className: "bg-success text-white" },
+  job_expired: { icon: "bi-hourglass-bottom", className: "bg-secondary text-white" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -135,5 +139,8 @@ export const notificationLinkLabels = {
   promotion_approved: "View details",
   promotion_rejected: "View details",
   // Opens the Projects page on that job's applicants (?job=<id>).
-  application_new: "View applicants"
+  application_new: "View applicants",
+  // Both open the job post's page.
+  job_filled: "View post",
+  job_expired: "View post"
 };
