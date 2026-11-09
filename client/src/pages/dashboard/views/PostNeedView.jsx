@@ -7,7 +7,7 @@ import { isPostingBlocked } from "../../../lib/suspensions";
 import { fetchIsVerified } from "../../../lib/verification";
 import { useFeatureStatus } from "../../../lib/featured";
 import { claimFreeFeature, getFreeFeature, useMyViews } from "../../../lib/pro";
-import { applicantsText, useApplicantCounts } from "../../../lib/applications";
+import { applicantsText, useApplicantCounts, useNewApplicantCounts } from "../../../lib/applications";
 import { formatDay, todayInManila } from "../../../lib/projects";
 import { BUDGET_TYPES, HIRES_FIELD, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, datesText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import BlockedNotice from "../components/BlockedNotice";
@@ -48,7 +48,7 @@ function saveErrorText(error, editing) {
 }
 
 export default function PostNeedView() {
-  const { currentUserId, showToast, suspension, isPro } = useOutletContext();
+  const { currentUserId, showToast, suspension, isPro, unreadNotifications } = useOutletContext();
   // Suspended for a posting violation (e.g. spam): the form is replaced by a notice.
   const postingBlocked = isPostingBlocked(suspension);
   // Only clients with a verified identity can post, the same as freelancers
@@ -97,6 +97,9 @@ export default function PostNeedView() {
   const [postToFeature, setPostToFeature] = useState(null);
   // How many freelancers applied to each of the client's posts ("12 applied").
   const applicantCounts = useApplicantCounts((posts || []).map((p) => p.id));
+  // How many of them the client hasn't opened yet ("3 new"). Asked again when a
+  // notification arrives (a new applicant brings one).
+  const newApplicantCounts = useNewApplicantCounts(currentUserId, unreadNotifications);
   // Premium's perks on this list: how many people opened each post, and the free
   // Featured post every 30 days ({ available } once read; null otherwise).
   const views = useMyViews(currentUserId);
@@ -726,6 +729,13 @@ export default function PostNeedView() {
                         <>
                           {" • "}
                           <Link to={`/dashboard/projects?job=${p.id}`} className="text-white-50 text-decoration-underline">{applicantsText(applicantCounts.get(p.id), true)}</Link>
+                        </>
+                      )}
+                      {/* How many of them the client hasn't opened yet (PLAN-notifications.md, Step N1). */}
+                      {newApplicantCounts.get(p.id) > 0 && (
+                        <>
+                          {" • "}
+                          <Link to={`/dashboard/projects?job=${p.id}`} className="text-role fw-bold text-decoration-none">{newApplicantCounts.get(p.id)} new</Link>
                         </>
                       )}
                     </p>

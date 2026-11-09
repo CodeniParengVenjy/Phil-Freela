@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { getApplicantsForMyJobs, getMyApplications, openResume, resumeIcon } from "../../../lib/applications";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
+import { getApplicantsForMyJobs, getMyApplications, getNewApplicants, markApplicantsSeen, openResume, resumeIcon } from "../../../lib/applications";
 import { getBestFit } from "../../../lib/aiService";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
@@ -91,6 +91,14 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
   // .position, 0 = best), pending, failed }, or null before the first answer.
   const [ranking, setRanking] = useState(null);
   const boxRef = useRef(null);
+  // New applicants (PLAN-notifications.md, Step N1): the ones the client hadn't
+  // opened yet when this box loaded. They keep their "New" tag for this visit,
+  // even after they are marked as seen below.
+  const [newIds, setNewIds] = useState(() => new Set());
+  // The posts already marked as seen during this visit (so it happens once).
+  const markedJobs = useRef(new Set());
+  // Makes the number on the "Projects & Resumes" menu link count again.
+  const { refreshNewApplicants } = useOutletContext() || {};
 
   useEffect(() => {
     if (!currentUserId) return undefined;
@@ -108,19 +116,33 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
     };
   }, [isFreelancer, currentUserId]);
 
+  // Which of the client's applicants are new (a separate request: before the
+  // database part is added it fails, and nothing is marked New).
+  useEffect(() => {
+    if (isFreelancer || !currentUserId) return undefined;
+    let active = true;
+    getNewApplicants(currentUserId).then(({ data, error }) => {
+      if (active && !error) setNewIds(new Set(data.map((row) => row.id)));
+    });
+    return () => {
+      active = false;
+    };
+  }, [isFreelancer, currentUserId]);
+
   // The client's job posts that have applicants, the latest application first,
-  // with how many applied to each.
+  // with how many applied to each and how many of them are new.
   const jobs = useMemo(() => {
     if (isFreelancer || !rows) return [];
     const byId = new Map();
     for (const row of rows) {
       if (!row.job?.id) continue;
-      const entry = byId.get(row.job.id) || { id: row.job.id, title: row.job.title, count: 0 };
+      const entry = byId.get(row.job.id) || { id: row.job.id, title: row.job.title, count: 0, newCount: 0 };
       entry.count += 1;
+      if (newIds.has(row.id)) entry.newCount += 1;
       byId.set(row.job.id, entry);
     }
     return [...byId.values()];
-  }, [isFreelancer, rows]);
+  }, [isFreelancer, rows, newIds]);
 
   // The post on screen: the one picked, else the one in ?job=, else the post
   // with the latest application.
@@ -132,6 +154,16 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
   useEffect(() => {
     if (askedJob && rows?.length) boxRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [askedJob, rows]);
+
+  // The post on screen has new applicants: the client has now seen them, so
+  // mark them as seen in the database (once per post per visit) and let the
+  // menu number go down. Their "New" tags stay until the page is left.
+  const jobHasNew = (job?.newCount || 0) > 0;
+  useEffect(() => {
+    if (isFreelancer || !jobHasNew || markedJobs.current.has(jobId)) return;
+    markedJobs.current.add(jobId);
+    markApplicantsSeen(jobId).then(() => refreshNewApplicants?.());
+  }, [isFreelancer, jobId, jobHasNew, refreshNewApplicants]);
 
   // Ask the AI to rank the post's applicants (ai-service/best_fit.py). While it
   // is still reading resumes for the first time, ask again a few times.
@@ -244,12 +276,13 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
               onChange={(event) => setPicked({ asked: askedJob, jobId: event.target.value })}
             >
               {jobs.map((j) => (
-                <option key={j.id} value={j.id}>{j.title} • {j.count} applied</option>
+                <option key={j.id} value={j.id}>{j.title} • {j.count} applied{j.newCount > 0 ? ` • ${j.newCount} new` : ""}</option>
               ))}
             </select>
           ) : (
             <p className="text-white-50 fs-7 mb-0 text-break">
               For <Link to={`/dashboard/job-details/${job.id}`} className="text-role fw-semibold text-decoration-none"><CensoredText text={job.title} /></Link> • {job.count} applied
+              {job.newCount > 0 && <> • <span className="text-role fw-bold">{job.newCount} new</span></>}
             </p>
           )}
 
@@ -331,6 +364,8 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
                   <h6 className="text-white fw-bold mb-0 text-break">
                     <Link to={`/dashboard/freelancers/${freelancer?.id}`} className="text-white text-decoration-none hover-role">{name}</Link>
                     <VerifiedBadge verified={verifiedIds.has(freelancer?.id)} />
+                    {/* Applied since the client last opened this post's applicants. */}
+                    {newIds.has(row.id) && <span className="badge bg-warning text-dark fs-8 ms-2 align-middle">New</span>}
                   </h6>
                   <p className="text-white-50 fs-7 mb-0 text-break">Has sent a resume for {jobLink} • {sentOn}</p>
                 </div>

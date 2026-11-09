@@ -102,7 +102,10 @@ export const notificationIcons = {
   price_agreed: { icon: "bi-tags-fill", className: "bg-success text-white" },
   // An admin answered a Featured post payment (database/supabase_promotions_schema.sql).
   promotion_approved: { icon: "bi-star-fill", className: "bg-warning text-dark" },
-  promotion_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" }
+  promotion_rejected: { icon: "bi-x-circle-fill", className: "bg-danger text-white" },
+  // A freelancer applied to the client's job post
+  // (database/supabase_notifications_more_schema.sql, Section 1).
+  application_new: { icon: "bi-person-plus-fill", className: "bg-info text-dark" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -130,5 +133,7 @@ export const notificationLinkLabels = {
   price_agreed: "Open project",
   // A Featured post links to My Offers / My Job Posts, Premium to its own page.
   promotion_approved: "View details",
-  promotion_rejected: "View details"
+  promotion_rejected: "View details",
+  // Opens the Projects page on that job's applicants (?job=<id>).
+  application_new: "View applicants"
 };

@@ -151,3 +151,23 @@ client/src/pages/dashboard/components/ApplicationsPanel.jsx (job picker, `?job=<
 FindJobsView.jsx and JobDetailsView.jsx (the "12 applied" count), client/src/lib/aiService.js,
 ai-service/best_fit.py + main.py, and a new database/supabase_best_fit_schema.sql. Don't edit those
 files; if N1 needs something there, send that session a message (ListAgents, SendMessage).
+
+## Progress
+
+- 2026-11-10: the user approved the plan with "ok", and added to N1: "if someone applies, it notifies
+  and it counts, to inform there is someone applied". So N1 also has a "new applicants" count.
+- N1 built (website pushed, database NOT applied yet, waits for the user's go):
+  - Database (supabase_notifications_more_schema.sql, Section 1): notification type `application_new`;
+    `job_applications.seen_at` (empty = new; old applications count as seen); `mark_applicants_seen(job)`
+    (only the post's owner; no job = all their posts); trigger `notify_new_applicant`;
+    `email_offline_on_notification` skips `application_new` (the throttled application email stays).
+    Rolled-back trial on live: test_notifications_more.sql 15/15, nothing left behind.
+  - Website: bell icon + "View applicants"; a live number on "Projects & Resumes" (clients);
+    "3 new" on each post in Post a Project; in Applications & Resumes a "New" tag per applicant,
+    "N new" in the post picker, and opening a post marks its applicants seen (the number goes down,
+    the tags stay for that visit). Mocked-network check 25/25 (dark, light, light + yellow accent).
+    ApplicationsPanel.jsx was edited after the best-fit session's commit ac4ff16, as agreed with it.
+  - Until the SQL is applied the new requests fail quietly: no number, no tags, nothing breaks.
+- Found while testing (not part of this plan): Supabase Vault on live is EMPTY (no `email_function_url`,
+  no `email_hook_secret`), and `email_log` has no rows, so "Email me when I'm offline" has never sent
+  an email. Told the user.

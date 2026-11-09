@@ -5,6 +5,7 @@ import { getMyArchive } from "../../../lib/archives";
 import { getActiveSuspension } from "../../../lib/profile";
 import { applyAppearance, clearAppearance, fetchAppearance, forgetAppearance, readSavedAppearance, rememberAppearance } from "../../../lib/appearance";
 import { countUnreadNotifications } from "../../../lib/notifications";
+import { getNewApplicants } from "../../../lib/applications";
 import { hangUp, listenForCalls } from "../../../lib/calls";
 import { startPresenceHeartbeat } from "../../../lib/presence";
 
@@ -342,6 +343,28 @@ export function useDashboardShell() {
     };
   }, [currentUserId, accountType, unreadNotifications, bookingsTick, location.pathname]);
 
+  // The number on a client's "Projects & Resumes" link: applicants they haven't
+  // opened yet (PLAN-notifications.md, Step N1). Counted again when a
+  // notification arrives (every new applicant brings one), when the person
+  // moves to another page, and when the Applications box marks some as seen
+  // (refreshNewApplicants). Freelancers get no number.
+  const [newApplicants, setNewApplicants] = useState(0);
+  const [applicantsTick, setApplicantsTick] = useState(0);
+  const refreshNewApplicants = useCallback(() => setApplicantsTick((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!currentUserId || accountType !== "client") return undefined;
+    let active = true;
+
+    getNewApplicants(currentUserId).then(({ data, error }) => {
+      if (active) setNewApplicants(error ? 0 : data.length);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUserId, accountType, unreadNotifications, applicantsTick, location.pathname]);
+
   // A new announcement or personal notification updates the badge and pops a
   // toast. The database rules only send each user the ones meant for them.
   useEffect(() => {
@@ -485,6 +508,7 @@ export function useDashboardShell() {
     unreadCount, refreshUnreadCount,
     unreadNotifications, refreshUnreadNotifications,
     pendingBookings, refreshPendingBookings,
+    newApplicants, refreshNewApplicants,
     suspension,
     toast, closeToast, showToast,
     preview, openPreview, closePreview,

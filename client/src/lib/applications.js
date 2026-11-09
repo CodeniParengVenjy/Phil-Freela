@@ -248,3 +248,50 @@ export async function withdrawApplication(application) {
   await supabase.storage.from(BUCKET).remove([application.resume_path]);
   return "";
 }
+
+// ----- New applicants (PLAN-notifications.md, Step N1) -----
+// An applicant is "new" until the client opens that job's applicants
+// (job_applications.seen_at is empty, database/supabase_notifications_more_schema.sql,
+// Section 1).
+
+// The client's new applicants: just each one's id and job. Only applications
+// to the client's OWN posts count (a person who used to be a freelancer has
+// applications of their own too). A separate request on purpose: before that
+// SQL is run it fails, and the pages simply show no "new".
+export function getNewApplicants(clientId) {
+  return supabase
+    .from("job_applications")
+    .select("id, job_post_id, job:job_posts!inner(client_id)")
+    .eq("job.client_id", clientId)
+    .is("seen_at", null);
+}
+
+// "3 new" on each of the client's job posts: a Map of job id -> how many are
+// new. refresh: when this value changes the counts are asked again.
+export function useNewApplicantCounts(clientId, refresh = null) {
+  const [counts, setCounts] = useState(() => new Map());
+
+  useEffect(() => {
+    if (!clientId) return undefined;
+    let active = true;
+    getNewApplicants(clientId).then(({ data, error }) => {
+      if (!active) return;
+      const byJob = new Map();
+      for (const row of error ? [] : data) byJob.set(row.job_post_id, (byJob.get(row.job_post_id) || 0) + 1);
+      setCounts(byJob);
+    });
+    return () => {
+      active = false;
+    };
+  }, [clientId, refresh]);
+
+  return counts;
+}
+
+// The client opened a job's applicants (no jobId = all their posts): those
+// applicants are no longer new. The database only lets the job's owner do
+// this. Gives back how many were marked (0 if it failed).
+export async function markApplicantsSeen(jobId = null) {
+  const { data, error } = await supabase.rpc("mark_applicants_seen", { p_job_id: jobId || null });
+  return error ? 0 : data;
+}

@@ -40,6 +40,7 @@ export default function ClientDashboardLayout({
   avatarPath, setAvatarPath,
   unreadCount, refreshUnreadCount,
   unreadNotifications, refreshUnreadNotifications,
+  newApplicants, refreshNewApplicants,
   suspension,
   toast, closeToast, showToast,
   preview, openPreview, closePreview,
@@ -86,6 +87,10 @@ export default function ClientDashboardLayout({
                   <span>{link.label}</span>
                   {/* Premium says "Active" while the person has it. */}
                   {link.to === "/dashboard/pro" && isPro && <span className="badge bg-warning text-dark rounded-pill ms-auto">Active</span>}
+                  {/* Live count: applicants the client hasn't opened yet (PLAN-notifications.md, Step N1). */}
+                  {link.to === "/dashboard/projects" && newApplicants > 0 && (
+                    <span className="badge bg-warning text-dark rounded-pill ms-auto" title={`${newApplicants} new applicant${newApplicants === 1 ? "" : "s"}`}>{newApplicants}</span>
+                  )}
                 </NavLink>
               ))}
             </div>
@@ -123,7 +128,7 @@ export default function ClientDashboardLayout({
               </div>
             )}
 
-            <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, suspension, isPro, refreshPro: pro.reload }} />
+            <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, refreshNewApplicants, suspension, isPro, refreshPro: pro.reload }} />
           </main>
         </PageTransition>
       </div>
