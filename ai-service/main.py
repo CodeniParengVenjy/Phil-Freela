@@ -26,6 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 import cv2
+from best_fit import NotYourJob, best_fit
 from deliverable_preview import preview_router
 from docx import Document as DocxDocument
 from dotenv import load_dotenv
@@ -1596,6 +1597,34 @@ def get_recommendations(authorization: str | None = Header(default=None)):
     except APIError:
         logging.exception("Recommendations failed")
         raise HTTPException(503, "Recommendations aren't available right now.")
+
+
+# ---------------------------------------------------------------------------
+# Best fit applicants: also the Hybrid recommendation system (feature 1), for
+# the client who posted a job (see best_fit.py)
+# ---------------------------------------------------------------------------
+
+@app.get("/jobs/{job_id}/best-fit")
+def get_best_fit(job_id: str, authorization: str | None = Header(default=None)):
+    """The freelancers who applied to this job post, best fit first:
+    {"results": [{application_id, fit (0-100), read ("ok", "unreadable",
+    "pending"), resume_match, skills_matched, skills_total, rating_count,
+    avg_stars, completed, fast_reply, applied_at}], "pending": resumes still
+    to be read (ask again)}. Only the client who posted the job may ask.
+    Returns ids only; the website loads the applications itself, under the
+    normal database rules."""
+    user_id = get_user_id(authorization)
+    try:
+        job_id = str(uuid.UUID(job_id))
+    except ValueError:
+        raise HTTPException(404, "That job post wasn't found.")
+    try:
+        return best_fit(supabase, user_id, job_id)
+    except NotYourJob:
+        raise HTTPException(404, "That job post wasn't found.")
+    except APIError:
+        logging.exception("Best fit failed")
+        raise HTTPException(503, "The ranking isn't available right now.")
 
 
 # ---------------------------------------------------------------------------
