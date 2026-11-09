@@ -1,15 +1,32 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { getApplicantsForMyJobs, getMyApplications, openResume, resumeIcon } from "../../../lib/applications";
+import { getBestFit } from "../../../lib/aiService";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import HireDialog from "./HireDialog";
 import CensoredText from "../../../components/CensoredText";
-import { Loader } from "../../../components/Loaders";
+import { Busy, Loader } from "../../../components/Loaders";
 
 // Longest part of a cover note shown in the list.
 const NOTE_PREVIEW_LENGTH = 160;
+
+// How the client's list of applicants is ordered. "Best fit" is the AI's
+// ranking; "First applied" is the fair fallback (never newest first, which
+// buried the early applicants: the user, 2026-11-10).
+const SORTS = [
+  { value: "fit", label: "Best fit", icon: "bi-stars" },
+  { value: "first", label: "First applied", icon: "bi-clock-history" }
+];
+
+// The first time a job's applicants are ranked, the AI reads every resume; a
+// picture takes a few seconds. While some are still being read, it asks again
+// this often, this many times at most.
+const ASK_AGAIN_MS = 3000;
+const ASK_AGAIN_TIMES = 8;
+
+const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 // A "Hired" badge and a link to the project the hire started.
 function HiredLink({ project }) {
@@ -20,17 +37,60 @@ function HiredLink({ project }) {
   );
 }
 
+// Why the AI put an applicant where it did (ai-service/best_fit.py sends the
+// facts; the words are made here).
+function FitReasons({ pick }) {
+  const reasons = [];
+  if (pick.read === "pending") reasons.push({ icon: "bi-hourglass-split", text: "The AI is still reading this resume" });
+  if (pick.read === "unreadable") reasons.push({ icon: "bi-exclamation-circle", tone: "text-warning", text: "The AI couldn't read this resume. Open it to check" });
+  if (pick.resume_match) reasons.push({ icon: "bi-file-earmark-check", tone: "text-success", text: "Resume matches the job" });
+  if (pick.skills_total > 0) {
+    reasons.push({
+      icon: "bi-tools",
+      text: `Has ${pick.skills_matched.length} of ${plural(pick.skills_total, "skill")}`,
+      title: pick.skills_matched.length ? `Has: ${pick.skills_matched.join(", ")}` : "None of the required skills were found"
+    });
+  }
+  if (pick.rating_count > 0) reasons.push({ icon: "bi-star-fill", tone: "text-warning", text: `${pick.avg_stars.toFixed(1)} from ${plural(pick.rating_count, "rating")}` });
+  if (pick.completed > 0) reasons.push({ icon: "bi-check2-circle", text: `${plural(pick.completed, "project")} done` });
+  if (pick.rating_count === 0 && pick.completed === 0) reasons.push({ icon: "bi-person", text: "No ratings yet" });
+  if (pick.fast_reply) reasons.push({ icon: "bi-lightning-charge-fill", tone: "text-info", text: "Replies within an hour" });
+
+  return (
+    <div className="d-flex flex-wrap column-gap-3 row-gap-1 fs-8 text-white-50 mb-2">
+      {reasons.map((reason) => (
+        <span key={reason.text} title={reason.title}>
+          <i className={`bi ${reason.icon} me-1 ${reason.tone || ""}`}></i>{reason.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // The "Applications & Resumes" box on the Projects page. Clients see who
-// applied to their job posts and can hire them (which starts a project);
-// freelancers see the jobs they applied to.
+// applied to their job posts, one post at a time, ranked by the AI (Best fit
+// applicants, part of the Hybrid recommendation system), and can hire them
+// (which starts a project); freelancers see the jobs they applied to.
 export default function ApplicationsPanel({ isFreelancer, currentUserId, openChat, showToast, onHired }) {
-  // null while loading, then the list.
+  // null while loading, then the list (newest first).
   const [rows, setRows] = useState(null);
   const [failed, setFailed] = useState(false);
   // The applicant in the Hire popup (null = closed).
   const [hireTarget, setHireTarget] = useState(null);
   // What the client typed in the search box above their resumes list.
   const [query, setQuery] = useState("");
+  // ?job=<id> in the address (from a job post, the client's listings or a
+  // notification) opens that post's applicants.
+  const [searchParams] = useSearchParams();
+  const askedJob = searchParams.get("job");
+  // The post picked in the drop-down, remembered with the ?job= it was picked
+  // under, so a new ?job= (another link) wins over an older pick.
+  const [picked, setPicked] = useState({ asked: askedJob, jobId: null });
+  const [sort, setSort] = useState("fit");
+  // The AI's ranking: { jobId, picks: Map of application id -> pick (with
+  // .position, 0 = best), pending, failed }, or null before the first answer.
+  const [ranking, setRanking] = useState(null);
+  const boxRef = useRef(null);
 
   useEffect(() => {
     if (!currentUserId) return undefined;
@@ -47,6 +107,59 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
       active = false;
     };
   }, [isFreelancer, currentUserId]);
+
+  // The client's job posts that have applicants, the latest application first,
+  // with how many applied to each.
+  const jobs = useMemo(() => {
+    if (isFreelancer || !rows) return [];
+    const byId = new Map();
+    for (const row of rows) {
+      if (!row.job?.id) continue;
+      const entry = byId.get(row.job.id) || { id: row.job.id, title: row.job.title, count: 0 };
+      entry.count += 1;
+      byId.set(row.job.id, entry);
+    }
+    return [...byId.values()];
+  }, [isFreelancer, rows]);
+
+  // The post on screen: the one picked, else the one in ?job=, else the post
+  // with the latest application.
+  const chosen = picked.asked === askedJob ? picked.jobId : null;
+  const jobId = [chosen, askedJob, jobs[0]?.id].find((id) => id && jobs.some((job) => job.id === id)) || null;
+  const job = jobs.find((j) => j.id === jobId);
+
+  // Came from a ?job= link: bring this box into view once the list is in.
+  useEffect(() => {
+    if (askedJob && rows?.length) boxRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [askedJob, rows]);
+
+  // Ask the AI to rank the post's applicants (ai-service/best_fit.py). While it
+  // is still reading resumes for the first time, ask again a few times.
+  useEffect(() => {
+    if (isFreelancer || !jobId) return undefined;
+    let active = true;
+    let timer;
+    let asked = 0;
+    const ask = () => {
+      asked += 1;
+      getBestFit(jobId)
+        .then(({ results = [], pending = 0 }) => {
+          if (!active) return;
+          const picks = new Map(results.map((pick, position) => [pick.application_id, { ...pick, position }]));
+          setRanking({ jobId, picks, pending, failed: false });
+          if (pending > 0 && asked < ASK_AGAIN_TIMES) timer = setTimeout(ask, ASK_AGAIN_MS);
+        })
+        .catch(() => {
+          // The AI service is off or slow: the list stays first applied first.
+          if (active) setRanking({ jobId, picks: new Map(), pending: 0, failed: true });
+        });
+    };
+    ask();
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [isFreelancer, jobId]);
 
   const verifiedIds = useVerifiedIds((rows || []).map((row) => row.freelancer?.id));
 
@@ -66,22 +179,48 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
     onHired?.();
   };
 
-  // The client's search: keeps the resumes whose freelancer name or job title
-  // has the typed words. (Freelancers have no search box, so they see all.)
+  // The AI's picks for the post on screen (null while it is ranking, or if it
+  // couldn't).
+  const rankingReady = ranking?.jobId === jobId;
+  const picks = rankingReady && !ranking.failed ? ranking.picks : null;
+
+  // The rows to show. A freelancer sees all their applications, newest first.
+  // A client sees one post's applicants: first applied first, or in the AI's
+  // order. The search keeps the ones whose name or job title has the typed words.
   const q = query.trim().toLowerCase();
-  const shownRows = (rows || []).filter((row) => {
+  const matches = (row) => {
     const name = row.freelancer?.full_name || row.freelancer?.username || "";
     return `${name} ${row.job?.title || ""}`.toLowerCase().includes(q);
-  });
+  };
+  let shownRows;
+  if (isFreelancer) {
+    shownRows = rows || [];
+  } else {
+    shownRows = (rows || [])
+      .filter((row) => row.job?.id === jobId && matches(row))
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    if (sort === "fit" && picks) {
+      const place = (row) => picks.get(row.id)?.position ?? Number.MAX_SAFE_INTEGER;
+      shownRows.sort((a, b) => place(a) - place(b));
+    }
+  }
+
+  // The line under the order buttons: what the AI is doing, or why there is no ranking.
+  const rankingNote = () => {
+    if (!rankingReady) return <Busy kind="ai">Ranking applicants</Busy>;
+    if (ranking.failed) return "The AI couldn't rank them right now, so they are shown first applied first.";
+    if (ranking.pending > 0) return <Busy kind="ai">{`Reading ${plural(ranking.pending, "resume")}`}</Busy>;
+    return "Ranked by PhilFreela's AI: how well each resume fits the job, the required skills, ratings, finished projects and reply speed.";
+  };
 
   // (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx)
   return (
-    <div data-tour="applications" className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100">
+    <div ref={boxRef} data-tour="applications" className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 h-100" style={{ scrollMarginTop: 80 }}>
       <h4 className="text-white fw-bold mb-3">
         <i className="bi bi-file-earmark-person-fill text-info me-2"></i> {isFreelancer ? "My Applications" : "Applications & Resumes"}
       </h4>
       <p className="text-secondary fs-7 mb-4">
-        {isFreelancer ? "Jobs you sent your resume to." : "Freelancers who sent a resume to your job posts."}
+        {isFreelancer ? "Jobs you sent your resume to." : "Freelancers who sent a resume to your job posts, best fit first."}
       </p>
 
       {failed && <p className="text-danger fs-7 mb-0">Couldn't load applications right now.</p>}
@@ -94,22 +233,58 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
         </p>
       )}
 
-      {/* The client's search box: filters the resumes below as they type. */}
-      {!isFreelancer && rows?.length > 0 && (
-        <div className="position-relative search-nav-box mb-3">
-          <i className="bi bi-search search-icon text-secondary"></i>
-          <input
-            type="search"
-            className="form-control nav-search-input py-2"
-            placeholder="Search..."
-            aria-label="Search resumes by freelancer or job"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+      {/* The client's controls: which job post, the order, and the search box. */}
+      {!isFreelancer && job && (
+        <div className="d-flex flex-column gap-3 mb-3">
+          {jobs.length > 1 ? (
+            <select
+              className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
+              aria-label="Job post"
+              value={jobId}
+              onChange={(event) => setPicked({ asked: askedJob, jobId: event.target.value })}
+            >
+              {jobs.map((j) => (
+                <option key={j.id} value={j.id}>{j.title} • {j.count} applied</option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-white-50 fs-7 mb-0 text-break">
+              For <Link to={`/dashboard/job-details/${job.id}`} className="text-role fw-semibold text-decoration-none"><CensoredText text={job.title} /></Link> • {job.count} applied
+            </p>
+          )}
+
+          <div>
+            <div className="d-flex flex-wrap gap-2" role="group" aria-label="Order of applicants">
+              {SORTS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={sort === option.value}
+                  className={`btn btn-sm rounded-pill px-3 fw-bold ${sort === option.value ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`}
+                  onClick={() => setSort(option.value)}
+                >
+                  <i className={`bi ${option.icon} me-1`}></i>{option.label}
+                </button>
+              ))}
+            </div>
+            {sort === "fit" && <p className="text-secondary fs-8 mb-0 mt-2">{rankingNote()}</p>}
+          </div>
+
+          <div className="position-relative search-nav-box">
+            <i className="bi bi-search search-icon text-secondary"></i>
+            <input
+              type="search"
+              className="form-control nav-search-input py-2"
+              placeholder="Search..."
+              aria-label="Search applicants by name"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
         </div>
       )}
-      {rows?.length > 0 && shownRows.length === 0 && (
-        <p className="text-secondary fs-7 mb-0">No resumes match "{query.trim()}".</p>
+      {!isFreelancer && job && shownRows.length === 0 && q && (
+        <p className="text-secondary fs-7 mb-0">No applicants match "{query.trim()}".</p>
       )}
 
       <div className="d-flex flex-column gap-3">
@@ -144,8 +319,11 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
           const freelancer = row.freelancer;
           const name = freelancer?.full_name || freelancer?.username || "Freelancer";
           const note = row.cover_note || "";
+          // The AI's pick for this applicant (undefined while ranking or without the AI).
+          const pick = picks?.get(row.id);
+          const isBest = pick?.position === 0 && job.count > 1;
           return (
-            <div key={row.id} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25">
+            <div key={row.id} className={`p-3 rounded-3 bg-dark bg-opacity-50 border ${isBest ? "border-warning border-opacity-50" : "border-secondary border-opacity-25"}`}>
               {/* Picture, name and "Has sent a resume", with View (the resume) on the right. */}
               <div className="d-flex align-items-center gap-3 mb-2">
                 <Avatar path={freelancer?.avatar_path} name={name} size={56} to={freelancer?.id ? `/dashboard/freelancers/${freelancer.id}` : undefined} />
@@ -165,6 +343,17 @@ export default function ApplicationsPanel({ isFreelancer, currentUserId, openCha
                   View
                 </button>
               </div>
+              {/* Where the AI ranked them, how well they fit, and why. */}
+              {pick && (
+                <>
+                  <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    {sort === "fit" && <span className="badge bg-secondary bg-opacity-50 text-white fs-8">#{pick.position + 1}</span>}
+                    {isBest && <span className="badge bg-warning text-dark fs-8"><i className="bi bi-trophy-fill me-1"></i>Best fit</span>}
+                    <span className="badge bg-role-subtle text-role fs-8" title="How well this applicant fits the job, out of 100">Fit {pick.fit}%</span>
+                  </div>
+                  <FitReasons pick={pick} />
+                </>
+              )}
               {note && (
                 <p className="text-light-50 fs-7 fst-italic mb-2 text-break" title={note}>
                   "<CensoredText text={note.length > NOTE_PREVIEW_LENGTH ? `${note.slice(0, NOTE_PREVIEW_LENGTH)}...` : note} />"

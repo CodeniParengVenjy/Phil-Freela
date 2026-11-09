@@ -301,6 +301,16 @@ export async function getRecommendations() {
   return request("/recommendations", { headers: await authHeader() });
 }
 
+// Best fit applicants (also the Hybrid recommendation system, feature 1), for
+// the client who posted the job: the freelancers who applied, best first, each
+// with a fit from 0 to 100 and why (their resume compared with the job by the
+// AI, the required skills they have, ratings, finished projects, reply speed).
+// Returns { results, pending }: pending is how many resumes the AI is still
+// reading the first time (ask again in a few seconds). See ai-service/best_fit.py.
+export async function getBestFit(jobId) {
+  return request(`/jobs/${encodeURIComponent(jobId)}/best-fit`, { headers: await authHeader() });
+}
+
 // AI Moodboard Matching (feature 2): a reference image (a File) -> the
 // freelancers whose portfolio work looks closest to it, best first. Returns
 // [{ freelancer_id, slide_id, score, strong }]; the page loads the
