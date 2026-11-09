@@ -18,6 +18,11 @@ import { Busy } from "../../../components/Loaders";
 
 const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
 const JOB_COLUMNS = "id, title, category, budget, budget_type, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
+// The longest a search may take before the page gives up with a message,
+// instead of showing "Searching" forever on a bad connection (found in the live
+// test, 2026-11-09). Long enough for an AI service that has to wake up first.
+const SEARCH_TIME_LIMIT = 40000;
+const TOO_SLOW = "The search is taking too long. Check your internet connection and try again.";
 
 // The AI search box's results page: the content-based filtering part of the
 // Hybrid recommendation system (see ai-service/listing_search.py). The AI
@@ -56,10 +61,15 @@ export default function SearchResultsView() {
   useEffect(() => {
     if (query.length < 2) return undefined;
     let active = true;
+    // Fails with TOO_SLOW if the AI search and the posts haven't come back in time.
+    let timer;
+    const timeLimit = new Promise((_, fail) => {
+      timer = setTimeout(() => fail(new Error(TOO_SLOW)), SEARCH_TIME_LIMIT);
+    });
 
     (async () => {
       try {
-        const matches = await searchListings(query);
+        const matches = await Promise.race([searchListings(query), timeLimit]);
         const matchOf = Object.fromEntries(matches.map((m) => [m.id, m]));
         const idsOf = (type) => matches.filter((m) => m.type === type).map((m) => m.id);
         const load = (table, columns, ids) =>
@@ -68,9 +78,9 @@ export default function SearchResultsView() {
         const loadOpenJobs = (ids) =>
           ids.length ? supabase.from("job_posts").select(JOB_COLUMNS).in("id", ids).eq("job_state", "open") : Promise.resolve({ data: [] });
 
-        const [services, jobs] = await Promise.all([
-          load("services", SERVICE_COLUMNS, idsOf("service")),
-          loadOpenJobs(idsOf("job"))
+        const [services, jobs] = await Promise.race([
+          Promise.all([load("services", SERVICE_COLUMNS, idsOf("service")), loadOpenJobs(idsOf("job"))]),
+          timeLimit
         ]);
         if (services.error || jobs.error) throw new Error("Couldn't load the results. Please try again.");
 
@@ -81,11 +91,14 @@ export default function SearchResultsView() {
         if (active) setResult({ query, services: ranked(services.data), jobs: ranked(jobs.data), error: "" });
       } catch (error) {
         if (active) setResult({ query, services: [], jobs: [], error: error.message });
+      } finally {
+        clearTimeout(timer);
       }
     })();
 
     return () => {
       active = false;
+      clearTimeout(timer);
     };
   }, [query]);
 
@@ -296,7 +309,7 @@ function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMes
             {owner?.id ? (
               <Link to={profilePath(isService ? "freelancer" : "client", owner.id)} className="text-white-50">{ownerName}</Link>
             ) : ownerName}
-            <VerifiedBadge verified={verifiedIds.has(owner?.id)} showUnverified={!isService} />
+            <VerifiedBadge verified={verifiedIds.has(owner?.id)} showUnverified={!isService && verifiedIds.ready} />
           </span>
           {amount && <span className="text-warning">{amount}</span>}
           <span className="badge bg-black text-light-50 text-wrap text-start">{category.label}</span>

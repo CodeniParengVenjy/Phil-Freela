@@ -727,6 +727,9 @@ export default function AdminOverviewView() {
             <h2 className="h5 fw-bold text-white mb-0">Earnings</h2>
             <p className="text-secondary fs-7 mb-0">
               Fees paid to PhilFreela on Xendit (never the money between clients and freelancers).
+              {/* The database leaves out test-mode and free ones (admin_promo_earnings),
+                  so a test payment is not "earned" money: said here so a P0 isn't a surprise. */}
+              {" "}Test-mode payments are not real money, so they are not counted here.
               {" "}See each one in <Link to="/admin/promotions" className="text-white">Promotions</Link>.
             </p>
           </div>

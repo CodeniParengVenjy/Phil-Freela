@@ -137,7 +137,7 @@ export default function FindJobsView({ withRecommendations = false }) {
               {clientPage
                 ? <Link to={clientPage} className="text-white-50 text-decoration-underline">{clientName}</Link>
                 : clientName}
-              <VerifiedBadge verified={verifiedIds.has(job.client?.id)} showUnverified />
+              <VerifiedBadge verified={verifiedIds.has(job.client?.id)} showUnverified={verifiedIds.ready} />
               <ProBadge pro={proIds.has(job.client?.id)} />
             </span>
             {/* The client's average rating from finished projects (nothing until they have one). */}

@@ -225,7 +225,16 @@ def recommend(supabase, user_id):
             r["post_id"] for r in
             supabase.rpc("recommendation_interactions", {"want": want}).eq("user_id", user_id).execute().data or []
         }
-        candidates += [p for p in recent_posts(supabase, user_id, want, acted_on) if p not in candidates]
+        recent = recent_posts(supabase, user_id, want, set())
+        candidates += [p for p in recent if p not in acted_on and p not in candidates]
+        # A client on a small site may already have messaged every freelancer
+        # with a service, which left "Recommended for you" empty (found in the
+        # live test, 2026-11-09). Then the services of freelancers they already
+        # contacted are added too, after the new ones: they have no "Matches"
+        # reason, so they rank by the owner's record. Not for freelancers: a job
+        # they already applied to is not worth recommending again.
+        if want == "services" and len(candidates) < SEND:
+            candidates += [p for p in recent if p not in candidates]
     if not candidates:
         return {"personalized": False, "results": []}
 

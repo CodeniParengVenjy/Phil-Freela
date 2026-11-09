@@ -211,6 +211,42 @@ check("recommend(): if the records can't be read (the SQL isn't run yet), the ra
 check("recommend(): with no candidates and no recent posts it returns an empty list",
       rec.recommend(FakeSupabase({}), "some-user") == {"personalized": False, "results": []})
 
+
+class FakeSmallSite(FakeSupabase):
+    """A client who already messaged the owners of every recent service (s1, s2)."""
+
+    def __init__(self, rpcs, account_type="client"):
+        super().__init__(rpcs)
+        self.account_type = account_type
+
+    def table(self, name):
+        if name == "profiles":
+            return FakeQuery({"account_type": self.account_type})
+        return FakeQuery([{"id": "s1"}, {"id": "s2"}, {"id": "s3"}] if name == "services" else [])
+
+    def rpc(self, name, args=None):
+        # Like the real ranking_signals: only the posts that were asked for.
+        if name == "ranking_signals":
+            self.calls.append((name, args))
+            return FakeQuery([s for s in self.rpcs[name] if s["post_id"] in args["post_ids"]])
+        return super().rpc(name, args)
+
+
+small_rpcs = {
+    "recommendation_interactions": [{"post_id": "s1"}, {"post_id": "s2"}],
+    "ranking_signals": [
+        {"post_id": pid, "kind": "service", "owner_id": "o" + pid, "owner_verified": pid == "s2", "reply_minutes": None, "created_at": made(90)}
+        for pid in ("s1", "s2", "s3")
+    ],
+}
+small = rec.recommend(FakeSmallSite(small_rpcs), "some-client")
+small_ids = [r["id"] for r in small["results"]]
+check("recommend(): a client who already contacted every freelancer still gets recommendations (the new s3, and s1 and s2 they already contacted)",
+      small["personalized"] is False and sorted(small_ids) == ["s1", "s2", "s3"], str(small))
+jobs_rpcs = {"recommendation_interactions": [{"post_id": "j1"}], "recent_open_jobs": [{"job_id": "j1"}]}
+check("recommend(): a freelancer is not shown again a job they already applied to",
+      rec.recommend(FakeSmallSite(jobs_rpcs, "freelancer"), "some-freelancer") == {"personalized": False, "results": []})
+
 # ---------------------------------------------------------------------------
 print()
 failed = results.count(False)

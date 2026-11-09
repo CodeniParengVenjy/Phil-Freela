@@ -75,7 +75,9 @@ export default function JobDetailsView() {
     };
   }, [jobId, currentUserId]);
 
-  const clientVerified = useVerifiedIds([job?.client?.id]).has(job?.client?.id);
+  // ready: the answer is back, so "Not verified" can be shown (see useVerifiedIds).
+  const clientVerifiedIds = useVerifiedIds([job?.client?.id]);
+  const clientVerified = clientVerifiedIds.has(job?.client?.id);
   // Whether the client has Premium right now (the gold Premium badge by their name).
   const clientPremium = useProIds().has(job?.client?.id);
 
@@ -275,7 +277,7 @@ export default function JobDetailsView() {
               {job.client?.id
                 ? <Link to={`/dashboard/clients/${job.client.id}`} className="text-white fw-semibold text-decoration-none hover-role">{clientName}</Link>
                 : <span className="text-white fw-semibold">{clientName}</span>}
-              <VerifiedBadge verified={clientVerified} showUnverified />
+              <VerifiedBadge verified={clientVerified} showUnverified={clientVerifiedIds.ready} />
               <ProBadge pro={clientPremium} />
               {/* The client's Trust score: their average rating from past projects (Feature 5, transparency). */}
               <TrustBadge userId={job.client?.id} />
