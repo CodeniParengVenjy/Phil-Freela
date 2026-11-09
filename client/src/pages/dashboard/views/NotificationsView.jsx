@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { getMyAnnouncements } from "../../../lib/announcements";
-import { getMyNotifications, getNotificationsSeenAt, markNotificationsSeen, mergeNotifications, notificationIcons } from "../../../lib/notifications";
+import {
+  getMyAnnouncementReads, getMyNotifications, getNotificationsSeenAt, isUnread, markNotificationRead, markNotificationsSeen, mergeNotifications, notificationIcons
+} from "../../../lib/notifications";
 import NotificationDialog from "../components/NotificationDialog";
 import { SkeletonRows } from "../../../components/Loaders";
 
@@ -10,25 +12,25 @@ export default function NotificationsView() {
   // Admin announcements and the user's own notifications in one list, newest first.
   const [items, setItems] = useState(null);
   const [loadError, setLoadError] = useState("");
-  // When the user last opened this page, from before this visit. Anything
-  // newer gets a "New" tag.
-  const [lastSeenAt, setLastSeenAt] = useState(null);
+  // The last "Mark all as read": anything newer that wasn't opened is unread
+  // (bold, with a "New" tag). Opening this page no longer marks anything
+  // (PLAN-notifications.md, Step N5).
+  const [seenAt, setSeenAt] = useState(null);
   // The item open in the popup (null = closed).
   const [openItem, setOpenItem] = useState(null);
   const closeItem = useCallback(() => setOpenItem(null), []);
 
-  // Also runs again when something new arrives while this page is open
-  // (the unread count goes above 0), so it shows up without a refresh.
-  const hasUnread = unreadNotifications > 0;
-
+  // Also runs again when the unread count changes (something new arrived
+  // while this page is open), so it shows up without a refresh.
   useEffect(() => {
     if (!currentUserId) return;
     let active = true;
 
     (async () => {
-      const [announcementsResult, notificationsResult, seenAt] = await Promise.all([
+      const [announcementsResult, notificationsResult, reads, lastSeen] = await Promise.all([
         getMyAnnouncements(),
         getMyNotifications(),
+        getMyAnnouncementReads(),
         getNotificationsSeenAt(currentUserId)
       ]);
 
@@ -38,26 +40,46 @@ export default function NotificationsView() {
         return;
       }
 
-      const merged = mergeNotifications(announcementsResult.data, notificationsResult.data);
-
-      // Keep the time from the first load, so the "New" tags don't vanish
-      // the moment this page marks everything as read.
-      setLastSeenAt((prev) => prev ?? seenAt);
-      setItems(merged);
-
-      // Opening this page counts as reading them: the badge goes back to 0.
-      await markNotificationsSeen(currentUserId, merged[0]?.created_at);
-      if (active) refreshUnreadNotifications();
+      setSeenAt(lastSeen);
+      setItems(mergeNotifications(announcementsResult.data, notificationsResult.data, reads));
     })();
 
     return () => { active = false; };
-  }, [currentUserId, hasUnread, refreshUnreadNotifications]);
+  }, [currentUserId, unreadNotifications]);
+
+  // Opening one item marks only that one as read (here at once, then in the
+  // database), and the bell's number goes down.
+  const openOne = async (item) => {
+    setOpenItem(item);
+    if (!isUnread(item, seenAt)) return;
+    const readAt = new Date().toISOString();
+    setItems((prev) => prev.map((one) => (one.key === item.key ? { ...one, read_at: readAt } : one)));
+    await markNotificationRead(item);
+    refreshUnreadNotifications();
+  };
+
+  // "Mark all as read": everything up to the newest item.
+  const anyUnread = (items || []).some((item) => isUnread(item, seenAt));
+  const markAllRead = async () => {
+    const newest = items?.[0]?.created_at;
+    if (!newest) return;
+    setSeenAt(newest);
+    await markNotificationsSeen(currentUserId, newest);
+    refreshUnreadNotifications();
+  };
 
   return (
     <section className="dashboard-view active-view">
       <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
-        {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
-        <h3 data-tour="notifications" className="text-white fw-bold mb-4"><i className="bi bi-bell-fill text-warning me-2"></i> Notifications</h3>
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+          {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
+          <h3 data-tour="notifications" className="text-white fw-bold mb-0"><i className="bi bi-bell-fill text-warning me-2"></i> Notifications</h3>
+          {anyUnread && (
+            <button type="button" className="btn btn-sm btn-outline-role rounded-pill px-3 fw-bold" onClick={markAllRead}>
+              <i className="bi bi-check2-all me-1"></i> Mark all as read
+            </button>
+          )}
+        </div>
 
         {loadError && <p className="text-secondary text-center mb-0">{loadError}</p>}
         {!loadError && items === null && <SkeletonRows count={4} picture={52} label="Loading notifications" className="d-flex flex-column gap-3" />}
@@ -70,16 +92,17 @@ export default function NotificationsView() {
 
         <div className="d-flex flex-column gap-3">
           {items?.map((item) => {
-            const isNew = lastSeenAt && new Date(item.created_at) > new Date(lastSeenAt);
+            const isNew = isUnread(item, seenAt);
             const icon = notificationIcons[item.type] || notificationIcons.announcement;
 
-            // Each item is a button: clicking it opens the popup with the full message.
+            // Each item is a button: clicking it opens the popup with the full
+            // message and marks it as read.
             return (
               <button
                 type="button"
                 key={item.key}
                 className="notification-item p-3 p-md-4 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-start gap-3 text-start w-100"
-                onClick={() => setOpenItem(item)}
+                onClick={() => openOne(item)}
               >
                 {/* notification-icon: 52px, 40px on a phone (dashboard.css). */}
                 <div className={`notification-icon avatar-circle ${icon.className} fw-bold flex-shrink-0 d-flex align-items-center justify-content-center`} style={{ width: 52, height: 52 }}>
@@ -87,7 +110,8 @@ export default function NotificationsView() {
                 </div>
                 <div className="flex-grow-1" style={{ minWidth: 0 }}>
                   <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                    <h5 className="text-white fw-bold mb-0" style={{ overflowWrap: "anywhere" }}>{item.title}</h5>
+                    {/* Unread: bold with a "New" tag. Read: lighter. */}
+                    <h5 className={`mb-0 ${isNew ? "text-white fw-bold" : "text-white-50 fw-semibold"}`} style={{ overflowWrap: "anywhere" }}>{item.title}</h5>
                     {isNew && <span className="badge bg-warning text-dark rounded-pill">New</span>}
                   </div>
                   <p className="notification-preview text-secondary fs-7 mb-1">{item.message}</p>

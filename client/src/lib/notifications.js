@@ -5,30 +5,59 @@ import { supabase } from "./supabaseClient";
 //  - user_notifications: for one user only, made by the database itself when
 //    a verification is reviewed, the user is suspended, or their report is
 //    reviewed
-// Both count as unread when they're newer than the last time the user opened
-// the page (profiles.notifications_seen_at).
+// An item is unread when it's newer than the last "Mark all as read"
+// (profiles.notifications_seen_at) AND it wasn't opened on its own
+// (user_notifications.read_at, or a row in announcement_reads for an
+// announcement). Opening the list no longer marks anything; opening one item
+// marks that one (PLAN-notifications.md, Step N5).
 
 // The signed-in user's own notifications, newest first. The database rules
 // only return theirs.
 export function getMyNotifications() {
   return supabase
     .from("user_notifications")
-    .select("id, type, title, message, link, created_at")
+    .select("id, type, title, message, link, created_at, read_at")
     .order("created_at", { ascending: false });
+}
+
+// Which announcements this user already opened: a Map of announcement id ->
+// when. (The database rules only return their own marks.) An empty Map if it
+// can't be read, so nothing breaks; those just show as unread.
+export async function getMyAnnouncementReads() {
+  const { data, error } = await supabase.from("announcement_reads").select("announcement_id, read_at");
+  return new Map(error ? [] : data.map((row) => [row.announcement_id, row.read_at]));
 }
 
 // Admin announcements and the user's own notifications in one list, newest
 // first (the Notifications page and the bell in the top bar). Announcements
-// have no type, so they're marked here to get their own icon. "from" is the
-// sender line under each item.
-export function mergeNotifications(announcements, notifications) {
+// have no type, so they're marked here to get their own icon, and their
+// read_at comes from announcementReads. "from" is the sender line under each item.
+export function mergeNotifications(announcements, notifications, announcementReads = new Map()) {
   return [
-    ...announcements.map((a) => ({ ...a, key: `announcement-${a.id}`, type: "announcement", from: "PhilFreela Admin" })),
+    ...announcements.map((a) => ({ ...a, key: `announcement-${a.id}`, type: "announcement", from: "PhilFreela Admin", read_at: announcementReads.get(a.id) || null })),
     ...notifications.map((n) => ({ ...n, key: `notification-${n.id}`, from: "PhilFreela" }))
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
-// The last time the user opened their Notifications page (or the bell's list).
+// Whether one item is unread: newer than the last "Mark all as read" and not
+// opened on its own.
+export function isUnread(item, seenAt) {
+  if (!seenAt || new Date(item.created_at) <= new Date(seenAt)) return false;
+  return !item.read_at;
+}
+
+// The user opened one item (its pop-up): mark only that one as read. The
+// database only touches the signed-in user's own item.
+export async function markNotificationRead(item) {
+  if (!item || item.read_at) return;
+  await supabase.rpc("mark_notification_read", {
+    p_kind: item.type === "announcement" ? "announcement" : "notification",
+    p_id: item.id
+  });
+}
+
+// The last time the user pressed "Mark all as read" (before Step N5: the last
+// time they opened their Notifications page or the bell's list).
 export async function getNotificationsSeenAt(userId) {
   const { data } = await supabase
     .from("profiles")
@@ -38,20 +67,23 @@ export async function getNotificationsSeenAt(userId) {
   return data?.notifications_seen_at || null;
 }
 
-// How many announcements and personal notifications arrived since then
+// The number on the bell: announcements and personal notifications that
+// arrived since the last "Mark all as read" and weren't opened on their own
 // (head: true = just the count, no rows).
 export async function countUnreadNotifications(userId) {
   const seenAt = await getNotificationsSeenAt(userId);
   if (!seenAt) return 0;
 
-  const [announcements, personal] = await Promise.all([
-    supabase.from("announcements").select("id", { count: "exact", head: true }).gt("created_at", seenAt),
-    supabase.from("user_notifications").select("id", { count: "exact", head: true }).gt("created_at", seenAt)
+  const [announcements, reads, personal] = await Promise.all([
+    supabase.from("announcements").select("id").gt("created_at", seenAt),
+    getMyAnnouncementReads(),
+    supabase.from("user_notifications").select("id", { count: "exact", head: true }).gt("created_at", seenAt).is("read_at", null)
   ]);
-  return (announcements.count || 0) + (personal.count || 0);
+  const unreadAnnouncements = (announcements.data || []).filter((a) => !reads.has(a.id)).length;
+  return unreadAnnouncements + (personal.count || 0);
 }
 
-// Marks everything up to the newest item as read. It saves that item's own
+// "Mark all as read": everything up to the newest item counts as read. It saves that item's own
 // time (set by the database), not the computer's clock, so a wrong clock
 // can't hide or re-show anything. The .lt() makes sure the time only ever
 // moves forward.

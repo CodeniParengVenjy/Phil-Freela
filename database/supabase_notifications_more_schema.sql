@@ -456,3 +456,84 @@ end;
 $$;
 
 revoke all on function public.send_daily_notices() from public, anon, authenticated;
+
+
+-- =====================================================================
+-- Section 4. Read / unread for each item (Step N5)
+-- =====================================================================
+-- Before this, opening the bell or the Notifications page marked EVERYTHING
+-- as read (profiles.notifications_seen_at moved to the newest item). Now:
+--   * opening the list marks nothing;
+--   * opening one item (its pop-up) marks only that one as read;
+--   * a "Mark all as read" button still moves notifications_seen_at forward.
+-- An item is unread when it is newer than notifications_seen_at AND it was
+-- not opened one by one: user_notifications.read_at is empty, or, for an
+-- admin announcement (one row shared by everyone), there is no
+-- announcement_reads row for this person. Everything from before stays read.
+
+-- 4a. When the person opened this notification (empty = not opened yet).
+alter table public.user_notifications add column if not exists read_at timestamptz;
+
+comment on column public.user_notifications.read_at is
+  'When the person opened this notification on its own. Set only by mark_notification_read().';
+
+-- 4b. Which announcements each person opened. An announcement is one row for
+--     everyone, so the "read" mark lives in its own table.
+create table if not exists public.announcement_reads (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  announcement_id uuid not null references public.announcements (id) on delete cascade,
+  read_at timestamptz not null default now(),
+  primary key (user_id, announcement_id)
+);
+
+alter table public.announcement_reads enable row level security;
+
+-- Each person sees only their own marks. There is no insert or update policy:
+-- marks are added only by mark_notification_read() below.
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'announcement_reads' and policyname = 'announcement_reads: read own'
+  ) then
+    create policy "announcement_reads: read own" on public.announcement_reads
+      for select to authenticated
+      using (user_id = (select auth.uid()));
+  end if;
+end;
+$$;
+
+revoke all on public.announcement_reads from anon;
+revoke insert, update, delete, truncate on public.announcement_reads from authenticated;
+grant select on public.announcement_reads to authenticated;
+
+-- 4c. The person opened one item. p_kind: 'notification' (their own row in
+--     user_notifications) or 'announcement'. It only ever touches the
+--     signed-in person's own item; anything else is ignored.
+create or replace function public.mark_notification_read(p_kind text, p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Please sign in first.';
+  end if;
+
+  if p_kind = 'notification' then
+    update public.user_notifications
+       set read_at = now()
+     where id = p_id and user_id = auth.uid() and read_at is null;
+  elsif p_kind = 'announcement' then
+    insert into public.announcement_reads (user_id, announcement_id)
+    select auth.uid(), a.id from public.announcements a where a.id = p_id
+    on conflict do nothing;
+  else
+    raise exception 'Unknown kind of notification.';
+  end if;
+end;
+$$;
+
+revoke all on function public.mark_notification_read(text, uuid) from public, anon;
+grant execute on function public.mark_notification_read(text, uuid) to authenticated;

@@ -411,3 +411,100 @@ begin
   raise exception 'Section 3 test results (all undone):%', res;
 end;
 $t$;
+
+
+-- =====================================================================
+-- Section 4 test: read / unread for each item (run AFTER Section 4).
+-- Borrows two real people, adds made-up notifications and an announcement,
+-- ends with an error that undoes everything.
+-- =====================================================================
+do $t$
+declare
+  res text := '';
+  u uuid; v uuid;          -- two borrowed people
+  n1 uuid; n2 uuid;        -- u's made-up notifications
+  ann uuid;                -- a made-up announcement
+  seen timestamptz;
+  n int;
+  t timestamptz;
+begin
+  create or replace function public.queue_offline_email(recipient uuid, email_topic text, details jsonb)
+  returns void language plpgsql as $f$ begin null; end; $f$;
+
+  select p.id, p.notifications_seen_at into u, seen from public.profiles p order by p.created_at limit 1;
+  select p.id into v from public.profiles p where p.id <> u order by p.created_at limit 1;
+
+  insert into public.user_notifications (user_id, type, title, message) values (u, 'project_done', 'Notiftest one', 'Notiftest one') returning id into n1;
+  insert into public.user_notifications (user_id, type, title, message) values (u, 'project_done', 'Notiftest two', 'Notiftest two') returning id into n2;
+  insert into public.announcements (title, message, audience) values ('Notiftest news', 'Notiftest news', 'all') returning id into ann;
+
+  select read_at into t from public.user_notifications where id = n1;
+  res := res || case when t is null then E'\nPASS  1. a new notification starts unread (read_at empty)'
+                     else E'\nFAIL  1. a new notification already has read_at' end;
+
+  set local role authenticated;
+
+  -- Someone else can't mark u's notification.
+  perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
+  perform public.mark_notification_read('notification', n1);
+  -- u opens n1.
+  perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+  select count(*) into n from public.user_notifications where id = n1 and read_at is null;
+  res := res || case when n = 1 then E'\nPASS  2. another person cannot mark someone''s notification as read'
+                     else E'\nFAIL  2. another person marked it' end;
+  perform public.mark_notification_read('notification', n1);
+  select count(*) into n from public.user_notifications where id in (n1, n2) and read_at is not null;
+  res := res || case when n = 1 then E'\nPASS  3. opening one notification marks only that one'
+                     else E'\nFAIL  3. ' || n || ' marked, expected 1' end;
+
+  -- The unread count the website asks for: newer than seen_at and not opened.
+  select count(*) into n from public.user_notifications
+  where created_at > coalesce(seen, '-infinity'::timestamptz) and read_at is null and id in (n1, n2);
+  res := res || case when n = 1 then E'\nPASS  4. the unread count drops by one (1 of the 2 left)'
+                     else E'\nFAIL  4. unread count ' || n || ', expected 1' end;
+
+  -- Can't change read_at directly.
+  update public.user_notifications set read_at = null where id = n1;
+  get diagnostics n = row_count;
+  res := res || case when n = 0 then E'\nPASS  5. nobody can change read_at directly'
+                     else E'\nFAIL  5. read_at was changed directly' end;
+
+  -- Announcements.
+  perform public.mark_notification_read('announcement', ann);
+  perform public.mark_notification_read('announcement', ann);
+  select count(*) into n from public.announcement_reads where announcement_id = ann;
+  res := res || case when n = 1 then E'\nPASS  6. opening an announcement marks it read for this person (once)'
+                     else E'\nFAIL  6. found ' || n || ' read mark(s)' end;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
+  select count(*) into n from public.announcement_reads where announcement_id = ann;
+  res := res || case when n = 0 then E'\nPASS  7. another person cannot see that mark, and it is still unread for them'
+                     else E'\nFAIL  7. the other person sees ' || n || ' mark(s)' end;
+
+  begin
+    insert into public.announcement_reads (user_id, announcement_id) values (v, ann);
+    res := res || E'\nFAIL  8. a person could add a read mark directly';
+  exception when insufficient_privilege then
+    res := res || E'\nPASS  8. nobody can add a read mark directly';
+  end;
+
+  begin
+    perform public.mark_notification_read('something', ann);
+    res := res || E'\nFAIL  9. an unknown kind was accepted';
+  exception when raise_exception then
+    res := res || E'\nPASS  9. an unknown kind is refused';
+  end;
+
+  perform set_config('request.jwt.claims', '', true);
+  set local role anon;
+  begin
+    perform public.mark_notification_read('notification', n2);
+    res := res || E'\nFAIL 10. a signed-out visitor could call it';
+  exception when insufficient_privilege then
+    res := res || E'\nPASS 10. a signed-out visitor cannot call it';
+  end;
+  reset role;
+
+  raise exception 'Section 4 test results (all undone):%', res;
+end;
+$t$;

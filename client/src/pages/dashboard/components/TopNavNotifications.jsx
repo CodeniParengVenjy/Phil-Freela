@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { getMyAnnouncements } from "../../../lib/announcements";
-import { getMyNotifications, getNotificationsSeenAt, markNotificationsSeen, mergeNotifications, notificationIcons } from "../../../lib/notifications";
+import {
+  getMyAnnouncementReads, getMyNotifications, getNotificationsSeenAt, isUnread, markNotificationRead, markNotificationsSeen, mergeNotifications, notificationIcons
+} from "../../../lib/notifications";
 import { shortTimeAgo } from "../../../lib/chatTime";
 import TopNavIconMenu from "./TopNavIconMenu";
 import NotificationDialog from "./NotificationDialog";
@@ -12,38 +14,31 @@ const LIST_SIZE = 6;
 
 // The bell in the top bar: a red number for the notifications not read yet,
 // and a list of the newest ones when pressed. Pressing one opens the same
-// popup as on the Notifications page; "See all notifications" opens that page.
-// Opening the list counts as reading them (like opening the page), so the
-// number goes back to 0.
+// popup as on the Notifications page and marks only that one as read;
+// "Mark all as read" clears the number; "See all notifications" opens that
+// page. Opening the list marks nothing (PLAN-notifications.md, Step N5).
 export default function TopNavNotifications({ currentUserId, unread, onRead }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(null);
   const [loadError, setLoadError] = useState(false);
-  // When the user last read their notifications, from before this opening:
-  // anything newer is shown in bold with a dot.
-  const [lastSeenAt, setLastSeenAt] = useState(null);
+  // The last "Mark all as read": anything newer that wasn't opened is shown
+  // in bold with a dot.
+  const [seenAt, setSeenAt] = useState(null);
   // The item open in the popup (null = closed).
   const [openItem, setOpenItem] = useState(null);
   const closeItem = useCallback(() => setOpenItem(null), []);
 
-  const handleOpenChange = useCallback((isOpen) => {
-    setOpen(isOpen);
-    // The next opening reads the time again, so its new ones get the dot.
-    if (!isOpen) setLastSeenAt(null);
-  }, []);
-
-  // Loads the list each time it opens, and again if something new arrives
-  // while it is open (the number goes above 0).
-  const hasUnread = unread > 0;
-
+  // Loads the list each time it opens, and again if the number changes while
+  // it is open (something new arrived, or one was read).
   useEffect(() => {
     if (!open || !currentUserId) return undefined;
     let active = true;
 
     (async () => {
-      const [announcementsResult, notificationsResult, seenAt] = await Promise.all([
+      const [announcementsResult, notificationsResult, reads, lastSeen] = await Promise.all([
         getMyAnnouncements().limit(LIST_SIZE),
         getMyNotifications().limit(LIST_SIZE),
+        getMyAnnouncementReads(),
         getNotificationsSeenAt(currentUserId)
       ]);
 
@@ -53,23 +48,44 @@ export default function TopNavNotifications({ currentUserId, unread, onRead }) {
         return;
       }
 
-      const merged = mergeNotifications(announcementsResult.data, notificationsResult.data).slice(0, LIST_SIZE);
       setLoadError(false);
-      setLastSeenAt((prev) => prev ?? seenAt);
-      setItems(merged);
-
-      // Seeing the list counts as reading them: the number goes back to 0.
-      await markNotificationsSeen(currentUserId, merged[0]?.created_at);
-      if (active) onRead();
+      setSeenAt(lastSeen);
+      setItems(mergeNotifications(announcementsResult.data, notificationsResult.data, reads).slice(0, LIST_SIZE));
     })();
 
     return () => { active = false; };
-  }, [open, currentUserId, hasUnread, onRead]);
+  }, [open, currentUserId, unread]);
+
+  // Opening one item marks only that one as read, and the number goes down.
+  const openOne = async (item) => {
+    setOpenItem(item);
+    if (!isUnread(item, seenAt)) return;
+    const readAt = new Date().toISOString();
+    setItems((prev) => prev.map((one) => (one.key === item.key ? { ...one, read_at: readAt } : one)));
+    await markNotificationRead(item);
+    onRead();
+  };
+
+  // "Mark all as read": everything up to the newest item.
+  const markAllRead = async () => {
+    const newest = items?.[0]?.created_at;
+    if (!newest) return;
+    setSeenAt(newest);
+    await markNotificationsSeen(currentUserId, newest);
+    onRead();
+  };
 
   return (
     <>
-      <TopNavIconMenu icon="bi-bell-fill" label="Notifications" count={unread} tour="topbar-notifications" onOpenChange={handleOpenChange}>
-        <div className="topbar-panel-head px-3 py-2 border-bottom border-secondary border-opacity-25 fw-bold text-white">Notifications</div>
+      <TopNavIconMenu icon="bi-bell-fill" label="Notifications" count={unread} tour="topbar-notifications" onOpenChange={setOpen}>
+        <div className="topbar-panel-head px-3 py-2 border-bottom border-secondary border-opacity-25 fw-bold text-white d-flex align-items-center justify-content-between gap-2">
+          <span>Notifications</span>
+          {unread > 0 && items?.length > 0 && (
+            <button type="button" className="btn btn-link p-0 text-role fs-8 fw-bold text-decoration-none" onClick={markAllRead}>
+              Mark all as read
+            </button>
+          )}
+        </div>
 
         <div className="topbar-panel-list">
           {loadError && <p className="text-white-50 fs-7 text-center py-4 mb-0">Failed to load notifications.</p>}
@@ -82,10 +98,10 @@ export default function TopNavNotifications({ currentUserId, unread, onRead }) {
           )}
 
           {!loadError && items?.map((item) => {
-            const isNew = lastSeenAt && new Date(item.created_at) > new Date(lastSeenAt);
+            const isNew = isUnread(item, seenAt);
             const icon = notificationIcons[item.type] || notificationIcons.announcement;
             return (
-              <button type="button" key={item.key} className="dropdown-item topbar-panel-item" onClick={() => setOpenItem(item)}>
+              <button type="button" key={item.key} className="dropdown-item topbar-panel-item" onClick={() => openOne(item)}>
                 <span className={`topbar-panel-icon ${icon.className}`}>
                   <i className={`bi ${icon.icon}`}></i>
                 </span>
