@@ -170,7 +170,22 @@ files; if N1 needs something there, send that session a message (ListAgents, Sen
     the tags stay for that visit). Mocked-network check 25/25 (dark, light, light + yellow accent).
     ApplicationsPanel.jsx was edited after the best-fit session's commit ac4ff16, as agreed with it.
   - Until the SQL is applied the new requests fail quietly: no number, no tags, nothing breaks.
-- N2 + N3 built (website pushed, database Section 2 NOT applied yet, waits for the user's go):
+- N2 + N3 LIVE: Section 2 applied 2026-11-10 after the user's "go go go dont wait for me" (migration
+  `notifications_job_filled_expired`), 14/14 again on live; the sent log has the 4 posts that were already
+  expired; pg_cron `daily-notices` is active.
+- N4 LIVE (the user: "dont wait for me", and no answer on the two late projects, so the suggested default:
+  they DO get a late notice): Section 3 applied (migration `notifications_due_reminders`), trial 10/10 and
+  10/10 again on live. `send_daily_notices()` now also sends due_3 (3 or 2 days left), due_1, due_0, and
+  for submitted work due today a review reminder to the client; late: overdue_1 (1 to 6 days) and overdue_7
+  (7+), non-overlapping, so one notice a day at most. Project due dates can't be changed, so the client's
+  late notice says "Message <freelancer> to ask about it." (not "agree on a new date"). On 2026-11-10 one
+  real Started project was 6 days late: the first run (11-11, 8:00 AM) sends it "7 days late" to both.
+  Website: red "Overdue: 2 days late" / yellow "Due today", "Due tomorrow", "Due in 3 days" pill
+  (components/DueBadge.jsx, lib/projects.js dueInfo) on My Projects, the calendar list and the project
+  page, a red notice at the top of a late project's page, bell icons. Only STARTED projects count as late
+  now (submitted work was delivered), on screen too: the old "(overdue)" also showed on submitted ones.
+  Mocked check 14/14 (client + freelancer, dark + light).
+- N2 + N3 built (website pushed, database Section 2 then waited for the user's go):
   - Database (Section 2): types `job_filled`, `job_expired`; trigger `notify_job_filled` after insert on
     projects (fires when hired = freelancers_needed); table `scheduled_notices` (the sent log, RLS on, no
     policies; when it is first made the posts ALREADY expired are written in as told, so the first run sends

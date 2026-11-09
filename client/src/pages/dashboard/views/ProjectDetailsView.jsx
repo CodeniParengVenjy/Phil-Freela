@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import {
   canPreview, deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getPreviewLink, getProject, getRatingOfMe, isBlenderFile,
-  isLocked, markProjectDone, openDeliverable, personName, projectStatuses, ratingDeadline, ratingReveal, ratingStep, requestProjectChanges, todayInManila
+  isLocked, markProjectDone, openDeliverable, personName, projectStatuses, ratingDeadline, ratingReveal, ratingStep, requestProjectChanges, dueInfo
 } from "../../../lib/projects";
 import { makeDeliverablePreview } from "../../../lib/aiService";
 import { unlocksWhenFullyPaid } from "../../../lib/payments";
@@ -13,6 +13,7 @@ import CensoredText from "../../../components/CensoredText";
 import PaymentsSection from "../components/PaymentsSection";
 import ProjectPriceBox from "../components/ProjectPriceBox";
 import ReportDialog from "../components/ReportDialog";
+import DueBadge from "../components/DueBadge";
 import { Loader, Busy } from "../../../components/Loaders";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
@@ -207,7 +208,8 @@ export default function ProjectDetailsView() {
   // picture and the name link to it.
   const otherPath = other?.id ? profilePath(iAmClient ? "freelancer" : "client", other.id) : null;
   const status = projectStatuses[project.status];
-  const overdue = project.status !== "done" && project.due_date < todayInManila();
+  // Late, due soon, or neither (lib/projects.js dueInfo; Step N4 of PLAN-notifications.md).
+  const due = dueInfo(project);
   const hasSubmission = Boolean(project.submission_path || project.submission_link);
   // undefined while the link is loading, null when it couldn't be made.
   const mediaLink = media?.path === shownPath ? media.link : undefined;
@@ -283,6 +285,15 @@ export default function ProjectDetailsView() {
           )}
         </div>
 
+        {/* A late project says so at the top, and what to do next (the same
+            words as the daily late notice, Step N4 of PLAN-notifications.md). */}
+        {due?.late && (
+          <div className="alert alert-danger fs-7 py-2 mb-4" role="status">
+            <i className="bi bi-exclamation-triangle-fill me-1"></i> This project is {due.days} day{due.days === 1 ? "" : "s"} late.{" "}
+            {iAmClient ? `Message ${otherName} to ask about it.` : "Submit your work or message the client."}
+          </div>
+        )}
+
         <div className="row g-3">
           <div className="col-md-6">
             <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 h-100">
@@ -317,9 +328,10 @@ export default function ProjectDetailsView() {
           <div className="col-md-6">
             <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 h-100">
               <span className="text-secondary fs-8 d-block mb-1">Due Date</span>
-              <span className={`fw-bold fs-6 ${overdue ? "text-danger" : "text-warning"}`}>
-                <i className="bi bi-clock-history me-2"></i>{formatDay(project.due_date)}{overdue && " (overdue)"}
+              <span className={`fw-bold fs-6 ${due?.late ? "text-danger" : "text-warning"}`}>
+                <i className="bi bi-clock-history me-2"></i>{formatDay(project.due_date)}
               </span>
+              <DueBadge project={project} className="ms-2 align-middle" />
             </div>
           </div>
 

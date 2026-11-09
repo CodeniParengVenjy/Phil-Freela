@@ -293,3 +293,121 @@ begin
   raise exception 'Section 2 test results (all undone):%', res;
 end;
 $t$;
+
+
+-- =====================================================================
+-- Section 3 test: due-date reminders and late notices (run AFTER Section 3).
+-- Borrows a real client and freelancer, makes up projects with due dates
+-- around today, runs the daily job twice, ends with an error that undoes
+-- everything. Only the made-up projects' notices are counted (real projects
+-- are processed too, inside the same undone block).
+-- =====================================================================
+do $t$
+declare
+  res text := '';
+  c uuid; f uuid; f_name text;
+  today date := (now() at time zone 'Asia/Manila')::date;
+  p3 uuid; p2 uuid; p1 uuid; p0 uuid; s0 uuid; s3 uuid; l1 uuid; l10 uuid; sl uuid; pd uuid; pfar uuid;
+  n int; m int;
+  d3 text;
+begin
+  create or replace function public.queue_offline_email(recipient uuid, email_topic text, details jsonb)
+  returns void language plpgsql as $f$ begin null; end; $f$;
+
+  select p.id into c from public.profiles p where p.account_type = 'client' order by p.created_at limit 1;
+  select p.id, coalesce(nullif(p.full_name, ''), p.username) into f, f_name
+  from public.profiles p where p.account_type = 'freelancer' and p.id <> c order by p.created_at limit 1;
+  if c is null or f is null then
+    raise exception 'needs a client and a freelancer';
+  end if;
+  d3 := to_char(today + 3, 'FMMonth FMDD');
+
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest p3', today + 3) returning id into p3;
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest p2', today + 2) returning id into p2;
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest p1', today + 1) returning id into p1;
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest p0', today) returning id into p0;
+  insert into public.projects (client_id, freelancer_id, title, due_date, status, submitted_at) values (c, f, 'Notiftest s0', today, 'submitted', now()) returning id into s0;
+  insert into public.projects (client_id, freelancer_id, title, due_date, status, submitted_at) values (c, f, 'Notiftest s3', today + 3, 'submitted', now()) returning id into s3;
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest l1', today - 1) returning id into l1;
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest l10', today - 10) returning id into l10;
+  insert into public.projects (client_id, freelancer_id, title, due_date, status, submitted_at) values (c, f, 'Notiftest sl', today - 5, 'submitted', now()) returning id into sl;
+  insert into public.projects (client_id, freelancer_id, title, due_date, status, submitted_at, completed_at) values (c, f, 'Notiftest done', today - 2, 'done', now(), now()) returning id into pd;
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest far', today + 5) returning id into pfar;
+
+  perform public.send_daily_notices();
+
+  -- ===== Due soon / due today =====
+  select count(*) into n from public.user_notifications where user_id = f and type = 'project_due_soon'
+    and title = 'Project due soon' and link = '/dashboard/project-details/' || p3
+    and message = '"Notiftest p3" is due in 3 days (' || d3 || '). Submit your work on the project page.';
+  select count(*) into m from public.user_notifications where user_id = c and type = 'project_due_soon'
+    and link = '/dashboard/project-details/' || p3
+    and message = '"Notiftest p3" is due in 3 days (' || d3 || '). ' || f_name || ' is working on it.';
+  res := res || case when n = 1 and m = 1 then E'\nPASS  1. 3 days left: the freelancer and the client each got "due in 3 days (date)"'
+                     else E'\nFAIL  1. 3 days left: freelancer ' || n || ', client ' || m end;
+
+  select count(*) into n from public.user_notifications where link = '/dashboard/project-details/' || p2 and message like '%is due in 2 days (%';
+  res := res || case when n = 2 then E'\nPASS  2. 2 days left: both got "due in 2 days"'
+                     else E'\nFAIL  2. 2 days left: found ' || n end;
+
+  select count(*) into n from public.user_notifications where link = '/dashboard/project-details/' || p1 and type = 'project_due_soon' and message like '%is due tomorrow (%';
+  res := res || case when n = 2 then E'\nPASS  3. 1 day left: both got "due tomorrow"'
+                     else E'\nFAIL  3. 1 day left: found ' || n end;
+
+  select count(*) into n from public.user_notifications where link = '/dashboard/project-details/' || p0 and type = 'project_due_today'
+    and title = 'Project due today' and message in ('"Notiftest p0" is due today. Submit your work on the project page.', '"Notiftest p0" is due today. ' || f_name || ' is working on it.');
+  res := res || case when n = 2 then E'\nPASS  4. due today: both got "due today" (no date in brackets)'
+                     else E'\nFAIL  4. due today: found ' || n end;
+
+  -- ===== Submitted work =====
+  select count(*) into n from public.user_notifications where user_id = c and type = 'project_review_reminder'
+    and title = 'Work waiting for your review' and link = '/dashboard/project-details/' || s0
+    and message = f_name || '''s work for "Notiftest s0" is waiting for your review. The project is due today.';
+  select count(*) into m from public.user_notifications where user_id = f and link = '/dashboard/project-details/' || s0;
+  res := res || case when n = 1 and m = 0 then E'\nPASS  5. submitted and due today: only the client is asked to review'
+                     else E'\nFAIL  5. submitted and due today: client ' || n || ', freelancer ' || m end;
+
+  select count(*) into n from public.user_notifications
+  where link in ('/dashboard/project-details/' || s3, '/dashboard/project-details/' || sl, '/dashboard/project-details/' || pd, '/dashboard/project-details/' || pfar)
+    and type in ('project_due_soon', 'project_due_today', 'project_overdue', 'project_review_reminder');
+  res := res || case when n = 0 then E'\nPASS  6. submitted (not due today), Done and 5-days-away projects get nothing'
+                     else E'\nFAIL  6. those projects got ' || n || ' notice(s)' end;
+
+  -- ===== Late =====
+  select count(*) into n from public.user_notifications where user_id = f and type = 'project_overdue' and title = 'Project is late'
+    and link = '/dashboard/project-details/' || l1 and message = '"Notiftest l1" is 1 day late. Submit your work or message the client.';
+  select count(*) into m from public.user_notifications where user_id = c and type = 'project_overdue'
+    and link = '/dashboard/project-details/' || l1 and message = '"Notiftest l1" is 1 day late. Message ' || f_name || ' to ask about it.';
+  res := res || case when n = 1 and m = 1 then E'\nPASS  7. 1 day late: the freelancer and the client each got a late notice'
+                     else E'\nFAIL  7. 1 day late: freelancer ' || n || ', client ' || m end;
+
+  select count(*) into n from public.user_notifications where link = '/dashboard/project-details/' || l10 and type = 'project_overdue' and message like '%is 10 days late.%';
+  select count(*) into m from public.user_notifications where link = '/dashboard/project-details/' || l10;
+  res := res || case when n = 2 and m = 2 then E'\nPASS  8. 10 days late: one notice each ("10 days late"), not two'
+                     else E'\nFAIL  8. 10 days late: matching ' || n || ', all ' || m end;
+
+  -- ===== Never twice =====
+  select count(*) into n from public.user_notifications
+  where type in ('project_due_soon', 'project_due_today', 'project_overdue', 'project_review_reminder')
+    and link in (select '/dashboard/project-details/' || x from unnest(array[p3, p2, p1, p0, s0, s3, l1, l10, sl, pd, pfar]) x);
+  perform public.send_daily_notices();
+  select count(*) into m from public.user_notifications
+  where type in ('project_due_soon', 'project_due_today', 'project_overdue', 'project_review_reminder')
+    and link in (select '/dashboard/project-details/' || x from unnest(array[p3, p2, p1, p0, s0, s3, l1, l10, sl, pd, pfar]) x);
+  res := res || case when n = 13 and m = 13 then E'\nPASS  9. 13 notices the first time, none more the second time'
+                     else E'\nFAIL  9. first run ' || n || ' (expected 13), after the second run ' || m end;
+
+  -- ===== Who can use it =====
+  perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin
+    perform public.send_daily_notices();
+    res := res || E'\nFAIL 10. a signed-in user could run the daily job';
+  exception when insufficient_privilege then
+    res := res || E'\nPASS 10. a signed-in user cannot run the daily job';
+  end;
+  reset role;
+
+  raise exception 'Section 3 test results (all undone):%', res;
+end;
+$t$;

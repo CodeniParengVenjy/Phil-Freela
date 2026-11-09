@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { formatDay, projectStatuses } from "../../../lib/projects";
+import { dueInfo, formatDay, projectStatuses } from "../../../lib/projects";
 import CensoredText from "../../../components/CensoredText";
+import DueBadge from "./DueBadge";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 // At most this many dots under one day; a "+" follows when there are more.
@@ -9,11 +10,12 @@ const MAX_DOTS = 3;
 
 const twoDigits = (n) => String(n).padStart(2, "0");
 
-// The color of a project's dot: green when done, red when its due date has
-// passed, the accent color for the rest.
+// The color of a project's dot: green when done, red when it is late (a
+// Started project past its due date, the same rule as the "Overdue" label),
+// the accent color for the rest.
 function dotClass(project, today) {
   if (project.status === "done") return "bg-success";
-  if (project.due_date < today) return "bg-danger";
+  if (dueInfo(project, today)?.late) return "bg-danger";
   return "bg-role";
 }
 
@@ -129,7 +131,6 @@ export default function DueDateCalendar({ projects, today }) {
           <div className="d-flex flex-column gap-2">
             {selectedProjects.map((project) => {
               const status = projectStatuses[project.status];
-              const overdue = project.status !== "done" && project.due_date < today;
               return (
                 <Link
                   key={project.id}
@@ -137,7 +138,7 @@ export default function DueDateCalendar({ projects, today }) {
                   className="p-2 px-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center gap-2 hover-lift text-decoration-none"
                 >
                   <span className="text-white fs-7 fw-semibold text-break flex-grow-1"><CensoredText text={project.title} /></span>
-                  {overdue && <span className="text-danger fs-8 fw-semibold flex-shrink-0">Overdue</span>}
+                  <DueBadge project={project} today={today} className="flex-shrink-0" />
                   <span className={`badge rounded-pill flex-shrink-0 ${status.className}`}>{status.label}</span>
                 </Link>
               );

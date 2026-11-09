@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { formatDay, getMyProjects, personName, projectStatuses, ratingStep, todayInManila } from "../../../lib/projects";
 import Avatar from "../../../components/Avatar";
 import DueDateCalendar from "./DueDateCalendar";
+import DueBadge from "./DueBadge";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
 
@@ -57,7 +58,6 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
           const other = isFreelancer ? p.client : p.freelancer;
           const otherName = personName(other, isFreelancer ? "Client" : "Freelancer");
           const status = projectStatuses[p.status];
-          const overdue = p.status !== "done" && p.due_date < today;
           // The rating step of a Done project (null until it's Done). The
           // list only holds the ratings this user may see: their own, and the
           // other person's once it is no longer hidden. A client's rating opens
@@ -75,7 +75,9 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
                 <h6 className="text-white fw-bold mb-1 text-break"><CensoredText text={p.title} /></h6>
                 <p className="text-white-50 fs-7 mb-0 text-break">
                   {isFreelancer ? "Client" : "Freelancer"}: {otherName} •{" "}
-                  <span className={overdue ? "text-danger" : ""}>Due {formatDay(p.due_date)}{overdue && " (overdue)"}</span>
+                  <span>Due {formatDay(p.due_date)}</span>
+                  {/* "Overdue: 2 days late" or "Due in 3 days" (Step N4 of PLAN-notifications.md). */}
+                  <DueBadge project={p} today={today} className="ms-2 align-middle" />
                 </p>
                 {rating && (
                   <p className={`fs-8 fw-semibold mb-0 mt-1 ${rating.textClass}`}>

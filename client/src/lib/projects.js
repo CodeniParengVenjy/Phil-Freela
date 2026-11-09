@@ -122,6 +122,27 @@ export function todayInManila() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
 }
 
+// How a project stands against its due date (PLAN-notifications.md, Step N4),
+// for the labels on the Projects page, the calendar and the project page. The
+// same rule as the daily reminders: only a Started project can be late or due
+// soon (Done is finished, and Submitted work was delivered). Gives back
+//   { late: true, days: 2, text: "Overdue: 2 days late" } once the date passed,
+//   { late: false, days: 0, text: "Due today" } ("Due tomorrow", "Due in 3 days")
+//   up to 3 days before, otherwise null.
+export function dueInfo(project, today = todayInManila()) {
+  if (project?.status !== "started" || !project.due_date) return null;
+  // Whole days between the two "YYYY-MM-DD" dates (both read as UTC, so the
+  // computer's clock and time zone can't shift it).
+  const daysLeft = Math.round((Date.parse(`${project.due_date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000);
+  if (daysLeft < 0) {
+    const days = -daysLeft;
+    return { late: true, days, text: `Overdue: ${days} day${days === 1 ? "" : "s"} late` };
+  }
+  if (daysLeft > 3) return null;
+  const text = daysLeft === 0 ? "Due today" : daysLeft === 1 ? "Due tomorrow" : `Due in ${daysLeft} days`;
+  return { late: false, days: daysLeft, text };
+}
+
 // Shows a "YYYY-MM-DD" date in the user's own format. The added time keeps
 // it on the right day (a bare date is read as UTC and can slip back a day).
 export function formatDay(day) {
