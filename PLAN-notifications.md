@@ -192,6 +192,8 @@ files; if N1 needs something there, send that session a message (ListAgents, Sen
   item marks only it (bold + dot/"New" until then); "Mark all as read" in the bell's header and on the page
   (moves notifications_seen_at as before); the bell's number = unread personal + unread announcements.
   Mocked check 26/26 (dark + light). NotificationDialog.jsx needed no change (the lists mark on click).
+- N6: the wording list is in PLAN-notifications-wording.md (9 proposed changes, the rest kept). WAITING
+  for the user's approval; nothing changed yet.
 - N2 + N3 built (website pushed, database Section 2 then waited for the user's go):
   - Database (Section 2): types `job_filled`, `job_expired`; trigger `notify_job_filled` after insert on
     projects (fires when hired = freelancers_needed); table `scheduled_notices` (the sent log, RLS on, no
