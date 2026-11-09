@@ -3,15 +3,12 @@ import { Link } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
 import { EMAIL_PATTERN } from "../../lib/validators";
 import { getFriendlyErrorMessage } from "../../lib/errors";
-import { useCaptcha } from "../../lib/captcha";
-import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
-import { Busy, MessageText } from "../../components/Loaders";
+import { MessageText } from "../../components/Loaders";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const captcha = useCaptcha();
   const [message, setMessage] = useState({ text: "", type: "" });
 
   const handleSubmit = async (event) => {
@@ -32,20 +29,12 @@ export default function ForgotPassword() {
       return;
     }
 
-    if (captcha.waiting) {
-      setMessage({ text: "Please wait for the human check above the button to finish.", type: "error" });
-      return;
-    }
-
     setSubmitting(true);
     setMessage({ text: "Sending reset link...", type: "", kind: "send" });
 
     const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
-      captchaToken: captcha.token || undefined
+      redirectTo: `${window.location.origin}/reset-password`
     });
-    // A check works once: the box makes a new one for the next try.
-    captcha.reset();
 
     if (error) {
       setMessage({ text: getFriendlyErrorMessage(error), type: "error" });
@@ -102,14 +91,12 @@ export default function ForgotPassword() {
               </div>
             </div>
 
-            <CaptchaBox captcha={captcha} />
-
             <button
               type="submit"
               className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2"
-              disabled={submitting || captcha.waiting}
+              disabled={submitting}
             >
-              {captcha.waiting ? <Busy>Checking you're human</Busy> : "Send Reset Link"}
+              Send Reset Link
             </button>
           </form>
 

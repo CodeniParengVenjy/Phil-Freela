@@ -2,10 +2,8 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
 import { getFriendlyErrorMessage } from "../../lib/errors";
-import { useCaptcha } from "../../lib/captcha";
-import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
-import { Busy, MessageText } from "../../components/Loaders";
+import { MessageText } from "../../components/Loaders";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -30,7 +28,6 @@ export default function AdminLogin() {
   // signing in fails because the email isn't confirmed yet.
   const [canResend, setCanResend] = useState(deadLink);
   const [submitting, setSubmitting] = useState(false);
-  const captcha = useCaptcha();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -40,19 +37,13 @@ export default function AdminLogin() {
       return;
     }
 
-    if (captcha.waiting) {
-      setMessage({ text: "Please wait for the human check above the button to finish.", type: "error" });
-      return;
-    }
-
     setSubmitting(true);
     setMessage({ text: "Signing in...", type: "" });
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
-        password,
-        options: { captchaToken: captcha.token || undefined }
+        password
       });
 
       if (error) throw error;
@@ -75,8 +66,6 @@ export default function AdminLogin() {
       if (error.message?.toLowerCase().includes("email not confirmed")) setCanResend(true);
     } finally {
       setSubmitting(false);
-      // A check works once: the box makes a new one for the next try.
-      captcha.reset();
     }
   };
 
@@ -89,19 +78,13 @@ export default function AdminLogin() {
       return;
     }
 
-    if (captcha.waiting) {
-      setMessage({ text: "Please wait for the human check above the button to finish.", type: "error" });
-      return;
-    }
-
     setSubmitting(true);
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: address,
-      options: { emailRedirectTo: `${window.location.origin}/admin/login`, captchaToken: captcha.token || undefined }
+      options: { emailRedirectTo: `${window.location.origin}/admin/login` }
     });
     setSubmitting(false);
-    captcha.reset();
 
     setMessage(error
       ? { text: getFriendlyErrorMessage(error), type: "error" }
@@ -148,10 +131,8 @@ export default function AdminLogin() {
                 <Link to="/admin/forgot-password" state={{ email }} className="text-orange fs-8 fw-semibold text-decoration-none hover-orange">Forgot password?</Link>
               </div>
             </div>
-            <CaptchaBox captcha={captcha} />
-
-            <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting || captcha.waiting}>
-              {captcha.waiting ? <Busy>Checking you're human</Busy> : "Sign In"}
+            <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting}>
+              Sign In
             </button>
           </form>
 

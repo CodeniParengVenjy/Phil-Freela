@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { getFriendlyErrorMessage } from "./errors";
-import { getCaptchaToken } from "./captcha";
 
 // Supabase sends at most one confirmation email per address per minute.
 export const RESEND_WAIT_SECONDS = 60;
@@ -17,19 +16,10 @@ export const RESEND_WAIT_SECONDS = 60;
 //   { error: "..." }      a sentence to show for anything else, including the
 //                         hourly email limit (worded in lib/errors.js).
 export async function resendConfirmation(email, path = "/login") {
-  // Supabase wants the "are you a robot?" check for this too (a pop-up shows
-  // only if Cloudflare asks for a click).
-  let captchaToken;
-  try {
-    captchaToken = await getCaptchaToken();
-  } catch (error) {
-    return { error: error.message };
-  }
-
   const { error } = await supabase.auth.resend({
     type: "signup",
     email,
-    options: { emailRedirectTo: `${window.location.origin}${path}`, captchaToken: captchaToken || undefined }
+    options: { emailRedirectTo: `${window.location.origin}${path}` }
   });
   if (!error) return { sent: true };
 

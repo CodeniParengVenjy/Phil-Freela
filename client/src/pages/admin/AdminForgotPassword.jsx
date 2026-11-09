@@ -3,10 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
 import { EMAIL_PATTERN } from "../../lib/validators";
 import { getFriendlyErrorMessage } from "../../lib/errors";
-import { useCaptcha } from "../../lib/captcha";
-import CaptchaBox from "../../components/CaptchaBox";
 import "../../styles/auth.css";
-import { Busy, MessageText } from "../../components/Loaders";
+import { MessageText } from "../../components/Loaders";
 
 // "Forgot password" for admins. It sends the same Supabase reset email users
 // get, to the admin's own email. The link opens /reset-password, which sends
@@ -17,7 +15,6 @@ export default function AdminForgotPassword() {
   // The admin sign-in passes along the email already typed there.
   const [email, setEmail] = useState(location.state?.email || "");
   const [submitting, setSubmitting] = useState(false);
-  const captcha = useCaptcha();
   const [message, setMessage] = useState({ text: "", type: "" });
 
   const handleSubmit = async (event) => {
@@ -35,20 +32,12 @@ export default function AdminForgotPassword() {
       return;
     }
 
-    if (captcha.waiting) {
-      setMessage({ text: "Please wait for the human check above the button to finish.", type: "error" });
-      return;
-    }
-
     setSubmitting(true);
     setMessage({ text: "Sending reset link...", type: "", kind: "send" });
 
     const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
-      captchaToken: captcha.token || undefined
+      redirectTo: `${window.location.origin}/reset-password`
     });
-    // A check works once: the box makes a new one for the next try.
-    captcha.reset();
 
     if (error) {
       setMessage({ text: getFriendlyErrorMessage(error), type: "error" });
@@ -102,10 +91,8 @@ export default function AdminForgotPassword() {
               <div className="form-text text-white-50 fs-8">For Gmail, your admin email ends in +admin, like name+admin@gmail.com.</div>
             </div>
 
-            <CaptchaBox captcha={captcha} />
-
-            <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting || captcha.waiting}>
-              {captcha.waiting ? <Busy>Checking you're human</Busy> : "Send Reset Link"}
+            <button type="submit" className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2" disabled={submitting}>
+              Send Reset Link
             </button>
           </form>
 

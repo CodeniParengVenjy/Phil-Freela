@@ -1,5 +1,14 @@
 # Plan: an "are you a robot?" check (CAPTCHA) on sign-up and sign-in
 
+**REMOVED (2026-11-09).** The user asked to take the check out completely (it blocked their own
+test cases). Gone from the website: lib/captcha.js, components/CaptchaBox.jsx, styles/captcha.css,
+the box on all 5 sign-in forms, the "One quick check" pop-up (Change password, account linking, admin
+Resend, Add Admin), the captcha error sentence in lib/errors.js and VITE_TURNSTILE_SITE_KEY in
+client/.env.example. Supabase > Authentication > Attack Protection > CAPTCHA must be OFF, or every
+password sign-in is refused ("no captcha_token found"). The Turnstile widget in Cloudflare and the
+VITE_TURNSTILE_SITE_KEY variable in Cloudflare Pages are no longer read and can be deleted.
+Everything below is kept as history only.
+
 Status (2026-10-29): approved by the user ("your managed, ok create it"). The user asked for it on
 BOTH sign-up and sign-in.
 
