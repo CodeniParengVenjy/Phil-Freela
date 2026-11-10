@@ -146,7 +146,11 @@ export const notificationIcons = {
   project_due_soon: { icon: "bi-alarm", className: "bg-warning text-dark" },
   project_due_today: { icon: "bi-alarm-fill", className: "bg-warning text-dark" },
   project_overdue: { icon: "bi-exclamation-octagon-fill", className: "bg-danger text-white" },
-  project_review_reminder: { icon: "bi-eye-fill", className: "bg-info text-dark" }
+  project_review_reminder: { icon: "bi-eye-fill", className: "bg-info text-dark" },
+  // The 8:00 AM reminders about money still unpaid after a project is Done
+  // (database/supabase_payment_due_schema.sql, PLAN-delays.md Step 1).
+  payment_due_soon: { icon: "bi-calendar-event-fill", className: "bg-warning text-dark" },
+  payment_overdue: { icon: "bi-exclamation-octagon-fill", className: "bg-danger text-white" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -183,5 +187,7 @@ export const notificationLinkLabels = {
   project_due_soon: "Open project",
   project_due_today: "Open project",
   project_overdue: "Open project",
-  project_review_reminder: "Open project"
+  project_review_reminder: "Open project",
+  payment_due_soon: "Pay the rest",
+  payment_overdue: "Open project"
 };

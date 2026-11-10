@@ -103,12 +103,18 @@ database/test_payment_due.sql):
    -7 or less -> `pay_late_7` (both). Ranges plus the sent log (target = the project, `due_date` = the payment
    due date), so a skipped day is caught up and nothing is sent twice.
 
-Website:
-- client/src/lib/payments.js: `payDueInfo(project, money, today)` returns `{ late, days, text, dueDate }` like
-  `dueInfo()` in lib/projects.js; null unless Done + agreed one-time + `money.leftForNew > 0`.
-- client/src/lib/projects.js: add `payment_due_date` to the two project selects (lines ~189 and ~200).
-- client/src/pages/dashboard/components/PaymentsSection.jsx and views/ProjectDetailsView.jsx: the line and pill.
-  ProjectsPanel.jsx: the small pill (reuse DueBadge.jsx or add a sibling).
+Website (as built, 2026-11-10):
+- client/src/lib/payments.js: `PAYMENT_DUE_DAYS = 7`, `paymentDueDate(project)`, `payDueInfo(project, money, today)`
+  (returns `{ late, soon, days, dueDate, text }`; null unless Done + agreed one-time + `money.leftForNew > 0`),
+  `paymentNearOrLate(project)` and `listPaymentsOfProjects(ids)`. The page works out the due day itself from
+  `completed_at`, like `dueInfo()` does for the work, so it doesn't depend on the new database function (the plan said
+  to add `payment_due_date` to the project selects; this is safer, nothing can break before the migration is applied).
+  The 7 is in two places (SQL `payment_due_date`, JS `PAYMENT_DUE_DAYS`); each says so in a comment.
+- client/src/lib/projects.js: `agreed_amount, price_basis, price_status` added to the My Projects list select.
+- PaymentsSection.jsx: the line under the balance bar (and, before Done, "The rest is due 7 days after you mark the
+  project Done"). New PayDueBadge.jsx + ProjectsPanel.jsx: the pill on the list. It reads the payments only of Done
+  projects near or past their payment day (one extra request, none when there are none), and shows nothing if that
+  request fails. ProjectDetailsView.jsx needs no change.
 - client/src/lib/notifications.js: icons and button labels for the 2 kinds.
 - Terms ("Who pays first"): one bullet with the 7 days, the reminders, and "a payment the freelancer has not
   answered yet counts as paid".

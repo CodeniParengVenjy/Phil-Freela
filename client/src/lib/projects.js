@@ -186,7 +186,7 @@ export async function hireApplicant(applicationId, note, dueDate) {
 export function getMyProjects(userId, asFreelancer) {
   return supabase
     .from("projects")
-    .select(`id, title, status, started_at, due_date, completed_at, unlocked_at, ratings:project_ratings(rater_id), ${PEOPLE_FIELDS}`)
+    .select(`id, title, status, started_at, due_date, completed_at, unlocked_at, agreed_amount, price_basis, price_status, ratings:project_ratings(rater_id), ${PEOPLE_FIELDS}`)
     .eq(asFreelancer ? "freelancer_id" : "client_id", userId)
     .order("started_at", { ascending: false });
 }

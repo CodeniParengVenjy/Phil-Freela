@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatDay, getMyProjects, personName, projectStatuses, ratingStep, todayInManila } from "../../../lib/projects";
+import { listPaymentsOfProjects, paymentNearOrLate, projectMoney } from "../../../lib/payments";
 import Avatar from "../../../components/Avatar";
 import DueDateCalendar from "./DueDateCalendar";
 import DueBadge from "./DueBadge";
+import PayDueBadge from "./PayDueBadge";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
 
@@ -31,6 +33,26 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
       active = false;
     };
   }, [isFreelancer, currentUserId, reloadKey]);
+
+  // The payments of the Done projects whose payment is due soon or late, so their
+  // cards can show a payment pill (PLAN-delays.md, Step 1). null until they are
+  // read, and when they can't be read: then no pill shows, so a project is never
+  // called late by mistake.
+  const [paymentsById, setPaymentsById] = useState(null);
+  useEffect(() => {
+    if (!projects) return undefined;
+    const ids = projects.filter((p) => paymentNearOrLate(p)).map((p) => p.id);
+    if (!ids.length) return undefined;
+    let active = true;
+
+    listPaymentsOfProjects(ids).then(({ data }) => {
+      if (active && data) setPaymentsById(data);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [projects]);
 
   const today = todayInManila();
 
@@ -78,6 +100,14 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
                   <span>Due {formatDay(p.due_date)}</span>
                   {/* "Overdue: 2 days late" or "Due in 3 days" (Step N4 of PLAN-notifications.md). */}
                   <DueBadge project={p} today={today} className="ms-2 align-middle" />
+                  {/* "Payment 3 days late": a Done project with money still unpaid (Step 1 of PLAN-delays.md). */}
+                  <PayDueBadge
+                    project={p}
+                    money={paymentsById ? projectMoney(p, paymentsById[p.id] || []) : null}
+                    today={today}
+                    iAmClient={!isFreelancer}
+                    className="ms-2 align-middle"
+                  />
                 </p>
                 {rating && (
                   <p className={`fs-8 fw-semibold mb-0 mt-1 ${rating.textClass}`}>

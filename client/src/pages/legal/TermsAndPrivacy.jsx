@@ -224,6 +224,15 @@ function TermsOfService() {
           wait for payment. A payment can be recorded before the project is Done, or after it. If a project with an agreed
           price is marked Done while part of the price is still unpaid, the client gets a reminder.
         </li>
+        <li>
+          <strong className="text-white">When the rest is due.</strong> On a project with an agreed price for the whole
+          project, the client has 7 days after the project is marked Done to pay what is left. PhilFreela reminds the
+          client at 8:00 AM Philippine time, 3 days before and on the last day. If money is still unpaid after that day,
+          both people are told, and again a week later. A payment the freelancer hasn't answered yet counts as paid, so a
+          freelancer who doesn't answer never makes a client late; a payment answered Not received counts as unpaid.
+          Reminders appear in your notifications, and are also emailed to you while you are offline unless you turned that
+          off in Settings.
+        </li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">PhilFreela's own fees</h5>

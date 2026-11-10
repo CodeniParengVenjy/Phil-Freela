@@ -1,4 +1,5 @@
 import { readReceipt } from "./aiService";
+import { todayInManila } from "./projects";
 import { supabase } from "./supabaseClient";
 import { shrinkImage } from "./shrinkImage";
 
@@ -160,6 +161,59 @@ export function projectMoney(project, payments) {
 export const unlocksWhenFullyPaid = (project) => project?.price_status === "agreed" && project?.price_basis === "project";
 
 // ---------------------------------------------------------------------------
+// When the rest must be paid (PLAN-delays.md, Step 1)
+// ---------------------------------------------------------------------------
+
+// A project with an agreed one-time price is due for payment this many days after
+// it was marked Done. The same number as payment_due_date() in the database
+// (database/supabase_payment_due_schema.sql), which the 8:00 AM reminders use, so
+// change both together.
+export const PAYMENT_DUE_DAYS = 7;
+
+// Whole days from one "YYYY-MM-DD" day to another (both read as UTC, so the
+// computer's clock and time zone can't shift the answer).
+const daysBetween = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
+
+// The day payment is due, as "YYYY-MM-DD" in the Philippines, or "" when it
+// doesn't apply (the project isn't Done, or has no agreed one-time price).
+export function paymentDueDate(project) {
+  if (project?.status !== "done" || !project.completed_at) return "";
+  if (project.price_status !== "agreed" || project.price_basis !== "project") return "";
+  const doneDay = new Date(project.completed_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  const due = new Date(`${doneDay}T00:00:00Z`);
+  due.setUTCDate(due.getUTCDate() + PAYMENT_DUE_DAYS);
+  return due.toISOString().slice(0, 10);
+}
+
+// True when payment is due within 3 days or already late: the projects whose
+// payments the My Projects list reads to show the payment pill.
+export function paymentNearOrLate(project, today = todayInManila()) {
+  const dueDate = paymentDueDate(project);
+  return Boolean(dueDate) && daysBetween(today, dueDate) <= 3;
+}
+
+// How the payment stands against its due day. money is projectMoney(project,
+// payments). Money the freelancer hasn't answered yet counts as paid (leftForNew),
+// the same as the database, so a client is never "late" because the freelancer
+// didn't answer. Gives back
+//   { late: true,  soon: false, days: 3, dueDate, text: "Payment 3 days late" }
+//   { late: false, soon: true,  days: 2, dueDate, text: "Pay in 2 days" }   (up to 3 days before)
+//   { late: false, soon: false, days: 6, dueDate, text: "Pay in 6 days" }
+// or null when it doesn't apply: not Done, no agreed one-time price, the balance
+// isn't loaded yet, or nothing is left to pay.
+export function payDueInfo(project, money, today = todayInManila()) {
+  const dueDate = paymentDueDate(project);
+  if (!dueDate || !money || money.leftForNew <= 0) return null;
+  const daysLeft = daysBetween(today, dueDate);
+  if (daysLeft < 0) {
+    const days = -daysLeft;
+    return { late: true, soon: false, days, dueDate, text: `Payment ${days} day${days === 1 ? "" : "s"} late` };
+  }
+  const text = daysLeft === 0 ? "Pay today" : daysLeft === 1 ? "Pay by tomorrow" : `Pay in ${daysLeft} days`;
+  return { late: false, soon: daysLeft <= 3, days: daysLeft, dueDate, text };
+}
+
+// ---------------------------------------------------------------------------
 // The receipt picture (client)
 // ---------------------------------------------------------------------------
 
@@ -302,6 +356,27 @@ export async function listProjectPayments(projectId) {
     return { error: "Couldn't load the payments. Please try again." };
   }
   return { data: data || [] };
+}
+
+// The payments of several projects at once, grouped by project:
+// { data: { [projectId]: [payment, ...] } } or { error }. The My Projects list uses
+// it for the payment pill. A project with no payment has no entry.
+export async function listPaymentsOfProjects(projectIds) {
+  if (!projectIds.length) return { data: {} };
+  const { data, error } = await supabase
+    .from("payments")
+    .select("project_id, amount, tip_amount, received_amount, status")
+    .in("project_id", projectIds);
+  if (error) {
+    console.error("Loading the payments of the projects failed:", error);
+    return { error: "Couldn't load the payments." };
+  }
+  const grouped = {};
+  for (const payment of data || []) {
+    if (!grouped[payment.project_id]) grouped[payment.project_id] = [];
+    grouped[payment.project_id].push(payment);
+  }
+  return { data: grouped };
 }
 
 // "I've paid", after the AI read the receipt (readReceiptScreenshot). The

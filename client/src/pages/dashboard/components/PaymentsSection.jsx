@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { priceText } from "../../../lib/projectPrice";
+import { formatDay } from "../../../lib/projects";
 import {
-  confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, isShortPayment, listProjectPayments,
-  markNotReceived, openReceipt, paymentBadge, projectMoney, readReceiptScreenshot, recordPayment, watchProjectPayments
+  PAYMENT_DUE_DAYS, confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, isShortPayment, listProjectPayments,
+  markNotReceived, openReceipt, payDueInfo, paymentBadge, projectMoney, readReceiptScreenshot, recordPayment, watchProjectPayments
 } from "../../../lib/payments";
 import ReceiptCheckNote from "./ReceiptCheckNote";
 import ReceiptReady from "./ReceiptReady";
@@ -241,6 +242,37 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     );
   };
 
+  // When the rest must be paid (PLAN-delays.md, Step 1). Before the project is
+  // Done it only says how long there is to pay; after, it names the day, with a
+  // red pill when that day has passed. Nothing when nothing is left to pay.
+  const renderDue = () => {
+    if (!money || money.fullyPaid) return null;
+    const due = payDueInfo(project, money);
+    if (due) {
+      const lead = due.late
+        ? (iAmClient ? "Payment was due" : `${otherName} should have paid by`)
+        : (iAmClient ? "Pay the rest by" : `${otherName} should pay the rest by`);
+      return (
+        <p className="text-white-50 fs-8 mb-0 mt-2" data-pay-due>
+          {lead} <strong className="text-white">{formatDay(due.dueDate)}</strong>.
+          {due.late && (
+            <span className="badge rounded-pill bg-danger text-white ms-2">
+              <i className="bi bi-exclamation-triangle-fill me-1"></i>{due.text}
+            </span>
+          )}
+        </p>
+      );
+    }
+    if (project.status !== "done") {
+      return (
+        <p className="text-secondary fs-8 mb-0 mt-1" data-pay-due>
+          The rest is due {PAYMENT_DUE_DAYS} days after {iAmClient ? "you mark" : "the client marks"} the project Done.
+        </p>
+      );
+    }
+    return null;
+  };
+
   // The balance bar, for both people (one-time project with an agreed price).
   const renderBalance = () => {
     if (!money) return null;
@@ -278,6 +310,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
             {iAmClient ? "The original file" : "Your original file"} opens for {iAmClient ? "you" : "the client"} when the agreed price is fully paid.
           </p>
         )}
+        {renderDue()}
       </div>
     );
   };
