@@ -5,7 +5,13 @@ payment reminder, late payment notice, service suspension, late payment penalty,
 dispute resolution). The user asked "do you know the violations if there is something a delay, in any
 aspect?" and then "so what's the plan, how can we deal with these?".
 
-Nothing is built yet. No database change yet.
+Status (2026-11-11, Manila): Steps 1, 2 and 3 are LIVE, database and website (migrations `payment_due_reminders`,
+`unpaid_client_block`, `payment_waiting_reminders`; website commits d735603 and 7cc23e9). Each migration was proved on
+live after applying (removing only its own lines from each changed function gave the old checksum back) and its test
+was run again, rolled back (26/26, 38/38, 20/20, nothing left behind). Still to do: Step 4 (only if the user keeps it)
+and Step 5. Note for later changes: `hire_applicant` and `create_booking` must keep their `block_if_client_owes` call,
+and `send_daily_notices` has three parts added by this plan (payments due/late, the waiting payments, and the limit
+sentences in the late notices); always start from the live definition.
 
 ## The idea
 
