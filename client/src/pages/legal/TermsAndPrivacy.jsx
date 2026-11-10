@@ -76,6 +76,58 @@ function TermsOfService() {
         <li>Violations are reviewed by an admin, and a suspension or ban can be appealed.</li>
       </ul>
 
+      <h5 className="text-white fw-bold mt-4 mb-2">Applying to jobs</h5>
+      <ul className="text-secondary">
+        <li>
+          Only verified freelancers can apply, once per job post, by sending a resume (a PDF, a Word file or a picture) and
+          an optional note. PhilFreela's AI checks that the file looks like a resume, and a file that clearly isn't one
+          can't be sent. Only you and that job's client can open your resume. You can withdraw an application until you are hired.
+        </li>
+        <li>Everyone can see how many freelancers applied to a job post. They see only the number, never who applied.</li>
+        <li>
+          A job post stops taking applications when its due date passes, or once the client has hired as many freelancers
+          as it needed. The client is told, and can open it again by editing the post.
+        </li>
+        <li>
+          <strong className="text-white">How the client sees the applicants.</strong> By default the client sees them in
+          "Best fit" order: PhilFreela's AI reads each resume and compares it with the job post, looks for the job's
+          required skills in the resume and on the freelancer's profile (a skill of the same kind of work counts half), and
+          adds the freelancer's ratings, finished projects and how fast they usually reply. A freelancer with no ratings yet
+          gets a middle score, not zero, and when two applicants score the same, whoever applied first comes first. The
+          client can switch to "First applied" order at any time.
+        </li>
+        <li>
+          The Best fit order is only a suggestion. The AI can be wrong (for example, a blurry picture of a resume it can't
+          read gets a middle score, and the client is told so), and the client always decides whom to hire. Freelancers
+          don't see their place in the order, and paying PhilFreela for anything never changes it.
+        </li>
+      </ul>
+
+      <h5 className="text-white fw-bold mt-4 mb-2">Due dates and late work</h5>
+      <ul className="text-secondary">
+        <li>
+          Every project has a due date, set when the project starts. It can't be changed afterwards, so agree on a date you
+          can keep.
+        </li>
+        <li>
+          PhilFreela reminds both people, at 8:00 AM Philippine time, 3 days before the due date, the day before and on the
+          due day, while the work hasn't been sent yet. If it is late, both are told once when it becomes late and again when
+          it is a week late. If the work was sent and is waiting for the client, the client is reminded on the due day to
+          review it. Reminders appear in your notifications, and are also emailed to you while you are offline unless you
+          turned that off in Settings.
+        </li>
+        <li>
+          <strong className="text-white">Late work means the work wasn't sent by the end of the due date</strong> (Philippine
+          time). Work sent on the due date is on time. Only the first time the work is sent counts, so sending it again after
+          the client asks for changes is never late.
+        </li>
+        <li>
+          <strong className="text-white">A freelancer whose work was late can't apply to that client's job posts</strong> until
+          the client allows it again with the "Allow to apply again" button on that project. The client's posts stay visible,
+          and the job page says why you can't apply. Other clients' posts are not affected.
+        </li>
+      </ul>
+
       <h5 className="text-white fw-bold mt-4 mb-2">Your work and ownership</h5>
       <p className="text-secondary">
         Photos, videos, and documents you upload stay yours. To help prove that, PhilFreela automatically adds an
@@ -196,7 +248,7 @@ function TermsOfService() {
           student project: no real money is charged.
         </li>
         <li><strong className="text-white">Sponsored billboards:</strong> businesses arrange these with PhilFreela directly. They are always marked "Sponsored by ...".</li>
-        <li>Paying for any of these never changes the "Recommended for you" order, which stays based on ratings, completed projects and response time.</li>
+        <li>Paying for any of these never changes the "Recommended for you" order, which stays based on ratings, completed projects and response time, or the Best fit order of a job's applicants.</li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Ratings</h5>
@@ -299,6 +351,16 @@ function PrivacyPolicy() {
           runs. While it runs, the people it is meant for see it with your name and your Verified and Premium badges, and
           never your email or phone number.
         </li>
+        <li>
+          Job applications (freelancers): your resume file and your note. The resume is kept in private storage, and only
+          you and that job's client can open it. To put a job's applicants in Best fit order, PhilFreela's AI service reads
+          each resume once and keeps only two things from it: its meaning as a list of numbers, and the names of the skills
+          it found. The AI doesn't save the resume's text.
+        </li>
+        <li>
+          Project dates: when the work was first sent, and whether the client allowed a late freelancer to apply to their
+          posts again (see "Due dates and late work" in Part 1). They are shown only to the two people on the project.
+        </li>
         <li>Basic usage information needed to run features like search and "Recommended for you" (for example, which posts you've viewed or messaged about).</li>
         <li>
           Your track record on PhilFreela: the projects you complete (title, finish date, who it was with, and the ratings),
@@ -336,7 +398,8 @@ function PrivacyPolicy() {
       <p className="text-secondary">
         We don't sell or share your data with outside companies. Your information is only handled by the services that
         run PhilFreela itself: our database and file storage provider, and the separate service that runs our AI
-        features (search, recommendations, moodboard matching, and identity verification). When you pay for
+        features (search, recommendations, the Best fit order of applicants, resume and receipt checks, moodboard
+        matching, and identity verification). When you pay for
         Premium, a Featured post or an ad, you pay on the page of Xendit, a payment company registered with the Bangko Sentral ng Pilipinas: PhilFreela
         sends Xendit only the amount and a payment number of its own, never your name or email, and what you type on
         Xendit's page is covered by Xendit's own privacy policy. We'd only share information with authorities if
@@ -352,7 +415,9 @@ function PrivacyPolicy() {
         removed if you delete your account. Your GCash details are removed with your account, and so are the payment
         records of the payments you were on, the records of the fees you paid PhilFreela and the ads you sent. The
         receipt picture files stay in private storage, where nobody can open them once the record they belong to is gone.
-        An ad's picture file also stays in storage once its ad is gone, but nothing shows it any more.
+        An ad's picture file also stays in storage once its ad is gone, but nothing shows it any more. A job
+        application is removed, with its resume and what the AI kept from it, when the freelancer withdraws it or the
+        client deletes the job post.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your rights</h5>
