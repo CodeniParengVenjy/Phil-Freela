@@ -43,7 +43,9 @@ export function aiSuggestion(verification) {
     return { level: "careful", icon: "🟡", text: "This face is already on another account's verification. Check for a second account." };
   }
   if (verification.id_qr_status === "mismatch") {
-    return { level: "careful", icon: "🟡", text: "The name in the ID's QR code doesn't match the profile. Check the ID closely." };
+    // A passport has code lines instead of a QR code (they are small print, so the AI may misread them).
+    const where = verification.id_type === "passport" ? "the passport's code lines" : "the ID's QR code";
+    return { level: "careful", icon: "🟡", text: `The name in ${where} doesn't match the profile. Check the ID closely.` };
   }
   if (verification.face_distance > STRONG_MATCH_DISTANCE) {
     return { level: "careful", icon: "🟡", text: "Only a weak face match. Compare the photos carefully." };

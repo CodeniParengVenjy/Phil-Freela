@@ -104,6 +104,10 @@ export default function AiSummaryCard({ verification }) {
 // a name that isn't the profile's, is a warning sign.
 function qrRow(verification) {
   const profileName = verification.user?.full_name || "the profile";
+  // A passport has no QR code. The AI reads the two lines of code at the
+  // bottom of its photo page instead (ai-service/passport_mrz.py) and saves
+  // the result in the same columns.
+  if (verification.id_type === "passport") return passportRow(verification, profileName);
   switch (verification.id_qr_status) {
     case "match":
       return <Row ok label="ID's QR code" value="Name matches the profile" detail={`The QR code says ${verification.id_qr_name}.`} />;
@@ -125,6 +129,39 @@ function qrRow(verification) {
           label="ID's QR code"
           value="No QR code found"
           detail="PhilSys IDs have one (on the back of the card, or the front of the printed ePhilID). The photo may just be unclear, but check the ID closely."
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+// The same flag for a passport: the name in the code lines vs. the profile name.
+// The code lines are small print, so the AI can misread them: a warning here
+// only asks the admin to compare the name with the photo page.
+function passportRow(verification, profileName) {
+  const label = "Passport code lines";
+  switch (verification.id_qr_status) {
+    case "match":
+      return <Row ok label={label} value="Name matches the profile" detail={`The two lines of code at the bottom of the photo page say ${verification.id_qr_name}.`} />;
+    case "mismatch":
+      return (
+        <Row
+          warn
+          label={label}
+          value="Name doesn't match the profile"
+          detail={`The code lines say ${verification.id_qr_name}, but the profile says ${profileName}. The AI may have misread the small print, so compare the name with the photo page.`}
+        />
+      );
+    case "unreadable":
+      return <Row warn label={label} value="Couldn't read the name" detail="The first code line was found, but no name could be read from it. Compare the name on the photo page yourself." />;
+    case "not_found":
+      return (
+        <Row
+          warn
+          label={label}
+          value="No code lines read"
+          detail="A passport's photo page ends with two lines of letters and < signs. The photo may just be unclear or have a busy background, but check the passport closely."
         />
       );
     default:

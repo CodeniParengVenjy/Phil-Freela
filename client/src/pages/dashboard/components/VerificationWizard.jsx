@@ -24,7 +24,7 @@ const CARD_WORDS = {
 const PHOTO_WORDS = {
   passport: {
     ...CARD_WORDS,
-    front: "Take a photo of your passport's photo page. Let it fill most of the photo, keep it in focus, and avoid glare on your picture.",
+    front: "Take a photo of your passport's photo page. Let it fill most of the photo, keep it in focus, and avoid glare on your picture. Keep the two lines of letters and < signs at the bottom of the page in the photo.",
     frontPrompt: "Click to upload your passport's photo page",
     frontButton: "Take a photo of the photo page"
   },
