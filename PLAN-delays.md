@@ -5,12 +5,15 @@ payment reminder, late payment notice, service suspension, late payment penalty,
 dispute resolution). The user asked "do you know the violations if there is something a delay, in any
 aspect?" and then "so what's the plan, how can we deal with these?".
 
-Status (2026-11-11, Manila): Steps 1, 2, 3 and 4 are LIVE, database and website (migrations `payment_due_reminders`,
-`unpaid_client_block`, `payment_waiting_reminders`, `auto_accept_work`; website commits d735603, 7cc23e9 and the Step 4
-one). Each migration was proved on live after applying (removing only its own lines from each changed function gave the
-old checksum back) and its test was run again, rolled back (26/26, 38/38, 20/20, 21/21, nothing left behind). Still to do:
-Step 5. Step 4 started on 2026-11-11 with the one project already waiting (sent Oct 20) counted from that day: its warning
-comes on Nov 17 and its acceptance on the next run. Note for later changes: `hire_applicant` and `create_booking` must keep their `block_if_client_owes` call,
+Status (2026-11-11, Manila): ALL FIVE STEPS ARE DONE and live, database and website (migrations `payment_due_reminders`,
+`unpaid_client_block`, `payment_waiting_reminders`, `auto_accept_work`; website commits d735603, 7cc23e9, fe29344 and the
+Step 5 one). Each migration was proved on live after applying (removing only its own lines from each changed function gave
+the old checksum back) and its test was run again, rolled back (26/26, 38/38, 20/20, 21/21, nothing left behind). Step 4
+started on 2026-11-11 with the one project already waiting (sent Oct 20) counted from that day: its warning comes on
+Nov 17 and its acceptance on the next run. Step 5 (text only, no database change): the Terms section "Delays and reports",
+a comment in `client/src/lib/violations.js` (no "late" category, on purpose), and the section "Delays: ..." in
+`PhilFreela-System-Functions.md`. Not done, only if the user asks: a study guide update and an RRL on delays; and the items
+under "Not in this plan". Note for later changes: `hire_applicant` and `create_booking` must keep their `block_if_client_owes` call,
 and `send_daily_notices` has three parts added by this plan (payments due/late, the waiting payments, and the limit
 sentences in the late notices); always start from the live definition.
 

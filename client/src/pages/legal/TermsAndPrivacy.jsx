@@ -256,6 +256,26 @@ function TermsOfService() {
         </li>
       </ul>
 
+      <h5 className="text-white fw-bold mt-4 mb-2">Delays and reports</h5>
+      <ul className="text-secondary">
+        <li>
+          <strong className="text-white">Being late is not a violation by itself.</strong> A late project, a late payment, a
+          payment that isn't answered or work that isn't reviewed get the reminders and limits described above, and nothing
+          more. Nobody is suspended just for being late, and PhilFreela charges no late fee.
+        </li>
+        <li>
+          <strong className="text-white">What can be reported.</strong> Taking work that was delivered and never paying for it,
+          taking a payment and never delivering the work, and a delay that goes on after the reminders with no word to the
+          other person can be reported as Scam / Fraud. An admin looks at what was sent with the report (the chat messages you
+          ticked, the payment and its receipt) and decides. The account can be suspended or banned, and a suspension or ban can
+          be appealed.
+        </li>
+        <li>
+          A missed date is often just a missed message. Message the other person first, and write what you agreed in the chat,
+          so there is a record if you do need to report it.
+        </li>
+      </ul>
+
       <h5 className="text-white fw-bold mt-4 mb-2">PhilFreela's own fees</h5>
       <ul className="text-secondary">
         <li>

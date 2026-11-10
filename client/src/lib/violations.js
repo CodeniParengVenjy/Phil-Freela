@@ -3,6 +3,13 @@
 // the same rule gets the same penalty. The values match the reasons users pick
 // when reporting (lib/reports.js) and the check on the user_suspensions table
 // (database), so do not rename them.
+//
+// There is no "late" rule on purpose (PLAN-delays.md): a late project, a late or
+// unanswered payment and work nobody reviews only get reminders and automatic
+// limits (lib/lateBlock.js, lib/payBlock.js, lib/reviewClock.js), never a penalty
+// by themselves. A delay reaches this chart only as bad faith, through a report:
+// taking delivered work and never paying, or taking a payment and never
+// delivering, are "Scam / Fraud".
 export const violations = [
   { value: "spam", label: "Spam", days: 3, blocksPosting: true, blocksMessaging: false },
   { value: "inappropriate", label: "Inappropriate content", days: 7, blocksPosting: true, blocksMessaging: false },
