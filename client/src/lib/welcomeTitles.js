@@ -1,6 +1,8 @@
-// What the dashboard's welcome banner calls a freelancer ("Welcome, Ana, a
-// skillful Video Editor") and the line under it. It is picked from these lists:
-// there is no AI writer behind it, so it is instant and costs nothing.
+// What the dashboard's welcome banner calls a freelancer ("A skillful Video
+// Editor", shown in the gray line under "Welcome, Ana"). It is picked from these
+// lists: there is no AI writer behind it, so it is instant and costs nothing.
+// The "lines" (slogans) are not shown since 2026-11-10, when the title moved into
+// that gray line; they are kept in case the user wants a slogan back.
 //
 // The keys are the category values from lib/categories.js. A category with no
 // entry here ("other") gives no job name, so the banner only says "Welcome, Ana".
