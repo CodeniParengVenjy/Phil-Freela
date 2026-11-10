@@ -13,6 +13,11 @@ The SFace file (37 MB) is too big to keep in GitHub comfortably, so
 `get_models.py` downloads it from OpenCV's model collection and checks its
 fingerprint. Vercel runs it while building; on a laptop, run it once.
 
+ID photos are first turned upright (`photo_checks.py`: a card is often photographed
+sideways), and a PhilSys ID's QR code is read for the name on it (`id_qr.py`: the
+PhilID card's JSON, or the ePhilID's signed packet). `python test_ephilid.py`
+checks both on made-up data.
+
 It also watermarks every photo that freelancers upload to their services and
 portfolio projects (`POST /slides`):
 

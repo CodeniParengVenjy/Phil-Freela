@@ -46,7 +46,7 @@ from hidden_watermark import new_code, protect_photo, read_code, read_code_from_
 from listing_search import search_listings
 from moodboard import match_moodboard
 from page_blur import blur_pages
-from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front
+from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front, straighten_id
 from receipt_check import MAX_RECEIPT_BYTES, UnreadablePicture, initials_text, read_receipt
 from receipt_check import judge as judge_receipt
 from recommendations import recommend
@@ -84,7 +84,9 @@ supabase = create_client(
 )
 
 BUCKET = "verification-docs"
-ID_TYPES = {"philsys", "drivers_license", "passport", "umid", "prc"}
+# "ephilid" is the printed (or downloadable) PhilSys ID: a front and a back like
+# the card, but its QR code is on the front.
+ID_TYPES = {"philsys", "ephilid", "drivers_license", "passport", "umid", "prc"}
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB, same limit as the storage bucket
 
@@ -216,6 +218,9 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
 
     id_image = read_image(id_photo, "photo of the front of your ID")
     id_back_image = read_image(id_back, "photo of the back of your ID") if id_back is not None else None
+    # Cards are often photographed sideways: turn the ID photos upright, for the
+    # checks and for the copies the admin will look at.
+    id_image, id_back_image = straighten_id(id_image, id_back_image)
     selfie_image = read_image(selfie, "face scan")
     left_image = read_image(selfie_left, "face scan")
     right_image = read_image(selfie_right, "face scan")
@@ -235,9 +240,10 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
         raise HTTPException(422, str(error))
 
     # Two warning flags for the admin (never shown to the user):
-    # 1. PhilSys IDs: the name in the ID's QR code vs. the profile name.
+    # 1. PhilSys IDs (the card, or the ePhilID): the name in the ID's QR code vs.
+    # the profile name.
     qr_status, qr_name = None, None
-    if id_type == "philsys":
+    if id_type in ("philsys", "ephilid"):
         try:
             profile = supabase.table("profiles").select("full_name").eq("id", user_id).limit(1).execute().data
             qr_status, qr_name = check_philsys_qr([id_image, id_back_image], (profile[0].get("full_name") if profile else "") or "")
@@ -373,7 +379,8 @@ def check_front(
     """Instant check of the front of the ID, before the user can go on.
     Nothing is saved. Needs a login or a valid QR token, so strangers can't use it."""
     get_caller_user_id(authorization, token)
-    run_photo_check(check_id_front, read_image(photo, "photo of the front of your ID"))
+    front_image, _ = straighten_id(read_image(photo, "photo of the front of your ID"))
+    run_photo_check(check_id_front, front_image)
     return {"ok": True}
 
 
@@ -387,8 +394,11 @@ def check_back(
     """Instant check of the back of the ID (the front is sent too, to make sure
     it isn't the same photo). Nothing is saved."""
     get_caller_user_id(authorization, token)
-    front_image = read_image(front, "photo of the front of your ID")
-    run_photo_check(check_id_back, front_image, read_image(back, "photo of the back of your ID"))
+    front_image, back_image = straighten_id(
+        read_image(front, "photo of the front of your ID"),
+        read_image(back, "photo of the back of your ID"),
+    )
+    run_photo_check(check_id_back, front_image, back_image)
     return {"ok": True}
 
 

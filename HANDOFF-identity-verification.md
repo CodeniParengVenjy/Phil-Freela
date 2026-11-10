@@ -74,6 +74,13 @@ NOT needed anymore.
    pending/approved one sets duplicate_of. Consent text mentions it.
    Mismatch / duplicate -> AI suggests "Check carefully". PRC IDs get a link
    to verification.prc.gov.ph. Tested 15/15 on Vercel, admin page 11/11.
+16. ePhilID as its own ID type (2026-11-10, PLAN-ephilid.md): front and back
+   photos like the card, but the QR is on the FRONT. `id_qr.py` reads its QR
+   ("PH1:" + Base45 + a signed CBOR packet; claim 169 > sb > fn/mn/ln/sf) next to
+   the card's JSON; only the name is read. `photo_checks.straighten_id` turns
+   sideways ID photos upright (face finder for the front, text lines for the
+   back), for every ID type. Database: the id_type rule lists 'ephilid'
+   (database/supabase_ephilid.sql). Tests: ai-service/test_ephilid.py.
 
 Fake-ID research (2026-09-29): the PhilID QR is JSON signed by the PSA with
 EdDSA, but the public key goes to approved organizations (PSA eVerify /

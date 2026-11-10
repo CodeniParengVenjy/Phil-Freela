@@ -108,6 +108,50 @@ def _text_lines(image):
     return lines
 
 
+def _turned(image, angle):
+    """The photo turned counter-clockwise by angle (0, 90, 180 or 270 degrees)."""
+    return image if angle == 0 else image.rotate(angle, expand=True)
+
+
+def straighten_front(image):
+    """Turns the photo of an ID's front so the face on it is upright.
+
+    People often photograph a card sideways (its long side along the phone's
+    long side, to fill the picture), but the face finder only finds upright
+    faces, so a sideways ID was refused as "no photo found". The photo is
+    turned only when no face is found as it is; the first turn that finds
+    one wins. Returns (photo, how far it was turned). When no turn finds a
+    face, the photo comes back untouched and the front check says so.
+    """
+    for angle in (0, 90, 270, 180):
+        turned = _turned(image, angle)
+        if _biggest_face(turned) is not None:
+            return turned, angle
+    return image, 0
+
+
+def straighten_back(image, front_angle=0):
+    """Turns the photo of an ID's back upright, going by its printed text:
+    lines of text are wider than tall when a photo is upright, and sideways
+    text isn't counted. The back has no face, so this can't tell right-side-up
+    from upside-down; a sideways back is turned the same way the front was
+    (the card was probably held the same way), or 90 degrees if the front
+    needed no turn."""
+    lines = _text_lines(image)
+    if lines >= MIN_BACK_TEXT_LINES:
+        return image
+    turned = _turned(image, front_angle if front_angle in (90, 270) else 90)
+    return turned if _text_lines(turned) > lines else image
+
+
+def straighten_id(front, back=None):
+    """Turns the ID photos upright (both sides, see above). Returns (front, back)."""
+    front, angle = straighten_front(front)
+    if back is not None:
+        back = straighten_back(back, angle)
+    return front, back
+
+
 def check_id_front(image):
     """Front of the ID: a face is found, big enough, sharp, and it looks like
     an ID (has printed text). The text check comes last: blur and distance
