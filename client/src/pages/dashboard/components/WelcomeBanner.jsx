@@ -31,7 +31,10 @@ export default function WelcomeBanner({ displayName, userId = null, isClient = f
       <div>
         {/* The tag is left out on a phone, so the cards below come into view sooner. */}
         <span className="badge bg-orange-subtle text-orange px-3 py-1 rounded-pill fw-bold text-uppercase fs-8 mb-2 d-none d-md-inline-block">PHILFREELA PORTAL</span>
-        <h1 className="welcome-title h2 text-white mb-1">Welcome, {displayName}</h1>
+        {/* text-orange is the same orange as the PHILFREELA PORTAL tag above it (the
+            user, 2026-11-10: make the welcome text orange too). It follows light
+            mode and the accent color the user picked, like the tag does. */}
+        <h1 className="welcome-title h2 text-orange mb-1">Welcome, {displayName}</h1>
         {/* welcome-stack: every title sits in the same spot, one on top of the other,
             and only the current one is visible. The banner keeps the height of the
             longest one, so the cards below don't move when the title changes. */}
