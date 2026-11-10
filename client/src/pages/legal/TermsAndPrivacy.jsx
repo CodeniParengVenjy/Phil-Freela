@@ -126,6 +126,10 @@ function TermsOfService() {
           the client allows it again with the "Allow to apply again" button on that project. The client's posts stay visible,
           and the job page says why you can't apply. Other clients' posts are not affected.
         </li>
+        <li>
+          The same rule decides the "on time" share on your profile: a finished project counts as on time only if its work
+          was first sent by the due date.
+        </li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your work and ownership</h5>

@@ -154,3 +154,53 @@ begin
   raise exception 'RESULTS: %', out;
 end;
 $$;
+
+-- Section 5 (profile_stats counts on time by the FIRST sending): run on live as
+-- a rolled-back trial with the new function on 2026-11-10, 6/6 PASS. It borrows
+-- a freelancer and a client, adds two Done projects that roll back, and switches
+-- off the unpaid-reminder trigger inside the block (that rolls back too).
+do $$
+declare
+  today date := (now() at time zone 'Asia/Manila')::date;
+  fl uuid; cl uuid;
+  pa uuid; pb uuid;
+  before_done integer; before_on_time integer;
+  after_done integer; after_on_time integer;
+  client_on_time integer;
+  out text := '';
+begin
+  alter table public.projects disable trigger projects_remind_unpaid_on_done;
+  select p.id into fl from public.profiles p where p.account_type = 'freelancer' limit 1;
+  select p.id into cl from public.profiles p where p.id <> fl limit 1;
+  select s.completed_count, s.on_time_count into before_done, before_on_time from public.profile_stats(fl, 'freelancer') s;
+
+  -- A: sent on the due date, sent again 2 days later after changes, then Done.
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (cl, fl, 'Re-sent after changes', today - 3) returning id into pa;
+  update public.projects set status = 'submitted', submitted_at = ((today - 3)::timestamp + interval '10 hours') at time zone 'Asia/Manila' where id = pa;
+  update public.projects set status = 'submitted', submitted_at = ((today - 1)::timestamp + interval '10 hours') at time zone 'Asia/Manila' where id = pa;
+  update public.projects set status = 'done', completed_at = now() where id = pa;
+  -- B: first sent the day after the due date, then Done.
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (cl, fl, 'First sent late', today - 3) returning id into pb;
+  update public.projects set status = 'submitted', submitted_at = ((today - 2)::timestamp + interval '10 hours') at time zone 'Asia/Manila' where id = pb;
+  update public.projects set status = 'done', completed_at = now() where id = pb;
+
+  select s.completed_count, s.on_time_count into after_done, after_on_time from public.profile_stats(fl, 'freelancer') s;
+  out := out || format('1 two more Done projects = %s %s; ', after_done - before_done, case when after_done - before_done = 2 then 'PASS' else 'FAIL' end);
+  out := out || format('2 only the one first sent on time counts as on time (+%s) %s; ', after_on_time - before_on_time, case when after_on_time - before_on_time = 1 then 'PASS' else 'FAIL' end);
+  select s.on_time_count into client_on_time from public.profile_stats(cl, 'client') s;
+  out := out || format('3 a client has no on-time count = %s %s; ', coalesce(client_on_time::text, 'none'), case when client_on_time is null then 'PASS' else 'FAIL' end);
+  begin
+    perform * from public.profile_stats(fl, 'admin');
+    out := out || '4 a wrong role is refused FAIL; ';
+  exception when others then
+    out := out || '4 a wrong role is refused PASS; ';
+  end;
+  out := out || format('5 signed-out users still can''t call it = %s %s; ',
+    has_function_privilege('anon', 'public.profile_stats(uuid, text)', 'execute'),
+    case when not has_function_privilege('anon', 'public.profile_stats(uuid, text)', 'execute') then 'PASS' else 'FAIL' end);
+  out := out || format('6 signed-in users still can = %s %s; ',
+    has_function_privilege('authenticated', 'public.profile_stats(uuid, text)', 'execute'),
+    case when has_function_privilege('authenticated', 'public.profile_stats(uuid, text)', 'execute') then 'PASS' else 'FAIL' end);
+  raise exception 'RESULTS: %', out;
+end;
+$$;

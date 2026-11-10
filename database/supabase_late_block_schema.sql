@@ -148,3 +148,61 @@ $$;
 
 revoke execute on function public.allow_late_freelancer(uuid) from public, anon;
 grant execute on function public.allow_late_freelancer(uuid) to authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- 5. The profile's "on time" count uses the first sending too
+--    (migration on_time_first_send, the user's "gooo", 2026-11-10)
+-- ---------------------------------------------------------------------------
+
+-- profile_stats (the profile's Performance box and the offer page's "% on
+-- time") counted a Done project as on time when its LAST sending was by the due
+-- date, so a project sent on time and sent again after "Ask for changes" could
+-- count as late, which disagreed with the late rule above. It now uses the
+-- first sending (first_submitted_at, or submitted_at for a row without one).
+-- Everything else is the live function as it was (read from pg_proc on
+-- 2026-11-10).
+create or replace function public.profile_stats(target uuid, as_role text)
+returns table (completed_count integer, on_time_count integer, avg_stars numeric, rating_count integer,
+               reply_minutes real, listing_count integer, member_since timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if as_role is null or as_role not in ('freelancer', 'client') then
+    raise exception 'The role must be freelancer or client.';
+  end if;
+
+  return query
+  with done as (
+    select p.id, p.due_date, coalesce(p.first_submitted_at, p.submitted_at) as sent_at
+    from public.projects p
+    where p.status = 'done'
+      and ((as_role = 'freelancer' and p.freelancer_id = target)
+        or (as_role = 'client' and p.client_id = target))
+  ),
+  received as (
+    select r.stars
+    from public.project_ratings r
+    join done d on d.id = r.project_id
+    where r.ratee_id = target
+      and public.rating_is_visible(r.project_id)
+  )
+  select
+    (select count(*) from done)::integer,
+    case when as_role = 'freelancer' then
+      (select count(*) from done d
+        where d.sent_at is not null
+          and (d.sent_at at time zone 'Asia/Manila')::date <= d.due_date)::integer
+    end,
+    (select round(avg(x.stars)::numeric, 1) from received x),
+    (select count(*) from received)::integer,
+    public.typical_reply_minutes(target),
+    (case when as_role = 'freelancer'
+       then (select count(*) from public.services s where s.freelancer_id = target)
+       else (select count(*) from public.job_posts j where j.client_id = target)
+     end)::integer,
+    (select u.created_at from auth.users u where u.id = target);
+end;
+$$;
