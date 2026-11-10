@@ -67,7 +67,8 @@ export default function ProjectsPanel({ isFreelancer, currentUserId, reloadKey }
       {failed && <p className="text-danger fs-7 mb-0">Couldn't load your projects right now.</p>}
       {!failed && projects === null && <Loader size="sm" />}
       {/* The due dates of the same projects, on a calendar. */}
-      {!failed && projects !== null && <DueDateCalendar projects={projects} today={today} />}
+      {/* An ended project (PLAN-end-project.md) has no date to look forward to. */}
+      {!failed && projects !== null && <DueDateCalendar projects={projects.filter((p) => p.status !== "ended")} today={today} />}
       {!failed && projects?.length === 0 && (
         <p className="text-secondary fs-7 mb-0">
           {isFreelancer ? "No projects yet. When a client hires you, it shows here." : "No projects yet. Hire someone who applied to your job to start one."}

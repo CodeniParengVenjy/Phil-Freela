@@ -101,8 +101,12 @@ export const JOB_STATES = {
 };
 
 // How many freelancers were hired from a post. The owner's queries ask for
-// `hired:projects(count)`, which comes back as [{ count: 2 }].
+// `hired:projects(count)`, which comes back as [{ count: 2 }], and for the list of hires
+// (HIRES_FIELD below). A project the client ended (the freelancer never sent anything,
+// PLAN-end-project.md) no longer counts, the same as job_state() in the database, so the
+// list is counted when it is there.
 export function hiredCount(job) {
+  if (Array.isArray(job.hires)) return job.hires.filter((hire) => hire.status !== "ended").length;
   return job.hired?.[0]?.count || 0;
 }
 

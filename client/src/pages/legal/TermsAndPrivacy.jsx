@@ -280,6 +280,14 @@ function TermsOfService() {
           be appealed.
         </li>
         <li>
+          <strong className="text-white">Ending a project that was never sent.</strong> If the freelancer has sent nothing and the
+          project is more than 7 days late, the client can end it, once the freelancer has had the "7 days late" reminder. A
+          request for more time that is waiting has to be answered first. The project then shows as Ended for both people and
+          its place on the job post opens again, so the client can hire someone else. Ending a project moves no money
+          (PhilFreela never holds money), gives no rating and is not a penalty by itself. If you already paid and the work never
+          came, report it as Scam / Fraud. A project the freelancer sent work on once can't be ended this way.
+        </li>
+        <li>
           A missed date is often just a missed message. Message the other person first, and write what you agreed in the chat,
           so there is a record if you do need to report it.
         </li>

@@ -158,7 +158,10 @@ export const notificationIcons = {
   // PLAN-delay-requests.md): the request, and the answer.
   delay_requested: { icon: "bi-clock-history", className: "bg-info text-dark" },
   delay_accepted: { icon: "bi-calendar-check-fill", className: "bg-success text-white" },
-  delay_declined: { icon: "bi-calendar-x-fill", className: "bg-secondary text-white" }
+  delay_declined: { icon: "bi-calendar-x-fill", className: "bg-secondary text-white" },
+  // The client ended a project that was late and never sent (database/supabase_end_project_schema.sql,
+  // PLAN-end-project.md): both people are told.
+  project_ended: { icon: "bi-slash-circle-fill", className: "bg-secondary text-white" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -201,5 +204,6 @@ export const notificationLinkLabels = {
   payment_waiting: "View payment",
   delay_requested: "Answer request",
   delay_accepted: "Open project",
-  delay_declined: "Open project"
+  delay_declined: "Open project",
+  project_ended: "Open project"
 };

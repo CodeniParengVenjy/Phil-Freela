@@ -113,7 +113,9 @@ const PEOPLE_FIELDS =
 export const projectStatuses = {
   started: { label: "Started", className: "bg-warning text-dark" },
   submitted: { label: "Submitted", className: "bg-info text-dark" },
-  done: { label: "Done", className: "bg-success text-white" }
+  done: { label: "Done", className: "bg-success text-white" },
+  // The client ended a project whose freelancer never sent anything (PLAN-end-project.md).
+  ended: { label: "Ended", className: "bg-secondary text-white" }
 };
 
 // Today in the Philippines as "YYYY-MM-DD" (the format a date box uses).
@@ -141,6 +143,44 @@ export function dueInfo(project, today = todayInManila()) {
   if (daysLeft > 3) return null;
   const text = daysLeft === 0 ? "Due today" : daysLeft === 1 ? "Due tomorrow" : `Due in ${daysLeft} days`;
   return { late: false, days: daysLeft, text };
+}
+
+// Ending a project (PLAN-end-project.md): the client of a Started project that was never
+// sent can end it once it is MORE than this many days late. The same number is in
+// end_project() (database/supabase_end_project_schema.sql), which is the one that enforces it.
+export const END_AFTER_DAYS = 7;
+
+const DAY_MS = 86400000;
+
+// What the project page says about ending a project, for the client:
+//   show      the project is late and still waiting for its first work, so the card shows
+//   canEnd    it is more than 7 days late, so the button works
+//   daysLate  how many days late it is today
+//   fromDay   the first day it can be ended ("YYYY-MM-DD")
+// A project that was sent once (first_submitted_at) can't be ended this way.
+export function endInfo(project, today = todayInManila()) {
+  if (project?.status !== "started" || project.first_submitted_at || !project.due_date) {
+    return { show: false, canEnd: false, daysLate: 0, fromDay: "" };
+  }
+  const due = Date.parse(`${project.due_date}T00:00:00Z`);
+  const daysLate = Math.round((Date.parse(`${today}T00:00:00Z`) - due) / DAY_MS);
+  const fromDay = new Date(due + (END_AFTER_DAYS + 1) * DAY_MS).toISOString().slice(0, 10);
+  return { show: daysLate > 0, canEnd: daysLate > END_AFTER_DAYS, daysLate: Math.max(daysLate, 0), fromDay };
+}
+
+// How many days late an Ended project was on the day it was ended (null when unknown).
+export function endedDaysLate(project) {
+  if (project?.status !== "ended" || !project.ended_at || !project.due_date) return null;
+  const endedDay = new Date(project.ended_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  return Math.round((Date.parse(`${endedDay}T00:00:00Z`) - Date.parse(`${project.due_date}T00:00:00Z`)) / DAY_MS);
+}
+
+// The client ends the project. Returns "" or a message (the database explains a refusal
+// in plain words: not late enough, work was sent, a request for more time is waiting...).
+export async function endProject(projectId) {
+  const { error } = await supabase.rpc("end_project", { target_project: projectId });
+  if (error) return error.code === "P0001" ? error.message : "Couldn't end this project. Please try again.";
+  return "";
 }
 
 // Shows a "YYYY-MM-DD" date in the user's own format. The added time keeps
@@ -197,7 +237,7 @@ export function getMyProjects(userId, asFreelancer) {
 export async function getProject(projectId) {
   const { data } = await supabase
     .from("projects")
-    .select(`id, title, note, status, started_at, due_date, completed_at,
+    .select(`id, title, note, status, started_at, due_date, completed_at, first_submitted_at, ended_at,
       submission_path, submission_link, submission_message, submitted_at,
       files_locked, preview_path, unlocked_at,
       agreed_amount, price_basis, price_status, price_source, price_proposed_by, price_agreed_at, payment_due_override,

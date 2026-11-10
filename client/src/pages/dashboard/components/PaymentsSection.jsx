@@ -435,11 +435,21 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     <div className="pt-4 mt-4 border-top border-secondary border-opacity-25" aria-labelledby="payments-heading" role="region">
       <h4 id="payments-heading" className="text-white fw-bold mb-3"><i className="bi bi-cash-coin text-role me-2"></i> Payments</h4>
 
-      {renderBalance()}
+      {/* An ended project (PLAN-end-project.md): no balance and no way to pay; what was
+          already recorded stays in the list below. */}
+      {project.status !== "ended" && renderBalance()}
 
-      {iAmClient && renderPayBox()}
+      {iAmClient && project.status !== "ended" && renderPayBox()}
 
-      {!iAmClient && mineSaved === false && (
+      {project.status === "ended" && (
+        <p className="text-secondary fs-7 mb-3" data-ended-payments>
+          <i className="bi bi-slash-circle me-1"></i>
+          This project was ended, so no more payments can be recorded on it.
+          {payments?.length > 0 && " The ones already recorded stay below."}
+        </p>
+      )}
+
+      {!iAmClient && project.status !== "ended" && mineSaved === false && (
         <p className="text-warning fs-7 mb-3">
           <i className="bi bi-exclamation-triangle me-1"></i>
           Clients can't see where to pay you yet. Add your GCash number in{" "}
@@ -449,7 +459,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
 
       {paymentsError && <p className="text-danger fs-7 mb-0">{paymentsError}</p>}
       {!paymentsError && payments === undefined && <Loader size="sm" label="Loading the payments" />}
-      {!paymentsError && payments?.length === 0 && (
+      {!paymentsError && payments?.length === 0 && project.status !== "ended" && (
         <p className="text-secondary fs-7 mb-0">
           {iAmClient
             ? "No payments recorded yet."

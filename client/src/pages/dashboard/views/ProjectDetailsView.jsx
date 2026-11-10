@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import {
   canPreview, deliverableIcon, deliverableKind, formatDay, getDeliverableLink, getMyRating, getPreviewLink, getProject, getRatingOfMe, isBlenderFile,
-  isLocked, markProjectDone, openDeliverable, personName, projectStatuses, ratingDeadline, ratingReveal, ratingStep, requestProjectChanges, dueInfo
+  isLocked, markProjectDone, openDeliverable, personName, projectStatuses, ratingDeadline, ratingReveal, ratingStep, requestProjectChanges, dueInfo,
+  endedDaysLate
 } from "../../../lib/projects";
 import { makeDeliverablePreview } from "../../../lib/aiService";
 import { unlocksWhenFullyPaid } from "../../../lib/payments";
@@ -17,6 +18,7 @@ import DueBadge from "../components/DueBadge";
 import LateBlockNotice from "../components/LateBlockNotice";
 import PayBlockNotice from "../components/PayBlockNotice";
 import DelayRequestCard from "../components/DelayRequestCard";
+import EndProjectCard from "../components/EndProjectCard";
 import ReviewNotice from "../components/ReviewNotice";
 import { Loader, Busy } from "../../../components/Loaders";
 
@@ -218,6 +220,10 @@ export default function ProjectDetailsView() {
   const status = projectStatuses[project.status];
   // Late, due soon, or neither (lib/projects.js dueInfo; Step N4 of PLAN-notifications.md).
   const due = dueInfo(project);
+  // An Ended project: how late it was when the client ended it, and whether the client had
+  // recorded a payment on it (then the notice offers Report; PLAN-end-project.md).
+  const endedLate = endedDaysLate(project);
+  const paidSomething = Array.isArray(payments) && payments.some((payment) => payment.status === "confirmed" || payment.status === "sent");
   const hasSubmission = Boolean(project.submission_path || project.submission_link);
   // undefined while the link is loading, null when it couldn't be made.
   const mediaLink = media?.path === shownPath ? media.link : undefined;
@@ -252,6 +258,9 @@ export default function ProjectDetailsView() {
     }
     if (project.status === "started") {
       return <p className="text-white-50 fs-7 mb-0">Waiting for {otherName} to send the work.</p>;
+    }
+    if (project.status === "ended") {
+      return <p className="text-white-50 fs-7 mb-0">Ended. No work was sent.</p>;
     }
     return <p className="text-white-50 fs-7 mb-0">See the submitted work below.</p>;
   };
@@ -293,6 +302,24 @@ export default function ProjectDetailsView() {
           )}
         </div>
 
+        {/* An ended project says so at the top: who ended it, when and why (PLAN-end-project.md). */}
+        {project.status === "ended" && (
+          <div className="alert alert-secondary fs-7 py-2 mb-4 d-flex flex-column flex-sm-row align-items-sm-center gap-2" role="status" data-ended-notice>
+            <span className="flex-grow-1 text-break">
+              <i className="bi bi-slash-circle-fill me-1"></i>
+              {iAmClient ? "You ended" : `${otherName} ended`} this project
+              {project.ended_at ? ` on ${new Date(project.ended_at).toLocaleDateString()}` : ""}
+              {endedLate !== null ? `: it was ${endedLate} days late and no work was sent.` : "."}
+              {!iAmClient && ` You can message ${otherName}.`}
+              {iAmClient && paidSomething && " You recorded a payment on this project. If the work never came, you can report it."}
+            </span>
+            {iAmClient && paidSomething && (
+              <button type="button" className="btn btn-sm btn-dark rounded-pill px-3 fw-bold flex-shrink-0" onClick={() => setReportTarget({ type: "user", id: other?.id, name: otherName })}>
+                <i className="bi bi-flag me-1"></i>Report {otherName}
+              </button>
+            )}
+          </div>
+        )}
         {/* A late project says so at the top, and what to do next (the same
             words as the daily late notice, Step N4 of PLAN-notifications.md). */}
         {due?.late && (
@@ -325,6 +352,19 @@ export default function ProjectDetailsView() {
           showToast={showToast}
           onChanged={reloadProject}
         />
+        {/* A project that is late and was never sent: after 7 days the client can end it
+            (lib/projects.js endInfo, PLAN-end-project.md). */}
+        {iAmClient && (
+          <EndProjectCard
+            project={project}
+            payments={payments}
+            otherName={otherName}
+            onEnded={() => {
+              reloadProject();
+              showToast(`Project ended. ${otherName} was told.`);
+            }}
+          />
+        )}
         {/* Work waiting for the client: accepted automatically after 7 days (lib/reviewClock.js, PLAN-delays.md Step 4). */}
         <ReviewNotice project={project} isClient={iAmClient} otherName={otherName} />
 
@@ -369,10 +409,13 @@ export default function ProjectDetailsView() {
             </div>
           </div>
 
-          {/* The one price payments will come from (PLAN-transaction-tracking.md). */}
-          <div className="col-12">
-            <ProjectPriceBox project={project} currentUserId={currentUserId} otherName={otherName} showToast={showToast} onChanged={reloadProject} />
-          </div>
+          {/* The one price payments will come from (PLAN-transaction-tracking.md). An ended
+              project with no agreed price has nothing left to agree on. */}
+          {(project.status !== "ended" || project.price_status === "agreed") && (
+            <div className="col-12">
+              <ProjectPriceBox project={project} currentUserId={currentUserId} otherName={otherName} showToast={showToast} onChanged={reloadProject} />
+            </div>
+          )}
 
           <div className="col-12">
             <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
