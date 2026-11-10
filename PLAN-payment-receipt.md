@@ -135,7 +135,85 @@ list first (an extra Step 4 with its own plan).
 - Not yet tried by a person on the live site (there is one real confirmed payment,
   the user's own ₱1 test, to try it on).
 
+## Step 4 plan: receipts for what users pay PhilFreela online (NOT approved yet)
+
+The user, 2026-11-10: "plan it" (receipts for Premium, Featured posts and
+Community Billboard ads, paid through Xendit).
+
+### What I found (code + a read-only look at the live database, 2026-11-10)
+
+- Every online purchase is a row in `online_checkouts` (who paid, price code, days,
+  amount, test mode, status, when it started and was paid, the post title or ad).
+  When it is paid, a `promotions` row holds when it runs (`starts_at` to `ends_at`)
+  and Xendit's payment id (`provider_payment_id`). Ads have their headline in
+  `member_ads`.
+- The database already lets each person read their OWN rows of all three (and
+  admins all of them). So no database change is needed.
+- Live: 5 paid purchases (3 Premium, 1 Featured, 1 ad) and 1 that expired unpaid,
+  ALL in Xendit's test mode (no real money). There are also 2 free Featured posts
+  (the Premium perk), which are not purchases.
+- No page lists a person's purchases today. After paying, the person only sees a
+  message (the Premium page's "Payment received" card, a toast for Featured and ads).
+- Xendit does not tell PhilFreela whether they paid with GCash, Maya or QR Ph, so
+  the receipt says "Xendit online checkout".
+- Sponsored billboards (`billboard_checkouts`) are paid by outside businesses
+  through a link the super admin sends; they have no PhilFreela account. Left out.
+
+### What the user will see
+
+1. **Settings > Purchases** (a new tab, for clients and freelancers): every paid
+   purchase, newest first, each with what it was ("Premium for 30 days", "Featured
+   post for 7 days: <post title>", "Community Billboard ad for 14 days: <headline>"),
+   the date, the amount, a "Test" badge while Xendit is in test mode, and a
+   **Receipt (PDF)** button. Empty: "No purchases yet." Unpaid or expired checkouts
+   and free Featured posts are not listed (nothing was charged).
+2. Right after paying: the Premium page's "Payment received" card gets a
+   **Download receipt (PDF)** button; the Featured and ad messages add "Your receipt
+   is in Settings, Purchases."
+3. **The PDF** (same look as the GCash receipt, see the sample files
+   `PhilFreela-Receipt-Sample-Premium.pdf` and `...-Featured.pdf` in Downloads):
+   receipt number `PFO-` + the first 8 characters of the checkout id; a green
+   "PAID" band, or an orange "TEST PAYMENT ... no real money was charged" band plus
+   a light "TEST PAYMENT" stamp across the page; Bought by (name, @username, client
+   or freelancer) and Sold by (PhilFreela); what was bought with the post or ad name,
+   runs from / until, total; Xendit payment id, checkout started, paid on, test or
+   live; footer: PhilFreela's own service paid through Xendit, PhilFreela never sees
+   wallet or bank details, acknowledgement receipt, not a BIR-registered invoice or
+   Official Receipt.
+
+### Files
+
+1. New `client/src/lib/purchases.js`: `listMyPurchases(userId)` reads my paid
+   `online_checkouts`, their `promotions` (period, Xendit id) and the ad headlines.
+2. `client/src/lib/receiptPdf.js`: the header, bands, boxes, rows and footer
+   become small shared pieces; add `downloadPurchaseReceipt(purchase)`.
+3. New `client/src/pages/dashboard/components/PurchasesList.jsx`: the list.
+4. `SettingsView.jsx`: the "Purchases" tab (a link can open it:
+   `/dashboard/settings?tab=Purchases`).
+5. `ProPlans.jsx`: the button on the "Payment received" card. `checkout.js`: the
+   two "paid" messages mention Settings, Purchases.
+6. Terms (one line under "PhilFreela's own fees") and
+   `PhilFreela-System-Functions.md` ("How PhilFreela earns").
+
+No new table, column, database function, Edge Function or AI route.
+
+### How it will be tested
+
+1. Lint + build.
+2. Pretend-backend browser test: the list (Premium, Featured, ad, test badge, no
+   unpaid or free rows, empty list), each PDF read back with pdf.js, the button on
+   the Premium card, dark / light / phone.
+3. Live: the user's own test purchases (downloading changes nothing).
+
+### Defaults I chose
+
+1. In Settings, not a new side-menu item (the panel asked for fewer buttons).
+2. The real price paid only, no "regular price / Premium discount" line: an admin
+   can change prices later, so the old regular price isn't known for sure.
+3. Test-mode purchases get receipts too, clearly stamped TEST, because every
+   purchase today is a test one.
+4. Admins and sponsored billboards get no receipt button (can be added later).
+
 ## Current step
 
-Steps 1 to 3 are done. Step 4 only if the user asks for receipts of PhilFreela's own
-online purchases (Premium, Featured, ads).
+Steps 1 to 3 are done and live. Step 4 is planned above and waits for the user's OK.
