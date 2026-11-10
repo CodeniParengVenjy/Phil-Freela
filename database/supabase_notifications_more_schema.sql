@@ -537,3 +537,127 @@ $$;
 
 revoke all on function public.mark_notification_read(text, uuid) from public, anon;
 grant execute on function public.mark_notification_read(text, uuid) to authenticated;
+
+
+-- =====================================================================
+-- Section 5. Clearer wording (Step N6, list approved by the user with "ok")
+-- =====================================================================
+-- The list is in PLAN-notifications-wording.md. Only the words change.
+-- To be sure of that, each function is read back from the database as it is
+-- live (pg_get_functiondef), one sentence is swapped for the new one, and the
+-- result is saved again. If the old sentence isn't found, it stops with an
+-- error instead of guessing. Running this file again skips what is done.
+
+-- A helper that lives only while this file runs (pg_temp).
+create or replace function pg_temp.swap_text(fn regprocedure, old_text text, new_text text)
+returns void
+language plpgsql
+as $f$
+declare
+  def text := pg_get_functiondef(fn);
+begin
+  if position(old_text in def) = 0 then
+    if position(new_text in def) > 0 then
+      return; -- already changed
+    end if;
+    raise exception 'The text to change was not found in %: %', fn, old_text;
+  end if;
+  execute replace(def, old_text, new_text);
+end;
+$f$;
+
+-- 1. New applicant: say what to do next.
+select pg_temp.swap_text('public.notify_new_applicant()',
+  $o$' applied to your job "' || job.title || '".'$o$,
+  $n$' applied to your job post "' || job.title || '". Open it to see their resume and how well they fit.'$n$);
+
+-- 2. Job post closed: the same words as the post page.
+select pg_temp.swap_text('public.send_daily_notices()',
+  $o$closed because its due date passed. Edit it to reopen it.'$o$,
+  $n$closed because its due date passed, so freelancers can''t see it or apply. Pick new dates to show it again.'$n$);
+
+-- 3. Work submitted: what the client does next.
+select pg_temp.swap_text('public.submit_project(uuid, text, text, text)',
+  $o$'". Open the project to review it.'$o$,
+  $n$'". Open the project to review it, then mark it as done or ask for changes.'$n$);
+
+-- 4. Project marked as done: the freelancer can rate the client now.
+select pg_temp.swap_text('public.mark_project_done(uuid)',
+  $o$' confirmed "' || proj.title || '" is done. It now shows on both your histories.'$o$,
+  $n$' marked "' || proj.title || '" as done. It now shows on both your histories, and you can rate ' || client_name || ' on the project page.'$n$);
+
+-- 5. Identity verified: clients can post now too.
+select pg_temp.swap_text('public.notify_verification_reviewed()',
+  $o$you can now post services for clients to find.'$o$,
+  $n$you can now post services for clients to find. If you''re a client, you can now post job projects.'$n$);
+
+-- 6. Payment short: a plainer title.
+select pg_temp.swap_text('public.confirm_short_payment(uuid, numeric)',
+  $o$'Less than you recorded arrived'$o$,
+  $n$'Only part of your payment arrived'$n$);
+
+-- 7. Price agreed: say what it means.
+select pg_temp.swap_text('public.agree_project_price(uuid)',
+  $o$' for "' || p.title || '".',$o$,
+  $n$' for "' || p.title || '". This is now the project''s price.',$n$);
+
+-- 9. Project is late (freelancer): the late-freelancer rule (database/supabase_late_block_schema.sql)
+--    is live, so say what it means for them.
+select pg_temp.swap_text('public.send_daily_notices()',
+  $o$'. Submit your work or message the client.'$o$,
+  $n$'. Submit your work or message the client. Until the client allows it, you can''t apply to their other job posts.'$n$);
+
+-- 8. "A rating is waiting for you": the still-unapplied Section 4 of
+--    database/supabase_rating_after_payment_schema.sql, as written there (its
+--    date is the moment the rating really shows, and a client who hasn't paid
+--    yet is told they can rate back once their payment is confirmed).
+create or replace function public.notify_project_rated()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  rater_name text;
+  proj record;
+  closes_on text;
+  other_rated boolean;
+  must_pay boolean;
+begin
+  select coalesce(nullif(full_name, ''), username, 'Someone') into rater_name
+    from public.profiles where id = new.rater_id;
+  select title, client_id, completed_at, unlocked_at into proj
+    from public.projects where id = new.project_id;
+  closes_on := to_char(
+    (greatest(proj.completed_at,
+              case when proj.unlocked_at <= proj.completed_at + public.rating_window() then proj.unlocked_at end)
+      + public.rating_window()) at time zone 'Asia/Manila',
+    'FMMonth FMDD');
+  -- The client is rated by the freelancer before paying: they rate back only once it's paid.
+  must_pay := new.ratee_id = proj.client_id and proj.unlocked_at is null;
+  select exists (
+    select 1 from public.project_ratings r
+    where r.project_id = new.project_id and r.rater_id = new.ratee_id
+  ) into other_rated;
+
+  if other_rated then
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.ratee_id, 'project_rated', 'You got a new rating',
+      rater_name || ' rated you ' || new.stars || E'★ for "' || coalesce(proj.title, 'a project') || '".'
+        || case when new.feedback is not null and btrim(new.feedback) <> '' then E'\n\n"' || new.feedback || '"' else '' end,
+      '/dashboard/project-details/' || new.project_id
+    );
+  else
+    insert into public.user_notifications (user_id, type, title, message, link)
+    values (
+      new.ratee_id, 'project_rated', 'A rating is waiting for you',
+      rater_name || ' rated you for "' || coalesce(proj.title, 'a project') || '". It stays hidden until you rate them too'
+        || coalesce(', or until ' || closes_on, '') || '.'
+        || case when must_pay then E'\n\nYou can rate them once your payment for this project is confirmed.' else '' end,
+      '/dashboard/project-details/' || new.project_id
+    );
+  end if;
+  return new;
+end;
+$$;

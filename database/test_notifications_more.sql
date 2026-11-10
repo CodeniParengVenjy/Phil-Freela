@@ -508,3 +508,101 @@ begin
   raise exception 'Section 4 test results (all undone):%', res;
 end;
 $t$;
+
+
+-- =====================================================================
+-- Section 5 test: the new wording (run AFTER Section 5).
+-- Borrows a real client and freelancer, makes up posts, projects and a
+-- rating, and checks each new text. Ends with an error that undoes everything.
+-- =====================================================================
+do $t$
+declare
+  res text := '';
+  c uuid; f uuid; c_name text; f_name text;
+  today date := (now() at time zone 'Asia/Manila')::date;
+  j uuid; jx uuid; pa uuid; pb uuid; pc uuid; pl uuid; pr uuid;
+  n int;
+begin
+  create or replace function public.queue_offline_email(recipient uuid, email_topic text, details jsonb)
+  returns void language plpgsql as $f$ begin null; end; $f$;
+  alter table public.job_applications disable trigger email_offline_on_application;
+
+  select p.id, coalesce(nullif(p.full_name, ''), p.username, 'The client') into c, c_name
+  from public.profiles p where p.account_type = 'client' order by p.created_at limit 1;
+  select p.id, coalesce(nullif(p.full_name, ''), p.username) into f, f_name
+  from public.profiles p where p.account_type = 'freelancer' and p.id <> c order by p.created_at limit 1;
+
+  -- 1. New applicant
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date)
+    values (c, 'Notiftest logo', 'Graphic Design', 'A test post.', today, today + 10) returning id into j;
+  insert into public.job_applications (job_post_id, freelancer_id, resume_path) values (j, f, f || '/' || j || '-1.pdf');
+  select count(*) into n from public.user_notifications where user_id = c and type = 'application_new'
+    and message = f_name || ' applied to your job post "Notiftest logo". Open it to see their resume and how well they fit.';
+  res := res || case when n = 1 then E'\nPASS  1. new applicant: "... Open it to see their resume and how well they fit."' else E'\nFAIL  1.' end;
+
+  -- 2 and 9. The daily job: closed post, and the freelancer's late notice
+  insert into public.job_posts (client_id, title, category, description, start_date, due_date, created_at)
+    values (c, 'Notiftest expired', 'Graphic Design', 'A test post.', today - 10, today - 1, now() - interval '10 days') returning id into jx;
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest late', today - 2) returning id into pl;
+  perform public.send_daily_notices();
+  select count(*) into n from public.user_notifications where type = 'job_expired' and link = '/dashboard/job-details/' || jx
+    and message = 'Your job post "Notiftest expired" closed because its due date passed, so freelancers can''t see it or apply. Pick new dates to show it again.';
+  res := res || case when n = 1 then E'\nPASS  2. job post closed: "... Pick new dates to show it again."' else E'\nFAIL  2.' end;
+  select count(*) into n from public.user_notifications where user_id = f and type = 'project_overdue' and link = '/dashboard/project-details/' || pl
+    and message = '"Notiftest late" is 2 days late. Submit your work or message the client. Until the client allows it, you can''t apply to their other job posts.';
+  res := res || case when n = 1 then E'\nPASS  9. late notice (freelancer): "... Until the client allows it, you can''t apply ..."' else E'\nFAIL  9.' end;
+  select count(*) into n from public.user_notifications where user_id = c and type = 'project_overdue' and link = '/dashboard/project-details/' || pl
+    and message = '"Notiftest late" is 2 days late. Message ' || f_name || ' to ask about it.';
+  res := res || case when n = 1 then E'\nPASS  9b. the client''s late notice is unchanged' else E'\nFAIL  9b.' end;
+
+  -- 3. Work submitted (the freelancer sends a link)
+  insert into public.projects (client_id, freelancer_id, title, due_date) values (c, f, 'Notiftest submit', today + 5) returning id into pa;
+  perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  perform public.submit_project(pa, null, 'https://example.com/work', null);
+  reset role;
+  select count(*) into n from public.user_notifications where user_id = c and type = 'project_submitted' and link = '/dashboard/project-details/' || pa
+    and message = f_name || ' sent the work for "Notiftest submit". Open the project to review it, then mark it as done or ask for changes.';
+  res := res || case when n = 1 then E'\nPASS  3. work submitted: "... then mark it as done or ask for changes."' else E'\nFAIL  3.' end;
+
+  -- 4. Project marked as done (the client)
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  perform public.mark_project_done(pa);
+  reset role;
+  select count(*) into n from public.user_notifications where user_id = f and type = 'project_done' and link = '/dashboard/project-details/' || pa
+    and message = c_name || ' marked "Notiftest submit" as done. It now shows on both your histories, and you can rate ' || c_name || ' on the project page.';
+  res := res || case when n = 1 then E'\nPASS  4. project done: "... you can rate <client> on the project page."' else E'\nFAIL  4.' end;
+
+  -- 7. Price agreed (the freelancer proposed, the client agrees)
+  insert into public.projects (client_id, freelancer_id, title, due_date, price_status, agreed_amount, price_basis, price_source, price_proposed_by)
+    values (c, f, 'Notiftest price', today + 5, 'proposed', 500, 'project', 'proposal', f) returning id into pb;
+  perform set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  perform public.agree_project_price(pb);
+  reset role;
+  select count(*) into n from public.user_notifications where user_id = f and type = 'price_agreed' and link = '/dashboard/project-details/' || pb
+    and message like c_name || ' agreed to % for "Notiftest price". This is now the project''s price.';
+  res := res || case when n = 1 then E'\nPASS  7. price agreed: "... This is now the project''s price."' else E'\nFAIL  7.' end;
+
+  -- 5 and 6. Texts that need an admin or a payment to fire: checked in the live function.
+  select count(*) into n from pg_proc where proname = 'notify_verification_reviewed'
+    and prosrc like '%If you''''re a client, you can now post job projects.%';
+  res := res || case when n = 1 then E'\nPASS  5. identity verified: "If you''re a client, you can now post job projects."' else E'\nFAIL  5.' end;
+  select count(*) into n from pg_proc where proname = 'confirm_short_payment'
+    and prosrc like '%''Only part of your payment arrived''%' and prosrc not like '%Less than you recorded arrived%';
+  res := res || case when n = 1 then E'\nPASS  6. payment short: title "Only part of your payment arrived"' else E'\nFAIL  6.' end;
+
+  -- 8. A rating is waiting (the freelancer rates first; the client hasn't paid yet)
+  insert into public.projects (client_id, freelancer_id, title, due_date, status, submitted_at, completed_at)
+    values (c, f, 'Notiftest rated', today, 'done', now(), now()) returning id into pr;
+  insert into public.project_ratings (project_id, rater_id, ratee_id, stars) values (pr, f, c, 4);
+  select count(*) into n from public.user_notifications where user_id = c and type = 'project_rated' and title = 'A rating is waiting for you'
+    and link = '/dashboard/project-details/' || pr
+    and message like f_name || ' rated you for "Notiftest rated". It stays hidden until you rate them too, or until %.'
+      || E'\n\n' || 'You can rate them once your payment for this project is confirmed.';
+  res := res || case when n = 1 then E'\nPASS  8. a rating is waiting: an unpaid client is told to rate once paid' else E'\nFAIL  8.' end;
+
+  raise exception 'Section 5 test results (all undone):%', res;
+end;
+$t$;

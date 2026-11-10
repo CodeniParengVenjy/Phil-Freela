@@ -1,4 +1,4 @@
-# Step N6: clearer notification wording (WAITING FOR THE USER'S APPROVAL)
+# Step N6: clearer notification wording (APPROVED "ok" and LIVE 2026-11-10, migration notifications_wording)
 
 Part of PLAN-notifications.md. Collected 2026-11-10 from the LIVE database functions
 (35 functions write notifications). Nothing has been changed yet.

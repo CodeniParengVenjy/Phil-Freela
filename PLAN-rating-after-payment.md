@@ -93,4 +93,6 @@ Terms (Ratings), System Functions (Scope paragraph), study guide.
 
 ## Current step
 
-Done, except Step 1b (the notification wording), which waits for the user's go.
+Done. Step 1b (the notification wording, Section 4 of the schema file) went live on 2026-11-10 as part of
+migration `notifications_wording` (PLAN-notifications.md, Step N6, approved by the user with "ok"); checked on
+live: an unpaid client who is rated first is told "You can rate them once your payment for this project is confirmed."
