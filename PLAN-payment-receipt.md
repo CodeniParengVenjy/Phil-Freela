@@ -132,8 +132,10 @@ list first (an extra Step 4 with its own plan).
   no box while sent / not received, the PDF text read back with pdf.js, dark /
   light + yellow accent / phone 390 with no sideways scroll). Test and screenshots in
   this session's scratchpad `receipt/browser`.
-- Not yet tried by a person on the live site (there is one real confirmed payment,
-  the user's own ₱1 test, to try it on).
+- Not yet tried by a person on the live site. (The user's own ₱1 test payment was
+  confirmed on live earlier on 2026-11-10 but is no longer in the database by that
+  afternoon; only an old cancelled chat request is left, so trying the GCash
+  receipt needs a new payment.)
 
 ## Step 4 plan: receipts for what users pay PhilFreela online (NOT approved yet)
 
