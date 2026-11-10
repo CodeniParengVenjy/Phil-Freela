@@ -1,7 +1,10 @@
-# Payment receipt as a PDF file (plan, NOT approved yet)
+# Payment receipt as a PDF file (Steps 1 to 3 BUILT 2026-11-10)
 
 Saved 2026-11-10. The user: "after transaction.... system will print a receipt in a
-pdf file, plan first". Nothing is built yet. Each step gets the user's OK before code.
+pdf file, plan first". After seeing two sample PDFs the user said "can you make
+that? may I see a UI that receiving a receipt??", taken as the go for Steps 1 to 3
+(GCash payments between users only). Step 4 (PhilFreela's own online purchases)
+was not asked for and is not built.
 To continue in a new Claude session, say: "Read PLAN-payment-receipt.md and continue
 from the current step."
 
@@ -108,6 +111,31 @@ Receipts for GCash payments between users only, or also for what users pay
 PhilFreela online (Premium, Featured, ads)? The second needs a small "My purchases"
 list first (an extra Step 4 with its own plan).
 
+## Result (2026-11-10): Steps 1 to 3 built
+
+- `client/package.json`: jsPDF 4.2.1 (exact; `npm audit` 0 problems). Vite puts it
+  in its own file (about 400 KB, 130 KB gzipped) that loads only on Download PDF.
+- `client/src/lib/receiptPdf.js`: `downloadPaymentReceipt(payment)` reads the two
+  people (`profiles`), the project and its payments (balance after THIS payment:
+  only payments confirmed up to its `answered_at`), draws the A4 page and saves
+  `PhilFreela-Receipt-PF-XXXXXXXX.pdf`. Names and the project title are cut with
+  "..." if too long. The logo is the site SVG with "Freela" dark, drawn on a canvas.
+- `ReceiptReady.jsx`: the green "Receipt PF-XXXXXXXX is ready" box with Download PDF,
+  on confirmed payments in `PaymentsSection.jsx` and `PaymentCard.jsx`. The old
+  "View receipt" button (the GCash screenshot) is now called "GCash screenshot" so
+  the two aren't mixed up (the admin Reports page keeps its own "View receipt").
+  The toast after Confirm received says the receipt is ready.
+- Terms and Privacy: one line under payments. `PhilFreela-System-Functions.md`:
+  "PDF receipt" under section 5.
+- Tested: lint + build; a pretend-backend browser test, 27/27 (receipt appears after
+  Confirm received, two receipts with the right balances, Received less in a chat,
+  no box while sent / not received, the PDF text read back with pdf.js, dark /
+  light + yellow accent / phone 390 with no sideways scroll). Test and screenshots in
+  this session's scratchpad `receipt/browser`.
+- Not yet tried by a person on the live site (there is one real confirmed payment,
+  the user's own ₱1 test, to try it on).
+
 ## Current step
 
-Waiting for the user's OK. Nothing built.
+Steps 1 to 3 are done. Step 4 only if the user asks for receipts of PhilFreela's own
+online purchases (Premium, Featured, ads).

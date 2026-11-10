@@ -169,6 +169,11 @@ function TermsOfService() {
         </li>
         <li>Only confirm a payment when the money is in your GCash. Only pay people you trust, and check that the name GCash shows is the name on the payment card.</li>
         <li>
+          Once the freelancer confirms a payment (or answers Received less), both people can download a PDF receipt of it.
+          The PDF is made on your own device from the saved payment record. It is an acknowledgement receipt from
+          PhilFreela, not an Official Receipt (BIR), and it does not mean PhilFreela held or guaranteed the money.
+        </li>
+        <li>
           A verified freelancer can ask a person to pay in a chat. Both can see the payment card there, and only the two of
           them can open the receipt.
         </li>

@@ -4,6 +4,7 @@ import {
   isShortPayment, markNotReceived, openReceipt, paymentBadge, readReceiptScreenshot, recordChatPayment
 } from "../../../lib/payments";
 import ReceiptCheckNote from "./ReceiptCheckNote";
+import ReceiptReady from "./ReceiptReady";
 import RecordPaymentDialog from "./RecordPaymentDialog";
 import ShortPaymentForm from "./ShortPaymentForm";
 import "../payments.css";
@@ -86,7 +87,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
       showToast(problem);
       return;
     }
-    showToast(kind === "confirm" ? "Payment confirmed. They were told."
+    showToast(kind === "confirm" ? "Payment confirmed. They were told. The PDF receipt is ready on the card."
       : kind === "not_received" ? "Saved. They were told it didn't arrive."
         : "Request cancelled.");
   };
@@ -198,6 +199,8 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
       {payment.status === "cancelled" && (
         <p className="text-white-50 fs-7 mb-0 mt-2">{iAmPayer ? `${otherName} cancelled this request.` : "You cancelled this request."}</p>
       )}
+      {/* Confirmed (or Received less): the PDF receipt, for both people. */}
+      <ReceiptReady payment={payment} showToast={showToast} />
 
       {/* "Received less": what really arrived. */}
       {asking === "short" && (
@@ -248,7 +251,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         <div className="d-flex flex-wrap gap-2 mt-3">
           {payment.receipt_path && (
             <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-8 fw-bold" onClick={handleViewReceipt}>
-              <i className="bi bi-receipt me-1"></i> View receipt
+              <i className="bi bi-image me-1"></i> GCash screenshot
             </button>
           )}
           {(payment.status === "not_received" || short) && onReport && (

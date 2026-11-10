@@ -6,6 +6,7 @@ import {
   markNotReceived, openReceipt, paymentBadge, projectMoney, readReceiptScreenshot, recordPayment, watchProjectPayments
 } from "../../../lib/payments";
 import ReceiptCheckNote from "./ReceiptCheckNote";
+import ReceiptReady from "./ReceiptReady";
 import RecordPaymentDialog from "./RecordPaymentDialog";
 import ShortPaymentForm from "./ShortPaymentForm";
 import "../payments.css";
@@ -148,7 +149,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
       showToast(problem);
       return;
     }
-    showToast(kind === "confirm" ? "Payment confirmed. The client was told." : "Saved. The client was told it didn't arrive.");
+    showToast(kind === "confirm" ? "Payment confirmed. The client was told. The PDF receipt is ready under the payment." : "Saved. The client was told it didn't arrive.");
   };
 
   const handleViewReceipt = async (payment) => {
@@ -326,6 +327,8 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
               : "You said this payment didn't arrive."}
           </p>
         )}
+        {/* Confirmed (or Received less): the PDF receipt, for both people. */}
+        <ReceiptReady payment={payment} showToast={showToast} />
 
         {isAsking && asking.kind === "short" ? (
           <ShortPaymentForm payment={payment} onDone={handleShortDone} onCancel={() => setAsking(null)} />
@@ -367,7 +370,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
 
         <div className="d-flex flex-wrap gap-2">
           <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-8 fw-bold" onClick={() => handleViewReceipt(payment)}>
-            <i className="bi bi-receipt me-1"></i> View receipt
+            <i className="bi bi-image me-1"></i> GCash screenshot
           </button>
           {short && iAmClient && money && money.leftForNew > 0 && details && (
             <button type="button" className="btn btn-gradient-role text-white rounded-pill px-3 fs-8 fw-bold" onClick={() => setRecording("pay")}>
