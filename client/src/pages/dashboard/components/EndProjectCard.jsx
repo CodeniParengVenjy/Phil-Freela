@@ -32,6 +32,11 @@ export default function EndProjectCard({ project, payments, otherName, onEnded }
           If {otherName} still hasn't sent anything, you can end this project from {formatDay(info.fromDay)}.
         </p>
       )}
+      {/* The daily job ends a project that is 30 days late and was never sent (PLAN-end-project.md). */}
+      <p className="text-secondary fs-8 mb-0 mt-2" data-auto-end>
+        <i className="bi bi-robot me-1"></i>
+        If nothing is sent, PhilFreela ends it by itself on {formatDay(info.autoEndDay)}, and tells you both the day before.
+      </p>
 
       {confirming && (
         <EndProjectDialog

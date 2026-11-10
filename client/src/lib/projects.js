@@ -150,6 +150,14 @@ export function dueInfo(project, today = todayInManila()) {
 // end_project() (database/supabase_end_project_schema.sql), which is the one that enforces it.
 export const END_AFTER_DAYS = 7;
 
+// A project that is this many days late and was never sent is ended by the daily job, the morning after
+// both people were warned. The same number is in auto_end_projects()
+// (database/supabase_end_project_more_schema.sql), which is the one that does it.
+export const AUTO_END_DAYS = 30;
+
+// The reason the person who ends a project (or withdraws from it) can write. Optional.
+export const MAX_END_NOTE_LENGTH = 300;
+
 const DAY_MS = 86400000;
 
 // What the project page says about ending a project, for the client:
@@ -157,15 +165,17 @@ const DAY_MS = 86400000;
 //   canEnd    it is more than 7 days late, so the button works
 //   daysLate  how many days late it is today
 //   fromDay   the first day it can be ended ("YYYY-MM-DD")
+//   autoEndDay the day the daily job ends it by itself if nothing is sent ("YYYY-MM-DD")
 // A project that was sent once (first_submitted_at) can't be ended this way.
 export function endInfo(project, today = todayInManila()) {
   if (project?.status !== "started" || project.first_submitted_at || !project.due_date) {
-    return { show: false, canEnd: false, daysLate: 0, fromDay: "" };
+    return { show: false, canEnd: false, daysLate: 0, fromDay: "", autoEndDay: "" };
   }
   const due = Date.parse(`${project.due_date}T00:00:00Z`);
   const daysLate = Math.round((Date.parse(`${today}T00:00:00Z`) - due) / DAY_MS);
   const fromDay = new Date(due + (END_AFTER_DAYS + 1) * DAY_MS).toISOString().slice(0, 10);
-  return { show: daysLate > 0, canEnd: daysLate > END_AFTER_DAYS, daysLate: Math.max(daysLate, 0), fromDay };
+  const autoEndDay = new Date(due + AUTO_END_DAYS * DAY_MS).toISOString().slice(0, 10);
+  return { show: daysLate > 0, canEnd: daysLate > END_AFTER_DAYS, daysLate: Math.max(daysLate, 0), fromDay, autoEndDay };
 }
 
 // How many days late an Ended project was on the day it was ended (null when unknown).
@@ -175,11 +185,20 @@ export function endedDaysLate(project) {
   return Math.round((Date.parse(`${endedDay}T00:00:00Z`) - Date.parse(`${project.due_date}T00:00:00Z`)) / DAY_MS);
 }
 
-// The client ends the project. Returns "" or a message (the database explains a refusal
-// in plain words: not late enough, work was sent, a request for more time is waiting...).
-export async function endProject(projectId) {
-  const { error } = await supabase.rpc("end_project", { target_project: projectId });
+// The client ends the project; note is the optional reason. Returns "" or a message (the
+// database explains a refusal in plain words: not late enough, work was sent, a request for
+// more time is waiting, the reason is too short or too long...).
+export async function endProject(projectId, note = "") {
+  const { error } = await supabase.rpc("end_project", { target_project: projectId, end_note: note.trim() || null });
   if (error) return error.code === "P0001" ? error.message : "Couldn't end this project. Please try again.";
+  return "";
+}
+
+// The freelancer withdraws from a project that is still waiting for their work; note is the
+// optional reason. Returns "" or a message.
+export async function withdrawFromProject(projectId, note = "") {
+  const { error } = await supabase.rpc("withdraw_from_project", { target_project: projectId, withdraw_note: note.trim() || null });
+  if (error) return error.code === "P0001" ? error.message : "Couldn't withdraw from this project. Please try again.";
   return "";
 }
 
@@ -237,7 +256,7 @@ export function getMyProjects(userId, asFreelancer) {
 export async function getProject(projectId) {
   const { data } = await supabase
     .from("projects")
-    .select(`id, title, note, status, started_at, due_date, completed_at, first_submitted_at, ended_at,
+    .select(`id, title, note, status, started_at, due_date, completed_at, first_submitted_at, ended_at, ended_by, end_reason,
       submission_path, submission_link, submission_message, submitted_at,
       files_locked, preview_path, unlocked_at,
       agreed_amount, price_basis, price_status, price_source, price_proposed_by, price_agreed_at, payment_due_override,

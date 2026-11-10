@@ -2,15 +2,18 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { endProject } from "../../../lib/projects";
 import { Busy } from "../../../components/Loaders";
+import EndReasonBox from "./EndReasonBox";
 
 // "End project" on a project's page (PLAN-end-project.md): the client confirms ending a project
-// that is more than 7 days late and was never sent. The database checks every rule again and
-// writes the notice to both people. The parent mounts it only while it is open.
+// that is more than 7 days late and was never sent, and can write why (optional). The database
+// checks every rule again and writes the notice to both people. The parent mounts it only while
+// it is open.
 //   daysLate: how late the project is today; hasPayments: the client already recorded a payment
 //   onEnded(): called after the project was ended
 export default function EndProjectDialog({ project, otherName, daysLate, hasPayments, onClose, onEnded }) {
   const [error, setError] = useState("");
   const [ending, setEnding] = useState(false);
+  const [reason, setReason] = useState("");
 
   // Escape closes the window, unless it is working.
   useEffect(() => {
@@ -23,9 +26,13 @@ export default function EndProjectDialog({ project, otherName, daysLate, hasPaym
 
   const handleEnd = async () => {
     if (ending) return;
+    if (reason.trim() && reason.trim().length < 3) {
+      setError("Write a few words for the reason, or leave it empty.");
+      return;
+    }
     setEnding(true);
     setError("");
-    const problem = await endProject(project.id);
+    const problem = await endProject(project.id, reason);
     setEnding(false);
     if (problem) {
       setError(problem);
@@ -71,6 +78,8 @@ export default function EndProjectDialog({ project, otherName, daysLate, hasPaym
             delivered the work, report it as Scam / Fraud.
           </p>
         )}
+
+        <EndReasonBox id="endProjectReason" value={reason} onChange={setReason} disabled={ending} placeholder="They stopped answering my messages" />
 
         {error && <p className="text-danger fs-7 mb-3" role="alert">{error}</p>}
 

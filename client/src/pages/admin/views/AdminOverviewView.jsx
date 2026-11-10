@@ -632,7 +632,10 @@ export default function AdminOverviewView() {
                   parts={[
                     { label: "Started", value: transactions.projects.started, color: "var(--trend-orange)" },
                     { label: "Submitted", value: transactions.projects.submitted, color: "var(--trend-blue)" },
-                    { label: "Done", value: transactions.projects.done, color: "var(--trend-aqua)" }
+                    { label: "Done", value: transactions.projects.done, color: "var(--trend-aqua)" },
+                    // Ended: the client ended it, the freelancer withdrew, or the daily job ended it
+                    // (PLAN-end-project.md). Missing before the database part is applied.
+                    { label: "Ended", value: transactions.projects.ended || 0, color: "var(--trend-track)" }
                   ]}
                 />
               </div>

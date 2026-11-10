@@ -19,6 +19,7 @@ import LateBlockNotice from "../components/LateBlockNotice";
 import PayBlockNotice from "../components/PayBlockNotice";
 import DelayRequestCard from "../components/DelayRequestCard";
 import EndProjectCard from "../components/EndProjectCard";
+import WithdrawProjectCard from "../components/WithdrawProjectCard";
 import ReviewNotice from "../components/ReviewNotice";
 import { Loader, Busy } from "../../../components/Loaders";
 
@@ -224,6 +225,16 @@ export default function ProjectDetailsView() {
   // recorded a payment on it (then the notice offers Report; PLAN-end-project.md).
   const endedLate = endedDaysLate(project);
   const paidSomething = Array.isArray(payments) && payments.some((payment) => payment.status === "confirmed" || payment.status === "sent");
+  // The first sentence of the Ended notice, by who ended it, and who is told they can message.
+  const endedOn = project.ended_at ? ` on ${new Date(project.ended_at).toLocaleDateString()}` : "";
+  const endedWhy = endedLate !== null ? `: it was ${endedLate} days late and no work was sent.` : ".";
+  let endedText = "";
+  if (project.status === "ended") {
+    if (project.ended_by === "freelancer") endedText = `${iAmClient ? otherName : "You"} withdrew from this project${endedOn}.`;
+    else if (project.ended_by === "system") endedText = `This project was ended automatically${endedOn}${endedWhy}`;
+    else endedText = `${iAmClient ? "You ended" : `${otherName} ended`} this project${endedOn}${endedWhy}`;
+  }
+  const canMessageAfterEnd = project.ended_by === "system" || (project.ended_by === "freelancer" ? iAmClient : !iAmClient);
   const hasSubmission = Boolean(project.submission_path || project.submission_link);
   // undefined while the link is loading, null when it couldn't be made.
   const mediaLink = media?.path === shownPath ? media.link : undefined;
@@ -260,7 +271,7 @@ export default function ProjectDetailsView() {
       return <p className="text-white-50 fs-7 mb-0">Waiting for {otherName} to send the work.</p>;
     }
     if (project.status === "ended") {
-      return <p className="text-white-50 fs-7 mb-0">Ended. No work was sent.</p>;
+      return <p className="text-white-50 fs-7 mb-0">{project.first_submitted_at ? "Ended." : "Ended. No work was sent."}</p>;
     }
     return <p className="text-white-50 fs-7 mb-0">See the submitted work below.</p>;
   };
@@ -302,16 +313,20 @@ export default function ProjectDetailsView() {
           )}
         </div>
 
-        {/* An ended project says so at the top: who ended it, when and why (PLAN-end-project.md). */}
+        {/* An ended project says so at the top: who ended it (the client, the freelancer who withdrew,
+            or the daily job), when, why, and what to do about money (PLAN-end-project.md). */}
         {project.status === "ended" && (
           <div className="alert alert-secondary fs-7 py-2 mb-4 d-flex flex-column flex-sm-row align-items-sm-center gap-2" role="status" data-ended-notice>
             <span className="flex-grow-1 text-break">
               <i className="bi bi-slash-circle-fill me-1"></i>
-              {iAmClient ? "You ended" : `${otherName} ended`} this project
-              {project.ended_at ? ` on ${new Date(project.ended_at).toLocaleDateString()}` : ""}
-              {endedLate !== null ? `: it was ${endedLate} days late and no work was sent.` : "."}
-              {!iAmClient && ` You can message ${otherName}.`}
-              {iAmClient && paidSomething && " You recorded a payment on this project. If the work never came, you can report it."}
+              {endedText}
+              {canMessageAfterEnd && ` You can message ${otherName}.`}
+              {iAmClient && paidSomething && project.ended_by === "freelancer" && ` You recorded a payment on this project. Ask ${otherName} to return it, or report it if they don't.`}
+              {iAmClient && paidSomething && project.ended_by !== "freelancer" && " You recorded a payment on this project. If the work never came, you can report it."}
+              {!iAmClient && paidSomething && project.ended_by === "freelancer" && ` A payment was recorded on this project: give it back to ${otherName} directly.`}
+              {project.end_reason && (
+                <span className="d-block mt-1" data-end-reason>Reason: "<CensoredText text={project.end_reason} />"</span>
+              )}
             </span>
             {iAmClient && paidSomething && (
               <button type="button" className="btn btn-sm btn-dark rounded-pill px-3 fw-bold flex-shrink-0" onClick={() => setReportTarget({ type: "user", id: other?.id, name: otherName })}>
@@ -362,6 +377,19 @@ export default function ProjectDetailsView() {
             onEnded={() => {
               reloadProject();
               showToast(`Project ended. ${otherName} was told.`);
+            }}
+          />
+        )}
+        {/* The freelancer can step out of a project that is still waiting for their work, and
+            sees when the daily job would end a never-sent project by itself (PLAN-end-project.md). */}
+        {!iAmClient && (
+          <WithdrawProjectCard
+            project={project}
+            payments={payments}
+            otherName={otherName}
+            onWithdrawn={() => {
+              reloadProject();
+              showToast(`You withdrew from the project. ${otherName} was told.`);
             }}
           />
         )}

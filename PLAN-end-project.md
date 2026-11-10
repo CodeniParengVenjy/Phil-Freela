@@ -156,3 +156,43 @@ value is ignored by them; the one policy that reads the status is the ratings on
   table of PhilFreela-System-Functions.md.
 - Still the same afterwards: a freelancer "Withdraw", an automatic ending, a reason box, a public mark, ending after a
   draft was sent, a report that carries the project timeline, booking expiry.
+
+## Round 2 (2026-11-11): the four things left out
+
+The user said "build all" after the list of what was not built. Defaults chosen (change the numbers if you want other ones):
+
+1. Reason box: optional, 3 to 300 characters, through the word filter (a second trigger, `projects_mask_end_reason`, same
+   `mask_columns()`), saved in `projects.end_reason`, shown on the project page to both people. It is NOT in the notice text,
+   because the notice is repeated in the email as the database wrote it.
+2. Freelancer Withdraw: `withdraw_from_project(project, reason)`, any time while the project is Started (also late, also after
+   a first sending that was sent back for changes). Submitted work waits for the client's review; Done and Ended are refused. A
+   waiting request for more time is cancelled. If the client had recorded a payment, the notices say the freelancer must give
+   it back directly and the client may report it as Scam / Fraud. The window says the same.
+3. Automatic ending: `auto_end_projects()`, called by `send_daily_notices()` (one line spliced before `return sent;`). A Started
+   project that was never sent: the morning it is 29 days late (or the first morning the job sees it later) both people get
+   "Project will be ended tomorrow" (kind project_overdue, sent log kind `end_warn`); on a later morning, at 30 days or more, it
+   is ended by the system. The 30 is only in SQL (`auto_end_days`) and in lib/projects.js `AUTO_END_DAYS`. A waiting request
+   for more time is cancelled with it. A project sent once, or Submitted, is never touched.
+4. Admin Ended count: `admin_transactions()` gets one more key, `ended`, and the Projects bar on the admin Transactions card
+   shows Ended (a missing key counts 0, so the page also works before the SQL is applied).
+
+New: `projects.ended_by` (client, freelancer or system; projects ended in round 1 are filled in as client), one internal
+`end_project_row(project, who, note)` that all three ways use, `clean_end_note()`, and `end_project(project, reason)` now takes
+the optional reason (the one-argument function is dropped; a call with only the project still works).
+
+Files: database/supabase_end_project_more_schema.sql, database/test_end_project_more.sql (database/test_end_project.sql now
+checks `end_project(uuid, text)`), client/src/lib/projects.js, EndProjectDialog.jsx (reason box), EndProjectCard.jsx (the
+automatic ending line), WithdrawProjectCard.jsx, WithdrawProjectDialog.jsx, EndReasonBox.jsx, ProjectDetailsView.jsx (three
+kinds of Ended notice, Withdraw for the freelancer), AdminOverviewView.jsx, the Terms bullet, the System Functions row.
+
+Status when written: built and tested but NOT applied and NOT committed. The Supabase connector dropped (ENOTFOUND) before the
+live trial, so the SQL was run on a standalone Postgres (PGlite) with stand-ins for the live tables and functions: schema applied
+twice, both splices prove "my text only", the test file 48/48. The browser checks on the pretend backend: 74/74 (round 1, updated)
+and 70/70 (round 2). Lint clean (2 old warnings), build OK.
+
+To ship it (in this order): (1) run supabase_end_project_more_schema.sql + test_end_project_more.sql in ONE rolled-back
+transaction on live and read the PASS list (the stand-in run is not the live database); (2) the user's typed "apply", apply as
+migration `end_project_more`, prove the two splices (md5 with only my text removed: send_daily_notices and admin_transactions
+must give back their md5 from just before), run test_end_project_more.sql and test_end_project.sql again, check no leftovers;
+(3) commit with explicit paths and push the website. **The website must NOT go live before the migration**: getProject now asks
+for `ended_by` and `end_reason`, so every project page would say "This project wasn't found" until the columns exist.

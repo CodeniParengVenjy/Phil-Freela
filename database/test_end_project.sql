@@ -140,8 +140,8 @@ begin
                     'public.admin_job_hires()'::regprocedure, 'public.admin_job_hiring()'::regprocedure)
         and prosrc ~ 'status <> ''ended''') = 4);
   perform pg_temp.chk('signed-in users can call end_project, signed-out users can not',
-    has_function_privilege('authenticated', 'public.end_project(uuid)', 'execute')
-    and not has_function_privilege('anon', 'public.end_project(uuid)', 'execute'));
+    has_function_privilege('authenticated', 'public.end_project(uuid, text)', 'execute')
+    and not has_function_privilege('anon', 'public.end_project(uuid, text)', 'execute'));
   begin update public.projects set status = 'bogus' where id = ph; msg := 'updated'; exception when check_violation then msg := 'refused'; end;
   perform pg_temp.chk('the status check still refuses a made-up status', msg = 'refused', msg);
 
