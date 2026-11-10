@@ -130,6 +130,14 @@ function TermsOfService() {
           The same rule decides the "on time" share on your profile: a finished project counts as on time only if its work
           was first sent by the due date.
         </li>
+        <li>
+          <strong className="text-white">Work the client doesn't review is accepted after 7 days.</strong> When a freelancer
+          sends the work, the client has 7 days to mark it done or ask for changes. PhilFreela warns the client at 8:00 AM
+          Philippine time on day 6, and after 7 days without an answer the work is accepted automatically: the project becomes
+          Done, both people are told, and the client's payment days start (see "Who pays first"). Sending the work again after
+          the client asks for changes starts the 7 days over. Accepting never moves money, and the original file stays locked
+          until it is paid.
+        </li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your work and ownership</h5>

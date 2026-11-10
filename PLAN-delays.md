@@ -5,11 +5,12 @@ payment reminder, late payment notice, service suspension, late payment penalty,
 dispute resolution). The user asked "do you know the violations if there is something a delay, in any
 aspect?" and then "so what's the plan, how can we deal with these?".
 
-Status (2026-11-11, Manila): Steps 1, 2 and 3 are LIVE, database and website (migrations `payment_due_reminders`,
-`unpaid_client_block`, `payment_waiting_reminders`; website commits d735603 and 7cc23e9). Each migration was proved on
-live after applying (removing only its own lines from each changed function gave the old checksum back) and its test
-was run again, rolled back (26/26, 38/38, 20/20, nothing left behind). Still to do: Step 4 (only if the user keeps it)
-and Step 5. Note for later changes: `hire_applicant` and `create_booking` must keep their `block_if_client_owes` call,
+Status (2026-11-11, Manila): Steps 1, 2, 3 and 4 are LIVE, database and website (migrations `payment_due_reminders`,
+`unpaid_client_block`, `payment_waiting_reminders`, `auto_accept_work`; website commits d735603, 7cc23e9 and the Step 4
+one). Each migration was proved on live after applying (removing only its own lines from each changed function gave the
+old checksum back) and its test was run again, rolled back (26/26, 38/38, 20/20, 21/21, nothing left behind). Still to do:
+Step 5. Step 4 started on 2026-11-11 with the one project already waiting (sent Oct 20) counted from that day: its warning
+comes on Nov 17 and its acceptance on the next run. Note for later changes: `hire_applicant` and `create_booking` must keep their `block_if_client_owes` call,
 and `send_daily_notices` has three parts added by this plan (payments due/late, the waiting payments, and the limit
 sentences in the late notices); always start from the live definition.
 
@@ -222,7 +223,21 @@ Tests:
 - Mocked-network browser check: the 7 / 6 / 1 day boundary on the project page and the chat card, the freelancer sees
   no Report, the report popup, the notification, phone and light mode, the Terms.
 
-### Step 4. Work the client does not review (only if the user keeps it)
+### Step 4. Work the client does not review (the user kept it, at 7 days: "7 days lets go", 2026-11-11)
+
+Decided with the user: 7 days, and work that was already waiting when this goes live is counted from that day (so it
+gets its full 7 days and its warning, instead of being accepted at the first run). As built:
+- Two columns on `projects`: `auto_accepted` and `review_counted_from` (the one-time update sets it to the go-live day for
+  work already waiting 6 days or more; on 2026-11-11 that is the one live project that has waited since Oct 20).
+- `auto_accept_project(uuid)` is internal. The daily job is spliced (guarded, exactly-once) right before Step 1's payments
+  part: a warning once per sending (sent log kind `review_6`, keyed by the day it is counted from), and the acceptance only
+  AFTER that warning, at least one run later (so a missed day 6 never skips the warning). `remind_unpaid_on_done` gets its
+  first sentence swapped for an automatic variant.
+- Website: lib/reviewClock.js (`REVIEW_DAYS`, `getReviewClock`, `reviewDeadline`), components/ReviewNotice.jsx on the project
+  page ("Review the work before <date> ..." for the client, "If X doesn't ... before <date> ..." for the freelancer, and a
+  quiet "accepted automatically" line afterwards; nothing before the SQL is applied), Terms bullet in "Due dates and late
+  work". No new notification kinds (it reuses project_review_reminder and project_done).
+- Tests: database/test_auto_accept.sql (21 checks, rolled back on live, nothing left behind); mocked browser check.
 
 What people see:
 - Client, day 6 after the work was sent: "Last day to review "Logo". If you don't answer, the work is accepted

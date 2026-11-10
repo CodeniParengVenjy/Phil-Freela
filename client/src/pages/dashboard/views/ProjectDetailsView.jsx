@@ -16,6 +16,7 @@ import ReportDialog from "../components/ReportDialog";
 import DueBadge from "../components/DueBadge";
 import LateBlockNotice from "../components/LateBlockNotice";
 import PayBlockNotice from "../components/PayBlockNotice";
+import ReviewNotice from "../components/ReviewNotice";
 import { Loader, Busy } from "../../../components/Loaders";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
@@ -313,6 +314,8 @@ export default function ProjectDetailsView() {
           onPay={scrollToPayments}
           onReport={() => setReportTarget({ type: "user", id: other?.id, name: otherName })}
         />
+        {/* Work waiting for the client: accepted automatically after 7 days (lib/reviewClock.js, PLAN-delays.md Step 4). */}
+        <ReviewNotice project={project} isClient={iAmClient} otherName={otherName} />
 
         <div className="row g-3">
           <div className="col-md-6">
