@@ -6,16 +6,23 @@
 -- Supabase SQL Editor and run it once. It is safe to run on top of the first
 -- part.
 --
--- What is in here:
---   a. restore_user(), the new delete_user() (only works on an archived account),
---      the daily delete_expired_archives() job, and the Activity Log lines for
---      archiving and restoring.
---   b. The admin_requests and admin_log lists of kinds get 'archive',
---      'user_archive' and 'user_restore'. (Section b already went through the
---      connector, so running it again changes nothing.)
+-- What is in here: restore_user(), the new delete_user() (only works on an
+-- archived account), the daily delete_expired_archives() job, and the Activity
+-- Log lines for archiving and restoring.
+--
+-- Updated 2026-11-11: the old section b (the lists of kinds for admin_requests
+-- and admin_log) is gone from this file. It was already applied on 2026-10-21
+-- (migration admin_archives_part_3_kinds), and running it now would do harm:
+-- the live admin_log_action_check has since gained 'promotion', and the old
+-- text would take it away (or fail on the rows that already use it).
+--
+-- Found 2026-11-11: this file had never been run on the live project, so the
+-- Restore button on Admin > Archives answered "Could not find the function
+-- public.restore_user". The Supabase connector refuses it (it holds DELETE
+-- statements), so it has to be pasted into the SQL Editor.
 
 -- ===========================================================================
--- a. Restore, delete for good, the daily job, the log lines
+-- Restore, delete for good, the daily job, the log lines
 -- ===========================================================================
 
 -- Brings an account back. Any admin can, like lifting a ban.
@@ -123,31 +130,11 @@ begin
 end;
 $$;
 
+drop trigger if exists archived_users_log on public.archived_users;
 create trigger archived_users_log
   after insert or delete on public.archived_users
   for each row execute function public.log_archive_change();
 
 revoke execute on function public.log_archive_change() from public, anon, authenticated;
 
--- ===========================================================================
--- b. The lists of kinds
--- ===========================================================================
-
--- A regular admin's Archive is a request ('archive') for a super admin to approve.
-alter table public.admin_requests drop constraint admin_requests_kind_check;
-alter table public.admin_requests add constraint admin_requests_kind_check
-  check (kind in ('suspend', 'ban', 'archive', 'resolve', 'dismiss', 'remove_listing', 'remove_picture'));
-
-alter table public.admin_requests drop constraint admin_requests_check;
-alter table public.admin_requests add constraint admin_requests_check
-  check (
-    (kind in ('resolve', 'dismiss') and report_id is not null)
-    or (kind in ('suspend', 'ban', 'archive') and target_user_id is not null)
-    or (kind = 'remove_listing' and report_id is not null and listing_table is not null and listing_id is not null)
-    or (kind = 'remove_picture' and report_id is not null and target_user_id is not null)
-  );
-
--- The Activity Log's list of kinds gets two more.
-alter table public.admin_log drop constraint admin_log_action_check;
-alter table public.admin_log add constraint admin_log_action_check
-  check (action in ('suspend', 'ban', 'lift', 'report', 'verification', 'appeal', 'announcement', 'flagged', 'listing', 'admin', 'user_delete', 'user_archive', 'user_restore'));
+-- (The old section b, the lists of kinds, was removed on purpose: see the note at the top.)

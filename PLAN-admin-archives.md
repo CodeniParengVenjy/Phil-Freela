@@ -1,9 +1,10 @@
 # Admin Archives: plan and progress
 
-Status (2026-10-21): website built and tested; database half applied to the live
-project, half waiting for you to paste ONE file into the SQL Editor (see "What is
-left"). To continue in a new Claude session, say: "Read PLAN-admin-archives.md and
-continue from the current step."
+Status (2026-11-11): website built and tested; database half applied to the live
+project, half STILL waiting for you to paste ONE file into the SQL Editor (see "What
+is left" and its 2026-11-11 update: the Restore button gives an error until then).
+To continue in a new Claude session, say: "Read PLAN-admin-archives.md and continue
+from the current step."
 
 ## Why
 
@@ -95,6 +96,28 @@ restore lines don't reach the Activity Log. Then run `database/test_archives.sql
 (all of it) in the SQL Editor; it rolls itself back. The older
 `test_super_admin.sql` and `test_admin_log.sql` were updated for the two-step delete
 and need the finish file too.
+
+**2026-11-11 update (the user asked "does the Restore button work?").** The finish
+file had still NOT been run on the live project. Proof: the Supabase API log shows the
+user's click on Restore (2026-11-10, 10:19 UTC) answered `404 PGRST202`, and the
+database had no `restore_user` and no `delete_expired_archives`, no
+`archived_users_log` trigger, no `delete-expired-archives` job, and `delete_user` had
+no "archive first" rule. The Supabase connector declined the migration (the functions
+contain DELETE statements), so the file has to be pasted into the SQL Editor.
+
+Before that, the file was fixed: its old section b (the lists of kinds) is removed,
+because the live `admin_log_action_check` now also holds `'promotion'` (promotions
+work, after this plan) and the old text would take it away, or fail on rows that
+use it. A `drop trigger if exists` was added so pasting the file twice cannot fail.
+Tested offline on PGlite (a Postgres inside Node, the four helper functions copied
+from live): 28 of 28 checks (who can restore, the two-step delete, the 100-day job
+with nobody signed in, the Activity Log lines, nothing logged as "restored" when an
+archived account is deleted, pasting twice). That is a stand-in database, not live.
+
+After pasting: (1) the anon-key call to `rpc/restore_user` must answer 401
+"permission denied" like `archive_user` does, not 404; (2) run `test_archives.sql`
+(its job post insert may need updating for the newer job-post rules); (3) archive a
+test account and press Restore once.
 
 ## Files
 
