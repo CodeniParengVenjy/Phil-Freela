@@ -106,8 +106,17 @@ function TermsOfService() {
       <h5 className="text-white fw-bold mt-4 mb-2">Due dates and late work</h5>
       <ul className="text-secondary">
         <li>
-          Every project has a due date, set when the project starts. It can't be changed afterwards, so agree on a date you
-          can keep.
+          Every project has a due date, set when the project starts. It can only move when the client accepts a request for
+          more time (see below), so agree on a date you can keep.
+        </li>
+        <li>
+          <strong className="text-white">Asking for more time.</strong> On or before the due date, a freelancer can ask the
+          client for more time to send the work, and on or before the payment day, a client can ask the freelancer for more
+          time to pay. Each request is for up to 7 more days, each person can ask twice per project for each of these, and the
+          other person accepts or declines. They are told in their notifications, and by email while they are offline unless
+          they turned that off in Settings. If they don't answer, the old date stays and the reminders keep going. An accepted
+          request moves the date, so the work counts as on time and the payment isn't late. Once a date has passed it is too
+          late to ask. A request is not a violation, and PhilFreela charges nothing for it.
         </li>
         <li>
           PhilFreela reminds both people, at 8:00 AM Philippine time, 3 days before the due date, the day before and on the

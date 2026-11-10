@@ -153,7 +153,12 @@ export const notificationIcons = {
   payment_overdue: { icon: "bi-exclamation-octagon-fill", className: "bg-danger text-white" },
   // A payment waits for the freelancer's answer (database/supabase_payment_waiting_schema.sql,
   // PLAN-delays.md Step 3): reminders to the freelancer, and when the client can report it.
-  payment_waiting: { icon: "bi-hourglass-top", className: "bg-warning text-dark" }
+  payment_waiting: { icon: "bi-hourglass-top", className: "bg-warning text-dark" },
+  // Asking for more time to send the work or to pay (database/supabase_delay_requests_schema.sql,
+  // PLAN-delay-requests.md): the request, and the answer.
+  delay_requested: { icon: "bi-clock-history", className: "bg-info text-dark" },
+  delay_accepted: { icon: "bi-calendar-check-fill", className: "bg-success text-white" },
+  delay_declined: { icon: "bi-calendar-x-fill", className: "bg-secondary text-white" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -193,5 +198,8 @@ export const notificationLinkLabels = {
   project_review_reminder: "Open project",
   payment_due_soon: "Pay the rest",
   payment_overdue: "Open project",
-  payment_waiting: "View payment"
+  payment_waiting: "View payment",
+  delay_requested: "Answer request",
+  delay_accepted: "Open project",
+  delay_declined: "Open project"
 };

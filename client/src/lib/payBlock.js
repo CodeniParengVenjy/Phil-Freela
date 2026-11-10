@@ -20,7 +20,7 @@ export async function getOwedProject(freelancerId) {
 
   const { data: rows, error } = await supabase
     .from("projects")
-    .select("id, title, status, completed_at, agreed_amount, price_basis, price_status")
+    .select("id, title, status, completed_at, agreed_amount, price_basis, price_status, payment_due_override")
     .eq("client_id", userId)
     .eq("freelancer_id", freelancerId)
     .eq("status", "done")

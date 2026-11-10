@@ -16,6 +16,7 @@ import ReportDialog from "../components/ReportDialog";
 import DueBadge from "../components/DueBadge";
 import LateBlockNotice from "../components/LateBlockNotice";
 import PayBlockNotice from "../components/PayBlockNotice";
+import DelayRequestCard from "../components/DelayRequestCard";
 import ReviewNotice from "../components/ReviewNotice";
 import { Loader, Busy } from "../../../components/Loaders";
 
@@ -313,6 +314,16 @@ export default function ProjectDetailsView() {
           showToast={showToast}
           onPay={scrollToPayments}
           onReport={() => setReportTarget({ type: "user", id: other?.id, name: otherName })}
+        />
+        {/* Asking the other person for more time to send the work or to pay
+            (lib/delayRequests.js, PLAN-delay-requests.md). */}
+        <DelayRequestCard
+          project={project}
+          payments={payments}
+          userId={currentUserId}
+          otherName={otherName}
+          showToast={showToast}
+          onChanged={reloadProject}
         />
         {/* Work waiting for the client: accepted automatically after 7 days (lib/reviewClock.js, PLAN-delays.md Step 4). */}
         <ReviewNotice project={project} isClient={iAmClient} otherName={otherName} />

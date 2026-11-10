@@ -179,6 +179,9 @@ const daysBetween = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Da
 export function paymentDueDate(project) {
   if (project?.status !== "done" || !project.completed_at) return "";
   if (project.price_status !== "agreed" || project.price_basis !== "project") return "";
+  // A later day the freelancer agreed to (a request for more time, PLAN-delay-requests.md)
+  // wins over the normal 7 days; payment_due_date() in the database does the same.
+  if (project.payment_due_override) return project.payment_due_override;
   const doneDay = new Date(project.completed_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
   const due = new Date(`${doneDay}T00:00:00Z`);
   due.setUTCDate(due.getUTCDate() + PAYMENT_DUE_DAYS);
