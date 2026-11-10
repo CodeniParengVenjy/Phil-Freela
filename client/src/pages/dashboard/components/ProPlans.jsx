@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { FEATURE_CODES, formatFeatureDate, getPromoPrices } from "../../../lib/featured";
 import { FREE_OFFERS, PRO_CODE, PRO_OFFERS, confirmProCheckout, countMyOffers, startProCheckout, useMyViews, useProStatus } from "../../../lib/pro";
+import { downloadPurchaseReceipt } from "../../../lib/receiptPdf";
 import "../pro.css";
 import { Busy } from "../../../components/Loaders";
 
@@ -65,6 +66,10 @@ export default function ProPlans({ userId, accountType, onPaid }) {
   // The answer about that payment (null while asking), and a counter that asks again.
   const [answer, setAnswer] = useState(null);
   const [round, setRound] = useState(0);
+  // The receipt of that payment (PLAN-payment-receipt.md, Step 4): true while
+  // the PDF is made, and a sentence if it couldn't be.
+  const [makingReceipt, setMakingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -116,6 +121,12 @@ export default function ProPlans({ userId, accountType, onPaid }) {
     setRound((value) => value + 1);
   };
 
+  const getReceipt = async () => {
+    setMakingReceipt(true);
+    setReceiptError(await downloadPurchaseReceipt(checkoutId, userId));
+    setMakingReceipt(false);
+  };
+
   const goPro = async () => {
     setOpening(true);
     setOpenError("");
@@ -161,6 +172,13 @@ export default function ProPlans({ userId, accountType, onPaid }) {
               Check again
             </button>
           )}
+          {/* Paid: the PDF receipt (it is also in Settings, Purchases). */}
+          {shown.state === "paid" && (
+            <button type="button" className="btn btn-sm btn-success text-white rounded-pill px-3 fs-8 fw-bold" disabled={makingReceipt} onClick={getReceipt}>
+              {makingReceipt ? <Busy>Making the PDF</Busy> : <><i className="bi bi-download me-1"></i> Download receipt (PDF)</>}
+            </button>
+          )}
+          {receiptError && <p className="text-danger fs-8 w-100 mb-0">{receiptError}</p>}
         </div>
       )}
 

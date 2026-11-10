@@ -129,6 +129,8 @@ Added 2026-10-25/26 (plan: `PLAN-monetization.md`). PhilFreela never takes a cut
 
 Paid placement never changes the "Recommended for you" order (Feature 1 ranks by credibility): Featured posts sit in their own labeled row. Admins see every fee in Admin > Site > Promotions and the totals on the Overview (test-mode payments are left out). The Billboard itself stays for the super admin only (welcome messages, announcements, sponsors); the members' ads have their own Community Billboard, and Admin > Site > Community Billboard is where any admin approves, rejects or takes down ads.
 
+**Receipts for these purchases** (2026-11-10, `PLAN-payment-receipt.md` Step 4, `client/src/lib/purchases.js`, `PurchasesList.jsx`): Settings > Purchases (clients and freelancers) lists every Premium, Featured post and Community Billboard ad the person paid for online (`online_checkouts` with status paid, plus the run dates and Xendit payment id from `promotions`; the database already lets each person read only their own), newest first, with a "Test" badge for Xendit test mode and a Receipt (PDF) button. The Premium page's "Payment received" card has a Download receipt button too, and the Featured and ad messages point to Settings, Purchases. The PDF (same jsPDF receipt maker as the GCash receipt) has a `PFO-` number, Bought by / Sold by PhilFreela, what was bought and when it runs, the Xendit payment id and dates, a "TEST PAYMENT" band and stamp for test-mode payments, and says it is an acknowledgement receipt, not a BIR-registered invoice or Official Receipt. Unpaid checkouts and free Featured posts are not listed. No database change.
+
 ---
 
 ## Open items

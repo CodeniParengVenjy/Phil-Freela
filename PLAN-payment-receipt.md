@@ -214,6 +214,26 @@ No new table, column, database function, Edge Function or AI route.
    purchase today is a test one.
 4. Admins and sponsored billboards get no receipt button (can be added later).
 
+## Step 4 result (2026-11-10): built (the user: "build please")
+
+- `client/src/lib/purchases.js`: `listMyPurchases(userId)` (paid checkouts only,
+  newest first, plus run dates and Xendit id from `promotions`) and
+  `getPurchase(checkoutId)`. The ad and Featured names come from
+  `online_checkouts.target_title` (filled for both on live).
+- `client/src/lib/receiptPdf.js`: the drawing is now one shared `receiptKit`
+  (header, band, amount, boxes, rows, footer) used by both receipts;
+  `downloadPurchaseReceipt(purchaseOrCheckoutId, userId)` added. The GCash receipt
+  looks the same as before (27/27 again).
+- `PurchasesList.jsx` + Settings tab "Purchases" (last, for everyone; a link can
+  open it with `?tab=Purchases`). `ProPlans.jsx`: "Download receipt (PDF)" on the
+  "Payment received" card. `checkout.js`: the Featured and ad "paid" messages say
+  the receipt is in Settings, Purchases.
+- Terms (one line under PhilFreela's own fees), `PhilFreela-System-Functions.md`
+  ("Receipts for these purchases" under How PhilFreela earns).
+- Tested: lint + build; pretend-backend browser test 20/20 (`purchases.test.mjs`:
+  only paid and own rows, order, Test badges, the three PDFs read back, empty list,
+  light + yellow accent, phone 390, the Premium card button, no button while unpaid).
+
 ## Current step
 
-Steps 1 to 3 are done and live. Step 4 is planned above and waits for the user's OK.
+Steps 1 to 4 are done. Left: a person trying both receipts on the live site.

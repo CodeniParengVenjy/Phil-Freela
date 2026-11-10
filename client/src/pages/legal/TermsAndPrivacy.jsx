@@ -257,6 +257,11 @@ function TermsOfService() {
           student project: no real money is charged.
         </li>
         <li><strong className="text-white">Sponsored billboards:</strong> businesses arrange these with PhilFreela directly. They are always marked "Sponsored by ...".</li>
+        <li>
+          Each Premium, Featured post or ad you pay for online has a PDF receipt in Settings, Purchases. It is an
+          acknowledgement receipt from PhilFreela, not a BIR-registered invoice or Official Receipt, and a test-mode
+          payment's receipt is marked "TEST PAYMENT".
+        </li>
         <li>Paying for any of these never changes the "Recommended for you" order, which stays based on ratings, completed projects and response time, or the Best fit order of a job's applicants.</li>
       </ul>
 

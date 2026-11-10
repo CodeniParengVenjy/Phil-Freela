@@ -85,11 +85,11 @@ const ADVERTISE_PAGE = "/dashboard/advertise";
 const FEATURE_PAGES = ["/dashboard/services", "/dashboard/post-need", ADVERTISE_PAGE];
 const OUTCOMES = {
   featured: {
-    paid: "Payment received. Your post is Featured now.",
+    paid: "Payment received. Your post is Featured now. Your receipt is in Settings, Purchases.",
     waiting: "Your payment isn't confirmed yet. If you paid, your post is Featured within a few minutes and you'll get a notification."
   },
   ad: {
-    paid: "Payment received. Your ad is on the Community Billboard now.",
+    paid: "Payment received. Your ad is on the Community Billboard now. Your receipt is in Settings, Purchases.",
     waiting: "Your payment isn't confirmed yet. If you paid, your ad goes live within a few minutes and you'll get a notification."
   }
 };

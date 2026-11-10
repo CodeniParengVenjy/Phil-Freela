@@ -12,6 +12,7 @@ import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
 import GcashSettingsForm from "../components/GcashSettingsForm";
+import PurchasesList from "../components/PurchasesList";
 import { Loader, Busy } from "../../../components/Loaders";
 
 const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
@@ -23,7 +24,8 @@ export default function SettingsView() {
   const navigate = useNavigate();
   // Only freelancers get paid, so only they have the GCash Payment tab. (Freelancer
   // Pro has its own page in the menu now: views/ProView.jsx.)
-  const menuItems = accountType === "freelancer" ? [...subNavItems, "GCash Payment"] : subNavItems;
+  // Purchases (receipts of what they paid PhilFreela for online) is for everyone, last.
+  const menuItems = [...subNavItems, ...(accountType === "freelancer" ? ["GCash Payment"] : []), "Purchases"];
   // A link can open a tab: /dashboard/settings?tab=GCash%20Payment. It is worked
   // out here, not copied into state, because the account type (and so the
   // freelancer-only tabs) may arrive after the page opens.
@@ -454,6 +456,9 @@ export default function SettingsView() {
               ) : (
                 <p className="text-secondary fs-7">Only freelancers receive payments, so there's nothing to set here.</p>
               )
+            ) : activeSubNav === "Purchases" ? (
+              // Receipts of Premium, Featured posts and ads (PLAN-payment-receipt.md, Step 4).
+              currentUserId ? <PurchasesList userId={currentUserId} showToast={showToast} /> : <Loader size="sm" />
             ) : activeSubNav === "Appearance" ? (
               currentUserId
                 ? <AppearanceForm userId={currentUserId} accountType={accountType} showToast={showToast} />
