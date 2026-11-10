@@ -76,12 +76,13 @@ $$;
 revoke execute on function public.clean_end_note(text) from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
--- 3. end_project_row(project, who, note): what ending does, for all three ways
+-- 3. end_project_row(project, who, reason): what ending does, for all three ways
+-- (the reason parameter is not called "note": projects has a column note, the client's note)
 -- ---------------------------------------------------------------------------
 -- who = 'client' (end_project), 'freelancer' (withdraw_from_project) or 'system' (the daily job).
 -- The callers have checked the rules. This only ends a project that is still Started.
 
-create or replace function public.end_project_row(target_project uuid, who text, note text)
+create or replace function public.end_project_row(target_project uuid, who text, reason_text text)
 returns void
 language plpgsql
 security definer
@@ -107,7 +108,7 @@ begin
    where project_id = proj.id and status = 'pending';
 
   update public.projects
-     set status = 'ended', ended_at = now(), ended_by = who, end_reason = note
+     set status = 'ended', ended_at = now(), ended_by = who, end_reason = reason_text
    where id = proj.id;
 
   select coalesce(nullif(full_name, ''), username, 'The client') into client_name
@@ -186,9 +187,18 @@ revoke execute on function public.end_project_row(uuid, text, text) from public,
 -- 4. end_project(project, reason): the client ends it (round 1's rules, plus the reason)
 -- ---------------------------------------------------------------------------
 -- The old one-argument function is replaced by this one (the reason is optional, so a call with
--- only the project still works).
+-- only the project still works). The old one is renamed and nobody can call it any more (renamed
+-- instead of removed, so nothing is destroyed; two functions both called end_project would make a
+-- call with only the project ambiguous).
 
-drop function if exists public.end_project(uuid);
+do $$
+begin
+  if to_regprocedure('public.end_project(uuid)') is not null then
+    alter function public.end_project(uuid) rename to end_project_round1_unused;
+    revoke execute on function public.end_project_round1_unused(uuid) from public, anon, authenticated;
+  end if;
+end;
+$$;
 
 create or replace function public.end_project(target_project uuid, end_note text default null)
 returns void

@@ -196,3 +196,11 @@ migration `end_project_more`, prove the two splices (md5 with only my text remov
 must give back their md5 from just before), run test_end_project_more.sql and test_end_project.sql again, check no leftovers;
 (3) commit with explicit paths and push the website. **The website must NOT go live before the migration**: getProject now asks
 for `ended_by` and `end_reason`, so every project page would say "This project wasn't found" until the columns exist.
+
+Round 2 APPLIED (2026-11-11) as migration `end_project_more`, after the user's "apply" and a live rolled-back trial. The
+first trial was refused by the connector ("SQL execution was declined") because of the `drop function` line: the old
+one-argument end_project is now RENAMED to end_project_round1_unused and locked (no one can call it) instead of dropped. The
+second trial caught a real bug the stand-in run missed: the parameter "note" of end_project_row clashed with the column
+projects.note ("column reference is ambiguous"); it is now `reason_text`. Then the trial passed 48/48, the migration was
+applied, both splices were proved (only my text added: send_daily_notices and admin_transactions give back 4dfbc005 and
+2195cfb0), test_end_project_more.sql passed 48/48 again and the round 1 checks 26/26, all rolled back, nothing left behind.
