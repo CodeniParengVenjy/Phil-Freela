@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { priceText } from "../../../lib/projectPrice";
 import { formatDay } from "../../../lib/projects";
 import {
-  PAYMENT_DUE_DAYS, confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, isShortPayment, listProjectPayments,
-  markNotReceived, openReceipt, payDueInfo, paymentBadge, projectMoney, readReceiptScreenshot, recordPayment, watchProjectPayments
+  PAYMENT_DUE_DAYS, canReportUnanswered, confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, isShortPayment, listProjectPayments,
+  markNotReceived, openReceipt, payDueInfo, paymentBadge, projectMoney, readReceiptScreenshot, recordPayment, waitingDays, watchProjectPayments
 } from "../../../lib/payments";
 import ReceiptCheckNote from "./ReceiptCheckNote";
 import ReceiptReady from "./ReceiptReady";
@@ -321,6 +321,9 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     const short = isShortPayment(payment);
     const tip = Number(payment.tip_amount || 0);
     const waitingForMe = !iAmClient && payment.status === "sent";
+    // The freelancer hasn't answered for 7 days or more: the client can report it
+    // (PLAN-delays.md, Step 3).
+    const unanswered = iAmClient && canReportUnanswered(payment);
     const isAsking = asking?.id === payment.id;
     return (
       <div key={payment.id} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25" data-payment-status={short ? "short" : payment.status}>
@@ -339,7 +342,10 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
         <ReceiptCheckNote payment={payment} forFreelancer={!iAmClient} />
 
         {payment.status === "sent" && iAmClient && (
-          <p className="text-white-50 fs-7 mb-2">Waiting for {otherName} to check their GCash and confirm.</p>
+          <p className="text-white-50 fs-7 mb-2" data-unanswered={unanswered ? "true" : undefined}>
+            Waiting for {otherName} to check their GCash and confirm.
+            {unanswered && <> {otherName} hasn't answered for {waitingDays(payment)} days: you can message them, or report it.</>}
+          </p>
         )}
         {payment.status === "confirmed" && !short && (
           <p className="text-success fs-7 mb-2"><i className="bi bi-check-circle-fill me-1"></i>{iAmClient ? `${otherName} confirmed this payment.` : "You confirmed this payment."}</p>
@@ -410,12 +416,12 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
               <i className="bi bi-cash-coin me-1"></i> Pay the rest ({formatPeso(money.leftForNew)})
             </button>
           )}
-          {(payment.status === "not_received" || short) && iAmClient && otherId && openChat && (
+          {(payment.status === "not_received" || short || unanswered) && iAmClient && otherId && openChat && (
             <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-8 fw-bold" onClick={() => openChat(otherId)}>
               <i className="bi bi-chat-dots-fill me-1"></i> Message
             </button>
           )}
-          {(payment.status === "not_received" || short) && onReport && (
+          {(payment.status === "not_received" || short || unanswered) && onReport && (
             <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 fs-8" onClick={() => onReport(payment)}>
               <i className="bi bi-flag me-1"></i> Report
             </button>

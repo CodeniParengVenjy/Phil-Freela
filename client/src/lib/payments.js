@@ -214,6 +214,27 @@ export function payDueInfo(project, money, today = todayInManila()) {
 }
 
 // ---------------------------------------------------------------------------
+// A payment the freelancer has not answered (PLAN-delays.md, Step 3)
+// ---------------------------------------------------------------------------
+
+// After this many days without an answer the client can report the payment. The same
+// number as the database's 8:00 AM reminders (wait_7 in send_daily_notices(),
+// database/supabase_payment_waiting_schema.sql), so change both together.
+export const PAYMENT_REPORT_AFTER_DAYS = 7;
+
+// How many days a payment has been waiting for the freelancer's answer, counted in
+// Philippine days from when the client recorded it (created_at; a chat request gets a
+// new created_at when it is recorded). 0 for a payment that is not waiting.
+export function waitingDays(payment, today = todayInManila()) {
+  if (payment?.status !== "sent" || !payment.created_at) return 0;
+  const recordedDay = new Date(payment.created_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  return Math.max(daysBetween(recordedDay, today), 0);
+}
+
+// True when the client may report a payment the freelancer has not answered.
+export const canReportUnanswered = (payment, today) => waitingDays(payment, today) >= PAYMENT_REPORT_AFTER_DAYS;
+
+// ---------------------------------------------------------------------------
 // The receipt picture (client)
 // ---------------------------------------------------------------------------
 

@@ -233,6 +233,19 @@ function TermsOfService() {
           Reminders appear in your notifications, and are also emailed to you while you are offline unless you turned that
           off in Settings.
         </li>
+        <li>
+          <strong className="text-white">A late payment limits hiring.</strong> While a payment is late, the client can't hire or
+          book that freelancer again. It ends when the project is paid in full, or when the freelancer taps "Allow to hire
+          again" on that project. Other freelancers are not affected. PhilFreela charges no late fee and can't collect one: if
+          you agree on one in the chat, it is between the two of you.
+        </li>
+        <li>
+          <strong className="text-white">A payment the freelancer doesn't answer.</strong> After a client records a payment, the
+          freelancer is reminded after 2 days and after 5 days to check their GCash and answer it. After 7 days without an
+          answer, both people are told, and the client can report it from the payment (the amount, reference and receipt go
+          with the report, so an admin can see them). PhilFreela never confirms a payment for the freelancer, because it can't
+          see GCash.
+        </li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">PhilFreela's own fees</h5>

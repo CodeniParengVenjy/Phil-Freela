@@ -15,6 +15,7 @@ import ProjectPriceBox from "../components/ProjectPriceBox";
 import ReportDialog from "../components/ReportDialog";
 import DueBadge from "../components/DueBadge";
 import LateBlockNotice from "../components/LateBlockNotice";
+import PayBlockNotice from "../components/PayBlockNotice";
 import { Loader, Busy } from "../../../components/Loaders";
 
 // One project (/dashboard/project-details/:projectId), opened from a card in
@@ -37,6 +38,9 @@ export default function ProjectDetailsView() {
   const [theirRating, setTheirRating] = useState(null);
   // The Report popup for a payment answered "Not received" (null = closed).
   const [reportTarget, setReportTarget] = useState(null);
+  // The project's payments, told to us by the Payments section each time it reads
+  // them (null until then); the late-payment notice needs them (PLAN-delays.md, Step 2).
+  const [payments, setPayments] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -149,6 +153,7 @@ export default function ProjectDetailsView() {
   // here): the database may have unlocked the work, which also opens the
   // client's rating, so read the project again.
   const handlePaymentsChange = (list) => {
+    setPayments(list);
     if (!project.unlocked_at && list.some((payment) => payment.status === "confirmed")) reloadProject();
   };
 
@@ -297,6 +302,17 @@ export default function ProjectDetailsView() {
         {/* Work not sent by the due date: the freelancer can't apply to this
             client's job posts until the client allows it (lib/lateBlock.js). */}
         <LateBlockNotice projectId={project.id} isClient={iAmClient} otherName={otherName} showToast={showToast} />
+        {/* Payment late: the client can't hire or book this freelancer again until it
+            is paid or the freelancer allows it (lib/payBlock.js, PLAN-delays.md Step 2). */}
+        <PayBlockNotice
+          project={project}
+          payments={payments}
+          isClient={iAmClient}
+          otherName={otherName}
+          showToast={showToast}
+          onPay={scrollToPayments}
+          onReport={() => setReportTarget({ type: "user", id: other?.id, name: otherName })}
+        />
 
         <div className="row g-3">
           <div className="col-md-6">

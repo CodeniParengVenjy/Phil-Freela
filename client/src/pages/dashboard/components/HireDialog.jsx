@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { hirePriceLine } from "../../../lib/projectPrice";
+import { getOwedProject } from "../../../lib/payBlock";
 import { MAX_PROJECT_NOTE_LENGTH, hireApplicant, todayInManila } from "../../../lib/projects";
 import { Busy } from "../../../components/Loaders";
+import OwesNotice from "./OwesNotice";
 
 // The Hire popup on Projects & Resumes. The client writes a note for the
 // freelancer and picks the due date; Hire starts the project (screen 2).
@@ -18,6 +20,20 @@ export default function HireDialog({ applicant, onClose, onHired }) {
   const [dueDate, setDueDate] = useState(jobDueDate);
   const [error, setError] = useState("");
   const [hiring, setHiring] = useState(false);
+  // The client is late paying this freelancer (PLAN-delays.md, Step 2): the popup
+  // then says so instead of showing the form. null = nothing owed (or not checked).
+  const [owed, setOwed] = useState(null);
+
+  useEffect(() => {
+    if (!applicant?.freelancerId) return undefined;
+    let active = true;
+    getOwedProject(applicant.freelancerId).then((found) => {
+      if (active) setOwed(found);
+    });
+    return () => {
+      active = false;
+    };
+  }, [applicant?.freelancerId]);
 
   // Escape closes the popup, unless hiring is in progress.
   useEffect(() => {
@@ -44,6 +60,40 @@ export default function HireDialog({ applicant, onClose, onHired }) {
     }
     onHired(projectId);
   };
+
+  // Late paying this freelancer: the same popup, with the reason instead of the form.
+  if (owed) {
+    return createPortal(
+      <div
+        className="role-confirm-backdrop"
+        style={{
+          position: "fixed", inset: 0, zIndex: 1300,
+          background: "rgba(0,0,0,0.65)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
+        }}
+        onClick={onClose}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="hire-dialog-title"
+          className="role-confirm-card bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4"
+          style={{ maxWidth: 460, width: "100%" }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="text-center">
+            <div className="role-confirm-icon bg-role text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: 56, height: 56 }}>
+              <i className="bi bi-briefcase-fill fs-4"></i>
+            </div>
+            <h5 id="hire-dialog-title" className="fw-bold mb-1 text-break">Hire {applicant.freelancerName}?</h5>
+            <p className="text-secondary fs-7 mb-4 text-break">for "{applicant.jobTitle}"</p>
+          </div>
+          <OwesNotice owed={owed} freelancerName={applicant.freelancerName} what="hire" onClose={onClose} />
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div

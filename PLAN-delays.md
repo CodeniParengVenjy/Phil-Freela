@@ -138,34 +138,45 @@ What people see:
   again" and "Report". Paying the balance lifts the limit by itself.
 
 Database (migration `unpaid_client_block`, database/supabase_unpaid_client_block_schema.sql,
-database/test_unpaid_client_block.sql):
+database/test_unpaid_client_block.sql), as built 2026-11-10:
 1. `projects.pay_allowed_at timestamptz` (the freelancer's forgiveness, empty = not allowed). Same idea as
    `late_allowed_at`.
-2. `payment_overdue(p public.projects) returns boolean` (security definer, stable, computed column): Done +
-   agreed one-time + today after `payment_due_date(p)` + money left (waiting counted as paid, rule 2).
-3. `owes_freelancer(target_freelancer uuid) returns boolean` (security definer, only about `auth.uid()`, like
-   `blocked_for_lateness`): the signed-in client has a project with that freelancer where `payment_overdue` is true
-   and `pay_allowed_at` is null.
-4. One check at the top of the LIVE `hire_applicant` (the applicant's freelancer) and the LIVE `create_booking`
-   (the service's freelancer): `if public.owes_freelancer(...) then raise exception '...'`. The message is plain
-   words; the website already shows P0001 messages from both functions. Swap in only this check.
-5. `allow_unpaid_client(target_project uuid)`: only the project's freelancer, only while `payment_overdue`; sets
-   `pay_allowed_at = now()`.
+2. `payment_overdue(target_project uuid) returns boolean`: Step 1's rule in one place (Done + agreed one-time + today
+   after `payment_due_date(p)` + money left, waiting counted as paid). Internal: users can't call it. (The plan said a
+   computed column users could read; an internal function is safer, because the page works the rule out itself.)
+3. `block_if_client_owes(target_freelancer uuid)` (internal, security definer, only about `auth.uid()`): raises the
+   plain sentence ("You still owe Juan ₱1,200.00 for "Logo", and its payment day has passed. Pay what is left on that
+   project first, or ask Juan to allow you to hire again.") for the signed-in client's project that has been late the
+   longest and is not allowed. (This replaces the plan's `owes_freelancer`, so each live function needs only ONE added
+   line.)
+4. One call, `perform public.block_if_client_owes(...)`, right after the suspension check of the LIVE `hire_applicant`
+   (the applicant's freelancer) and the LIVE `create_booking` (the offer's freelancer). The website already shows the
+   P0001 sentence from both. The lines are added by reading the live function and splicing, with an "exactly once"
+   check on the place to add them, so nothing else in those functions can be lost. The same way, the two "Payment is
+   late" notices of Step 1 got one sentence each about the limit.
+5. `allow_unpaid_client(target_project uuid)`: only the project's freelancer, only while the payment is late; sets
+   `pay_allowed_at = now()`; pressing it twice changes nothing.
 
-Website:
-- New client/src/lib/payBlock.js (copy of lateBlock.js): `getOwedProject(clientId, freelancerId)` and
-  `allowUnpaidClient(projectId)`.
-- New client/src/pages/dashboard/components/PayBlockNotice.jsx (copy of LateBlockNotice.jsx) on the project page for
-  the freelancer.
-- HireDialog.jsx and BookDialog.jsx show the notice when the client owes.
-- Terms bullet. Memory note after it ships (like late-freelancer-block): any later `create or replace` of
-  `hire_applicant` or `create_booking` must keep the check.
+Website (as built):
+- New client/src/lib/payBlock.js: `getOwedProject(freelancerId)` (works the rule out from the client's Done projects with
+  that freelancer and their payments, like Step 1), `getPayAllowance(projectId)`, `allowUnpaidClient(projectId)`. Soft
+  failure before the SQL is applied: nothing is shown.
+- New components/PayBlockNotice.jsx on the project page (both people; the client gets "Go to payment", the freelancer
+  "Allow to hire again" with a confirm step, and "Report"). ProjectDetailsView.jsx keeps the payments the Payments
+  section reads, for it.
+- New components/OwesNotice.jsx, shown by HireDialog.jsx and BookDialog.jsx instead of the form (the popup opens, asks
+  quietly, and swaps to the notice). ApplicationsPanel.jsx passes the applicant's freelancerId to the Hire popup.
+- Terms bullet ("A late payment limits hiring", with "PhilFreela charges no late fee and can't collect one"). Memory
+  note after it ships (like late-freelancer-block): any later `create or replace` of `hire_applicant` or
+  `create_booking` must keep the call.
 
 Tests:
-- test_unpaid_client_block.sql (rolled back): hire and book are refused with the message while overdue; allowed
-  after paying; allowed after "Allow to hire again"; another freelancer is unaffected; the client can't call
-  `allow_unpaid_client`; a stranger can't; `owes_freelancer` says nothing about anyone else.
-- Mocked-network browser check of the two dialogs and the freelancer's notice.
+- test_unpaid_client_block.sql (rolled back on live, 38/38): what counts as late (9 cases), who can call what, the
+  check one person at a time, Book and Hire refused for the late client with the sentence and nothing created, the
+  older Hire and Book rules still work, another client and another freelancer unaffected, "Allow to hire again" (only
+  the project's freelancer, only while late, twice changes nothing), a part payment still stops them and shows what is
+  left, paying the rest lifts it, and the late notices say the new sentences.
+- Mocked-network browser check: the project page for both people, the Hire and Book popups, the Terms bullet.
 
 ### Step 3. A payment the freelancer does not answer
 
@@ -176,20 +187,34 @@ What people see:
   payment card shows the Report button, with the payment attached.
 
 Database (migration `payment_waiting_reminders`, database/supabase_payment_waiting_schema.sql,
-database/test_payment_waiting.sql):
-1. New kind `payment_waiting` in the type check (live list first).
-2. Extend the live `send_daily_notices()`: payments with `status = 'sent'`, days waiting = today - Manila date of
-   `created_at`: 2 to 4 -> `wait_2` (freelancer), 5 to 6 -> `wait_5` (freelancer), 7 or more -> `wait_7` (client).
-   Sent log: target = the payment, `due_date` = the Manila date it was recorded.
+database/test_payment_waiting.sql), as built 2026-11-10:
+1. New kind `payment_waiting` in the type check (read from the live list: 37 kinds, so 38).
+2. The live `send_daily_notices()` gets the new part spliced in (read the live function, add only my lines, "exactly
+   once" check on each place): payments with `status = 'sent'`, days waiting = today - Manila date of `created_at`
+   (a chat request gets a new `created_at` when the client records it, checked in `record_chat_payment`): 2 to 4 ->
+   `wait_2` (freelancer), 5 to 6 -> `wait_5` (freelancer), 7 or more -> `wait_7` (BOTH people: the client is told they
+   can report it, the freelancer is told the client can now. The plan had the client only; this also covers a
+   freelancer who was never nudged because the job caught up late). Project payments link to the project page, chat
+   payments to the chat. Sent log: target = the payment, `due_date` = the Manila day it was recorded. A chat can have
+   only one open payment at a time (unique index), so the test uses three chats.
 3. Nothing changes in the payment rules. PhilFreela never auto-confirms money it can't see.
 
-Website:
-- PaymentCard.jsx and PaymentsSection.jsx: the Report button also on a waiting payment older than 7 days, client
-  only. First check that ReportDialog attaches a payment in that state (the database already allows it).
-- lib/notifications.js: icon and label for `payment_waiting`. Terms bullet.
+Website (as built):
+- lib/payments.js: `PAYMENT_REPORT_AFTER_DAYS = 7`, `waitingDays(payment)`, `canReportUnanswered(payment)` (the 7 is in
+  SQL and JS, each says so).
+- PaymentsSection.jsx (project page) and PaymentCard.jsx (chat): for the client/payer, a payment still waiting after 7
+  days says "X hasn't answered for N days: you can message them, or report it", with Message (project page) and
+  Report buttons. The report popup already offers to send the payment with the report (checked: it works for a
+  waiting payment, the database only checks that the payment is between the two people).
+- lib/notifications.js: icon (hourglass) and label ("View payment") for `payment_waiting`. Terms bullet.
 
-Tests: test_payment_waiting.sql (rolled back): day 2, 5 and 7 notices once each, none after the payment is answered
-or cancelled, a chat request (status requested) gets none.
+Tests:
+- test_payment_waiting.sql (rolled back on live, 20/20): 1 day nothing, 2 to 4 days the first reminder, 5 to 6 days the
+  second, 7+ days both people, a payment never reminded before gets one notice (not the early ones), answered / chat
+  requested / cancelled payments get nothing, chat payments link to the chat and say "in the chat", the sent log has
+  one row each, a second run sends nothing.
+- Mocked-network browser check: the 7 / 6 / 1 day boundary on the project page and the chat card, the freelancer sees
+  no Report, the report popup, the notification, phone and light mode, the Terms.
 
 ### Step 4. Work the client does not review (only if the user keeps it)
 

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { MAX_BOOKING_NOTE_LENGTH, createBooking } from "../../../lib/bookings";
+import { getOwedProject } from "../../../lib/payBlock";
 import { bookingPriceLine } from "../../../lib/projectPrice";
 import { todayInManila } from "../../../lib/projects";
 import CensoredText from "../../../components/CensoredText";
 import { Busy } from "../../../components/Loaders";
+import OwesNotice from "./OwesNotice";
 
 // The Book popup. A client says what they need and the date they need it by;
 // "Send booking" asks the freelancer (see lib/bookings.js). It uses the same
@@ -18,6 +20,20 @@ export default function BookDialog({ target, onClose, onBooked }) {
   const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  // The client is late paying this freelancer (PLAN-delays.md, Step 2): the popup
+  // then says so instead of showing the form. null = nothing owed (or not checked).
+  const [owed, setOwed] = useState(null);
+
+  useEffect(() => {
+    if (!target?.freelancerId) return undefined;
+    let active = true;
+    getOwedProject(target.freelancerId).then((found) => {
+      if (active) setOwed(found);
+    });
+    return () => {
+      active = false;
+    };
+  }, [target?.freelancerId]);
 
   // Escape closes the popup, unless sending is in progress.
   useEffect(() => {
@@ -44,6 +60,40 @@ export default function BookDialog({ target, onClose, onBooked }) {
     }
     onBooked();
   };
+
+  // Late paying this freelancer: the same popup, with the reason instead of the form.
+  if (owed) {
+    return createPortal(
+      <div
+        className="role-confirm-backdrop"
+        style={{
+          position: "fixed", inset: 0, zIndex: 1300,
+          background: "rgba(0,0,0,0.65)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
+        }}
+        onClick={onClose}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="book-dialog-title"
+          className="role-confirm-card bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4"
+          style={{ maxWidth: 460, width: "100%", maxHeight: "92vh", overflowY: "auto" }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="text-center">
+            <div className="role-confirm-icon bg-role text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: 56, height: 56 }}>
+              <i className="bi bi-calendar-check-fill fs-4"></i>
+            </div>
+            <h5 id="book-dialog-title" className="fw-bold mb-1 text-break">Book {target.freelancerName}</h5>
+            <p className="text-secondary fs-7 mb-4 text-break">for "<CensoredText text={target.service.title} />"</p>
+          </div>
+          <OwesNotice owed={owed} freelancerName={target.freelancerName} what="book" onClose={onClose} />
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div

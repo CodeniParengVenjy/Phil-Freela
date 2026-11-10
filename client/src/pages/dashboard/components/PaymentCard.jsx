@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
-  cancelPaymentRequest, confirmPayment, formatGcashNumber, formatPeso, formatReference, getRequestPayDetails,
-  isShortPayment, markNotReceived, openReceipt, paymentBadge, readReceiptScreenshot, recordChatPayment
+  canReportUnanswered, cancelPaymentRequest, confirmPayment, formatGcashNumber, formatPeso, formatReference, getRequestPayDetails,
+  isShortPayment, markNotReceived, openReceipt, paymentBadge, readReceiptScreenshot, recordChatPayment, waitingDays
 } from "../../../lib/payments";
 import ReceiptCheckNote from "./ReceiptCheckNote";
 import ReceiptReady from "./ReceiptReady";
@@ -26,6 +26,9 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
   const status = paymentBadge(payment);
   const short = isShortPayment(payment);
   const tip = Number(payment.tip_amount || 0);
+  // The freelancer hasn't answered for 7 days or more: the payer can report it
+  // (PLAN-delays.md, Step 3).
+  const unanswered = iAmPayer && canReportUnanswered(payment);
   const [details, setDetails] = useState(undefined);
   const [detailsError, setDetailsError] = useState("");
   const [recording, setRecording] = useState(false);
@@ -176,7 +179,12 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
           <ReceiptCheckNote payment={payment} forFreelancer={!iAmPayer} />
         </div>
       )}
-      {payment.status === "sent" && iAmPayer && <p className="text-white-50 fs-7 mb-0 mt-2">Waiting for {otherName} to check their GCash and confirm.</p>}
+      {payment.status === "sent" && iAmPayer && (
+        <p className="text-white-50 fs-7 mb-0 mt-2" data-unanswered={unanswered ? "true" : undefined}>
+          Waiting for {otherName} to check their GCash and confirm.
+          {unanswered && <> {otherName} hasn't answered for {waitingDays(payment)} days: you can write here, or report it.</>}
+        </p>
+      )}
       {payment.status === "confirmed" && !short && (
         <p className="text-success fs-7 mb-0 mt-2"><i className="bi bi-check-circle-fill me-1"></i>{iAmPayer ? `${otherName} confirmed this payment.` : "You confirmed this payment."}</p>
       )}
@@ -247,14 +255,14 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         </div>
       )}
 
-      {(payment.receipt_path || ((payment.status === "not_received" || short) && onReport)) && (
+      {(payment.receipt_path || ((payment.status === "not_received" || short || unanswered) && onReport)) && (
         <div className="d-flex flex-wrap gap-2 mt-3">
           {payment.receipt_path && (
             <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-8 fw-bold" onClick={handleViewReceipt}>
               <i className="bi bi-image me-1"></i> GCash screenshot
             </button>
           )}
-          {(payment.status === "not_received" || short) && onReport && (
+          {(payment.status === "not_received" || short || unanswered) && onReport && (
             <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 fs-8" onClick={() => onReport(payment)}>
               <i className="bi bi-flag me-1"></i> Report
             </button>
