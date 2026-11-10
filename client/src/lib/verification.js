@@ -5,9 +5,12 @@ import { supabase } from "./supabaseClient";
 
 // Must match the id_type values allowed in the identity_verifications table.
 // Passports have no card back, so they're the only type without a back photo
-// (the database enforces the same rule).
+// (the database enforces the same rule). The ePhilID (the printed or
+// downloadable copy of the PhilSys ID) has both sides: the big QR code is on
+// its front, the address and birthday on its back.
 export const ID_TYPES = [
   { value: "philsys", label: "PhilSys National ID", hasBack: true },
+  { value: "ephilid", label: "ePhilID", hasBack: true },
   { value: "drivers_license", label: "Driver's License", hasBack: true },
   { value: "passport", label: "Passport", hasBack: false },
   { value: "umid", label: "UMID", hasBack: true },

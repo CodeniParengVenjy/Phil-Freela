@@ -9,6 +9,36 @@ import { Busy } from "../../../components/Loaders";
 
 const EMPTY_SIDE = { file: null, status: "idle", message: "" };
 
+// What the photo steps say. Most IDs are cards with a front and a back; a
+// passport has one photo page, and an ePhilID (the printed or downloadable copy
+// of the PhilSys ID) has the big QR code on its front and the address on its back.
+const CARD_WORDS = {
+  front: "Take a photo of the front of your ID. Let it fill most of the photo, keep it in focus, and avoid glare on your picture.",
+  frontPrompt: "Click to upload the front of your ID",
+  frontCamera: "Hold the ID close to the camera so your photo and name are clear.",
+  frontButton: "Take a photo of the front",
+  back: "Now turn your ID over and take a photo of the back. Make sure any QR code or barcode is clear.",
+  backPrompt: "Click to upload the back of your ID",
+  backCamera: "Turn the ID over and hold the back close to the camera."
+};
+const PHOTO_WORDS = {
+  passport: {
+    ...CARD_WORDS,
+    front: "Take a photo of your passport's photo page. Let it fill most of the photo, keep it in focus, and avoid glare on your picture.",
+    frontPrompt: "Click to upload your passport's photo page",
+    frontButton: "Take a photo of the photo page"
+  },
+  ephilid: {
+    ...CARD_WORDS,
+    front: "Take a photo of the front of your ePhilID: the side with your photo and the big QR code. Use the printed copy or a screenshot of the digital copy. Let just the front fill the photo, keep it in focus, and avoid glare on the QR code.",
+    frontPrompt: "Click to upload the front of your ePhilID",
+    frontCamera: "Hold the ePhilID close so your photo and the QR code are clear.",
+    back: "Now take a photo of the back of your ePhilID: the side with your address and birthday. Let just the back fill the photo and keep it in focus.",
+    backPrompt: "Click to upload the back of your ePhilID",
+    backCamera: "Hold the back of the ePhilID close to the camera."
+  }
+};
+
 // The identity verification form, one step per screen:
 //   1. ID type  2. Front of ID  3. Back of ID (not for passports)
 //   4. Face scan  5. Review and submit
@@ -40,14 +70,16 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
 
   const needsBack = idTypeHasBack(idType);
   const isPassport = idType === "passport";
+  const isEphilid = idType === "ephilid";
+  const words = PHOTO_WORDS[idType] || CARD_WORDS;
   const steps = ["type", "front", ...(needsBack ? ["back"] : []), "scan", "review"];
   const current = steps[stepIndex];
   const goTo = (name) => setStepIndex(steps.indexOf(name));
 
   const titles = {
     type: "Type of ID",
-    front: isPassport ? "Photo page of your passport" : "Front of your ID",
-    back: "Back of your ID",
+    front: isPassport ? "Photo page of your passport" : isEphilid ? "Front of your ePhilID" : "Front of your ID",
+    back: isEphilid ? "Back of your ePhilID" : "Back of your ID",
     scan: "Face scan",
     review: "Review and submit"
   };
@@ -158,6 +190,11 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
                 <option value="" disabled>Choose your ID</option>
                 {ID_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
               </select>
+              {isEphilid && (
+                <p className="text-secondary fs-8 mt-2 mb-0">
+                  The printed (or downloadable) copy of your PhilSys ID, the one with the big QR code. You'll take a photo of its front and one of its back.
+                </p>
+              )}
             </div>
           </div>
           {phoneOption && <div className="col-md-5">{phoneOption}</div>}
@@ -167,12 +204,10 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
       {current === "front" && (
         <WizardPhotoStep
           mode={mode}
-          instructions={isPassport
-            ? "Take a photo of your passport's photo page. Let it fill most of the photo, keep it in focus, and avoid glare on your picture."
-            : "Take a photo of the front of your ID. Let it fill most of the photo, keep it in focus, and avoid glare on your picture."}
-          prompt={isPassport ? "Click to upload your passport's photo page" : "Click to upload the front of your ID"}
-          cameraHint="Hold the ID close to the camera so your photo and name are clear."
-          buttonText={isPassport ? "Take a photo of the photo page" : "Take a photo of the front"}
+          instructions={words.front}
+          prompt={words.frontPrompt}
+          cameraHint={words.frontCamera}
+          buttonText={words.frontButton}
           side={front}
           onPhoto={handleFront}
         />
@@ -181,9 +216,9 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
       {current === "back" && (
         <WizardPhotoStep
           mode={mode}
-          instructions="Now turn your ID over and take a photo of the back. Make sure any QR code or barcode is clear."
-          prompt="Click to upload the back of your ID"
-          cameraHint="Turn the ID over and hold the back close to the camera."
+          instructions={words.back}
+          prompt={words.backPrompt}
+          cameraHint={words.backCamera}
           buttonText="Take a photo of the back"
           side={back}
           onPhoto={handleBack}

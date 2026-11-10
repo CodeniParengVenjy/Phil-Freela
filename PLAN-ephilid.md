@@ -1,9 +1,9 @@
 # ePhilID as a government ID: plan
 
 Status (2026-11-10): approved by the user ("ok" after the revised plan). Steps 1
-and 2 (database, AI service) are built and tested; step 3 (website) comes after
-the AI service is live; step 4 is the live check. See the progress notes at the
-bottom.
+to 3 (database, AI service, website) are built, tested, pushed and live; step 4
+is the live check with a real ePhilID photo, which only the user can do. See the
+progress notes at the bottom.
 
 Why: the user asked "can I add another government ID to scan? ePhilID". The
 ePhilID is the printed (or downloadable) version of the PhilSys national ID and
@@ -79,3 +79,11 @@ the PSA's key, so the admin still uses PhilSys Check.
   new code turns both photos upright, the back passes, and the QR is read (name
   found); the front check still refused the sample as too small or blurry, but the
   sample is a 720 px gallery screenshot, so that says nothing about a real photo.
+- 2026-11-10: AI service pushed first (98b72e3) and Vercel reported "Deployment has
+  completed". Then step 3, the website: the "ePhilID" choice, its own front and back
+  wording, the tour text and the admin's PhilSys Check hint. Checked in a browser
+  against a pretend backend (31 of 31): the list order, 5 steps with a back photo,
+  passport still 4 steps, the card's and passport's words unchanged, the admin hint
+  points at the front photo for an ePhilID and the back photo for the card.
+- Still open: try a real ePhilID photo on the live site. If a good photo is refused
+  as "blurry" or "too far away", loosen that limit for the ePhilID only.

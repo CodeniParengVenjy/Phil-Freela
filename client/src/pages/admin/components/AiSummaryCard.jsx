@@ -70,15 +70,16 @@ export default function AiSummaryCard({ verification }) {
       </p>
 
       {/* PhilSys IDs carry a QR code signed by the PSA. The PSA's own PhilSys
-          Check site confirms whether it's genuine, which no photo AI can do. */}
-      {verification.id_type === "philsys" && (
+          Check site confirms whether it's genuine, which no photo AI can do.
+          The card's QR code is on its back; the ePhilID's is on its front. */}
+      {(verification.id_type === "philsys" || verification.id_type === "ephilid") && (
         <p className="text-info fs-8 mt-2 mb-0">
           <i className="bi bi-qr-code-scan me-1"></i>
-          PhilSys ID: open{" "}
+          {verification.id_type === "ephilid" ? "ePhilID" : "PhilSys ID"}: open{" "}
           <a href="https://verify.philsys.gov.ph" target="_blank" rel="noopener noreferrer" className="text-info fw-bold">
             PhilSys Check (verify.philsys.gov.ph)
           </a>{" "}
-          and scan the QR code in the "Back of ID" photo, for example with your phone pointed at this screen. It's the
+          and scan the QR code in the "{verification.id_type === "ephilid" ? "Front" : "Back"} of ID" photo, for example with your phone pointed at this screen. It's the
           PSA's official check: it shows whether the QR code is genuine and the details it holds, to compare with the photos.
         </p>
       )}

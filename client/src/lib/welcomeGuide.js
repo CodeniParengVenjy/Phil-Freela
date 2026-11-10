@@ -44,7 +44,7 @@ const SETTINGS = "/dashboard/settings";
 const verifyNotes = (sentText) => [
   { page: VERIFY_PAGE, target: "verify-retry", optional: true, click: true, scroll: true, title: "Send it again", text: "Press Try again to send new photos. Use a clear, sharp photo of your ID, without glare." },
   { page: VERIFY_PAGE, target: "verify-steps", scroll: true, title: "Verify your identity", text: "Five short steps, about 3 minutes: the type of ID, a photo of its front, its back, a face scan, then a last check before you send it. This bar shows how far you are." },
-  { page: VERIFY_PAGE, target: "verify-id-type", title: "Choose your ID", text: "Pick the government ID you have: PhilSys National ID, Driver's License, Passport, UMID or PRC ID. A passport needs no back photo." },
+  { page: VERIFY_PAGE, target: "verify-id-type", title: "Choose your ID", text: "Pick the government ID you have: PhilSys National ID, ePhilID, Driver's License, Passport, UMID or PRC ID. A passport needs no back photo." },
   { page: VERIFY_PAGE, target: "verify-phone", optional: true, scroll: true, title: "Easier on a phone?", text: "Scan this QR code with your phone's camera to take the photos and do the face scan there. This page updates by itself when you're done." },
   { page: VERIFY_PAGE, target: "verify-start", waitFor: "verify-sent", title: "Your turn", text: "Follow the steps: the photos of your ID, then the face scan. Tips: let the ID fill the photo, avoid glare, take off glasses, masks or hats, and face a light. The tour waits here and comes back when you've sent it.", next: "Start" },
   { page: VERIFY_PAGE, target: "verify-sent", scroll: true, title: "Sent!", text: sentText, next: "OK" }
