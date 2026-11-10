@@ -206,6 +206,8 @@ files; if N1 needs something there, send that session a message (ListAgents, Sen
     the same function; the plan called it send_due_reminders); pg_cron job `daily-notices` at `0 0 * * *`
     (8:00 AM Manila). Rolled-back trial on live: Section 2 test 14/14, nothing left behind.
   - Website: bell icons + "View post" for both (client/src/lib/notifications.js).
-- Found while testing (not part of this plan): Supabase Vault on live is EMPTY (no `email_function_url`,
-  no `email_hook_secret`), and `email_log` has no rows, so "Email me when I'm offline" has never sent
-  an email. Told the user.
+- Found while testing, then FIXED the same day (2026-11-10): Supabase Vault on live was empty, so "Email me
+  when I'm offline" had never sent an email. Now set: Vault `email_function_url` + `email_hook_secret`, and the
+  Edge Function secrets `EMAIL_HOOK_SECRET`, `GMAIL_USER`, `GMAIL_APP_PASSWORD` (the user typed those in the dashboard;
+  Claude Code's auto-mode check blocks secret writes). Test call: HTTP 200 "Sent". Every notification above now
+  also reaches offline users by email (except application_new, which keeps the throttled application email).
