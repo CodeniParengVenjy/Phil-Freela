@@ -46,6 +46,7 @@ from hidden_watermark import new_code, protect_photo, read_code, read_code_from_
 from listing_search import search_listings
 from moodboard import match_moodboard
 from page_blur import blur_pages
+from passport_mrz import check_passport_mrz
 from photo_checks import PhotoProblem, check_face_scan, check_id_back, check_id_front, straighten_id
 from receipt_check import MAX_RECEIPT_BYTES, UnreadablePicture, initials_text, read_receipt
 from receipt_check import judge as judge_receipt
@@ -249,6 +250,14 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
             qr_status, qr_name = check_philsys_qr([id_image, id_back_image], (profile[0].get("full_name") if profile else "") or "")
         except Exception:
             logger.exception("Reading the PhilSys QR failed")
+    elif id_type == "passport":
+        # Same flag for a passport: the name in the two code lines at the bottom
+        # of its photo page (passport_mrz.py), saved in the same columns.
+        try:
+            profile = supabase.table("profiles").select("full_name").eq("id", user_id).limit(1).execute().data
+            qr_status, qr_name = check_passport_mrz(id_image, (profile[0].get("full_name") if profile else "") or "")
+        except Exception:
+            logger.exception("Reading the passport's code lines failed")
     # 2. The same face on another account's pending or approved verification.
     duplicate_of = None
     try:
