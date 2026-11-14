@@ -62,6 +62,16 @@ currency that we have ... in all transactions, as well as subscription, clients 
 - Admin numbers that add up client payments (I will find each one while doing this step) convert to pesos
   at the stored rate and are marked "≈".
 - Applied to live only after the user says go, as before.
+- Built 2026-11-14 (database/supabase_currencies_prices_schema.sql + test_currencies_prices.sql), APPLIED as
+  migration currencies_step2_prices after "Apply Step 2 now". What changed while building:
+  * record_payment / record_chat_payment are internal on live (pesos only through the AI receipt check),
+    so non-peso payments got two small entry points: record_other_payment and record_other_chat_payment
+    (they refuse pesos). The 5-value forms now call new 6-value forms with 'gcash'.
+  * Non-peso payments keep the same proof rule as GCash: a transaction number (4-60) AND a screenshot.
+  * The live functions were changed by exact find-and-replace patches with a self-check (14 functions,
+    79 edits), not pasted copies.
+  * The admin graphs only COUNT payments and add up PhilFreela's own peso earnings: nothing to convert.
+  * Tests: 77/77 in a rolled-back trial before applying, 21/21 after applying, all existing rows PHP.
 
 ### Step 3. Money helpers in the website (no screens change yet)
 - New client/src/lib/money.js: formatMoney(amount, code) (uses Intl, so symbols and decimals are right),
