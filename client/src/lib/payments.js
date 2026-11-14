@@ -1,4 +1,5 @@
 import { readReceipt } from "./aiService";
+import { currencyInfo, formatMoney, parseMoney } from "./money";
 import { todayInManila } from "./projects";
 import { supabase } from "./supabaseClient";
 import { shrinkImage } from "./shrinkImage";
@@ -74,21 +75,21 @@ export function nameInitials(name) {
     .join(" ");
 }
 
-export const MAX_PAYMENT_AMOUNT = 1000000;
+// The highest amount in pesos (currencies.max_amount for PHP). Other currencies have
+// their own (lib/money.js, PLAN-currencies.md).
+export const MAX_PAYMENT_AMOUNT = currencyInfo("PHP").max;
 
-// 1500 -> "₱1,500.00"
+// 1500 -> "₱1,500.00". Pesos only: Premium, Featured posts and billboards are charged
+// in pesos. An amount in any currency is written with formatMoney (lib/money.js).
 export function formatPeso(amount) {
-  return `₱${Number(amount).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return formatMoney(amount, "PHP");
 }
 
-// Reads an amount typed as "1,500" or "1500.5". Returns a number, or null when
-// it isn't an amount the database would accept (more than 0, at most
-// 1,000,000, up to 2 decimals).
+// Reads an amount in pesos typed as "1,500" or "1500.5". Returns a number, or null
+// when it isn't an amount the database would accept (more than 0, at most
+// 1,000,000, up to 2 decimals). parseMoney does the same for any currency.
 export function parseAmount(input) {
-  const text = String(input ?? "").replace(/[\s,₱]/g, "");
-  if (!/^\d+(\.\d{1,2})?$/.test(text)) return null;
-  const amount = Number(text);
-  return amount > 0 && amount <= MAX_PAYMENT_AMOUNT ? amount : null;
+  return parseMoney(input, "PHP");
 }
 
 // The label and badge colors for each status of a payment (Bootstrap classes,

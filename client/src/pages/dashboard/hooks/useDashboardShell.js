@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getMyArchive } from "../../../lib/archives";
 import { getActiveSuspension } from "../../../lib/profile";
 import { applyAppearance, clearAppearance, fetchAppearance, forgetAppearance, readSavedAppearance, rememberAppearance } from "../../../lib/appearance";
+import { fetchDisplayCurrency, forgetDisplayCurrency, setDisplayCurrency } from "../../../lib/money";
 import { countUnreadNotifications } from "../../../lib/notifications";
 import { getNewApplicants } from "../../../lib/applications";
 import { hangUp, listenForCalls } from "../../../lib/calls";
@@ -123,6 +124,10 @@ export function useDashboardShell() {
       rememberAppearance(saved);
       applyAppearance(saved);
     });
+    // The currency the "≈" estimates are shown in (PLAN-currencies.md), the same way.
+    fetchDisplayCurrency(currentUserId).then((saved) => {
+      if (active && saved) setDisplayCurrency(saved);
+    });
     return () => { active = false; };
   }, [currentUserId]);
 
@@ -212,6 +217,7 @@ export function useDashboardShell() {
       if (session) return;
       // Signed out: the next person on this browser starts with the usual look.
       forgetAppearance();
+      forgetDisplayCurrency();
       forgetShell();
       navigate("/login", { replace: true });
     });

@@ -10,6 +10,7 @@ import ImageCropDialog from "../../../components/ImageCropDialog";
 import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
+import EstimateCurrencyForm from "../components/EstimateCurrencyForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
 import GcashSettingsForm from "../components/GcashSettingsForm";
 import PurchasesList from "../components/PurchasesList";
@@ -460,9 +461,16 @@ export default function SettingsView() {
               // Receipts of Premium, Featured posts and ads (PLAN-payment-receipt.md, Step 4).
               currentUserId ? <PurchasesList userId={currentUserId} showToast={showToast} /> : <Loader size="sm" />
             ) : activeSubNav === "Appearance" ? (
-              currentUserId
-                ? <AppearanceForm userId={currentUserId} accountType={accountType} showToast={showToast} />
-                : <Loader size="sm" />
+              currentUserId ? (
+                <>
+                  <AppearanceForm userId={currentUserId} accountType={accountType} showToast={showToast} />
+                  {/* The currency of the "≈" estimates next to prices (PLAN-currencies.md). */}
+                  <hr className="border-secondary my-4" />
+                  <EstimateCurrencyForm userId={currentUserId} showToast={showToast} />
+                </>
+              ) : (
+                <Loader size="sm" />
+              )
             ) : activeSubNav === "Privacy & Notifications" ? (
               <>
                 <div className="form-check form-switch">
