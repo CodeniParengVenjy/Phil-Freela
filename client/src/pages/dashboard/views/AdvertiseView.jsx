@@ -15,6 +15,7 @@ import BlockedNotice from "../components/BlockedNotice";
 import MemberAdSlide from "../components/MemberAdSlide";
 import "../memberAds.css";
 import { Loader, Busy } from "../../../components/Loaders";
+import PesoChargeNote from "../../../components/PesoChargeNote";
 
 const inputClass = "form-control bg-secondary bg-opacity-25 border-secondary text-white py-2";
 const pill = (active) => `btn btn-sm rounded-pill px-3 fw-semibold ${active ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`;
@@ -113,6 +114,8 @@ export default function AdvertiseView() {
   }, [previewUrl]);
 
   const prices = priceResult?.prices || [];
+  // The price of the length picked now (for the "charged in pesos" note).
+  const pickedOption = prices.find((option) => option.code === code);
   const canPost = !postingBlocked && isVerified === true;
 
   const clearPicture = () => {
@@ -310,6 +313,8 @@ export default function AdvertiseView() {
                     );
                   })}
                 </div>
+                {/* Charged in pesos; an estimate for someone who picked another currency (PLAN-currencies.md). */}
+                {pickedOption && <PesoChargeNote amount={adPrice(pickedOption, isPro)} className="mb-1" />}
                 {isPro && <p className="text-success fs-8 mb-4"><i className="bi bi-gem me-1"></i>Premium price.</p>}
                 {!isPro && <p className="text-secondary fs-8 mb-4">Premium members pay half.</p>}
 

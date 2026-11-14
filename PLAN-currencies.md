@@ -101,6 +101,19 @@ currency that we have ... in all transactions, as well as subscription, clients 
   "You will be charged ₱149 (pesos)". Charging, receipts and admin Earnings stay in pesos.
 - Admin Overview and Transactions: totals in pesos "≈" plus a per-currency line.
 
+## Status (2026-11-14): all 6 steps built, live and pushed
+- Step 1 database (cb2aa7e), Step 2 database (eaaeabc), both applied after the user's "Apply Step N now".
+- Step 3 website helpers + "Show estimates in" (54d423a): 96/96 money.js tests (all 30 currencies written exactly
+  like money_text on live), 16/16 browser checks.
+- Step 4 currency boxes and estimates (2570656): 31/31 browser checks.
+- Step 5 payments in any currency (1c87cf1): new OtherPaymentDialog, OtherPaymentDetailsForm, chat card,
+  receipts in the payment's currency; 31/31 browser checks including the PDF text.
+- Step 6 Premium / Featured / Advertise (this commit): PesoChargeNote ("≈ US$2.33 in your currency. You are
+  charged ₱149.00 in pesos."), only for viewers who picked another currency; 6/6 browser checks. No admin page
+  adds up client payments, so nothing needed converting there (admin graphs only count payments).
+- Browser checks ran against a pretend backend (scratchpad fake.mjs), not real accounts. Never tried with a real
+  foreign payment.
+
 ## Defaults I chose (change any)
 - The default currency of every box is PHP, so a freelancer who does nothing changes nothing.
 - Estimates are labelled "≈" and "rates update daily"; they are only a guide, never what is owed.

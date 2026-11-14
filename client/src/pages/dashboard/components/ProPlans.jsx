@@ -5,6 +5,7 @@ import { FREE_OFFERS, PRO_CODE, PRO_OFFERS, confirmProCheckout, countMyOffers, s
 import { downloadPurchaseReceipt } from "../../../lib/receiptPdf";
 import "../pro.css";
 import { Busy } from "../../../components/Loaders";
+import PesoChargeNote from "../../../components/PesoChargeNote";
 
 // The Premium page (views/ProView.jsx; it was "Freelancer Pro"; PLAN-monetization.md,
 // Step 5, and PLAN-premium.md), for clients and freelancers: two plan cards side
@@ -239,6 +240,8 @@ export default function ProPlans({ userId, accountType, onPaid }) {
               <span className="pro-plan-price text-role">{proPrice ? peso(proPrice.price) : "Premium"}</span>
               {proPrice && <span className="text-white-50 fs-7">for {proPrice.days} days</span>}
             </div>
+            {/* Charged in pesos; an estimate for someone who picked another currency. */}
+            <PesoChargeNote amount={proPrice?.price} className="mt-1" />
             <div className="pro-plan-rule"></div>
             <ul className="pro-plan-features list-unstyled mb-4 flex-grow-1">
               {isFreelancer && <Feature included><strong>Up to {PRO_OFFERS} offers</strong> instead of {FREE_OFFERS}</Feature>}
@@ -266,7 +269,8 @@ export default function ProPlans({ userId, accountType, onPaid }) {
       </div>
 
       <small className="text-secondary fs-8 d-block">
-        You pay on Xendit's secure page with GCash, Maya or QR Ph; PhilFreela never sees your payment details.
+        You pay on Xendit's secure page with GCash, Maya or QR Ph; PhilFreela never sees your payment details. Prices are in
+        pesos and charged in pesos.
         Pay again before Premium ends and the days are added after it. Payments between clients and freelancers still
         go straight to each other. Featured prices are for 3, 7 or 14 days. Premium never moves anyone up the AI's
         "Recommended for you".

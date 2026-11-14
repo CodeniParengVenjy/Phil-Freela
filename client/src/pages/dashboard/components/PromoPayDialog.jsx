@@ -5,6 +5,7 @@ import { formatPeso } from "../../../lib/payments";
 import { onlinePaymentsReady, startFeatureCheckout } from "../../../lib/checkout";
 import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft } from "../../../lib/featured";
 import { Loader, Busy } from "../../../components/Loaders";
+import PesoChargeNote from "../../../components/PesoChargeNote";
 
 // "Feature this post" (PLAN-monetization.md, Step 4, and PLAN-premium.md): the
 // owner of an offer or an open job post pays for 3, 7 or 14 days in the
@@ -158,6 +159,8 @@ export default function PromoPayDialog({ target, userId, until, onClose }) {
               <p className="mb-2 fs-7">
                 You pay <strong className="text-warning fs-6">{formatPeso(amount)}</strong> on Xendit's secure page with GCash, Maya or QR Ph.
               </p>
+              {/* Charged in pesos; an estimate for someone who picked another currency (PLAN-currencies.md). */}
+              <PesoChargeNote amount={amount} className="mb-2" />
               <p className="text-secondary fs-8 mb-0">
                 Your post is Featured as soon as the payment goes through: no receipt and no waiting for an admin.
                 PhilFreela never sees your payment details.
