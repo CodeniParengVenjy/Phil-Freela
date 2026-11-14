@@ -67,6 +67,9 @@ export function getJobType(value) {
   return JOB_TYPES.find((type) => type.value === value) || JOB_TYPES[0];
 }
 
+// What a budget counts, as words: "per project", "per day", "per month" ("" if unknown).
+export const budgetUnit = (job) => BUDGET_TYPES.find((type) => type.value === job.budget_type)?.unit || "";
+
 // "₱5,000 per project", "US$250.50 per day", or "" when the client gave no amount.
 // The budget is in the post's own currency (PLAN-currencies.md); a whole amount is
 // written without cents, like before.

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { MAX_PAYMENT_NOTE_LENGTH, getMyGcash, getMyPaymentDetails, requestPayment } from "../../../lib/payments";
-import { DEFAULT_CURRENCY, currencyInfo, moneyRule, parseMoney } from "../../../lib/money";
+import { currencyInfo, moneyRule, parseMoney, useMoneyView } from "../../../lib/money";
 import CurrencySelect from "../../../components/CurrencySelect";
 import { Busy } from "../../../components/Loaders";
 
@@ -18,7 +18,11 @@ import { Busy } from "../../../components/Loaders";
 //   onSent(): called after the request was sent
 export default function RequestPaymentDialog({ userId, conversationId, otherName, onClose, onSent }) {
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
+  // Starts as the freelancer's own currency (Settings > Appearance, the user's choice on
+  // 2026-11-15); pickedCurrency is set only when they choose one, null = their own.
+  const moneyView = useMoneyView();
+  const [pickedCurrency, setPickedCurrency] = useState(null);
+  const currency = pickedCurrency ?? moneyView.display;
   const [note, setNote] = useState("");
   // undefined while loading, then whether GCash details / other payment details are saved.
   const [hasGcash, setHasGcash] = useState(undefined);
@@ -103,7 +107,7 @@ export default function RequestPaymentDialog({ userId, conversationId, otherName
         )}
 
         <label htmlFor="requestCurrency" className="form-label text-white-50 fw-semibold fs-7">Currency</label>
-        <CurrencySelect id="requestCurrency" value={currency} onChange={setCurrency} disabled={sending} className="mb-3" ariaLabel="Currency of the request" />
+        <CurrencySelect id="requestCurrency" value={currency} onChange={setPickedCurrency} disabled={sending} className="mb-3" ariaLabel="Currency of the request" />
 
         <label htmlFor="requestAmount" className="form-label text-white-50 fw-semibold fs-7">Amount ({currencyInfo(currency).code})</label>
         <input

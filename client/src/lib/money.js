@@ -183,6 +183,23 @@ export function estimateText(amount, from, moneyView = view) {
   return `≈ ${formatMoney(value, to, { whole: value >= 100 })}`;
 }
 
+// A posted price as it is shown on browse lists, search, and offer and job pages (the
+// user's choice, 2026-11-15: "your currency big"):
+//   { main: "≈ US$3,132", posted: "₱200,000" }  in the viewer's currency, as an estimate,
+//                                              with the real posted price kept small
+//   { main: "₱200,000", posted: null }          already in the viewer's currency, or the
+//                                              rates haven't loaded yet
+// A price with no currency (an older query) counts as pesos.
+export function shownPrice(amount, currency, moneyView = view) {
+  const from = currency || DEFAULT_CURRENCY;
+  const real = formatPrice(amount, from);
+  const to = moneyView.display;
+  if (from === to) return { main: real, posted: null };
+  const value = convertMoney(amount, from, to, moneyView.rates);
+  if (value == null || !Number.isFinite(value)) return { main: real, posted: null };
+  return { main: `≈ ${formatMoney(value, to, { whole: value >= 100 })}`, posted: real };
+}
+
 // The viewer's choice: kept in this browser (so it shows at once next time) and on
 // the profile (so it follows them to another device).
 export function setDisplayCurrency(code) {

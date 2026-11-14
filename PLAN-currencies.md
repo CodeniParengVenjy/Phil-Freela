@@ -114,6 +114,17 @@ currency that we have ... in all transactions, as well as subscription, clients 
 - Browser checks ran against a pretend backend (scratchpad fake.mjs), not real accounts. Never tried with a real
   foreign payment.
 
+## Change after the user's look at the live site (2026-11-15)
+The user saw "₱200,000 per project ≈ US$3,132" on Find Jobs and said it "havent change". Their two answers:
+- "Your currency big": on browse lists (Find Jobs, Browse, Search, a profile's offers) and on someone else's
+  offer or job page, the price shows in the viewer's currency as the big price ("≈ US$3,132 per project")
+  with the real price small ("posted as ₱200,000"). The poster's own posts, the project page and the
+  payments keep the real price big (with the small "≈"), since that is what is paid.
+  (components/ShownPrice.jsx, shownPrice() in lib/money.js.)
+- "Start with their currency": the currency boxes on Post a job, My Offers and Request payment start with the
+  viewer's "Show estimates in" currency instead of PHP (they can still change it).
+- Checks: 18/18 new browser checks, and the earlier 31 + 31 + 6 + 16 all still pass.
+
 ## Defaults I chose (change any)
 - The default currency of every box is PHP, so a freelancer who does nothing changes nothing.
 - Estimates are labelled "≈" and "rates update daily"; they are only a guide, never what is owed.

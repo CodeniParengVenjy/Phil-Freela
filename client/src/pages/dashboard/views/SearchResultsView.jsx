@@ -3,7 +3,7 @@ import { Link, useNavigate, useOutletContext, useSearchParams } from "react-rout
 import { supabase } from "../../../lib/supabaseClient";
 import { searchListings } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
-import { budgetText } from "../../../lib/jobTerms";
+import { budgetText, budgetUnit } from "../../../lib/jobTerms";
 import { PICTURE_TYPES, checkPicture } from "../../../lib/pictureSearch";
 import { searchPeople } from "../../../lib/profile";
 import { profilePath } from "../../../lib/profileStats";
@@ -16,6 +16,7 @@ import PictureSearchDialog from "../components/PictureSearchDialog";
 import CensoredText from "../../../components/CensoredText";
 import { Busy } from "../../../components/Loaders";
 import MoneyEstimate from "../../../components/MoneyEstimate";
+import ShownPrice from "../../../components/ShownPrice";
 import { formatPrice } from "../../../lib/money";
 
 const SERVICE_COLUMNS = "id, title, category, price, currency, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
@@ -313,11 +314,22 @@ function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMes
             ) : ownerName}
             <VerifiedBadge verified={verifiedIds.has(owner?.id)} showUnverified={!isService && verifiedIds.ready} />
           </span>
+          {/* Someone else's post: the price in the viewer's currency, big, and the posted one
+              small; your own post: what you posted, with an estimate (PLAN-currencies.md). */}
           {amount && (
             <span className="text-warning">
-              {amount}
-              {/* About how much in the viewer's currency (PLAN-currencies.md). */}
-              <MoneyEstimate amount={isService ? item.price : item.budget} currency={item.currency} className="ms-1" />
+              {isMine ? (
+                <>
+                  {amount}
+                  <MoneyEstimate amount={isService ? item.price : item.budget} currency={item.currency} className="ms-1" />
+                </>
+              ) : (
+                <ShownPrice
+                  amount={isService ? item.price : item.budget}
+                  currency={item.currency}
+                  after={!isService && budgetUnit(item) ? ` ${budgetUnit(item)}` : ""}
+                />
+              )}
             </span>
           )}
           <span className="badge bg-black text-light-50 text-wrap text-start">{category.label}</span>

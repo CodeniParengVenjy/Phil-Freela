@@ -19,7 +19,7 @@ import CensoredText from "../../../components/CensoredText";
 import CurrencySelect from "../../../components/CurrencySelect";
 import MoneyEstimate from "../../../components/MoneyEstimate";
 import { Loader, Busy } from "../../../components/Loaders";
-import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney } from "../../../lib/money";
+import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney, useMoneyView } from "../../../lib/money";
 
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
@@ -80,8 +80,12 @@ export default function PostNeedView() {
   const [suggestState, setSuggestState] = useState("idle");
   const [budget, setBudget] = useState("");
   // The currency of the budget (PLAN-currencies.md). The project made from this post
-  // and every payment on it use the same currency.
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
+  // and every payment on it use the same currency. It starts as the client's own
+  // currency (Settings > Appearance, the user's choice on 2026-11-15); pickedCurrency
+  // is set only when they choose one (or edit a post), null = their own.
+  const moneyView = useMoneyView();
+  const [pickedCurrency, setPickedCurrency] = useState(null);
+  const currency = pickedCurrency ?? moneyView.display;
   // What the budget counts: "project", "day" or "month". The type decides which
   // are allowed: a one-time project is per project only, an ongoing job is per
   // day or per month.
@@ -159,7 +163,7 @@ export default function PostNeedView() {
     setSuggestState("idle");
     setSkillInput("");
     setBudget(editing.budget ? String(editing.budget) : "");
-    setCurrency(editing.currency || DEFAULT_CURRENCY);
+    setPickedCurrency(editing.currency || DEFAULT_CURRENCY);
     setBudgetType(editing.budget_type);
     setStartDate(editing.start_date || "");
     setDueDate(editing.due_date || "");
@@ -186,7 +190,7 @@ export default function PostNeedView() {
     setSuggestState("idle");
     setSkillInput("");
     setBudget("");
-    setCurrency(DEFAULT_CURRENCY);
+    setPickedCurrency(null);
     setBudgetType("project");
     setStartDate("");
     setDueDate("");
@@ -595,7 +599,7 @@ export default function PostNeedView() {
                   {/* The currency first (PLAN-currencies.md): on a phone it sits above the amount. */}
                   <div className="row g-2">
                     <div className="col-sm-5 col-lg-4">
-                      <CurrencySelect id="jobCurrency" value={currency} onChange={setCurrency} className="py-2" ariaLabel="Currency of the budget" />
+                      <CurrencySelect id="jobCurrency" value={currency} onChange={setPickedCurrency} className="py-2" ariaLabel="Currency of the budget" />
                     </div>
                     <div className="col-sm-7 col-lg-8">
                       <div className="input-group">

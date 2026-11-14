@@ -19,7 +19,7 @@ import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import { Loader, Busy } from "../../../components/Loaders";
 import CurrencySelect from "../../../components/CurrencySelect";
-import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney } from "../../../lib/money";
+import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney, useMoneyView } from "../../../lib/money";
 
 // description and skill are here so the Edit form can be filled in from the list.
 const SERVICE_COLUMNS = "id, title, category, description, skill, price, currency, image_url, media_type, created_at, updated_at";
@@ -34,8 +34,12 @@ export default function ServicesView() {
   const [skill, setSkill] = useState("");
   const [price, setPrice] = useState("");
   // The currency of the starting price (PLAN-currencies.md). A booking copies it, and
-  // the project and its payments use it.
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
+  // the project and its payments use it. It starts as the freelancer's own currency
+  // (Settings > Appearance, the user's choice on 2026-11-15); pickedCurrency is set
+  // only when they choose one (or edit an offer), null = their own.
+  const moneyView = useMoneyView();
+  const [pickedCurrency, setPickedCurrency] = useState(null);
+  const currency = pickedCurrency ?? moneyView.display;
   // The photos and videos picked for the slideshow: [{ key, file }].
   const [slideItems, setSlideItems] = useState([]);
   const [slidesError, setSlidesError] = useState("");
@@ -115,7 +119,7 @@ export default function ServicesView() {
     setDescription(editing.description);
     setSkill(editing.skill || "");
     setPrice(editing.price ? String(editing.price) : "");
-    setCurrency(editing.currency || DEFAULT_CURRENCY);
+    setPickedCurrency(editing.currency || DEFAULT_CURRENCY);
     setSlideItems([]);
     setSlidesError("");
   } else if (!editing && filledFromId) {
@@ -135,7 +139,7 @@ export default function ServicesView() {
     setDescription("");
     setSkill("");
     setPrice("");
-    setCurrency(DEFAULT_CURRENCY);
+    setPickedCurrency(null);
     setSearchParams({}, { replace: true });
   };
 
@@ -274,7 +278,7 @@ export default function ServicesView() {
     setDescription("");
     setSkill("");
     setPrice("");
-    setCurrency(DEFAULT_CURRENCY);
+    setPickedCurrency(null);
     setSlideItems([]);
 
     // Files held back for an admin (steps 5-9), and how many passed the
@@ -393,7 +397,7 @@ export default function ServicesView() {
                   {/* The currency first (PLAN-currencies.md): on a phone it sits above the amount. */}
                   <div className="row g-2">
                     <div className="col-sm-5 col-lg-4">
-                      <CurrencySelect id="serviceCurrency" value={currency} onChange={setCurrency} className="py-2" ariaLabel="Currency of the starting price" />
+                      <CurrencySelect id="serviceCurrency" value={currency} onChange={setPickedCurrency} className="py-2" ariaLabel="Currency of the starting price" />
                     </div>
                     <div className="col-sm-7 col-lg-8">
                       <input
