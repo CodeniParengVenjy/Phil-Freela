@@ -245,7 +245,7 @@ export async function hireApplicant(applicationId, note, dueDate) {
 export function getMyProjects(userId, asFreelancer) {
   return supabase
     .from("projects")
-    .select(`id, title, status, started_at, due_date, completed_at, unlocked_at, agreed_amount, price_basis, price_status, payment_due_override, ratings:project_ratings(rater_id), ${PEOPLE_FIELDS}`)
+    .select(`id, title, status, started_at, due_date, completed_at, unlocked_at, agreed_amount, price_basis, price_status, currency, payment_due_override, ratings:project_ratings(rater_id), ${PEOPLE_FIELDS}`)
     .eq(asFreelancer ? "freelancer_id" : "client_id", userId)
     .order("started_at", { ascending: false });
 }
@@ -259,7 +259,7 @@ export async function getProject(projectId) {
     .select(`id, title, note, status, started_at, due_date, completed_at, first_submitted_at, ended_at, ended_by, end_reason,
       submission_path, submission_link, submission_message, submitted_at,
       files_locked, preview_path, unlocked_at,
-      agreed_amount, price_basis, price_status, price_source, price_proposed_by, price_agreed_at, payment_due_override,
+      agreed_amount, price_basis, price_status, price_source, price_proposed_by, price_agreed_at, currency, payment_due_override,
       job_post_id, client_id, freelancer_id, booking:bookings(service_id), ${PEOPLE_FIELDS}`)
     .eq("id", projectId)
     .maybeSingle();

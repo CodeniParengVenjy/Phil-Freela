@@ -18,9 +18,11 @@ import BlockedNotice from "../components/BlockedNotice";
 import OwnershipCheckDialog from "../components/OwnershipCheckDialog";
 import { isPostingBlocked } from "../../../lib/suspensions";
 import { Loader, Busy } from "../../../components/Loaders";
+import CurrencySelect from "../../../components/CurrencySelect";
+import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney } from "../../../lib/money";
 
 // description and skill are here so the Edit form can be filled in from the list.
-const SERVICE_COLUMNS = "id, title, category, description, skill, price, image_url, media_type, created_at, updated_at";
+const SERVICE_COLUMNS = "id, title, category, description, skill, price, currency, image_url, media_type, created_at, updated_at";
 
 export default function ServicesView() {
   const { currentUserId, showToast, suspension } = useOutletContext();
@@ -31,6 +33,9 @@ export default function ServicesView() {
   const [description, setDescription] = useState("");
   const [skill, setSkill] = useState("");
   const [price, setPrice] = useState("");
+  // The currency of the starting price (PLAN-currencies.md). A booking copies it, and
+  // the project and its payments use it.
+  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   // The photos and videos picked for the slideshow: [{ key, file }].
   const [slideItems, setSlideItems] = useState([]);
   const [slidesError, setSlidesError] = useState("");
@@ -110,6 +115,7 @@ export default function ServicesView() {
     setDescription(editing.description);
     setSkill(editing.skill || "");
     setPrice(editing.price ? String(editing.price) : "");
+    setCurrency(editing.currency || DEFAULT_CURRENCY);
     setSlideItems([]);
     setSlidesError("");
   } else if (!editing && filledFromId) {
@@ -129,6 +135,7 @@ export default function ServicesView() {
     setDescription("");
     setSkill("");
     setPrice("");
+    setCurrency(DEFAULT_CURRENCY);
     setSearchParams({}, { replace: true });
   };
 
@@ -183,7 +190,7 @@ export default function ServicesView() {
 
   // Edit mode: saves the changed text of the service being edited. Its photos,
   // videos and documents are left as they are.
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (amount) => {
     setSubmitting(true);
     // .single() fails when no row was updated (for example when the database
     // refuses because the account is blocked from posting), so that is an error here too.
@@ -194,7 +201,8 @@ export default function ServicesView() {
         category,
         description: description.trim(),
         skill: skill || null,
-        price: price ? Number(price) : null
+        price: amount,
+        currency
       })
       .eq("id", editing.id)
       .select(SERVICE_COLUMNS)
@@ -214,8 +222,15 @@ export default function ServicesView() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId) return;
+    // The price must fit its currency: up to its limit, and whole for yen, won, rupiah
+    // and dong (the database checks the same, services_money_cap).
+    const amount = price.trim() ? parseMoney(price, currency) : null;
+    if (price.trim() && amount === null) {
+      showToast(moneyRule(currency));
+      return;
+    }
     if (editing) {
-      await handleSaveEdit();
+      await handleSaveEdit(amount);
       return;
     }
     if (atLimit) return;
@@ -230,7 +245,8 @@ export default function ServicesView() {
         category,
         description: description.trim(),
         skill: skill || null,
-        price: price ? Number(price) : null
+        price: amount,
+        currency
       })
       .select(SERVICE_COLUMNS)
       .single();
@@ -258,6 +274,7 @@ export default function ServicesView() {
     setDescription("");
     setSkill("");
     setPrice("");
+    setCurrency(DEFAULT_CURRENCY);
     setSlideItems([]);
 
     // Files held back for an admin (steps 5-9), and how many passed the
@@ -372,16 +389,25 @@ export default function ServicesView() {
                 </div>
 
                 <div data-tour="service-price">
-                  <label className="form-label text-white fw-semibold fs-7">Starting Price (₱):</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
-                    placeholder="e.g. 2500"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                  />
+                  <label htmlFor="servicePrice" className="form-label text-white fw-semibold fs-7">Starting Price:</label>
+                  {/* The currency first (PLAN-currencies.md): on a phone it sits above the amount. */}
+                  <div className="row g-2">
+                    <div className="col-sm-5 col-lg-4">
+                      <CurrencySelect id="serviceCurrency" value={currency} onChange={setCurrency} className="py-2" ariaLabel="Currency of the starting price" />
+                    </div>
+                    <div className="col-sm-7 col-lg-8">
+                      <input
+                        id="servicePrice"
+                        type="number"
+                        min="0"
+                        step={moneyStep(currency)}
+                        className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                        placeholder="e.g. 2500"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {editing && (

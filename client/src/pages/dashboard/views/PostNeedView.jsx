@@ -16,7 +16,10 @@ import FeatureControl from "../components/FeatureControl";
 import PromoPayDialog from "../components/PromoPayDialog";
 import HiredFreelancers from "../components/HiredFreelancers";
 import CensoredText from "../../../components/CensoredText";
+import CurrencySelect from "../../../components/CurrencySelect";
+import MoneyEstimate from "../../../components/MoneyEstimate";
 import { Loader, Busy } from "../../../components/Loaders";
+import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney } from "../../../lib/money";
 
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
@@ -31,7 +34,7 @@ const hasSkill = (list, name) => list.some((s) => s.toLowerCase() === name.toLow
 // owner can read their own projects), for the Open / Filled badge; HIRES_FIELD is
 // who they are, for the "Hired freelancers" list under each post.
 const JOB_COLUMNS =
-  `id, title, category, description, skills, budget, budget_type, job_type, freelancers_needed, start_date, due_date, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}`;
+  `id, title, category, description, skills, budget, budget_type, currency, job_type, freelancers_needed, start_date, due_date, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}`;
 
 // The sentence for a save the database refused. 23514 = a table rule was broken;
 // the message names which one.
@@ -76,6 +79,9 @@ export default function PostNeedView() {
   const [aiAnswer, setAiAnswer] = useState(NO_AI_ANSWER);
   const [suggestState, setSuggestState] = useState("idle");
   const [budget, setBudget] = useState("");
+  // The currency of the budget (PLAN-currencies.md). The project made from this post
+  // and every payment on it use the same currency.
+  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   // What the budget counts: "project", "day" or "month". The type decides which
   // are allowed: a one-time project is per project only, an ongoing job is per
   // day or per month.
@@ -153,6 +159,7 @@ export default function PostNeedView() {
     setSuggestState("idle");
     setSkillInput("");
     setBudget(editing.budget ? String(editing.budget) : "");
+    setCurrency(editing.currency || DEFAULT_CURRENCY);
     setBudgetType(editing.budget_type);
     setStartDate(editing.start_date || "");
     setDueDate(editing.due_date || "");
@@ -179,6 +186,7 @@ export default function PostNeedView() {
     setSuggestState("idle");
     setSkillInput("");
     setBudget("");
+    setCurrency(DEFAULT_CURRENCY);
     setBudgetType("project");
     setStartDate("");
     setDueDate("");
@@ -339,6 +347,13 @@ export default function PostNeedView() {
       showToast("The due date can't be before the start date.");
       return;
     }
+    // The budget must fit its currency: up to its limit, and whole for yen, won,
+    // rupiah and dong (the database checks the same, job_posts_money_cap).
+    const amount = budget.trim() ? parseMoney(budget, currency) : null;
+    if (budget.trim() && amount === null) {
+      showToast(moneyRule(currency));
+      return;
+    }
     setSubmitting(true);
     const finalSkills = skillInput.trim() ? withAiSkills(addSkills(skillInput)) : skills;
 
@@ -348,7 +363,8 @@ export default function PostNeedView() {
       description: description.trim(),
       skills: finalSkills,
       job_type: jobType,
-      budget: budget ? Number(budget) : null,
+      budget: amount,
+      currency,
       budget_type: budgetType,
       start_date: startDate,
       due_date: dueDate,
@@ -576,32 +592,39 @@ export default function PostNeedView() {
                     paid per day or per month, which the client picks. */}
                 <div data-tour="post-budget">
                   <label htmlFor="jobBudget" className="form-label text-white fw-semibold fs-7">{pickedType.moneyLabel}</label>
-                  <div className="input-group">
-                    <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50">₱</span>
-                    <input
-                      id="jobBudget"
-                      type="number"
-                      min="0"
-                      step="1"
-                      className={inputClass}
-                      placeholder={pickedType.moneyPlaceholder}
-                      value={budget}
-                      onChange={(e) => setBudget(e.target.value)}
-                    />
-                    {budgetChoices.length < 2 ? (
-                      <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50">per project</span>
-                    ) : (
-                      <select
-                        id="jobBudgetType"
-                        aria-label="Paid per day or per month"
-                        className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2 flex-grow-0"
-                        style={{ width: "9.5rem" }}
-                        value={budgetType}
-                        onChange={(e) => setBudgetType(e.target.value)}
-                      >
-                        {budgetChoices.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-                      </select>
-                    )}
+                  {/* The currency first (PLAN-currencies.md): on a phone it sits above the amount. */}
+                  <div className="row g-2">
+                    <div className="col-sm-5 col-lg-4">
+                      <CurrencySelect id="jobCurrency" value={currency} onChange={setCurrency} className="py-2" ariaLabel="Currency of the budget" />
+                    </div>
+                    <div className="col-sm-7 col-lg-8">
+                      <div className="input-group">
+                        <input
+                          id="jobBudget"
+                          type="number"
+                          min="0"
+                          step={moneyStep(currency)}
+                          className={inputClass}
+                          placeholder={pickedType.moneyPlaceholder}
+                          value={budget}
+                          onChange={(e) => setBudget(e.target.value)}
+                        />
+                        {budgetChoices.length < 2 ? (
+                          <span className="input-group-text bg-secondary bg-opacity-25 border-secondary text-white-50">per project</span>
+                        ) : (
+                          <select
+                            id="jobBudgetType"
+                            aria-label="Paid per day or per month"
+                            className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2 flex-grow-0"
+                            style={{ width: "9.5rem" }}
+                            value={budgetType}
+                            onChange={(e) => setBudgetType(e.target.value)}
+                          >
+                            {budgetChoices.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+                          </select>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -718,7 +741,9 @@ export default function PostNeedView() {
                       <span className="badge bg-secondary bg-opacity-50 text-white fs-8">{getJobType(p.job_type).short}</span>
                     </div>
                     <p className="text-secondary fs-8 mb-0">
-                      {budgetText(p) || "Budget flexible"} • {new Date(p.created_at).toLocaleDateString()}
+                      {budgetText(p) || "Budget flexible"}
+                      {p.budget ? <MoneyEstimate amount={p.budget} currency={p.currency} className="ms-1" /> : null}
+                      {" • "}{new Date(p.created_at).toLocaleDateString()}
                       {p.updated_at && ` • Edited ${new Date(p.updated_at).toLocaleDateString()}`}
                     </p>
                     <p className="text-white-50 fs-8 mb-0 mt-1"><i className="bi bi-calendar-event me-1"></i>{datesText(p)}</p>

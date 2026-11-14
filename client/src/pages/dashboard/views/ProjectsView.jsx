@@ -27,7 +27,7 @@ export default function ProjectsView() {
 
     supabase
       .from("services")
-      .select(`id, title, category, price, image_url, media_type, created_at, updated_at, ${SLIDES_SELECT}`)
+      .select(`id, title, category, price, currency, image_url, media_type, created_at, updated_at, ${SLIDES_SELECT}`)
       .eq("freelancer_id", currentUserId)
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {

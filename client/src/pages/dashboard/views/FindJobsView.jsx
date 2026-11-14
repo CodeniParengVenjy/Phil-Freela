@@ -18,6 +18,7 @@ import RecommendationMarks from "../components/RecommendationMarks";
 import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
 import { SkeletonJobRows, Busy } from "../../../components/Loaders";
+import MoneyEstimate from "../../../components/MoneyEstimate";
 
 // The pills above the list: all posts, or only one-time projects, or only ongoing jobs.
 const TYPE_FILTERS = [
@@ -53,7 +54,7 @@ export default function FindJobsView({ withRecommendations = false }) {
 
     let request = supabase
       .from("job_posts")
-      .select("id, title, category, budget, budget_type, job_type, start_date, due_date, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)");
+      .select("id, title, category, budget, budget_type, currency, job_type, start_date, due_date, created_at, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)");
     // A freelancer who applied still SEES a post that filled or expired (so My
     // Applications keeps working), but it is no longer an opening: ask the
     // database for the open ones only. Admins see everything.
@@ -151,7 +152,13 @@ export default function FindJobsView({ withRecommendations = false }) {
             {/* text-wrap: a long category name goes to a second line on a phone. */}
             <span className="badge bg-black text-light text-wrap text-start px-3 py-1 rounded-pill">{categoryLabel}</span>
             <span className="badge bg-role-subtle text-role px-3 py-1 rounded-pill">{getJobType(job.job_type).short}</span>
-            {budgetText(job) && <span className="text-warning">{budgetText(job)}</span>}
+            {budgetText(job) && (
+              <span className="text-warning">
+                {budgetText(job)}
+                {/* About how much in the viewer's currency (PLAN-currencies.md). */}
+                <MoneyEstimate amount={job.budget} currency={job.currency} className="ms-1" />
+              </span>
+            )}
           </div>
           {/* When the work starts and is due, and how many freelancers applied
               (no count until the database answers). */}

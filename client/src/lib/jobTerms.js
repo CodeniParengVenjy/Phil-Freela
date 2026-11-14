@@ -1,3 +1,4 @@
+import { formatPrice } from "./money";
 import { formatDay, todayInManila } from "./projects";
 
 // The words and rules for a client's job post (PLAN-posting-job.md), shared by
@@ -25,7 +26,7 @@ export const JOB_TYPES = [
     titlePlaceholder: "e.g. Hiring a logo designer for our cafe business",
     descriptionLabel: "Describe the project:",
     descriptionPlaceholder: "Describe what you need made, the result you expect, and any examples you like...",
-    moneyLabel: "Budget for the whole project (₱, optional):",
+    moneyLabel: "Budget for the whole project (optional):",
     moneyPlaceholder: "e.g. 5000",
     dueHint: "The day the project must be finished. After it, the post is hidden from freelancers.",
     budgetTypes: ["project"],
@@ -44,7 +45,7 @@ export const JOB_TYPES = [
     titlePlaceholder: "e.g. Hiring a virtual assistant for our online shop",
     descriptionLabel: "Describe the job:",
     descriptionPlaceholder: "Describe the work, the days or hours you need, and what you're looking for...",
-    moneyLabel: "Pay (₱, optional):",
+    moneyLabel: "Pay (optional):",
     moneyPlaceholder: "e.g. 800",
     dueHint: "The last day you need this person. After it, the post is hidden from freelancers.",
     budgetTypes: ["day", "month"],
@@ -66,11 +67,13 @@ export function getJobType(value) {
   return JOB_TYPES.find((type) => type.value === value) || JOB_TYPES[0];
 }
 
-// "₱5,000 per project", or "" when the client gave no amount.
+// "₱5,000 per project", "US$250.50 per day", or "" when the client gave no amount.
+// The budget is in the post's own currency (PLAN-currencies.md); a whole amount is
+// written without cents, like before.
 export function budgetText(job) {
   if (!job.budget) return "";
   const unit = BUDGET_TYPES.find((type) => type.value === job.budget_type)?.unit;
-  return `₱${Number(job.budget).toLocaleString()}${unit ? ` ${unit}` : ""}`;
+  return `${formatPrice(job.budget, job.currency)}${unit ? ` ${unit}` : ""}`;
 }
 
 // "Starts 10/25/2026 • Due 11/15/2026" ("" for a post without dates).

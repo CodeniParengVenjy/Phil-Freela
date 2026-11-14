@@ -19,6 +19,8 @@ import RecommendationMarks from "../components/RecommendationMarks";
 import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
 import { SkeletonServiceCards, Busy } from "../../../components/Loaders";
+import MoneyEstimate from "../../../components/MoneyEstimate";
+import { formatPrice } from "../../../lib/money";
 
 // withRecommendations (the client dashboard): the services the Hybrid
 // recommendation system picked ("Recommended for you", see lib/aiService.js)
@@ -42,7 +44,7 @@ export default function BrowseServicesView({ withRecommendations = false }) {
 
     supabase
       .from("services")
-      .select(`id, title, category, price, image_url, media_type, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, available_for_work), ${SLIDES_SELECT}`)
+      .select(`id, title, category, price, currency, image_url, media_type, created_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, available_for_work), ${SLIDES_SELECT}`)
       .order("created_at", { ascending: false })
       .then(({ data, error: fetchError }) => {
         if (!active) return;
@@ -159,7 +161,9 @@ export default function BrowseServicesView({ withRecommendations = false }) {
             </p>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
               <span className="fw-bold text-role fs-7">
-                {s.price ? `From ₱${Number(s.price).toLocaleString()}` : "Price on request"}
+                {s.price ? `From ${formatPrice(s.price, s.currency)}` : "Price on request"}
+                {/* About how much in the viewer's currency (PLAN-currencies.md). */}
+                {s.price ? <MoneyEstimate amount={s.price} currency={s.currency} className="ms-1 fs-8" /> : null}
               </span>
               {isAdmin ? (
                 <button

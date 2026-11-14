@@ -176,7 +176,7 @@ export function getMyApplications(freelancerId) {
 export function getApplicantsForMyJobs(clientId) {
   return supabase
     .from("job_applications")
-    .select(`id, resume_path, cover_note, created_at, ${PROJECT_FIELD}, job:job_posts!inner(id, title, client_id, due_date, budget, budget_type), freelancer:profiles(id, full_name, username, avatar_path)`)
+    .select(`id, resume_path, cover_note, created_at, ${PROJECT_FIELD}, job:job_posts!inner(id, title, client_id, due_date, budget, budget_type, currency), freelancer:profiles(id, full_name, username, avatar_path)`)
     .eq("job.client_id", clientId)
     .order("created_at", { ascending: false });
 }

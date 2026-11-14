@@ -15,9 +15,11 @@ import Avatar from "../../../components/Avatar";
 import PictureSearchDialog from "../components/PictureSearchDialog";
 import CensoredText from "../../../components/CensoredText";
 import { Busy } from "../../../components/Loaders";
+import MoneyEstimate from "../../../components/MoneyEstimate";
+import { formatPrice } from "../../../lib/money";
 
-const SERVICE_COLUMNS = "id, title, category, price, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
-const JOB_COLUMNS = "id, title, category, budget, budget_type, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
+const SERVICE_COLUMNS = "id, title, category, price, currency, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
+const JOB_COLUMNS = "id, title, category, budget, budget_type, currency, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
 // The longest a search may take before the page gives up with a message,
 // instead of showing "Searching" forever on a bad connection (found in the live
 // test, 2026-11-09). Long enough for an AI service that has to wake up first.
@@ -285,7 +287,7 @@ function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMes
   const ownerName = owner?.full_name || owner?.username || (isService ? "Freelancer" : "Client");
   const category = getCategory(item.category);
   // A service shows its price; a job its budget with what it counts ("per day").
-  const amount = isService ? (item.price ? `₱${Number(item.price).toLocaleString()}` : "") : budgetText(item);
+  const amount = isService ? (item.price ? formatPrice(item.price, item.currency) : "") : budgetText(item);
   const isMine = owner?.id === currentUserId;
 
   return (
@@ -311,7 +313,13 @@ function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMes
             ) : ownerName}
             <VerifiedBadge verified={verifiedIds.has(owner?.id)} showUnverified={!isService && verifiedIds.ready} />
           </span>
-          {amount && <span className="text-warning">{amount}</span>}
+          {amount && (
+            <span className="text-warning">
+              {amount}
+              {/* About how much in the viewer's currency (PLAN-currencies.md). */}
+              <MoneyEstimate amount={isService ? item.price : item.budget} currency={item.currency} className="ms-1" />
+            </span>
+          )}
           <span className="badge bg-black text-light-50 text-wrap text-start">{category.label}</span>
           <RatingChip rating={rating} className="fs-8" />
         </div>

@@ -74,6 +74,11 @@ export function formatMoney(amount, code = DEFAULT_CURRENCY, { whole = false } =
   return /[A-Za-z]$/.test(known.symbol) ? `${known.symbol} ${text}` : `${known.symbol}${text}`;
 }
 
+// A posted price or budget: without cents when it is a whole amount ("₱2,500",
+// "US$49.99"), as prices were always shown. Payments and balances keep the cents.
+export const formatPrice = (amount, code = DEFAULT_CURRENCY) =>
+  formatMoney(amount, code, { whole: Number.isInteger(Number(amount)) });
+
 // "USD 1,500.00": the code instead of the symbol, for the PDF receipts (their built-in
 // font has no ₱, € or ¥).
 export function formatMoneyCode(amount, code = DEFAULT_CURRENCY) {

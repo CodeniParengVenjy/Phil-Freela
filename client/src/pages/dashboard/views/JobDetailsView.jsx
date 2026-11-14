@@ -22,6 +22,7 @@ import HiredFreelancers from "../components/HiredFreelancers";
 import ReportDialog from "../components/ReportDialog";
 import CensoredText from "../../../components/CensoredText";
 import { Loader, Busy } from "../../../components/Loaders";
+import MoneyEstimate from "../../../components/MoneyEstimate";
 
 // One client job post (opened from Find Jobs). Freelancers apply here with a
 // resume (a PDF, Word file or picture) and an optional note; the client then
@@ -59,7 +60,7 @@ export default function JobDetailsView() {
         // hired:projects(count) and hires (who was hired) are only meaningful to
         // the owner (a freelancer can only see their own project), so only the
         // owner's view uses them.
-        .select(`id, title, category, description, budget, budget_type, job_type, freelancers_needed, skills, start_date, due_date, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)`)
+        .select(`id, title, category, description, budget, budget_type, currency, job_type, freelancers_needed, skills, start_date, due_date, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)`)
         .eq("id", jobId)
         .maybeSingle(),
       getMyApplicationForJob(currentUserId, jobId),
@@ -322,7 +323,13 @@ export default function JobDetailsView() {
               <span className="badge bg-role text-white px-3 py-2 rounded-pill"><i className={`bi ${category.icon} me-1`}></i>{category.label}</span>
               <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className={`bi ${type.icon} me-1`}></i>{type.label}</span>
               {/* "₱5,000 per project", per day or per month. */}
-              {budgetText(job) && <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill">Budget: {budgetText(job)}</span>}
+              {budgetText(job) && (
+                <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill text-wrap text-start mw-100">
+                  Budget: {budgetText(job)}
+                  {/* About how much in the viewer's currency (PLAN-currencies.md). */}
+                  <MoneyEstimate amount={job.budget} currency={job.currency} className="ms-1" />
+                </span>
+              )}
               {job.start_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-event me-1"></i>Starts {formatDay(job.start_date)}</span>}
               {job.due_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-check me-1"></i>Due {formatDay(job.due_date)}</span>}
               {job.freelancers_needed > 1 && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-people me-1"></i>Needs {job.freelancers_needed} freelancers</span>}

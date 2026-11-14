@@ -22,6 +22,8 @@ import ReportDialog from "../components/ReportDialog";
 import ServiceReviews from "../components/ServiceReviews";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
+import MoneyEstimate from "../../../components/MoneyEstimate";
+import { formatPrice } from "../../../lib/money";
 
 // One service offer (a "project offer"), opened from a card on Browse Services
 // or the AI search results, or from a freelancer's page. This is the only place
@@ -58,7 +60,7 @@ function ServiceDetails({ serviceId }) {
 
     supabase
       .from("services")
-      .select(`id, title, category, description, price, skill, image_url, created_at, updated_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, avatar_path, available_for_work, skills), ${SLIDES_SELECT}`)
+      .select(`id, title, category, description, price, currency, skill, image_url, created_at, updated_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, avatar_path, available_for_work, skills), ${SLIDES_SELECT}`)
       .eq("id", serviceId)
       .maybeSingle()
       .then(({ data }) => {
@@ -185,7 +187,7 @@ function ServiceDetails({ serviceId }) {
         <button
           type="button"
           className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role flex-shrink-0"
-          onClick={() => setBookTarget({ freelancerId: freelancer.id, freelancerName, service: { id: service.id, title: service.title, price: service.price } })}
+          onClick={() => setBookTarget({ freelancerId: freelancer.id, freelancerName, service: { id: service.id, title: service.title, price: service.price, currency: service.currency } })}
         >
           <i className="bi bi-calendar-check me-2"></i>Book this offer
         </button>
@@ -276,7 +278,9 @@ function ServiceDetails({ serviceId }) {
           <div className="d-flex flex-wrap align-items-center gap-2">
             <span className="badge bg-role text-white px-3 py-2 rounded-pill"><i className={`bi ${category.icon} me-1`}></i>{category.label}</span>
             <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill">
-              {service.price ? `Starting at ₱${Number(service.price).toLocaleString()}` : "Price on request"}
+              {service.price ? `Starting at ${formatPrice(service.price, service.currency)}` : "Price on request"}
+              {/* About how much in the viewer's currency (PLAN-currencies.md). */}
+              {service.price ? <MoneyEstimate amount={service.price} currency={service.currency} className="ms-1" /> : null}
             </span>
             {isOriginalWork(service) && <OriginalBadge className="px-3 py-2" />}
             {/* What clients rated this offer (from the box further down). */}

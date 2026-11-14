@@ -6,6 +6,7 @@ import { categories, getCategory } from "../../../lib/categories";
 import { blockedBadges, suspensionStatus } from "../../../lib/suspensions";
 import { SLIDES_SELECT, itemSlides } from "../../../lib/slides";
 import { JOB_STATES, budgetText, datesText, getJobType } from "../../../lib/jobTerms";
+import { formatPrice } from "../../../lib/money";
 import MediaCarousel from "../../dashboard/components/MediaCarousel";
 import HiringTrail from "../components/HiringTrail";
 import { SkeletonTableRows, LoadingDots } from "../../../components/Loaders";
@@ -19,7 +20,7 @@ const tabs = {
     ownerColumn: "freelancer_id",
     priceColumn: "price",
     priceLabel: "Price",
-    select: `id, title, category, description, price, skill, image_url, media_type, created_at, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`
+    select: `id, title, category, description, price, currency, skill, image_url, media_type, created_at, freelancer_id, owner:profiles!services_freelancer_id_fkey(full_name, username), ${SLIDES_SELECT}`
   },
   jobs: {
     label: "Job Posts",
@@ -27,14 +28,15 @@ const tabs = {
     ownerColumn: "client_id",
     priceColumn: "budget",
     priceLabel: "Budget",
-    select: "id, title, category, description, budget, budget_type, job_type, freelancers_needed, start_date, due_date, created_at, client_id, owner:profiles!job_posts_client_id_fkey(full_name, username)"
+    select: "id, title, category, description, budget, budget_type, currency, job_type, freelancers_needed, start_date, due_date, created_at, client_id, owner:profiles!job_posts_client_id_fkey(full_name, username)"
   }
 };
 
 // The state filter on the Job Posts tab (the states come from lib/jobTerms.js).
 const STATE_FILTERS = [{ value: "all", label: "All" }, ...Object.entries(JOB_STATES).map(([value, state]) => ({ value, label: state.label }))];
 
-const formatPeso = (value) => (value ? `₱${Number(value).toLocaleString()}` : "—");
+// A service's price in its own currency (PLAN-currencies.md), or "—" when it has none.
+const servicePrice = (item) => (item.price ? formatPrice(item.price, item.currency) : "—");
 
 export default function AdminListingsView() {
   // The Overview links here: ?state=filled opens the Job Posts tab already
@@ -263,7 +265,7 @@ export default function AdminListingsView() {
                   <td className="admin-title-cell">{item.title}</td>
                   <td className="fs-7">{getCategory(item.category).label}</td>
                   <td>{ownerCell(item)}</td>
-                  <td>{isJobs ? (budgetText(item) || "—") : formatPeso(item[tab.priceColumn])}</td>
+                  <td>{isJobs ? (budgetText(item) || "—") : servicePrice(item)}</td>
                   {isJobs && <td>{stateBadge(hiringOf(item))}</td>}
                   {isJobs && (
                     <td className="fs-7 text-nowrap">
@@ -305,7 +307,7 @@ export default function AdminListingsView() {
             <p className="text-secondary fs-7 mb-3">
               {isJobs
                 ? `${getJobType(viewing.job_type).label} • ${getCategory(viewing.category).label} • ${budgetText(viewing) || "No budget given"} • Posted ${new Date(viewing.created_at).toLocaleDateString()}`
-                : `${getCategory(viewing.category).label} • ${tab.priceLabel}: ${formatPeso(viewing[tab.priceColumn])} • Posted ${new Date(viewing.created_at).toLocaleDateString()}`}
+                : `${getCategory(viewing.category).label} • ${tab.priceLabel}: ${servicePrice(viewing)} • Posted ${new Date(viewing.created_at).toLocaleDateString()}`}
               {isJobs && datesText(viewing) && <><br />{datesText(viewing)}</>}
             </p>
 

@@ -3,6 +3,8 @@ import { getCategory } from "../../../lib/categories";
 import { itemSlides } from "../../../lib/slides";
 import RatingChip from "../../../components/RatingChip";
 import CensoredText from "../../../components/CensoredText";
+import MoneyEstimate from "../../../components/MoneyEstimate";
+import { formatPrice } from "../../../lib/money";
 
 const mediaBox = { width: 64, height: 64 };
 
@@ -47,7 +49,14 @@ export default function ServiceCard({ service, onDelete, editTo, to, rating, foo
           <RatingChip rating={rating} className="fs-8" />
         </div>
         <p className="text-secondary fs-8 mb-0">
-          {service.price ? `Starting at ₱${Number(service.price).toLocaleString()}` : "Price on request"} • {new Date(service.created_at).toLocaleDateString()}
+          {/* The price in its own currency, plus "≈" in the viewer's (PLAN-currencies.md). */}
+          {service.price ? (
+            <>
+              Starting at {formatPrice(service.price, service.currency)}
+              <MoneyEstimate amount={service.price} currency={service.currency} className="ms-1" />
+            </>
+          ) : "Price on request"}
+          {" • "}{new Date(service.created_at).toLocaleDateString()}
           {service.updated_at && ` • Edited ${new Date(service.updated_at).toLocaleDateString()}`}
         </p>
         {footer && <div className="mt-2">{footer}</div>}

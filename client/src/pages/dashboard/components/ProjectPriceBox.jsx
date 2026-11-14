@@ -1,15 +1,22 @@
 import { useState } from "react";
 import { agreePrice, priceSourceText, priceText, proposePrice } from "../../../lib/projectPrice";
 import { Busy } from "../../../components/Loaders";
+import CurrencySelect from "../../../components/CurrencySelect";
+import MoneyEstimate from "../../../components/MoneyEstimate";
+import { DEFAULT_CURRENCY } from "../../../lib/money";
 
 // The Price box of the project page (PLAN-transaction-tracking.md, Step A). A
 // project has ONE price. Usually it is already agreed when the project starts
 // (copied from the booked service or the job post). When it is not, either person
 // names a price and the OTHER person agrees to it. Once agreed it is locked.
+// The price has a currency (PLAN-currencies.md): a proposal can pick one, as long as
+// no payment was sent in another one (the database refuses that).
 // Props: project (a row from getProject), currentUserId, otherName, showToast, and
 // onChanged() (the page reads the project again after a price was sent or agreed).
 export default function ProjectPriceBox({ project, currentUserId, otherName, showToast, onChanged }) {
   const [amount, setAmount] = useState("");
+  // The currency picked in the form (null = the project's own).
+  const [pickedCurrency, setPickedCurrency] = useState(null);
   // Open on a proposal that is waiting, to send a different price.
   const [editing, setEditing] = useState(false);
   const [working, setWorking] = useState(false);
@@ -17,7 +24,11 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
 
   const status = project.price_status;
   const iProposed = project.price_proposed_by === currentUserId;
-  const text = status === "none" ? "" : priceText(project.agreed_amount, project.price_basis);
+  const projectCurrency = project.currency || DEFAULT_CURRENCY;
+  const currency = pickedCurrency ?? projectCurrency;
+  const text = status === "none" ? "" : priceText(project.agreed_amount, project.price_basis, projectCurrency);
+  // About how much in the viewer's currency, after the price.
+  const estimate = status === "none" ? null : <MoneyEstimate amount={project.agreed_amount} currency={projectCurrency} className="ms-1 fs-8" />;
   // The form shows when there is no price, and when someone wants to change a proposal.
   const showForm = status === "none" || (status === "proposed" && editing);
 
@@ -26,7 +37,7 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
     if (working) return;
     setWorking(true);
     setError("");
-    const { error: problem } = await proposePrice(project.id, amount);
+    const { error: problem } = await proposePrice(project.id, amount, currency);
     setWorking(false);
     if (problem) {
       setError(problem);
@@ -35,6 +46,7 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
       return;
     }
     setAmount("");
+    setPickedCurrency(null);
     setEditing(false);
     showToast(`Price sent to ${otherName}.`);
     onChanged();
@@ -62,7 +74,7 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
 
       {status === "agreed" && (
         <>
-          <div className="text-white fw-bold fs-5 text-break">{text}</div>
+          <div className="text-white fw-bold fs-5 text-break">{text}{estimate}</div>
           <div className="text-secondary fs-8">
             {priceSourceText(project.price_source)}
             {project.price_agreed_at && ` • agreed on ${new Date(project.price_agreed_at).toLocaleDateString()}`}
@@ -76,14 +88,14 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
 
       {status === "proposed" && iProposed && (
         <p className="text-white-50 fs-7 mb-2">
-          You proposed <strong className="text-white">{text}</strong>. Waiting for {otherName} to agree.
+          You proposed <strong className="text-white">{text}</strong>{estimate}. Waiting for {otherName} to agree.
         </p>
       )}
 
       {status === "proposed" && !iProposed && (
         <>
           <p className="text-white-50 fs-7 mb-2">
-            {otherName} proposed <strong className="text-white">{text}</strong>.
+            {otherName} proposed <strong className="text-white">{text}</strong>{estimate}.
           </p>
           {!showForm && (
             <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={handleAgree} disabled={working}>
@@ -95,14 +107,22 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
 
       {showForm && (
         <form onSubmit={handleSend} className="d-flex flex-wrap align-items-center gap-2">
+          <CurrencySelect
+            id={`priceCurrency-${project.id}`}
+            value={currency}
+            onChange={setPickedCurrency}
+            disabled={working}
+            ariaLabel="Currency of the price"
+            className="w-auto mw-100"
+          />
           <input
             type="text"
             inputMode="decimal"
             autoComplete="off"
-            aria-label="Price in pesos"
+            aria-label="Price"
             className="form-control bg-secondary bg-opacity-25 border-secondary text-white"
             style={{ maxWidth: 180 }}
-            placeholder="₱ e.g. 5000"
+            placeholder="e.g. 5000"
             maxLength={14}
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
@@ -112,7 +132,7 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
             {working ? <Busy kind="send">Sending</Busy> : "Send price"}
           </button>
           {editing && (
-            <button type="button" className="btn btn-link text-white-50 fs-8 p-0" onClick={() => { setEditing(false); setError(""); }} disabled={working}>
+            <button type="button" className="btn btn-link text-white-50 fs-8 p-0" onClick={() => { setEditing(false); setPickedCurrency(null); setError(""); }} disabled={working}>
               Cancel
             </button>
           )}
