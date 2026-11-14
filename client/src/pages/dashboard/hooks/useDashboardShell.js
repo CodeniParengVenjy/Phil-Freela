@@ -4,7 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getMyArchive } from "../../../lib/archives";
 import { getActiveSuspension } from "../../../lib/profile";
 import { applyAppearance, clearAppearance, fetchAppearance, forgetAppearance, readSavedAppearance, rememberAppearance } from "../../../lib/appearance";
-import { fetchDisplayCurrency, forgetDisplayCurrency, setDisplayCurrency } from "../../../lib/money";
+import { fetchDisplayCurrency, forgetDisplayCurrency, loadRates, setDisplayCurrency } from "../../../lib/money";
 import { countUnreadNotifications } from "../../../lib/notifications";
 import { getNewApplicants } from "../../../lib/applications";
 import { hangUp, listenForCalls } from "../../../lib/calls";
@@ -124,10 +124,12 @@ export function useDashboardShell() {
       rememberAppearance(saved);
       applyAppearance(saved);
     });
-    // The person's own currency, "My currency" in Settings (PLAN-currencies.md), the same way.
+    // The person's own currency, "My currency" in Settings (PLAN-currencies.md), the same way,
+    // and the day's rates, so prices show in it from the first page.
     fetchDisplayCurrency(currentUserId).then((saved) => {
       if (active && saved) setDisplayCurrency(saved);
     });
+    loadRates();
     return () => { active = false; };
   }, [currentUserId]);
 

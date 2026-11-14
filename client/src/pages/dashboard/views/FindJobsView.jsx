@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getCategory } from "../../../lib/categories";
-import { budgetText, datesText, getJobType } from "../../../lib/jobTerms";
+import { budgetText, budgetTitle, datesText, getJobType } from "../../../lib/jobTerms";
+import { useMyCurrency } from "../../../lib/money";
 import { removeListing } from "../../../lib/adminListings";
 import { byPick, useRecommendations } from "../../../lib/useRecommendations";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
@@ -39,6 +40,8 @@ export default function FindJobsView({ withRecommendations = false }) {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Jobs): admins get a Remove button on each row.
   const { isAdmin } = useOutletContext();
+  // Budgets are shown in the reader's own currency (Settings > My currency).
+  const moneyView = useMyCurrency();
   const [query, setQuery] = useState("");
   // Which kind of work the pills show: "all", "project" or "job".
   const [typeFilter, setTypeFilter] = useState("all");
@@ -151,9 +154,9 @@ export default function FindJobsView({ withRecommendations = false }) {
             {/* text-wrap: a long category name goes to a second line on a phone. */}
             <span className="badge bg-black text-light text-wrap text-start px-3 py-1 rounded-pill">{categoryLabel}</span>
             <span className="badge bg-role-subtle text-role px-3 py-1 rounded-pill">{getJobType(job.job_type).short}</span>
-            {/* The budget exactly as the client posted it, in their currency: "US$24 per project"
-                (PLAN-currencies.md, the user's choice on 2026-11-15: no converting). */}
-            {budgetText(job) && <span className="text-warning">{budgetText(job)}</span>}
+            {/* The budget in the reader's own currency: ₱200,000 is "US$3,132 per project" for
+                someone who picked dollars; the posted one is the hover text (PLAN-currencies.md). */}
+            {budgetText(job) && <span className="text-warning" title={budgetTitle(job, moneyView)}>{budgetText(job, moneyView)}</span>}
           </div>
           {/* When the work starts and is due, and how many freelancers applied
               (no count until the database answers). */}

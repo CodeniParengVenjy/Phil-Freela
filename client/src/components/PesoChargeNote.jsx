@@ -1,23 +1,16 @@
-import { useEffect } from "react";
-import { estimateText, formatMoney, loadRates, useMoneyView } from "../lib/money";
+import { formatMoney, useMyCurrency } from "../lib/money";
 
-// Premium, Featured posts, billboards and member ads are charged in pesos: Xendit in the
-// Philippines only takes PHP (PLAN-currencies.md, the user's choice on 2026-11-14). For
-// someone who picked another currency for estimates (Settings > Appearance), this says
-// about how much the price is in their currency, and plainly that pesos are charged.
-// Nothing shows for someone who sees pesos, or while the day's rates are loading.
+// Premium, Featured posts and member ads are paid on Xendit, which in the Philippines takes
+// pesos only (PLAN-currencies.md). Their prices show in the person's own currency like every
+// price on the site ("Turn into my currency", the user's choice on 2026-11-15); for someone
+// whose currency is not pesos, this says plainly what will be charged. Nothing shows for
+// someone who uses pesos.
 export default function PesoChargeNote({ amount, className = "" }) {
-  const moneyView = useMoneyView();
-
-  useEffect(() => {
-    loadRates();
-  }, []);
-
-  const text = amount == null ? "" : estimateText(amount, "PHP", moneyView);
-  if (!text) return null;
+  const moneyView = useMyCurrency();
+  if (amount == null || moneyView.display === "PHP") return null;
   return (
     <small className={`text-secondary fs-8 d-block ${className}`} data-peso-charge-note>
-      {text} in your currency. You are charged {formatMoney(amount, "PHP")} in pesos.
+      Paid in pesos: {formatMoney(amount, "PHP")} by GCash, Maya or QR Ph (Xendit takes pesos only).
     </small>
   );
 }

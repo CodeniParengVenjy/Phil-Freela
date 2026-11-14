@@ -1,10 +1,12 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { supabase } from "./supabaseClient";
 
 // Any currency (PLAN-currencies.md). Every price, budget and payment between a client
-// and a freelancer keeps its own currency: whoever writes the price picks it, and
-// everyone sees it exactly as it was written ("US$24 per project"), never converted
-// (the user's choice on 2026-11-15).
+// and a freelancer keeps its own currency: whoever writes the price picks it. A person
+// READS every price in their own currency ("My currency" in Settings), worked out at the
+// day's rate: a job posted at ₱200,000 shows "US$3,132" to someone who picked dollars
+// (the user's choice on 2026-11-15, "Turn into my currency"). Money that is sent or
+// received stays in its own currency.
 //
 // The list is the same 30 rows as the database table public.currencies
 // (database/supabase_currencies_schema.sql), and amounts are written the same way as
@@ -65,7 +67,8 @@ const number = (amount, decimals) =>
 
 // 1500, "USD" -> "US$1,500.00"; 7500, "JPY" -> "¥7,500"; 120, "CHF" -> "CHF 120.00".
 // A code that is not in the list is written as the code itself ("XYZ 10.00"), like the
-// database does. whole: true leaves the cents out (for estimates).
+// database does. whole: true leaves the cents out (for a price worked out in another
+// currency, from 100 up).
 export function formatMoney(amount, code = DEFAULT_CURRENCY, { whole = false } = {}) {
   const known = BY_CODE.get(code || DEFAULT_CURRENCY);
   if (!known) return `${code} ${number(amount, whole ? 0 : 2)}`;
@@ -113,12 +116,14 @@ export const moneyMax = (code) => currencyInfo(code).max;
 
 // ---- The person's own currency ------------------------------------------------
 
-// Shared by every component that needs it: the person's own currency (Settings >
-// Appearance > "My currency", the currency their new posts, offers and requests start
-// in), the daily rates (how much of each currency one peso buys) and the day they are
-// from. Prices are never converted on the page (the user's choice on 2026-11-15); the
-// rates are only read for the peso-charge note on Premium, Featured posts and ads.
-// A component reads it with useMoneyView() and redraws when it changes.
+// Shared by every component that shows a price: the person's own currency (Settings >
+// Appearance > "My currency"), the daily rates (how much of each currency one peso buys)
+// and the day they are from. Every price a person READS is shown in their currency,
+// worked out at the day's rate (the user's choice on 2026-11-15, "Turn into my
+// currency"): see shownPrice() below. Money that is actually sent or received (payments,
+// the amount to pay, receipts, GCash checks) stays in its own currency, because GCash and
+// the other ways of paying move only that currency. A component reads it with
+// useMyCurrency() and redraws when it changes.
 const DISPLAY_KEY = "philfreela-display-currency";
 
 function readSavedDisplay() {
@@ -146,8 +151,8 @@ function subscribe(listener) {
 
 export const useMoneyView = () => useSyncExternalStore(subscribe, () => view);
 
-// The rates are loaded once per visit, the first time a peso-charge note needs them. If
-// that fails the note just doesn't show, and the next one tries again.
+// The rates are loaded once per visit (the dashboard asks at the start). If that fails,
+// prices show as they were posted, and the next price that needs them tries again.
 let ratesLoad = null;
 export function loadRates() {
   ratesLoad ??= supabase
@@ -174,14 +179,43 @@ export function convertMoney(amount, from, to, rates) {
   return (Number(amount) / fromRate) * toRate;
 }
 
-// "≈ ₱2,869": the amount in the viewer's currency, or "" when it already is in it or
-// the rates haven't loaded. From 100 up the estimate has no cents (it is a guide).
-export function estimateText(amount, from, moneyView = view) {
-  const to = moneyView.display;
-  if (amount == null || amount === "" || !from || from === to) return "";
-  const value = convertMoney(amount, from, to, moneyView.rates);
-  if (value == null || !Number.isFinite(value)) return "";
-  return `≈ ${formatMoney(value, to, { whole: value >= 100 })}`;
+// The amount in the viewer's currency, or null while it can't be worked out (the rates
+// haven't loaded, or a rate is missing).
+function inViewerCurrency(amount, from, moneyView) {
+  if (amount == null || amount === "") return null;
+  const value = convertMoney(amount, from || DEFAULT_CURRENCY, moneyView.display, moneyView.rates);
+  return value == null || !Number.isFinite(value) ? null : value;
+}
+
+// A price as a person reads it, in their own currency: ₱200,000 is "US$3,132" for someone
+// who picked dollars. From 100 up there are no cents; under 100 the cents stay
+// ("US$23.49"). A price already in their currency is written as it was posted ("₱1,500").
+// Until the rates have loaded, or if a rate is missing, the price shows as it was posted,
+// in its own currency, so a made-up number never shows. A price with no currency (an
+// older query) counts as pesos.
+export function shownPrice(amount, currency, moneyView = view) {
+  const from = currency || DEFAULT_CURRENCY;
+  if (from === moneyView.display) return formatPrice(amount, from);
+  const value = inViewerCurrency(amount, from, moneyView);
+  return value == null ? formatPrice(amount, from) : formatMoney(value, moneyView.display, { whole: value >= 100 });
+}
+
+// "₱200,000 as posted": the hover text of a price that shownPrice() worked out in another
+// currency, or undefined when it shows as posted.
+export function postedTitle(amount, currency, moneyView = view) {
+  const from = currency || DEFAULT_CURRENCY;
+  if (from === moneyView.display || inViewerCurrency(amount, from, moneyView) == null) return undefined;
+  return `${formatPrice(amount, from)} as posted`;
+}
+
+// For a component that shows prices: the viewer's currency and the rates, loaded the
+// first time they are needed. It redraws when either changes.
+export function useMyCurrency() {
+  const moneyView = useMoneyView();
+  useEffect(() => {
+    loadRates();
+  }, []);
+  return moneyView;
 }
 
 // The viewer's choice: kept in this browser (so it shows at once next time) and on

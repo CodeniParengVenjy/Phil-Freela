@@ -81,7 +81,7 @@ export const TOUR = {
       { page: SERVICES, target: "service-category", scroll: true, title: "Category", text: "Pick the kind of work. Clients browse offers by category, and it helps the AI show your offer to the right clients." },
       { page: SERVICES, target: "service-description", scroll: true, title: "Description", text: "Tell clients what they get: what's included, how long it takes and how many revisions. Bad words are hidden automatically." },
       { page: SERVICES, target: "service-skill", scroll: true, title: "Skill", text: "The main skill this offer needs. It helps clients and the AI find you." },
-      { page: SERVICES, target: "service-price", scroll: true, title: "Starting price", text: "The lowest price you'd take, in the currency you pick. Clients see it on your offer's card exactly as you write it." },
+      { page: SERVICES, target: "service-price", scroll: true, title: "Starting price", text: "The lowest price you'd take, in the currency you pick. Each client sees it on your offer's card in their own currency." },
       { page: SERVICES, target: "service-media", scroll: true, title: "Photos, videos and documents", text: "Show samples of your work as a slideshow. Your files get an invisible watermark that proves they're yours. Mark a file as Promo when it's an ad." },
       { page: SERVICES, target: "service-publish", scroll: true, title: "Upload & Publish", text: "When it's ready, press this and clients can find your offer. A free account can have 3 offers, Premium up to 15." },
       { page: SERVICES, target: "service-list", scroll: true, title: "Your offers", text: "Your offers show here. Edit or delete them any time, or pay to Feature one so it shows first." },

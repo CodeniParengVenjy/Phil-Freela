@@ -9,7 +9,7 @@ import { useFeatureStatus } from "../../../lib/featured";
 import { claimFreeFeature, getFreeFeature, useMyViews } from "../../../lib/pro";
 import { applicantsText, useApplicantCounts, useNewApplicantCounts } from "../../../lib/applications";
 import { formatDay, todayInManila } from "../../../lib/projects";
-import { BUDGET_TYPES, HIRES_FIELD, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, datesText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
+import { BUDGET_TYPES, HIRES_FIELD, JOB_STATES, JOB_TYPES, MAX_FREELANCERS_NEEDED, budgetText, budgetTitle, datesText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import BlockedNotice from "../components/BlockedNotice";
 import DeletePostDialog from "../components/DeletePostDialog";
 import FeatureControl from "../components/FeatureControl";
@@ -18,7 +18,7 @@ import HiredFreelancers from "../components/HiredFreelancers";
 import CensoredText from "../../../components/CensoredText";
 import CurrencySelect from "../../../components/CurrencySelect";
 import { Loader, Busy } from "../../../components/Loaders";
-import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney, useMoneyView } from "../../../lib/money";
+import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney, useMyCurrency } from "../../../lib/money";
 
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
@@ -82,7 +82,7 @@ export default function PostNeedView() {
   // and every payment on it use the same currency. It starts as the client's own
   // currency (Settings > Appearance, the user's choice on 2026-11-15); pickedCurrency
   // is set only when they choose one (or edit a post), null = their own.
-  const moneyView = useMoneyView();
+  const moneyView = useMyCurrency();
   const [pickedCurrency, setPickedCurrency] = useState(null);
   const currency = pickedCurrency ?? moneyView.display;
   // What the budget counts: "project", "day" or "month". The type decides which
@@ -744,7 +744,8 @@ export default function PostNeedView() {
                       <span className="badge bg-secondary bg-opacity-50 text-white fs-8">{getJobType(p.job_type).short}</span>
                     </div>
                     <p className="text-secondary fs-8 mb-0">
-                      {budgetText(p) || "Budget flexible"}
+                      {/* In the reader's own currency, like everywhere (PLAN-currencies.md). */}
+                      <span title={budgetTitle(p, moneyView)}>{budgetText(p, moneyView) || "Budget flexible"}</span>
                       {" • "}{new Date(p.created_at).toLocaleDateString()}
                       {p.updated_at && ` • Edited ${new Date(p.updated_at).toLocaleDateString()}`}
                     </p>

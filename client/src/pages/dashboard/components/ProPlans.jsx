@@ -6,6 +6,7 @@ import { downloadPurchaseReceipt } from "../../../lib/receiptPdf";
 import "../pro.css";
 import { Busy } from "../../../components/Loaders";
 import PesoChargeNote from "../../../components/PesoChargeNote";
+import { formatMoney, shownPrice, useMyCurrency } from "../../../lib/money";
 
 // The Premium page (views/ProView.jsx; it was "Freelancer Pro"; PLAN-monetization.md,
 // Step 5, and PLAN-premium.md), for clients and freelancers: two plan cards side
@@ -18,7 +19,6 @@ import PesoChargeNote from "../../../components/PesoChargeNote";
 // the payment went through. Paying again before Premium ends adds the days
 // after the current end. onPaid() lets the dashboard know, so the Premium badge
 // by the name shows at once.
-const peso = (amount) => `₱${Number(amount).toLocaleString()}`;
 
 // How long to keep asking after coming back: a payment can take a few seconds
 // to be confirmed by Xendit.
@@ -51,6 +51,7 @@ export default function ProPlans({ userId, accountType, onPaid }) {
   const isFreelancer = accountType === "freelancer";
   const pro = useProStatus(userId);
   const views = useMyViews(userId);
+  const moneyView = useMyCurrency();
   const reloadPro = pro.reload;
   // The price list by code, and how many offers there are now (null while loading or if it failed).
   const [prices, setPrices] = useState(null);
@@ -156,8 +157,11 @@ export default function ProPlans({ userId, accountType, onPaid }) {
   }
   // The Featured prices for 3, 7 and 14 days: the normal ones on Free, the half prices on Premium.
   const featuredRows = FEATURE_CODES.map((code) => prices?.[code]).filter(Boolean);
-  const normalFeatured = featuredRows.map((row) => peso(row.price)).join(" / ");
-  const proFeatured = featuredRows.map((row) => peso(row.pro_price ?? row.price)).join(" / ");
+  // All in the person's own currency (Settings > My currency, PLAN-currencies.md); they are
+  // still paid in pesos (PesoChargeNote says so).
+  const inMyCurrency = (amount) => shownPrice(amount, "PHP", moneyView);
+  const normalFeatured = featuredRows.map((row) => inMyCurrency(row.price)).join(" / ");
+  const proFeatured = featuredRows.map((row) => inMyCurrency(row.pro_price ?? row.price)).join(" / ");
   const proPrice = prices?.[PRO_CODE];
 
   return (
@@ -209,7 +213,7 @@ export default function ProPlans({ userId, accountType, onPaid }) {
           <div className="pro-plan-card h-100 d-flex flex-column">
             <h6 className="text-white fw-bold mb-3">Free</h6>
             <div className="d-flex align-items-baseline gap-2">
-              <span className="pro-plan-price text-white">₱0</span>
+              <span className="pro-plan-price text-white">{formatMoney(0, moneyView.display, { whole: true })}</span>
               <span className="text-white-50 fs-7">forever</span>
             </div>
             <div className="pro-plan-rule"></div>
@@ -237,10 +241,10 @@ export default function ProPlans({ userId, accountType, onPaid }) {
             <span className="pro-plan-ribbon">{isPro ? "Your plan" : "Best value"}</span>
             <h6 className="text-white fw-bold mb-3"><i className="bi bi-gem text-role me-2"></i>Premium</h6>
             <div className="d-flex align-items-baseline gap-2">
-              <span className="pro-plan-price text-role">{proPrice ? peso(proPrice.price) : "Premium"}</span>
+              <span className="pro-plan-price text-role">{proPrice ? inMyCurrency(proPrice.price) : "Premium"}</span>
               {proPrice && <span className="text-white-50 fs-7">for {proPrice.days} days</span>}
             </div>
-            {/* Charged in pesos; an estimate for someone who picked another currency. */}
+            {/* Paid in pesos (Xendit), said plainly to someone whose currency is not pesos. */}
             <PesoChargeNote amount={proPrice?.price} className="mt-1" />
             <div className="pro-plan-rule"></div>
             <ul className="pro-plan-features list-unstyled mb-4 flex-grow-1">

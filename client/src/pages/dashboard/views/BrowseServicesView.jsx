@@ -19,7 +19,7 @@ import RecommendationMarks from "../components/RecommendationMarks";
 import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
 import { SkeletonServiceCards, Busy } from "../../../components/Loaders";
-import { formatPrice } from "../../../lib/money";
+import { postedTitle, shownPrice, useMyCurrency } from "../../../lib/money";
 
 // withRecommendations (the client dashboard): the services the Hybrid
 // recommendation system picked ("Recommended for you", see lib/aiService.js)
@@ -30,6 +30,8 @@ export default function BrowseServicesView({ withRecommendations = false }) {
   // isAdmin is only set when this page is shown inside the admin panel
   // (Browse Services): admins get a Remove button instead of View offer.
   const { isAdmin } = useOutletContext();
+  // Prices are shown in the reader's own currency (Settings > My currency).
+  const moneyView = useMyCurrency();
   // The AI's picks (lib/useRecommendations.js): service id -> { position, reasons }.
   const recs = useRecommendations(withRecommendations);
   const picked = recs.picked;
@@ -159,9 +161,9 @@ export default function BrowseServicesView({ withRecommendations = false }) {
               <ProBadge pro={proIds.has(s.freelancer?.id)} />
             </p>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-              <span className="fw-bold text-role fs-7">
-                {/* Exactly as the freelancer posted it, in their currency (PLAN-currencies.md). */}
-                {s.price ? `From ${formatPrice(s.price, s.currency)}` : "Price on request"}
+              <span className="fw-bold text-role fs-7" title={s.price ? postedTitle(s.price, s.currency, moneyView) : undefined}>
+                {/* In the reader's own currency; the posted price is the hover text (PLAN-currencies.md). */}
+                {s.price ? `From ${shownPrice(s.price, s.currency, moneyView)}` : "Price on request"}
               </span>
               {isAdmin ? (
                 <button

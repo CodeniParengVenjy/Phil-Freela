@@ -22,7 +22,7 @@ import ReportDialog from "../components/ReportDialog";
 import ServiceReviews from "../components/ServiceReviews";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
-import { formatPrice } from "../../../lib/money";
+import { postedTitle, shownPrice, useMyCurrency } from "../../../lib/money";
 
 // One service offer (a "project offer"), opened from a card on Browse Services
 // or the AI search results, or from a freelancer's page. This is the only place
@@ -38,6 +38,8 @@ export default function ServiceDetailsView() {
 
 function ServiceDetails({ serviceId }) {
   const { currentUserId, accountType, openChat, showToast } = useOutletContext();
+  // The price is shown in the reader's own currency (Settings > My currency).
+  const moneyView = useMyCurrency();
   const navigate = useNavigate();
   const location = useLocation();
   // undefined while loading, null when there's no such offer (or it isn't shown
@@ -276,9 +278,12 @@ function ServiceDetails({ serviceId }) {
         <div className="mb-4">
           <div className="d-flex flex-wrap align-items-center gap-2">
             <span className="badge bg-role text-white px-3 py-2 rounded-pill"><i className={`bi ${category.icon} me-1`}></i>{category.label}</span>
-            {/* Exactly as the freelancer posted it, in their currency (PLAN-currencies.md). */}
-            <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill text-wrap text-start mw-100">
-              {service.price ? `Starting at ${formatPrice(service.price, service.currency)}` : "Price on request"}
+            {/* In the reader's own currency; the posted price is the hover text (PLAN-currencies.md). */}
+            <span
+              className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill text-wrap text-start mw-100"
+              title={service.price ? postedTitle(service.price, service.currency, moneyView) : undefined}
+            >
+              {service.price ? `Starting at ${shownPrice(service.price, service.currency, moneyView)}` : "Price on request"}
             </span>
             {isOriginalWork(service) && <OriginalBadge className="px-3 py-2" />}
             {/* What clients rated this offer (from the box further down). */}

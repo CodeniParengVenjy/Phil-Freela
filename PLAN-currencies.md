@@ -142,7 +142,28 @@ Search, offer and job pages, the user's own lists, the project Price box and the
 price only; Settings > Appearance "My currency"; the tour's offer-price step reworded. The Premium/Featured/ad pages
 keep the "You are charged ₱... in pesos" note until Part 2 replaces it. Checks: 31 + 18 + 15 + 31 + 6 browser checks.
 
-### Part 2 (PLANNED, waiting for the user's OK): Premium, Featured posts and ads in "My currency"
+## Third change, same day (2026-11-15): "Turn into my currency" (replaces "prices as posted")
+After Part 1 the user saw "₱200,000 per project" (the Nimloy job, really posted at ₱200,000 on 2026-10-20 by
+another account; a 2026-10-25 check already showed 200000.00 and the row was never edited) and asked to "fix the
+currency instead". Shown two pictures (no option marked as recommended this time), they chose "Turn into my
+currency": every price a person READS shows in their "My currency", worked out at the day's rate, one price only
+(Nimloy is "US$3,132 per project" for a dollar reader), and the posted price is only the hover text.
+- Converted: Find Jobs, Browse, Search, offer and job pages, offer cards, the person's own lists, the project's
+  Price box, the Book window's price line, and the Premium / Featured / ad prices.
+- Not converted, on purpose: money that is actually sent or received: the Payments box of a project, chat payment
+  cards, the record/pay windows, "you still owe", receipts, Settings > Purchases, the pay buttons for
+  Premium/Featured/ads ("Pay ₱99.00 online") and the admin pages. GCash only sends pesos, so a dollar figure there
+  could make someone send the wrong amount. Someone whose currency is not pesos sees "Paid in pesos: ₱149.00 by
+  GCash, Maya or QR Ph (Xendit takes pesos only)." on Premium and ads.
+- Code: shownPrice() / postedTitle() / useMyCurrency() in lib/money.js, budgetText(job, moneyView) and
+  budgetTitle() in jobTerms.js, priceText(..., moneyView) in projectPrice.js; the rates load when the dashboard opens.
+- Checks: 114 browser checks against the pretend backend (prices 34, look 19, Settings 15, payments 31, Premium /
+  ads / Feature window 15).
+
+Part 2 below was planned for "prices as posted". With prices now converted for reading, its per-currency price
+table is no longer needed; what is left of it is only charging US dollars by card (once Xendit turns USD on).
+
+### Part 2 (PLANNED for "prices as posted", now only the card part is left): Premium, Featured posts and ads in "My currency"
 
 What Xendit allows (checked 2026-11-15): a Philippine Xendit account charges PHP, and USD by CARD only, after
 USD is requested in the Xendit dashboard (Xendit says 7-10 business days). GCash, Maya and QR Ph are pesos only.
@@ -208,7 +229,8 @@ not be able to do (a later choice: let them pay the US-dollar price by card); ne
 ## Defaults I chose (change any)
 - The default currency of every box is the person's "My currency" (PHP until they pick another one), so a
   freelancer who does nothing changes nothing.
-- Since 2026-11-15 nothing is converted on the page: no "≈" estimates (the user's choice).
+- Since 2026-11-15 (third change) every price a person reads is converted to their "My currency", one price only,
+  no "≈"; money that is sent or received never is.
 - The "fully paid" and balance math never converts: it all happens inside one currency.
 - A project paid in another currency is not unlocked by an AI check; the freelancer's confirmation does it.
 

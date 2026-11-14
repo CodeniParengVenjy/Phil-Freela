@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import CurrencySelect from "../../../components/CurrencySelect";
 import { Busy } from "../../../components/Loaders";
-import { fetchDisplayCurrency, saveDisplayCurrency, setDisplayCurrency, useMoneyView } from "../../../lib/money";
+import { fetchDisplayCurrency, saveDisplayCurrency, setDisplayCurrency, useMyCurrency } from "../../../lib/money";
 
 // Settings > Appearance > "My currency" (PLAN-currencies.md, the user's choice on
-// 2026-11-15): the currency of what this person sets and pays. Their new job posts,
-// offers and payment requests start in it. Nothing is converted: other people's prices
-// always show exactly as they were posted. Saved on the profile, so it follows the
-// person to any device (lib/money.js).
+// 2026-11-15, "Turn into my currency"): every price on the site shows in it, worked out at
+// the day's rate, and the person's new job posts, offers and payment requests start in it.
+// Money that is sent or received stays in its own currency. Saved on the profile, so it
+// follows the person to any device (lib/money.js).
 export default function EstimateCurrencyForm({ userId, showToast }) {
-  const moneyView = useMoneyView();
+  const moneyView = useMyCurrency();
   // Nothing can be changed until the saved choice has loaded.
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -40,12 +40,18 @@ export default function EstimateCurrencyForm({ userId, showToast }) {
     showToast("Currency saved.");
   };
 
+  // The day the rates are from, for the explanation.
+  const ratesDay = moneyView.ratesAt
+    ? new Date(moneyView.ratesAt).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })
+    : null;
+
   return (
     <div>
       <h6 className="text-white fw-bold mb-1">My currency</h6>
       <p className="text-secondary fs-8 mb-3">
-        Your new job posts, offers and payment requests start in this currency (you can still pick another one each
-        time). Other people's prices always show exactly as they posted them.
+        Every price on PhilFreela shows in this currency, worked out at the day's rate{ratesDay ? ` (rates of ${ratesDay})` : ""}.
+        Your new job posts, offers and payment requests also start in it. Money you send or receive stays in the
+        currency it is sent in, for example pesos by GCash.
       </p>
       <div style={{ maxWidth: "22rem" }}>
         <CurrencySelect

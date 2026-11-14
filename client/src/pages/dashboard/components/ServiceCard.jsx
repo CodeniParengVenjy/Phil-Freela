@@ -3,7 +3,7 @@ import { getCategory } from "../../../lib/categories";
 import { itemSlides } from "../../../lib/slides";
 import RatingChip from "../../../components/RatingChip";
 import CensoredText from "../../../components/CensoredText";
-import { formatPrice } from "../../../lib/money";
+import { postedTitle, shownPrice, useMyCurrency } from "../../../lib/money";
 
 const mediaBox = { width: 64, height: 64 };
 
@@ -22,6 +22,8 @@ export default function ServiceCard({ service, onDelete, editTo, to, rating, foo
   // which is shown from the top of the page down.
   const isDocument = cover?.mediaType === "document";
   const coverPicture = isDocument ? cover.pages?.[0] : cover?.url;
+  // The price in the reader's own currency (Settings > My currency).
+  const moneyView = useMyCurrency();
 
   return (
     <div className={`p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 d-flex gap-3 align-items-center position-relative${to ? " hover-lift" : ""}`}>
@@ -48,8 +50,10 @@ export default function ServiceCard({ service, onDelete, editTo, to, rating, foo
           <RatingChip rating={rating} className="fs-8" />
         </div>
         <p className="text-secondary fs-8 mb-0">
-          {/* Exactly as it was posted, in its own currency (PLAN-currencies.md). */}
-          {service.price ? `Starting at ${formatPrice(service.price, service.currency)}` : "Price on request"}
+          {/* In the reader's own currency; the posted price is the hover text (PLAN-currencies.md). */}
+          <span title={service.price ? postedTitle(service.price, service.currency, moneyView) : undefined}>
+            {service.price ? `Starting at ${shownPrice(service.price, service.currency, moneyView)}` : "Price on request"}
+          </span>
           {" • "}{new Date(service.created_at).toLocaleDateString()}
           {service.updated_at && ` • Edited ${new Date(service.updated_at).toLocaleDateString()}`}
         </p>

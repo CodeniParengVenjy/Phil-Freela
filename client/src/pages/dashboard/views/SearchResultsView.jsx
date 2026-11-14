@@ -3,7 +3,7 @@ import { Link, useNavigate, useOutletContext, useSearchParams } from "react-rout
 import { supabase } from "../../../lib/supabaseClient";
 import { searchListings } from "../../../lib/aiService";
 import { getCategory } from "../../../lib/categories";
-import { budgetText } from "../../../lib/jobTerms";
+import { budgetText, budgetTitle } from "../../../lib/jobTerms";
 import { PICTURE_TYPES, checkPicture } from "../../../lib/pictureSearch";
 import { searchPeople } from "../../../lib/profile";
 import { profilePath } from "../../../lib/profileStats";
@@ -15,7 +15,7 @@ import Avatar from "../../../components/Avatar";
 import PictureSearchDialog from "../components/PictureSearchDialog";
 import CensoredText from "../../../components/CensoredText";
 import { Busy } from "../../../components/Loaders";
-import { formatPrice } from "../../../lib/money";
+import { postedTitle, shownPrice, useMyCurrency } from "../../../lib/money";
 
 const SERVICE_COLUMNS = "id, title, category, price, currency, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username)";
 const JOB_COLUMNS = "id, title, category, budget, budget_type, currency, client:profiles!job_posts_client_id_fkey(id, full_name, username)";
@@ -285,8 +285,11 @@ function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMes
   const owner = isService ? item.freelancer : item.client;
   const ownerName = owner?.full_name || owner?.username || (isService ? "Freelancer" : "Client");
   const category = getCategory(item.category);
-  // A service shows its price; a job its budget with what it counts ("per day").
-  const amount = isService ? (item.price ? formatPrice(item.price, item.currency) : "") : budgetText(item);
+  // A service shows its price; a job its budget with what it counts ("per day"). Both in
+  // the reader's own currency (Settings > My currency), the posted one as hover text.
+  const moneyView = useMyCurrency();
+  const amount = isService ? (item.price ? shownPrice(item.price, item.currency, moneyView) : "") : budgetText(item, moneyView);
+  const amountTitle = isService ? (item.price ? postedTitle(item.price, item.currency, moneyView) : undefined) : budgetTitle(item, moneyView);
   const isMine = owner?.id === currentUserId;
 
   return (
@@ -312,8 +315,8 @@ function ResultCard({ item, isService, rating, verifiedIds, currentUserId, onMes
             ) : ownerName}
             <VerifiedBadge verified={verifiedIds.has(owner?.id)} showUnverified={!isService && verifiedIds.ready} />
           </span>
-          {/* The price exactly as it was posted, in its own currency (PLAN-currencies.md). */}
-          {amount && <span className="text-warning">{amount}</span>}
+          {/* In the reader's own currency (PLAN-currencies.md). */}
+          {amount && <span className="text-warning" title={amountTitle}>{amount}</span>}
           <span className="badge bg-black text-light-50 text-wrap text-start">{category.label}</span>
           <RatingChip rating={rating} className="fs-8" />
         </div>

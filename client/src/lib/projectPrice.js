@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { currencyInfo, formatMoney, moneyRule, parseMoney } from "./money";
+import { currencyInfo, formatMoney, moneyRule, parseMoney, shownPrice } from "./money";
 
 // The agreed price of a project (PLAN-transaction-tracking.md, Step A), see
 // database/supabase_project_price_schema.sql. A project carries ONE price that
@@ -17,9 +17,12 @@ const BASIS_WORDS = { project: "for the whole project", day: "per day", month: "
 const SOURCE_WORDS = { service: "From the service", job: "From the job post", proposal: "Agreed in this project" };
 
 // "₱5,000.00 for the whole project", "US$800.00 per day". The same sentence the
-// database writes in its notifications (price_text()).
-export function priceText(amount, basis, currency) {
-  return `${formatMoney(amount, currency)} ${BASIS_WORDS[basis] || BASIS_WORDS.project}`;
+// database writes in its notifications (price_text()). With moneyView (useMyCurrency()),
+// the amount is in the reader's own currency, worked out at the day's rate
+// (PLAN-currencies.md, "Turn into my currency"); the payments stay in the project's.
+export function priceText(amount, basis, currency, moneyView = null) {
+  const shown = moneyView && (currency || "PHP") !== moneyView.display ? shownPrice(amount, currency, moneyView) : formatMoney(amount, currency);
+  return `${shown} ${BASIS_WORDS[basis] || BASIS_WORDS.project}`;
 }
 
 export function priceSourceText(source) {
@@ -33,10 +36,11 @@ export function usablePrice(value, currency) {
   return value != null && amount > 0 && amount <= currencyInfo(currency).max ? amount : null;
 }
 
-// The line in the Book window: the price the project would start with.
-export function bookingPriceLine(price, freelancerName, currency) {
+// The line in the Book window: the price the project would start with (in the reader's
+// currency when moneyView is given).
+export function bookingPriceLine(price, freelancerName, currency, moneyView = null) {
   const amount = usablePrice(price, currency);
-  if (amount) return `Price: ${priceText(amount, "project", currency)}. It becomes the project's price if ${freelancerName} accepts.`;
+  if (amount) return `Price: ${priceText(amount, "project", currency, moneyView)}. It becomes the project's price if ${freelancerName} accepts.`;
   return "This offer has no price. After it starts, you and the freelancer agree on one on the project page.";
 }
 

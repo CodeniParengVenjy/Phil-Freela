@@ -5,7 +5,7 @@ import { formatPeso } from "../../../lib/payments";
 import { onlinePaymentsReady, startFeatureCheckout } from "../../../lib/checkout";
 import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft } from "../../../lib/featured";
 import { Loader, Busy } from "../../../components/Loaders";
-import PesoChargeNote from "../../../components/PesoChargeNote";
+import { shownPrice, useMyCurrency } from "../../../lib/money";
 
 // "Feature this post" (PLAN-monetization.md, Step 4, and PLAN-premium.md): the
 // owner of an offer or an open job post pays for 3, 7 or 14 days in the
@@ -22,6 +22,7 @@ export default function PromoPayDialog({ target, userId, until, onClose }) {
   // else { prices, isPro, slots, online }.
   const [info, setInfo] = useState(undefined);
   const [code, setCode] = useState("feature_7");
+  const moneyView = useMyCurrency();
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -144,9 +145,10 @@ export default function PromoPayDialog({ target, userId, until, onClose }) {
                     disabled={sending}
                   >
                     <span>{option.days} days</span>
+                    {/* In the person's own currency (Settings > My currency); paid in pesos below. */}
                     <span className="fs-8">
-                      {formatPeso(priceOf(option))}
-                      {discounted && <s className="ms-1 opacity-75">{formatPeso(option.price)}</s>}
+                      {shownPrice(priceOf(option), "PHP", moneyView)}
+                      {discounted && <s className="ms-1 opacity-75">{shownPrice(option.price, "PHP", moneyView)}</s>}
                     </span>
                   </button>
                 );
@@ -156,11 +158,11 @@ export default function PromoPayDialog({ target, userId, until, onClose }) {
 
             <span className="form-label text-white-50 fw-semibold fs-7 d-block">2. Pay online</span>
             <div className="p-3 rounded-3 bg-black bg-opacity-25 border border-secondary border-opacity-25 mb-3">
+              {/* What is really charged: pesos, the only currency Xendit takes here (PLAN-currencies.md). */}
               <p className="mb-2 fs-7">
                 You pay <strong className="text-warning fs-6">{formatPeso(amount)}</strong> on Xendit's secure page with GCash, Maya or QR Ph.
+                {moneyView.display !== "PHP" && " Xendit takes pesos only."}
               </p>
-              {/* Charged in pesos; an estimate for someone who picked another currency (PLAN-currencies.md). */}
-              <PesoChargeNote amount={amount} className="mb-2" />
               <p className="text-secondary fs-8 mb-0">
                 Your post is Featured as soon as the payment goes through: no receipt and no waiting for an admin.
                 PhilFreela never sees your payment details.

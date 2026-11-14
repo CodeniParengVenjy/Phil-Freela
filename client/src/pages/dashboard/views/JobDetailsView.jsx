@@ -11,7 +11,8 @@ import { wakeAiService } from "../../../lib/aiService";
 import { MAX_NOTE_LENGTH, RESUME_ACCEPT, applicantsText, applyToJob, getMyApplicationForJob, openResume, resumeIcon, useApplicantCounts, withdrawApplication } from "../../../lib/applications";
 import { formatDay } from "../../../lib/projects";
 import { getBlockingLateProject } from "../../../lib/lateBlock";
-import { HIRES_FIELD, budgetText, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
+import { HIRES_FIELD, budgetText, budgetTitle, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
+import { useMyCurrency } from "../../../lib/money";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { TrustBadge } from "../../../components/TrustRing";
@@ -31,6 +32,8 @@ export default function JobDetailsView() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const { currentUserId, accountType, suspension, showToast, openChat } = useOutletContext();
+  // The budget is shown in the reader's own currency (Settings > My currency).
+  const moneyView = useMyCurrency();
   // undefined while loading, null when the job doesn't exist (or was removed).
   const [job, setJob] = useState(undefined);
   // The signed-in freelancer's application for this job (null = not applied).
@@ -321,11 +324,11 @@ export default function JobDetailsView() {
             <div className="d-flex flex-wrap align-items-center gap-2">
               <span className="badge bg-role text-white px-3 py-2 rounded-pill"><i className={`bi ${category.icon} me-1`}></i>{category.label}</span>
               <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className={`bi ${type.icon} me-1`}></i>{type.label}</span>
-              {/* "₱5,000 per project", per day or per month, exactly as the client posted it,
-                  in their currency (PLAN-currencies.md). */}
+              {/* "₱5,000 per project", per day or per month, in the reader's own currency; the
+                  posted budget is the hover text (PLAN-currencies.md). */}
               {budgetText(job) && (
-                <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill text-wrap text-start mw-100">
-                  Budget: {budgetText(job)}
+                <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill text-wrap text-start mw-100" title={budgetTitle(job, moneyView)}>
+                  Budget: {budgetText(job, moneyView)}
                 </span>
               )}
               {job.start_date && <span className="badge bg-secondary bg-opacity-50 text-white px-3 py-2 rounded-pill"><i className="bi bi-calendar-event me-1"></i>Starts {formatDay(job.start_date)}</span>}

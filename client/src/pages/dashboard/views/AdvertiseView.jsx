@@ -16,6 +16,7 @@ import MemberAdSlide from "../components/MemberAdSlide";
 import "../memberAds.css";
 import { Loader, Busy } from "../../../components/Loaders";
 import PesoChargeNote from "../../../components/PesoChargeNote";
+import { shownPrice, useMyCurrency } from "../../../lib/money";
 
 const inputClass = "form-control bg-secondary bg-opacity-25 border-secondary text-white py-2";
 const pill = (active) => `btn btn-sm rounded-pill px-3 fw-semibold ${active ? "btn-gradient-role text-white" : "btn-outline-secondary text-white-50"}`;
@@ -36,6 +37,8 @@ function previewButton(link) {
 export default function AdvertiseView() {
   const { currentUserId, displayName, showToast, suspension, isPro } = useOutletContext();
   const postingBlocked = isPostingBlocked(suspension);
+  // Ad prices show in the person's own currency (Settings > My currency).
+  const moneyView = useMyCurrency();
 
   const [isVerified, setIsVerified] = useState(null);
   // { prices } or { error }; undefined while loading.
@@ -305,15 +308,16 @@ export default function AdvertiseView() {
                         onClick={() => setCode(option.code)}
                       >
                         <span>{option.days} days</span>
+                        {/* In the person's own currency (Settings > My currency); paid in pesos. */}
                         <span className="fs-8">
-                          {formatPeso(adPrice(option, isPro))}
-                          {discounted && <s className="ms-1 opacity-75">{formatPeso(option.price)}</s>}
+                          {shownPrice(adPrice(option, isPro), "PHP", moneyView)}
+                          {discounted && <s className="ms-1 opacity-75">{shownPrice(option.price, "PHP", moneyView)}</s>}
                         </span>
                       </button>
                     );
                   })}
                 </div>
-                {/* Charged in pesos; an estimate for someone who picked another currency (PLAN-currencies.md). */}
+                {/* Paid in pesos (Xendit), said plainly to someone whose currency is not pesos. */}
                 {pickedOption && <PesoChargeNote amount={adPrice(pickedOption, isPro)} className="mb-1" />}
                 {isPro && <p className="text-success fs-8 mb-4"><i className="bi bi-gem me-1"></i>Premium price.</p>}
                 {!isPro && <p className="text-secondary fs-8 mb-4">Premium members pay half.</p>}

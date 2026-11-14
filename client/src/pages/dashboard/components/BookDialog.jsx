@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { MAX_BOOKING_NOTE_LENGTH, createBooking } from "../../../lib/bookings";
 import { getOwedProject } from "../../../lib/payBlock";
 import { bookingPriceLine } from "../../../lib/projectPrice";
+import { useMyCurrency } from "../../../lib/money";
 import { todayInManila } from "../../../lib/projects";
 import CensoredText from "../../../components/CensoredText";
 import { Busy } from "../../../components/Loaders";
@@ -23,6 +24,7 @@ export default function BookDialog({ target, onClose, onBooked }) {
   // The client is late paying this freelancer (PLAN-delays.md, Step 2): the popup
   // then says so instead of showing the form. null = nothing owed (or not checked).
   const [owed, setOwed] = useState(null);
+  const moneyView = useMyCurrency();
 
   useEffect(() => {
     if (!target?.freelancerId) return undefined;
@@ -149,7 +151,8 @@ export default function BookDialog({ target, onClose, onBooked }) {
           {target.freelancerName} gets your request and can accept or decline. If they accept, a project starts.
         </p>
         {/* The service's price now, which the database copies to the booking. */}
-        <p className="text-white-50 fs-8 mb-3" data-book-price>{bookingPriceLine(target.service.price, target.freelancerName, target.service.currency)}</p>
+        {/* In the reader's own currency (Settings > My currency); the project keeps the offer's. */}
+        <p className="text-white-50 fs-8 mb-3" data-book-price>{bookingPriceLine(target.service.price, target.freelancerName, target.service.currency, moneyView)}</p>
 
         {error && <p className="text-danger fs-7 mb-3">{error}</p>}
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { agreePrice, priceSourceText, priceText, proposePrice } from "../../../lib/projectPrice";
 import { Busy } from "../../../components/Loaders";
 import CurrencySelect from "../../../components/CurrencySelect";
-import { DEFAULT_CURRENCY } from "../../../lib/money";
+import { DEFAULT_CURRENCY, useMyCurrency } from "../../../lib/money";
 
 // The Price box of the project page (PLAN-transaction-tracking.md, Step A). A
 // project has ONE price. Usually it is already agreed when the project starts
@@ -25,7 +25,12 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
   const iProposed = project.price_proposed_by === currentUserId;
   const projectCurrency = project.currency || DEFAULT_CURRENCY;
   const currency = pickedCurrency ?? projectCurrency;
-  const text = status === "none" ? "" : priceText(project.agreed_amount, project.price_basis, projectCurrency);
+  // The price in the reader's own currency (Settings > My currency, PLAN-currencies.md);
+  // the project's own price (what payments are made in) is the hover text when it differs.
+  const moneyView = useMyCurrency();
+  const text = status === "none" ? "" : priceText(project.agreed_amount, project.price_basis, projectCurrency, moneyView);
+  const realText = status === "none" ? "" : priceText(project.agreed_amount, project.price_basis, projectCurrency);
+  const textTitle = text && text !== realText ? `${realText}: the project's price, which payments are made in` : undefined;
   // The form shows when there is no price, and when someone wants to change a proposal.
   const showForm = status === "none" || (status === "proposed" && editing);
 
@@ -71,7 +76,7 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
 
       {status === "agreed" && (
         <>
-          <div className="text-white fw-bold fs-5 text-break">{text}</div>
+          <div className="text-white fw-bold fs-5 text-break" title={textTitle}>{text}</div>
           <div className="text-secondary fs-8">
             {priceSourceText(project.price_source)}
             {project.price_agreed_at && ` • agreed on ${new Date(project.price_agreed_at).toLocaleDateString()}`}
@@ -85,14 +90,14 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
 
       {status === "proposed" && iProposed && (
         <p className="text-white-50 fs-7 mb-2">
-          You proposed <strong className="text-white">{text}</strong>. Waiting for {otherName} to agree.
+          You proposed <strong className="text-white" title={textTitle}>{text}</strong>. Waiting for {otherName} to agree.
         </p>
       )}
 
       {status === "proposed" && !iProposed && (
         <>
           <p className="text-white-50 fs-7 mb-2">
-            {otherName} proposed <strong className="text-white">{text}</strong>.
+            {otherName} proposed <strong className="text-white" title={textTitle}>{text}</strong>.
           </p>
           {!showForm && (
             <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={handleAgree} disabled={working}>

@@ -1,4 +1,4 @@
-import { formatPrice } from "./money";
+import { formatPrice, postedTitle, shownPrice } from "./money";
 import { formatDay, todayInManila } from "./projects";
 
 // The words and rules for a client's job post (PLAN-posting-job.md), shared by
@@ -67,16 +67,22 @@ export function getJobType(value) {
   return JOB_TYPES.find((type) => type.value === value) || JOB_TYPES[0];
 }
 
-// What a budget counts, as words: "per project", "per day", "per month" ("" if unknown).
-export const budgetUnit = (job) => BUDGET_TYPES.find((type) => type.value === job.budget_type)?.unit || "";
-
 // "₱5,000 per project", "US$250.50 per day", or "" when the client gave no amount.
-// The budget is in the post's own currency (PLAN-currencies.md); a whole amount is
-// written without cents, like before.
-export function budgetText(job) {
+// Without moneyView: in the post's own currency, as the client typed it (a whole amount
+// without cents). With moneyView (useMyCurrency()): in the reader's own currency, worked
+// out at the day's rate (PLAN-currencies.md, "Turn into my currency").
+export function budgetText(job, moneyView = null) {
   if (!job.budget) return "";
   const unit = BUDGET_TYPES.find((type) => type.value === job.budget_type)?.unit;
-  return `${formatPrice(job.budget, job.currency)}${unit ? ` ${unit}` : ""}`;
+  const amount = moneyView ? shownPrice(job.budget, job.currency, moneyView) : formatPrice(job.budget, job.currency);
+  return `${amount}${unit ? ` ${unit}` : ""}`;
+}
+
+// The hover text of a budget shown in the reader's currency: "₱200,000 per project as
+// posted", or undefined when it already shows as posted.
+export function budgetTitle(job, moneyView) {
+  if (!job.budget || !postedTitle(job.budget, job.currency, moneyView)) return undefined;
+  return `${budgetText(job)} as posted`;
 }
 
 // "Starts 10/25/2026 • Due 11/15/2026" ("" for a post without dates).
