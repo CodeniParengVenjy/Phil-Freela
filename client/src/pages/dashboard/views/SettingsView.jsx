@@ -469,7 +469,7 @@ export default function SettingsView() {
               currentUserId ? (
                 <>
                   <AppearanceForm userId={currentUserId} accountType={accountType} showToast={showToast} />
-                  {/* The currency of the "≈" estimates next to prices (PLAN-currencies.md). */}
+                  {/* "My currency": what new posts, offers and requests start in (PLAN-currencies.md). */}
                   <hr className="border-secondary my-4" />
                   <EstimateCurrencyForm userId={currentUserId} showToast={showToast} />
                 </>

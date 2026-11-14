@@ -22,8 +22,6 @@ import ReportDialog from "../components/ReportDialog";
 import ServiceReviews from "../components/ServiceReviews";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
-import MoneyEstimate from "../../../components/MoneyEstimate";
-import ShownPrice from "../../../components/ShownPrice";
 import { formatPrice } from "../../../lib/money";
 
 // One service offer (a "project offer"), opened from a card on Browse Services
@@ -278,17 +276,9 @@ function ServiceDetails({ serviceId }) {
         <div className="mb-4">
           <div className="d-flex flex-wrap align-items-center gap-2">
             <span className="badge bg-role text-white px-3 py-2 rounded-pill"><i className={`bi ${category.icon} me-1`}></i>{category.label}</span>
-            {/* A client sees the price in their own currency, big, with the posted one small
-                (PLAN-currencies.md); the freelancer who posted it sees what they posted. */}
+            {/* Exactly as the freelancer posted it, in their currency (PLAN-currencies.md). */}
             <span className="badge bg-secondary bg-opacity-50 text-warning px-3 py-2 rounded-pill text-wrap text-start mw-100">
-              {!service.price ? "Price on request" : isOwnOffer ? (
-                <>
-                  Starting at {formatPrice(service.price, service.currency)}
-                  <MoneyEstimate amount={service.price} currency={service.currency} className="ms-1" />
-                </>
-              ) : (
-                <ShownPrice amount={service.price} currency={service.currency} before="Starting at " />
-              )}
+              {service.price ? `Starting at ${formatPrice(service.price, service.currency)}` : "Price on request"}
             </span>
             {isOriginalWork(service) && <OriginalBadge className="px-3 py-2" />}
             {/* What clients rated this offer (from the box further down). */}

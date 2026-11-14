@@ -17,7 +17,6 @@ import PromoPayDialog from "../components/PromoPayDialog";
 import HiredFreelancers from "../components/HiredFreelancers";
 import CensoredText from "../../../components/CensoredText";
 import CurrencySelect from "../../../components/CurrencySelect";
-import MoneyEstimate from "../../../components/MoneyEstimate";
 import { Loader, Busy } from "../../../components/Loaders";
 import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney, useMoneyView } from "../../../lib/money";
 
@@ -746,7 +745,6 @@ export default function PostNeedView() {
                     </div>
                     <p className="text-secondary fs-8 mb-0">
                       {budgetText(p) || "Budget flexible"}
-                      {p.budget ? <MoneyEstimate amount={p.budget} currency={p.currency} className="ms-1" /> : null}
                       {" • "}{new Date(p.created_at).toLocaleDateString()}
                       {p.updated_at && ` • Edited ${new Date(p.updated_at).toLocaleDateString()}`}
                     </p>

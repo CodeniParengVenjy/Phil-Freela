@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { getCategory } from "../../../lib/categories";
-import { budgetUnit, datesText, getJobType } from "../../../lib/jobTerms";
+import { budgetText, datesText, getJobType } from "../../../lib/jobTerms";
 import { removeListing } from "../../../lib/adminListings";
 import { byPick, useRecommendations } from "../../../lib/useRecommendations";
 import { useVerifiedIds } from "../../../lib/useVerifiedIds";
@@ -18,7 +18,6 @@ import RecommendationMarks from "../components/RecommendationMarks";
 import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
 import { SkeletonJobRows, Busy } from "../../../components/Loaders";
-import ShownPrice from "../../../components/ShownPrice";
 
 // The pills above the list: all posts, or only one-time projects, or only ongoing jobs.
 const TYPE_FILTERS = [
@@ -152,12 +151,9 @@ export default function FindJobsView({ withRecommendations = false }) {
             {/* text-wrap: a long category name goes to a second line on a phone. */}
             <span className="badge bg-black text-light text-wrap text-start px-3 py-1 rounded-pill">{categoryLabel}</span>
             <span className="badge bg-role-subtle text-role px-3 py-1 rounded-pill">{getJobType(job.job_type).short}</span>
-            {/* The budget in the viewer's currency, big, and the posted one small (PLAN-currencies.md). */}
-            {job.budget ? (
-              <span className="text-warning">
-                <ShownPrice amount={job.budget} currency={job.currency} after={budgetUnit(job) ? ` ${budgetUnit(job)}` : ""} />
-              </span>
-            ) : null}
+            {/* The budget exactly as the client posted it, in their currency: "US$24 per project"
+                (PLAN-currencies.md, the user's choice on 2026-11-15: no converting). */}
+            {budgetText(job) && <span className="text-warning">{budgetText(job)}</span>}
           </div>
           {/* When the work starts and is due, and how many freelancers applied
               (no count until the database answers). */}

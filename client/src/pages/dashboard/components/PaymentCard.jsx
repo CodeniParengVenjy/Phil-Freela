@@ -4,7 +4,6 @@ import {
   isShortPayment, markNotReceived, methodLabel, openReceipt, paymentBadge, readReceiptScreenshot, recordChatPayment, recordOtherChatPayment, waitingDays
 } from "../../../lib/payments";
 import { DEFAULT_CURRENCY, currencyInfo, formatMoney } from "../../../lib/money";
-import MoneyEstimate from "../../../components/MoneyEstimate";
 import ReceiptCheckNote from "./ReceiptCheckNote";
 import ReceiptReady from "./ReceiptReady";
 import RecordPaymentDialog from "./RecordPaymentDialog";
@@ -134,8 +133,6 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         {cash(payment.amount)}
         {tip > 0 && <span className="text-white-50 fw-normal fs-8 ms-2">incl. {cash(tip)} tip</span>}
       </div>
-      {/* About how much in the viewer's currency, for a request in another one. */}
-      <MoneyEstimate amount={payment.amount} currency={currency} className="fs-8 d-block mt-1" />
       {payment.note && <p className="text-white-50 fs-7 mb-0 mt-1 text-break">{payment.note}</p>}
 
       {/* The person asked to pay: where to send it. */}

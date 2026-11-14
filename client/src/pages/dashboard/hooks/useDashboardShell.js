@@ -124,7 +124,7 @@ export function useDashboardShell() {
       rememberAppearance(saved);
       applyAppearance(saved);
     });
-    // The currency the "≈" estimates are shown in (PLAN-currencies.md), the same way.
+    // The person's own currency, "My currency" in Settings (PLAN-currencies.md), the same way.
     fetchDisplayCurrency(currentUserId).then((saved) => {
       if (active && saved) setDisplayCurrency(saved);
     });

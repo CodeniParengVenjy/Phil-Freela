@@ -125,6 +125,23 @@ The user saw "₱200,000 per project ≈ US$3,132" on Find Jobs and said it "hav
   viewer's "Show estimates in" currency instead of PHP (they can still change it).
 - Checks: 18/18 new browser checks, and the earlier 31 + 31 + 6 + 16 all still pass.
 
+## Second change, same day (2026-11-15): prices as posted, nothing converted
+The user: "you made it the currency incorrect ... I wanted that a currency can be changed in all aspects, not
+converting something only ... some of the client projects where it is not in their original price". Nothing in
+the database had changed (all 14 job posts, 6 offers, projects and payments were still pesos; only the user's own
+account had picked USD), so what they saw was the "your currency big" display. Their two answers:
+- "Prices as posted + subscription in my currency": every price shows exactly as it was posted, in its own
+  currency ("US$24 per project", "₱200,000"), for everyone. No "≈" estimates anywhere. The currency in Settings
+  is renamed "My currency": the person's new job posts, offers and payment requests start in it, and (Part 2
+  below) Premium, Featured posts and ads are shown and charged in it.
+- "By card in their currency": each currency gets its own Premium/Featured/ad price. Until the Xendit account
+  can take that currency by card, those buyers pay the peso price by GCash, Maya or QR Ph, and the page says so.
+
+Part 1, website only (this commit): ShownPrice.jsx and MoneyEstimate.jsx removed; Find Jobs, Browse, Search, offer
+and job pages, the user's own lists, the project Price box and the chat payment card show the posted price only;
+Settings > Appearance "My currency"; the tour's offer-price step reworded. The Premium/Featured/ad pages keep the
+"You are charged ₱... in pesos" note until Part 2 replaces it. Checks: 31 + 18 + 15 + 31 + 6 browser checks pass.
+
 ## Defaults I chose (change any)
 - The default currency of every box is PHP, so a freelancer who does nothing changes nothing.
 - Estimates are labelled "≈" and "rates update daily"; they are only a guide, never what is owed.

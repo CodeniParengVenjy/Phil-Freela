@@ -2,10 +2,9 @@ import { useSyncExternalStore } from "react";
 import { supabase } from "./supabaseClient";
 
 // Any currency (PLAN-currencies.md). Every price, budget and payment between a client
-// and a freelancer keeps its own currency: whoever writes the price picks it. Other
-// people also see a small estimate in the currency they picked in Settings
-// ("≈ ₱2,900"). An estimate is only a guide: what anyone owes is always the amount in
-// its own currency.
+// and a freelancer keeps its own currency: whoever writes the price picks it, and
+// everyone sees it exactly as it was written ("US$24 per project"), never converted
+// (the user's choice on 2026-11-15).
 //
 // The list is the same 30 rows as the database table public.currencies
 // (database/supabase_currencies_schema.sql), and amounts are written the same way as
@@ -112,12 +111,14 @@ export function moneyRule(code = DEFAULT_CURRENCY) {
 export const moneyStep = (code) => (currencyInfo(code).decimals === 0 ? "1" : "0.01");
 export const moneyMax = (code) => currencyInfo(code).max;
 
-// ---- The viewer's estimates ---------------------------------------------------
+// ---- The person's own currency ------------------------------------------------
 
-// Shared by every component that shows an estimate: the currency the viewer picked
-// (Settings > Appearance > "Show estimates in"), the daily rates (how much of each
-// currency one peso buys) and the day they are from. A component reads it with
-// useMoneyView() and redraws when it changes.
+// Shared by every component that needs it: the person's own currency (Settings >
+// Appearance > "My currency", the currency their new posts, offers and requests start
+// in), the daily rates (how much of each currency one peso buys) and the day they are
+// from. Prices are never converted on the page (the user's choice on 2026-11-15); the
+// rates are only read for the peso-charge note on Premium, Featured posts and ads.
+// A component reads it with useMoneyView() and redraws when it changes.
 const DISPLAY_KEY = "philfreela-display-currency";
 
 function readSavedDisplay() {
@@ -145,8 +146,8 @@ function subscribe(listener) {
 
 export const useMoneyView = () => useSyncExternalStore(subscribe, () => view);
 
-// The rates are loaded once per visit, the first time an estimate is needed. If that
-// fails the estimates just don't show, and the next one tries again.
+// The rates are loaded once per visit, the first time a peso-charge note needs them. If
+// that fails the note just doesn't show, and the next one tries again.
 let ratesLoad = null;
 export function loadRates() {
   ratesLoad ??= supabase
@@ -181,23 +182,6 @@ export function estimateText(amount, from, moneyView = view) {
   const value = convertMoney(amount, from, to, moneyView.rates);
   if (value == null || !Number.isFinite(value)) return "";
   return `≈ ${formatMoney(value, to, { whole: value >= 100 })}`;
-}
-
-// A posted price as it is shown on browse lists, search, and offer and job pages (the
-// user's choice, 2026-11-15: "your currency big"):
-//   { main: "≈ US$3,132", posted: "₱200,000" }  in the viewer's currency, as an estimate,
-//                                              with the real posted price kept small
-//   { main: "₱200,000", posted: null }          already in the viewer's currency, or the
-//                                              rates haven't loaded yet
-// A price with no currency (an older query) counts as pesos.
-export function shownPrice(amount, currency, moneyView = view) {
-  const from = currency || DEFAULT_CURRENCY;
-  const real = formatPrice(amount, from);
-  const to = moneyView.display;
-  if (from === to) return { main: real, posted: null };
-  const value = convertMoney(amount, from, to, moneyView.rates);
-  if (value == null || !Number.isFinite(value)) return { main: real, posted: null };
-  return { main: `≈ ${formatMoney(value, to, { whole: value >= 100 })}`, posted: real };
 }
 
 // The viewer's choice: kept in this browser (so it shows at once next time) and on

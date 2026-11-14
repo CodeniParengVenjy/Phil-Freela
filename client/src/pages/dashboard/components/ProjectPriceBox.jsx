@@ -2,7 +2,6 @@ import { useState } from "react";
 import { agreePrice, priceSourceText, priceText, proposePrice } from "../../../lib/projectPrice";
 import { Busy } from "../../../components/Loaders";
 import CurrencySelect from "../../../components/CurrencySelect";
-import MoneyEstimate from "../../../components/MoneyEstimate";
 import { DEFAULT_CURRENCY } from "../../../lib/money";
 
 // The Price box of the project page (PLAN-transaction-tracking.md, Step A). A
@@ -27,8 +26,6 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
   const projectCurrency = project.currency || DEFAULT_CURRENCY;
   const currency = pickedCurrency ?? projectCurrency;
   const text = status === "none" ? "" : priceText(project.agreed_amount, project.price_basis, projectCurrency);
-  // About how much in the viewer's currency, after the price.
-  const estimate = status === "none" ? null : <MoneyEstimate amount={project.agreed_amount} currency={projectCurrency} className="ms-1 fs-8" />;
   // The form shows when there is no price, and when someone wants to change a proposal.
   const showForm = status === "none" || (status === "proposed" && editing);
 
@@ -74,7 +71,7 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
 
       {status === "agreed" && (
         <>
-          <div className="text-white fw-bold fs-5 text-break">{text}{estimate}</div>
+          <div className="text-white fw-bold fs-5 text-break">{text}</div>
           <div className="text-secondary fs-8">
             {priceSourceText(project.price_source)}
             {project.price_agreed_at && ` • agreed on ${new Date(project.price_agreed_at).toLocaleDateString()}`}
@@ -88,14 +85,14 @@ export default function ProjectPriceBox({ project, currentUserId, otherName, sho
 
       {status === "proposed" && iProposed && (
         <p className="text-white-50 fs-7 mb-2">
-          You proposed <strong className="text-white">{text}</strong>{estimate}. Waiting for {otherName} to agree.
+          You proposed <strong className="text-white">{text}</strong>. Waiting for {otherName} to agree.
         </p>
       )}
 
       {status === "proposed" && !iProposed && (
         <>
           <p className="text-white-50 fs-7 mb-2">
-            {otherName} proposed <strong className="text-white">{text}</strong>{estimate}.
+            {otherName} proposed <strong className="text-white">{text}</strong>.
           </p>
           {!showForm && (
             <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={handleAgree} disabled={working}>

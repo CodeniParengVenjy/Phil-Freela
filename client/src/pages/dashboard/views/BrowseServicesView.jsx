@@ -19,7 +19,7 @@ import RecommendationMarks from "../components/RecommendationMarks";
 import FeaturedHeading, { FeaturedBadge } from "../components/FeaturedMarks";
 import CensoredText from "../../../components/CensoredText";
 import { SkeletonServiceCards, Busy } from "../../../components/Loaders";
-import ShownPrice from "../../../components/ShownPrice";
+import { formatPrice } from "../../../lib/money";
 
 // withRecommendations (the client dashboard): the services the Hybrid
 // recommendation system picked ("Recommended for you", see lib/aiService.js)
@@ -160,8 +160,8 @@ export default function BrowseServicesView({ withRecommendations = false }) {
             </p>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
               <span className="fw-bold text-role fs-7">
-                {/* In the viewer's currency, big, with the posted price small (PLAN-currencies.md). */}
-                {s.price ? <ShownPrice amount={s.price} currency={s.currency} before="From " /> : "Price on request"}
+                {/* Exactly as the freelancer posted it, in their currency (PLAN-currencies.md). */}
+                {s.price ? `From ${formatPrice(s.price, s.currency)}` : "Price on request"}
               </span>
               {isAdmin ? (
                 <button
