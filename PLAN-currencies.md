@@ -137,19 +137,84 @@ account had picked USD), so what they saw was the "your currency big" display. T
 - "By card in their currency": each currency gets its own Premium/Featured/ad price. Until the Xendit account
   can take that currency by card, those buyers pay the peso price by GCash, Maya or QR Ph, and the page says so.
 
-Part 1, website only (this commit): ShownPrice.jsx and MoneyEstimate.jsx removed; Find Jobs, Browse, Search, offer
-and job pages, the user's own lists, the project Price box and the chat payment card show the posted price only;
-Settings > Appearance "My currency"; the tour's offer-price step reworded. The Premium/Featured/ad pages keep the
-"You are charged ₱... in pesos" note until Part 2 replaces it. Checks: 31 + 18 + 15 + 31 + 6 browser checks pass.
+Part 1, website only (0012f29, live 2026-11-15): ShownPrice.jsx and MoneyEstimate.jsx removed; Find Jobs, Browse,
+Search, offer and job pages, the user's own lists, the project Price box and the chat payment card show the posted
+price only; Settings > Appearance "My currency"; the tour's offer-price step reworded. The Premium/Featured/ad pages
+keep the "You are charged ₱... in pesos" note until Part 2 replaces it. Checks: 31 + 18 + 15 + 31 + 6 browser checks.
+
+### Part 2 (PLANNED, waiting for the user's OK): Premium, Featured posts and ads in "My currency"
+
+What Xendit allows (checked 2026-11-15): a Philippine Xendit account charges PHP, and USD by CARD only, after
+USD is requested in the Xendit dashboard (Xendit says 7-10 business days). GCash, Maya and QR Ph are pesos only.
+No other currency can be charged. The USD card fee is 4.30% + US$1.00 (local card) or 5.00% + US$1.00 (foreign card).
+Sources: help.xendit.co/hc/en-us/articles/360035083551, docs.xendit.co/docs/cards-8, xendit.co/en/pricing.
+
+What a person sees:
+- The Premium page, the Feature window and the Advertise page show every price in their "My currency":
+  "US$2.49 for 30 days", "€2.49", "¥380".
+- Under it, one line says how it is paid:
+  * pesos: "Pay with GCash, Maya or QR Ph." (as today)
+  * a currency PhilFreela can charge by card (only USD can ever be, and only after Xendit turns it on):
+    "You pay US$2.49 by card."
+  * any other currency, or USD before Xendit turns it on: "Paying in euros isn't possible yet. For now you pay
+    ₱149 by GCash, Maya or QR Ph." The peso price is what is charged.
+- Settings > Purchases, the PDF receipts and the admin Earnings show each purchase in the currency it was paid in
+  (Earnings: the peso total plus one line per other currency, never converted).
+- Sponsored billboard links (made by the super admin for a sponsor with no account) stay in pesos.
+
+Prices (my default, change any): the peso price times today's rate, rounded UP to a nice price (x.49 / x.99;
+whole numbers for yen, won, rupiah and dong), written ONCE, so they do not move with the rate. A card price is
+never below US$1.49, because under that Xendit's US$1.00 fee eats the whole price. In US dollars:
+
+| Option | Price | Premium member price |
+|---|---|---|
+| Premium, 30 days (₱149) | US$2.49 | - |
+| Featured 3 days (₱49 / ₱25) | US$1.49 (raised from US$0.99) | US$1.49 (raised from US$0.49) |
+| Featured 7 days (₱99 / ₱50) | US$1.99 | US$1.49 (raised from US$0.99) |
+| Featured 14 days (₱179 / ₱90) | US$2.99 | US$1.49 |
+| Ad 3 days (₱149 / ₱75) | US$2.49 | US$1.49 |
+| Ad 7 days (₱299 / ₱150) | US$4.99 | US$2.49 |
+| Ad 14 days (₱499 / ₱250) | US$7.99 | US$3.99 |
+
+Examples of the same rule: Premium is €2.49, £1.99, ¥380, A$3.49, S$3.49, ₩3,200, ₹229, Rp43,000.
+
+Steps (each one live and checked before the next):
+- 2a. Database (one migration; asked for with "Apply Part 2 database now"). Nothing on the site changes yet:
+  * new table promo_currency_prices (option code, currency, price, Premium member price) with the 29 non-peso
+    currencies; pesos stay in promo_prices. Signed-in people can read it; nobody writes it from the website.
+  * currencies.card_on (default off): "Xendit can charge this currency by card". Only turned on, with one SQL
+    line, after Xendit approved USD and a test payment passed (step 2d).
+  * a currency column (default PHP) on online_checkouts and promotions.
+  * start_online_checkout, start_feature_checkout and start_ad_checkout read the person's "My currency": when it
+    is card_on they save that currency's price, otherwise the peso price as today. Same names and inputs, so the
+    live payment function keeps working; since every card_on starts off, everything stays pesos until 2d.
+  * finish_online_checkout copies the currency into promotions; admin_promo_earnings adds a total per currency.
+- 2b. Edge Functions (deployed only after the user's go, naming them): pro-checkout v4 sends the checkout's
+  currency to Xendit and allows CARDS for a non-peso one (GCash, Maya, QR Ph for pesos, as today);
+  _shared/payments.ts checks that what Xendit was paid is the checkout's own currency, not always PHP, so
+  xendit-webhook is deployed again too.
+- 2c. Website: lib/promoPrices.js; ProPlans, PromoPayDialog and AdvertiseView show the price in "My currency"
+  with the line above; PesoChargeNote and the rates loading leave the website; Purchases, PDF receipts and the
+  admin Earnings use each purchase's currency; Settings "My currency" adds "Premium, Featured posts and ads show
+  their price in it."
+- 2d. After Xendit approves USD: a test-mode payment with Xendit's test card, then USD card_on (the user's go).
+
+What only the user can do (Xendit dashboard): turn on Cards, then request USD for cards. Until Xendit says yes,
+dollar buyers see "Paying in US dollars isn't possible yet" and pay the peso price.
+
+Honest limits: the other 28 currencies only ever show their own price and pay in pesos, which someone abroad may
+not be able to do (a later choice: let them pay the US-dollar price by card); never tried with a real card.
 
 ## Defaults I chose (change any)
-- The default currency of every box is PHP, so a freelancer who does nothing changes nothing.
-- Estimates are labelled "≈" and "rates update daily"; they are only a guide, never what is owed.
+- The default currency of every box is the person's "My currency" (PHP until they pick another one), so a
+  freelancer who does nothing changes nothing.
+- Since 2026-11-15 nothing is converted on the page: no "≈" estimates (the user's choice).
 - The "fully paid" and balance math never converts: it all happens inside one currency.
 - A project paid in another currency is not unlocked by an AI check; the freelancer's confirmation does it.
 
 ## Not in this plan
-- Real charging in other currencies (needs a gateway like Stripe/PayPal, an account and live tests).
+- Charging PhilFreela's own fees in currencies other than PHP and USD (Xendit Philippines can't; it would need
+  another gateway like Stripe or PayPal). USD by card is Part 2 above.
 - All 160 currencies, or converting a price after it was agreed.
 - Old rows, old notifications and old receipts stay peso (they were peso).
 
