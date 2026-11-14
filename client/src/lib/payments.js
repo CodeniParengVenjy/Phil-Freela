@@ -1,5 +1,5 @@
 import { readReceipt } from "./aiService";
-import { currencyInfo, formatMoney, parseMoney } from "./money";
+import { DEFAULT_CURRENCY, currencyInfo, formatMoney, parseMoney } from "./money";
 import { todayInManila } from "./projects";
 import { supabase } from "./supabaseClient";
 import { shrinkImage } from "./shrinkImage";
@@ -367,7 +367,7 @@ export async function getPayDetails(projectId) {
   return { data: data?.[0] || null };
 }
 
-const PAYMENT_FIELDS = "id, project_id, conversation_id, client_id, freelancer_id, amount, tip_amount, received_amount, note, reference_no, receipt_path, status, created_at, answered_at, paid_at, receipt_initials, ai_verdict, ai_reasons";
+const PAYMENT_FIELDS = "id, project_id, conversation_id, client_id, freelancer_id, amount, currency, method, tip_amount, received_amount, note, reference_no, receipt_path, status, created_at, answered_at, paid_at, receipt_initials, ai_verdict, ai_reasons";
 
 // The payments of one project, newest first: { data } or { error }.
 export async function listProjectPayments(projectId) {
@@ -390,7 +390,7 @@ export async function listPaymentsOfProjects(projectIds) {
   if (!projectIds.length) return { data: {} };
   const { data, error } = await supabase
     .from("payments")
-    .select("project_id, amount, tip_amount, received_amount, status")
+    .select("project_id, amount, currency, tip_amount, received_amount, status")
     .in("project_id", projectIds);
   if (error) {
     console.error("Loading the payments of the projects failed:", error);
@@ -485,15 +485,17 @@ export function watchProjectPayments(projectId, onChange) {
 
 export const MAX_PAYMENT_NOTE_LENGTH = 100;
 
-// "Request payment": the freelancer asks the other person in the chat to pay.
-// The database writes the card into the chat and tells them. Returns { id } or
-// { error } (the database's own sentence for a refusal, like "Add your GCash
-// details in Settings first...").
-export async function requestPayment({ conversationId, amount, note }) {
+// "Request payment": the freelancer asks the other person in the chat to pay, in a
+// currency (PLAN-currencies.md: pesos need GCash details, any other currency the
+// other payment details). The database writes the card into the chat and tells
+// them. Returns { id } or { error } (the database's own sentence for a refusal,
+// like "Add your GCash details in Settings first...").
+export async function requestPayment({ conversationId, amount, note, currency = DEFAULT_CURRENCY }) {
   const { data, error } = await supabase.rpc("request_payment", {
     target_conversation: conversationId,
     req_amount: amount,
-    req_note: note || null
+    req_note: note || null,
+    req_currency: currency
   });
   if (error) {
     console.error("Requesting the payment failed:", error);
@@ -535,6 +537,143 @@ export async function recordChatPayment({ paymentId, checkId, tip = 0 }) {
     return { error: plainMessage(error, "Couldn't record that payment. Please try again.") };
   }
   return { id: paymentId };
+}
+
+// ---------------------------------------------------------------------------
+// Payments in any other currency (PLAN-currencies.md, Step 5)
+// ---------------------------------------------------------------------------
+
+// Pesos go by GCash and its AI receipt check. A price in any other currency is paid
+// some other way, chosen by the client when they record it. The same list as the
+// database (payments_method_check).
+export const PAYMENT_METHODS = [
+  { value: "paypal", label: "PayPal" },
+  { value: "wise", label: "Wise" },
+  { value: "bank", label: "Bank transfer" },
+  { value: "payoneer", label: "Payoneer" },
+  { value: "remittance", label: "Remittance (Western Union, Remitly...)" },
+  { value: "other", label: "Other" }
+];
+
+// "PayPal", "Bank transfer"... An older payment has no method: it was GCash.
+export const methodLabel = (method) =>
+  !method || method === "gcash" ? "GCash" : PAYMENT_METHODS.find((m) => m.value === method)?.label.replace(/ \(.*\)$/, "") || "Other";
+
+// The transaction number of a PayPal, Wise or bank payment: 4 to 60 letters, numbers,
+// #, /, ., _ or -, spaces left out. The same rule as the database.
+export const tidyTransactionNumber = (input) => String(input ?? "").replace(/\s/g, "");
+export const isValidTransactionNumber = (input) => /^[A-Za-z0-9#/._-]{4,60}$/.test(tidyTransactionNumber(input));
+
+// Sends the client's screenshot to the private receipts folder ("<their id>/...").
+// Returns { path } or { error }. A big picture is redrawn smaller first.
+export async function uploadReceipt(userId, file) {
+  const problem = checkReceiptFile(file);
+  if (problem) return { error: problem };
+  try {
+    const picture = file.size > MAX_READ_BYTES ? await shrinkImage(file, 2000) : file;
+    const extension = picture.type === "image/png" ? "png" : picture.type === "image/webp" ? "webp" : "jpg";
+    const path = `${userId}/${Date.now()}-receipt.${extension}`;
+    const { error } = await supabase.storage.from(RECEIPT_BUCKET).upload(path, picture, { contentType: picture.type, upsert: false });
+    if (error) throw error;
+    return { path };
+  } catch (error) {
+    console.error("Uploading the receipt failed:", error);
+    return { error: "Couldn't upload the screenshot. Please try again." };
+  }
+}
+
+// "I've paid" on a project priced in another currency: the client types the amount,
+// the tip, how it was sent and the transaction number, with a screenshot. The
+// database checks them like a GCash payment (what is left to pay, the tip rule) but
+// there is no AI check; the freelancer's answer is the check. { id } or { error }.
+export async function recordOtherPayment({ projectId, amount, tip = 0, method, reference, receiptPath }) {
+  const { data, error } = await supabase.rpc("record_other_payment", {
+    target_project: projectId,
+    pay_amount: amount,
+    pay_tip: tip,
+    pay_method: method,
+    pay_reference: tidyTransactionNumber(reference),
+    pay_receipt_path: receiptPath
+  });
+  if (error) {
+    console.error("Recording the payment failed:", error);
+    return { error: plainMessage(error, "Couldn't record that payment. Please try again.") };
+  }
+  return { id: data };
+}
+
+// The same for a chat payment request in another currency. { id } or { error }.
+export async function recordOtherChatPayment({ paymentId, amount, tip = 0, method, reference, receiptPath }) {
+  const { error } = await supabase.rpc("record_other_chat_payment", {
+    target_payment: paymentId,
+    pay_amount: amount,
+    pay_tip: tip,
+    pay_method: method,
+    pay_reference: tidyTransactionNumber(reference),
+    pay_receipt_path: receiptPath
+  });
+  if (error) {
+    console.error("Recording the chat payment failed:", error);
+    return { error: plainMessage(error, "Couldn't record that payment. Please try again.") };
+  }
+  return { id: paymentId };
+}
+
+// Where to send a payment in another currency (the freelancer's own words, like
+// "PayPal: ana@example.com"): { data } with the text, { data: null } when they have
+// saved none, or { error }. For the client of the project / the person asked to pay.
+export async function getOtherPayDetails(projectId) {
+  const { data, error } = await supabase.rpc("get_other_pay_details", { target_project: projectId });
+  if (error) {
+    console.error("Loading where to pay failed:", error);
+    return { error: plainMessage(error, "Couldn't load where to pay. Please try again.") };
+  }
+  return { data: data || null };
+}
+
+export async function getOtherRequestPayDetails(paymentId) {
+  const { data, error } = await supabase.rpc("get_other_request_pay_details", { target_payment: paymentId });
+  if (error) {
+    console.error("Loading where to pay failed:", error);
+    return { error: plainMessage(error, "Couldn't load where to pay. Please try again.") };
+  }
+  return { data: data || null };
+}
+
+// The freelancer's own "other payment details" (Settings > GCash Payment): { data }
+// (the text, or null when none are saved) or { error }.
+export const MAX_PAYMENT_DETAILS_LENGTH = 300;
+export async function getMyPaymentDetails(userId) {
+  const { data, error } = await supabase.from("payment_details").select("details").eq("freelancer_id", userId).maybeSingle();
+  if (error) {
+    console.error("Loading the payment details failed:", error);
+    return { error: "Couldn't load your payment details. Please try again." };
+  }
+  return { data: data?.details ?? null };
+}
+
+// Saves them (3 to 300 characters). Returns "" when saved, or a message to show.
+export async function saveMyPaymentDetails(userId, details) {
+  const text = String(details ?? "").trim();
+  if (text.length < 3 || text.length > MAX_PAYMENT_DETAILS_LENGTH) return `Write where to send the money in 3 to ${MAX_PAYMENT_DETAILS_LENGTH} characters.`;
+  const { error } = await supabase
+    .from("payment_details")
+    .upsert({ freelancer_id: userId, details: text, updated_at: new Date().toISOString() }, { onConflict: "freelancer_id" });
+  if (error) {
+    console.error("Saving the payment details failed:", error);
+    return "Couldn't save your payment details. Please try again.";
+  }
+  return "";
+}
+
+// Removes them. Returns "" when done, or a message.
+export async function removeMyPaymentDetails(userId) {
+  const { error } = await supabase.from("payment_details").delete().eq("freelancer_id", userId);
+  if (error) {
+    console.error("Removing the payment details failed:", error);
+    return "Couldn't remove your payment details. Please try again.";
+  }
+  return "";
 }
 
 // The payments of one chat: { data } or { error }.

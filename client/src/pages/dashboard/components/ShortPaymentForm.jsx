@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { confirmShortPayment, formatPeso, formatReference, parseAmount } from "../../../lib/payments";
+import { confirmShortPayment, formatReference } from "../../../lib/payments";
+import { DEFAULT_CURRENCY, formatMoney, parseMoney } from "../../../lib/money";
 import { Busy } from "../../../components/Loaders";
 
-// "Received less" (PLAN-short-payment.md): the freelancer opened their GCash and
-// less arrived than the client recorded. They type what really arrived; the
-// database saves the payment as confirmed with that amount, only that counts
-// toward the price, and the client is told what is still unpaid. Shown in place
-// of the answer buttons, on the project page and on a chat payment card.
+// "Received less" (PLAN-short-payment.md): the freelancer opened their GCash (or
+// PayPal, Wise, bank... for a payment in another currency, PLAN-currencies.md) and
+// less arrived than the client recorded. They type what really arrived, in the
+// payment's currency; the database saves the payment as confirmed with that amount,
+// only that counts toward the price, and the client is told what is still unpaid.
+// Shown in place of the answer buttons, on the project page and on a chat payment card.
 //   payment: the payment being answered (status "sent")
 //   onDone(problem): called after saving ("" when saved, else the message to show)
 //   onCancel(): back to the answer buttons
@@ -15,17 +17,20 @@ export default function ShortPaymentForm({ payment, onDone, onCancel }) {
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
   const recorded = Number(payment.amount);
+  const currency = payment.currency || DEFAULT_CURRENCY;
+  const isPeso = currency === "PHP";
+  const money = (value) => formatMoney(value, currency);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (working) return;
-    const got = parseAmount(text);
+    const got = parseMoney(text, currency);
     if (got === null) {
       setError("Enter how much arrived, like 700. If nothing arrived, use Not received.");
       return;
     }
     if (got >= recorded) {
-      setError(`That is the whole ${formatPeso(recorded)}. Use Confirm received instead.`);
+      setError(`That is the whole ${money(recorded)}. Use Confirm received instead.`);
       return;
     }
     setWorking(true);
@@ -41,10 +46,12 @@ export default function ShortPaymentForm({ payment, onDone, onCancel }) {
 
   return (
     <form className="p-2 rounded-3 border border-warning border-opacity-50 mb-2" onSubmit={handleSubmit} noValidate data-short-form>
-      <label htmlFor={`got-${payment.id}`} className="text-white fs-7 fw-semibold d-block mb-1">How much arrived in your GCash?</label>
+      <label htmlFor={`got-${payment.id}`} className="text-white fs-7 fw-semibold d-block mb-1">
+        {isPeso ? "How much arrived in your GCash?" : `How much arrived (${currency})?`}
+      </label>
       <p className="text-white-50 fs-8 mb-2">
-        The client recorded {formatPeso(recorded)}
-        {payment.reference_no ? <> with reference <span className="pay-mono text-white">{formatReference(payment.reference_no)}</span></> : null}.
+        The client recorded {money(recorded)}
+        {payment.reference_no ? <> with {isPeso ? "reference" : "transaction no."} <span className="pay-mono text-white">{formatReference(payment.reference_no)}</span></> : null}.
         Only what arrived counts as paid, and the client is told what is still unpaid. You can't change your answer afterwards.
       </p>
       <div className="d-flex flex-wrap gap-2 align-items-start">
@@ -58,7 +65,7 @@ export default function ShortPaymentForm({ payment, onDone, onCancel }) {
           placeholder="700.00"
           value={text}
           onChange={(event) => setText(event.target.value)}
-          maxLength={14}
+          maxLength={16}
           disabled={working}
           autoFocus
         />

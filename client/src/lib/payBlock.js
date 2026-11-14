@@ -11,8 +11,9 @@ import { supabase } from "./supabaseClient";
 // before that SQL is run), they report "nothing owed".
 
 // The signed-in client's late project with this freelancer that the freelancer
-// hasn't allowed, or null: { id, title, left, days } (left = what is still
-// unpaid, days = how late). If there are several, the one that is the most late.
+// hasn't allowed, or null: { id, title, left, currency, days } (left = what is still
+// unpaid, in the project's currency; days = how late). If there are several, the one
+// that is the most late.
 export async function getOwedProject(freelancerId) {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
@@ -20,7 +21,7 @@ export async function getOwedProject(freelancerId) {
 
   const { data: rows, error } = await supabase
     .from("projects")
-    .select("id, title, status, completed_at, agreed_amount, price_basis, price_status, payment_due_override")
+    .select("id, title, status, completed_at, agreed_amount, price_basis, price_status, currency, payment_due_override")
     .eq("client_id", userId)
     .eq("freelancer_id", freelancerId)
     .eq("status", "done")
@@ -37,7 +38,7 @@ export async function getOwedProject(freelancerId) {
     const money = projectMoney(row, payments[row.id] || []);
     const due = payDueInfo(row, money);
     if (due?.late && (!found || due.days > found.days)) {
-      found = { id: row.id, title: row.title, left: money.leftForNew, days: due.days };
+      found = { id: row.id, title: row.title, left: money.leftForNew, currency: row.currency, days: due.days };
     }
   }
   return found;

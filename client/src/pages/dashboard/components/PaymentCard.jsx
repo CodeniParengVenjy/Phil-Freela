@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import {
-  canReportUnanswered, cancelPaymentRequest, confirmPayment, formatGcashNumber, formatPeso, formatReference, getRequestPayDetails,
-  isShortPayment, markNotReceived, openReceipt, paymentBadge, readReceiptScreenshot, recordChatPayment, waitingDays
+  canReportUnanswered, cancelPaymentRequest, confirmPayment, formatGcashNumber, formatReference, getOtherRequestPayDetails, getRequestPayDetails,
+  isShortPayment, markNotReceived, methodLabel, openReceipt, paymentBadge, readReceiptScreenshot, recordChatPayment, recordOtherChatPayment, waitingDays
 } from "../../../lib/payments";
+import { DEFAULT_CURRENCY, currencyInfo, formatMoney } from "../../../lib/money";
+import MoneyEstimate from "../../../components/MoneyEstimate";
 import ReceiptCheckNote from "./ReceiptCheckNote";
 import ReceiptReady from "./ReceiptReady";
 import RecordPaymentDialog from "./RecordPaymentDialog";
+import OtherPaymentDialog from "./OtherPaymentDialog";
 import ShortPaymentForm from "./ShortPaymentForm";
 import "../payments.css";
 import { Loader, Busy } from "../../../components/Loaders";
@@ -23,6 +26,12 @@ const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium"
 //   onReport(payment): the Report button on a payment answered "Not received" or "Received less"
 export default function PaymentCard({ payment, currentUserId, otherName, showToast, onChanged, onReport }) {
   const iAmPayer = payment.client_id === currentUserId;
+  // The request's currency (PLAN-currencies.md): pesos by GCash with the AI receipt
+  // check, any other currency by PayPal, Wise, a bank... to the freelancer's own words.
+  const currency = payment.currency || DEFAULT_CURRENCY;
+  const isPeso = currency === "PHP";
+  const cash = (value) => formatMoney(value, currency);
+  const checkWords = isPeso ? "check their GCash" : "check that it arrived";
   const status = paymentBadge(payment);
   const short = isShortPayment(payment);
   const tip = Number(payment.tip_amount || 0);
@@ -41,7 +50,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
   useEffect(() => {
     if (!waitingForPayer) return undefined;
     let active = true;
-    getRequestPayDetails(payment.id).then(({ data, error }) => {
+    (isPeso ? getRequestPayDetails(payment.id) : getOtherRequestPayDetails(payment.id)).then(({ data, error }) => {
       if (!active) return;
       if (error) setDetailsError(error);
       else setDetails(data);
@@ -49,7 +58,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
     return () => {
       active = false;
     };
-  }, [waitingForPayer, payment.id]);
+  }, [waitingForPayer, payment.id, isPeso]);
 
   const copyNumber = async () => {
     try {
@@ -64,6 +73,8 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
   // payment is recorded from that reading (PLAN-receipt-ai.md).
   const handleRead = (file) => readReceiptScreenshot({ paymentId: payment.id, file });
   const handleRecord = ({ checkId, tip: tipPart }) => recordChatPayment({ paymentId: payment.id, checkId, tip: tipPart });
+  // Any other currency: typed in, with a transaction number and a screenshot.
+  const handleRecordOther = (fields) => recordOtherChatPayment({ paymentId: payment.id, ...fields });
 
   // "Received less" was saved.
   const handleShortDone = () => {
@@ -75,7 +86,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
   const handleRecorded = () => {
     setRecording(false);
     onChanged();
-    showToast(`Payment recorded. ${otherName} was told and will check their GCash.`);
+    showToast(`Payment recorded. ${otherName} was told and will ${checkWords}.`);
   };
 
   const handleAnswer = async (kind) => {
@@ -102,7 +113,9 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
 
   // The question that comes before an answer: it can't be undone.
   const questionText = {
-    confirm: `Is ${formatPeso(payment.amount)} in your GCash with this reference? You can't change your answer afterwards.`,
+    confirm: isPeso
+      ? `Is ${cash(payment.amount)} in your GCash with this reference? You can't change your answer afterwards.`
+      : `Did ${cash(payment.amount)} arrive in your ${methodLabel(payment.method)} with this transaction number? You can't change your answer afterwards.`,
     not_received: "Say that this payment did not arrive? You can't change your answer afterwards.",
     cancel: "Cancel this request? Nobody has paid it yet."
   };
@@ -118,9 +131,11 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         <span className={`badge rounded-pill px-3 py-2 ${status.className}`}>{status.label}</span>
       </div>
       <div className="fs-3 fw-bold lh-1">
-        {formatPeso(payment.amount)}
-        {tip > 0 && <span className="text-white-50 fw-normal fs-8 ms-2">incl. {formatPeso(tip)} tip</span>}
+        {cash(payment.amount)}
+        {tip > 0 && <span className="text-white-50 fw-normal fs-8 ms-2">incl. {cash(tip)} tip</span>}
       </div>
+      {/* About how much in the viewer's currency, for a request in another one. */}
+      <MoneyEstimate amount={payment.amount} currency={currency} className="fs-8 d-block mt-1" />
       {payment.note && <p className="text-white-50 fs-7 mb-0 mt-1 text-break">{payment.note}</p>}
 
       {/* The person asked to pay: where to send it. */}
@@ -129,9 +144,19 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
           {detailsError && <p className="text-danger fs-7 mb-2">{detailsError}</p>}
           {!detailsError && details === undefined && <Loader size="sm" label="Loading where to pay" className="mb-2" />}
           {!detailsError && details === null && (
-            <p className="text-white-50 fs-7 mb-2">{otherName} hasn't saved their GCash details, so there is nowhere to send the money. Message them.</p>
+            <p className="text-white-50 fs-7 mb-2">
+              {isPeso
+                ? `${otherName} hasn't saved their GCash details, so there is nowhere to send the money. Message them.`
+                : `${otherName} hasn't saved where to send a payment in ${currencyInfo(currency).code} (PayPal, Wise, bank...). Message them.`}
+            </p>
           )}
-          {details && (
+          {details && !isPeso && (
+            <div className="p-3 rounded-3 bg-secondary bg-opacity-10 border border-secondary border-opacity-25 mb-2" data-other-pay-box>
+              <span className="text-secondary fs-8 d-block">Where {otherName} wants the money</span>
+              <p className="text-white fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }} data-other-pay-details>{details}</p>
+            </div>
+          )}
+          {details && isPeso && (
             <div className="p-3 rounded-3 bg-secondary bg-opacity-10 border border-secondary border-opacity-25 mb-2">
               <div>
                 <span className="text-secondary fs-8 d-block">Send to</span>
@@ -144,9 +169,18 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
             </div>
           )}
           <p className="text-secondary fs-8 mb-2">
-            Pay in your GCash app, then tap I've paid. GCash hides part of the name when you send: the first letters should match
-            these initials{details ? ` (${details.initials})` : ""}. If they don't, don't send. Only pay people you trust:
-            PhilFreela can't check or refund this payment.
+            {isPeso ? (
+              <>
+                Pay in your GCash app, then tap I've paid. GCash hides part of the name when you send: the first letters should match
+                these initials{details ? ` (${details.initials})` : ""}. If they don't, don't send. Only pay people you trust:
+                PhilFreela can't check or refund this payment.
+              </>
+            ) : (
+              <>
+                Pay with PayPal, Wise, a bank transfer or a remittance, then tap I've paid and add the transaction number and a
+                screenshot. Only pay people you trust: PhilFreela can't check or refund this payment.
+              </>
+            )}
           </p>
           <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={() => setRecording(true)} disabled={!details}>
             <i className="bi bi-check2-circle me-1"></i> I've paid
@@ -169,7 +203,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
       {/* What was recorded. */}
       {payment.reference_no && (
         <p className="text-white-50 fs-8 mb-0 mt-3">
-          Reference <span className="pay-mono text-white">{formatReference(payment.reference_no)}</span>
+          {isPeso ? "Reference" : `${methodLabel(payment.method)} · Transaction no.`} <span className="pay-mono text-white">{formatReference(payment.reference_no)}</span>
           {" · "}Recorded {when(payment.created_at)}
           {payment.status === "confirmed" && payment.answered_at && <>{" · "}Confirmed {when(payment.answered_at)}</>}
         </p>
@@ -181,7 +215,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
       )}
       {payment.status === "sent" && iAmPayer && (
         <p className="text-white-50 fs-7 mb-0 mt-2" data-unanswered={unanswered ? "true" : undefined}>
-          Waiting for {otherName} to check their GCash and confirm.
+          Waiting for {otherName} to {checkWords} and confirm.
           {unanswered && <> {otherName} hasn't answered for {waitingDays(payment)} days: you can write here, or report it.</>}
         </p>
       )}
@@ -192,8 +226,8 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         <p className="text-warning fs-7 mb-0 mt-2" data-short-note>
           <i className="bi bi-exclamation-triangle-fill me-1"></i>
           {iAmPayer
-            ? `${otherName} checked their GCash: only ${formatPeso(payment.received_amount)} arrived, not ${formatPeso(payment.amount)}. Message them to sort it out.`
-            : `You said only ${formatPeso(payment.received_amount)} arrived, not ${formatPeso(payment.amount)}.`}
+            ? `${otherName} checked${isPeso ? " their GCash" : ""}: only ${cash(payment.received_amount)} arrived, not ${cash(payment.amount)}. Message them to sort it out.`
+            : `You said only ${cash(payment.received_amount)} arrived, not ${cash(payment.amount)}.`}
         </p>
       )}
       {payment.status === "not_received" && (
@@ -251,7 +285,11 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
               <i className="bi bi-x-lg me-1"></i> Not received
             </button>
           </div>
-          <small className="text-secondary fs-8 d-block mt-2">Open your GCash history first. Confirm only when the amount and reference match. If less arrived, use Received less.</small>
+          <small className="text-secondary fs-8 d-block mt-2">
+            {isPeso
+              ? "Open your GCash history first. Confirm only when the amount and reference match. If less arrived, use Received less."
+              : `Open your ${methodLabel(payment.method)} history first. Confirm only when the amount and transaction number match. If less arrived, use Received less.`}
+          </small>
         </div>
       )}
 
@@ -259,7 +297,7 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         <div className="d-flex flex-wrap gap-2 mt-3">
           {payment.receipt_path && (
             <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-8 fw-bold" onClick={handleViewReceipt}>
-              <i className="bi bi-image me-1"></i> GCash screenshot
+              <i className="bi bi-image me-1"></i> {isPeso ? "GCash screenshot" : "Screenshot"}
             </button>
           )}
           {(payment.status === "not_received" || short || unanswered) && onReport && (
@@ -270,13 +308,25 @@ export default function PaymentCard({ payment, currentUserId, otherName, showToa
         </div>
       )}
 
-      {recording && (
+      {recording && isPeso && (
         <RecordPaymentDialog
           subtitle={`Paid to ${otherName} in the GCash app`}
           otherName={otherName}
           requestedAmount={Number(payment.amount)}
           read={handleRead}
           submit={handleRecord}
+          onClose={() => setRecording(false)}
+          onRecorded={handleRecorded}
+        />
+      )}
+      {recording && !isPeso && (
+        <OtherPaymentDialog
+          currency={currency}
+          userId={currentUserId}
+          subtitle={`Paid to ${otherName} in ${currencyInfo(currency).code}`}
+          otherName={otherName}
+          requestedAmount={Number(payment.amount)}
+          submit={handleRecordOther}
           onClose={() => setRecording(false)}
           onRecorded={handleRecorded}
         />

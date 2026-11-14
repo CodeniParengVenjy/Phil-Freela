@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { allowUnpaidClient, getPayAllowance } from "../../../lib/payBlock";
-import { formatPeso, payDueInfo, projectMoney } from "../../../lib/payments";
+import { payDueInfo, projectMoney } from "../../../lib/payments";
+import { formatMoney } from "../../../lib/money";
 import { Busy } from "../../../components/Loaders";
 
 // On a project's page, when the payment is late (past its payment day with money
@@ -59,7 +60,8 @@ export default function PayBlockNotice({ project, payments, isClient, otherName,
     );
   }
 
-  const amount = formatPeso(money.leftForNew);
+  // In the project's currency (PLAN-currencies.md).
+  const amount = formatMoney(money.leftForNew, project.currency);
   const days = `${due.days} day${due.days === 1 ? "" : "s"}`;
 
   if (isClient) {

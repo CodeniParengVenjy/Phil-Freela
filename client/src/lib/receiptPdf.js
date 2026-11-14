@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
-import { formatReference, projectMoney, receiptTime, unlocksWhenFullyPaid } from "./payments";
+import { formatReference, methodLabel, projectMoney, receiptTime, unlocksWhenFullyPaid } from "./payments";
+import { formatMoneyCode } from "./money";
 import { getPurchase, purchaseNumber } from "./purchases";
 
 // PDF receipts (PLAN-payment-receipt.md), drawn in the browser with jsPDF, so no
@@ -17,8 +18,10 @@ export const receiptNumber = (payment) => `PF-${String(payment.id).replace(/-/g,
 // Only a confirmed payment has a receipt (a "Received less" one is confirmed too).
 export const hasReceipt = (payment) => payment?.status === "confirmed";
 
-// The built-in PDF font has no peso sign, so amounts are written "PHP 1,500.00".
-const peso = (n) => `PHP ${Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// The built-in PDF font has no ₱, € or ¥, so amounts are written with the currency's
+// code: "PHP 1,500.00", "USD 50.00" (PLAN-currencies.md). PhilFreela's own purchases
+// (Premium, Featured, ads) are always in pesos.
+const peso = (n) => formatMoneyCode(n, "PHP");
 
 // The logo for paper: the site's SVG with "Freela" dark instead of white and no
 // shadow, drawn on a canvas, empty edges cut off, kept as a PNG.
@@ -116,10 +119,11 @@ function receiptKit(jsPDF) {
       const after = M + 13 + doc.getTextWidth(label) + 4;
       text(fit(sentence, W - M - 4 - after, 10, false), after, 55.6, { size: 10 });
     },
-    // The big amount on the left, a small label and value on the right.
-    amount(label, value, sideLabel, sideValue) {
+    // The big amount on the left (already written with its currency), a small label
+    // and value on the right.
+    amount(label, valueText, sideLabel, sideValue) {
       text(label, M, 70, { size: 10, color: gray });
-      text(peso(value), M, 81, { size: 26, bold: true });
+      text(valueText, M, 81, { size: 26, bold: true });
       text(sideLabel, W - M, 70, { size: 10, color: gray, align: "right" });
       text(sideValue, W - M, 78, { size: 14, bold: true, align: "right" });
     },
@@ -214,6 +218,9 @@ async function loadPaymentFacts(payment) {
 
   return {
     number: receiptNumber(payment),
+    // The payment's currency, and how it was sent (GCash for pesos).
+    currency: payment.currency || "PHP",
+    method: payment.method,
     amount: Number(payment.amount),
     tip: Number(payment.tip_amount || 0),
     receivedAmount: payment.received_amount == null ? null : Number(payment.received_amount),
@@ -230,11 +237,15 @@ async function loadPaymentFacts(payment) {
 
 function drawPaymentReceipt(kit, r, logo) {
   const short = r.receivedAmount != null && r.receivedAmount < r.amount;
+  // Amounts in the payment's own currency ("USD 50.00"), and how it was sent.
+  const money = (n) => formatMoneyCode(n, r.currency);
+  const isPeso = r.currency === "PHP";
+  const way = methodLabel(r.method);
   kit.header(logo, r.number, receiptTime(new Date()));
   kit.band(short
-    ? { warn: true, label: "RECEIVED LESS", sentence: `The freelancer received ${peso(r.receivedAmount)} on ${r.confirmedOn}` }
+    ? { warn: true, label: "RECEIVED LESS", sentence: `The freelancer received ${money(r.receivedAmount)} on ${r.confirmedOn}` }
     : { warn: false, label: "CONFIRMED", sentence: `The freelancer confirmed the money arrived on ${r.confirmedOn}` });
-  kit.amount(short ? "Amount the client recorded" : "Amount paid", r.amount, "Paid through", "GCash");
+  kit.amount(short ? "Amount the client recorded" : "Amount paid", money(r.amount), "Paid through", way);
   kit.boxes(
     { label: "PAID BY (CLIENT)", lines: [r.client.name, r.client.username && `@${r.client.username}`] },
     { label: "PAID TO (FREELANCER)", lines: [r.freelancer.name, r.freelancer.username && `@${r.freelancer.username}`, r.freelancer.initials && `GCash name: ${r.freelancer.initials}`] }
@@ -245,35 +256,36 @@ function drawPaymentReceipt(kit, r, logo) {
   kit.section("Payment");
   if (short) {
     // Less arrived: what was recorded, then what really arrived.
-    kit.row("Recorded by the client", peso(r.amount));
-    if (r.tip > 0) kit.row("Tip (included above)", peso(r.tip));
-    kit.row("Received by the freelancer", peso(r.receivedAmount), { bold: true });
+    kit.row("Recorded by the client", money(r.amount));
+    if (r.tip > 0) kit.row("Tip (included above)", money(r.tip));
+    kit.row("Received by the freelancer", money(r.receivedAmount), { bold: true });
   } else {
-    kit.row(r.balance ? "Toward the project price" : "Amount", peso(r.amount - r.tip));
-    if (r.tip > 0) kit.row("Tip", peso(r.tip));
-    kit.row("Total of this payment", peso(r.amount), { bold: true });
+    kit.row(r.balance ? "Toward the project price" : "Amount", money(r.amount - r.tip));
+    if (r.tip > 0) kit.row("Tip", money(r.tip));
+    kit.row("Total of this payment", money(r.amount), { bold: true });
   }
   kit.gap();
 
   if (r.balance) {
     kit.section("Project balance (after this payment)");
-    kit.row("Agreed price", peso(r.balance.agreed));
-    kit.row("Paid so far", peso(r.balance.paid));
-    kit.row("Balance left", r.balance.fullyPaid ? "PHP 0.00  (Fully paid)" : peso(r.balance.left), {
+    kit.row("Agreed price", money(r.balance.agreed));
+    kit.row("Paid so far", money(r.balance.paid));
+    kit.row("Balance left", r.balance.fullyPaid ? `${money(0)}  (Fully paid)` : money(r.balance.left), {
       bold: true,
       color: r.balance.fullyPaid ? kit.green : undefined
     });
     kit.gap();
   }
 
-  kit.section("GCash details");
-  kit.row("Reference no.", r.reference);
-  kit.row("Date paid (on the GCash receipt)", r.paidOn);
+  kit.section(isPeso ? "GCash details" : "Payment details");
+  kit.row(isPeso ? "Reference no." : "Transaction no.", r.reference);
+  // Only a GCash receipt is read by the AI, so only it has a date read from the receipt.
+  if (isPeso) kit.row("Date paid (on the GCash receipt)", r.paidOn);
   kit.row("Recorded on PhilFreela", r.recordedOn);
   kit.row("Confirmed by the freelancer", r.confirmedOn);
 
   kit.footer(
-    "PhilFreela only records this payment. The money was sent directly through GCash from the client to the " +
+    `PhilFreela only records this payment. The money was sent directly through ${way} from the client to the ` +
       "freelancer; PhilFreela did not hold, move or guarantee it. This is an acknowledgement receipt, not an " +
       "Official Receipt (BIR).",
     r.number
@@ -301,7 +313,7 @@ function drawPurchaseReceipt(kit, p, buyer, logo) {
   kit.band(p.test_mode
     ? { warn: true, label: "TEST PAYMENT", sentence: `Xendit test mode on ${paidOn}: no real money was charged` }
     : { warn: false, label: "PAID", sentence: `Paid online through Xendit on ${paidOn}` });
-  kit.amount("Amount paid", p.amount, "Paid through", "Xendit");
+  kit.amount("Amount paid", peso(p.amount), "Paid through", "Xendit");
   kit.boxes(
     { label: "BOUGHT BY", lines: [buyer.name, buyer.username && `@${buyer.username}`, buyer.role] },
     { label: "SOLD BY", lines: ["PhilFreela", "phil-freela.pages.dev", "PhilFreela's own service"] }

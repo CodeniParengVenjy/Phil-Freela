@@ -1,18 +1,18 @@
 import { Link } from "react-router-dom";
-import { formatPeso } from "../../../lib/payments";
+import { formatMoney } from "../../../lib/money";
 import CensoredText from "../../../components/CensoredText";
 
 // Shown inside the Hire and Book popups, instead of the form, when the client is
 // late paying this freelancer (PLAN-delays.md, Step 2; lib/payBlock.js
 // getOwedProject). The database refuses the hire or booking too; this explains
 // why before the client fills in anything.
-// owed: { id, title, left, days }; what: "hire" or "book".
+// owed: { id, title, left, currency, days }; what: "hire" or "book".
 export default function OwesNotice({ owed, freelancerName, what, onClose }) {
   return (
     <div data-owes-notice>
       <div className="alert alert-warning fs-7 py-2 mb-3 text-start" role="status">
         <i className="bi bi-slash-circle me-1"></i>
-        You still owe {freelancerName} <strong>{formatPeso(owed.left)}</strong> for "<CensoredText text={owed.title} />". Its payment day
+        You still owe {freelancerName} <strong>{formatMoney(owed.left, owed.currency)}</strong> for "<CensoredText text={owed.title} />". Its payment day
         passed {owed.days} day{owed.days === 1 ? "" : "s"} ago, so you can't {what} {freelancerName} again yet.
       </div>
       <p className="text-secondary fs-8 mb-3">

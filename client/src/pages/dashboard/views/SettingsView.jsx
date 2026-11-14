@@ -13,6 +13,7 @@ import AppearanceForm from "../components/AppearanceForm";
 import EstimateCurrencyForm from "../components/EstimateCurrencyForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
 import GcashSettingsForm from "../components/GcashSettingsForm";
+import OtherPaymentDetailsForm from "../components/OtherPaymentDetailsForm";
 import PurchasesList from "../components/PurchasesList";
 import { Loader, Busy } from "../../../components/Loaders";
 
@@ -453,7 +454,11 @@ export default function SettingsView() {
             ) : activeSubNav === "GCash Payment" ? (
               // Where clients send the money (PLAN-gcash-payments.md). Freelancers only.
               accountType === "freelancer" && currentUserId ? (
-                <GcashSettingsForm userId={currentUserId} showToast={showToast} />
+                <>
+                  <GcashSettingsForm userId={currentUserId} showToast={showToast} />
+                  {/* Where to be paid in any other currency (PLAN-currencies.md). */}
+                  <OtherPaymentDetailsForm userId={currentUserId} showToast={showToast} />
+                </>
               ) : (
                 <p className="text-secondary fs-7">Only freelancers receive payments, so there's nothing to set here.</p>
               )

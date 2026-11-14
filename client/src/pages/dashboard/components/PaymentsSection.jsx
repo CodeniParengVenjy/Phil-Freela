@@ -3,12 +3,15 @@ import { Link } from "react-router-dom";
 import { priceText } from "../../../lib/projectPrice";
 import { formatDay } from "../../../lib/projects";
 import {
-  PAYMENT_DUE_DAYS, canReportUnanswered, confirmPayment, formatGcashNumber, formatPeso, formatReference, getMyGcash, getPayDetails, isShortPayment, listProjectPayments,
-  markNotReceived, openReceipt, payDueInfo, paymentBadge, projectMoney, readReceiptScreenshot, recordPayment, waitingDays, watchProjectPayments
+  PAYMENT_DUE_DAYS, canReportUnanswered, confirmPayment, formatGcashNumber, formatReference, getMyGcash, getMyPaymentDetails, getOtherPayDetails, getPayDetails,
+  isShortPayment, listProjectPayments, markNotReceived, methodLabel, openReceipt, payDueInfo, paymentBadge, projectMoney, readReceiptScreenshot, recordOtherPayment,
+  recordPayment, waitingDays, watchProjectPayments
 } from "../../../lib/payments";
+import { DEFAULT_CURRENCY, currencyInfo, formatMoney } from "../../../lib/money";
 import ReceiptCheckNote from "./ReceiptCheckNote";
 import ReceiptReady from "./ReceiptReady";
 import RecordPaymentDialog from "./RecordPaymentDialog";
+import OtherPaymentDialog from "./OtherPaymentDialog";
 import ShortPaymentForm from "./ShortPaymentForm";
 import "../payments.css";
 import { Loader, Busy } from "../../../components/Loaders";
@@ -32,6 +35,14 @@ const when = (value) => new Date(value).toLocaleString([], { dateStyle: "medium"
 // sent work as soon as a payment is confirmed).
 export default function PaymentsSection({ project, iAmClient, currentUserId, otherName, otherId, showToast, openChat, onReport, onPaymentsChange }) {
   const projectId = project.id;
+  // The project's currency (PLAN-currencies.md). Pesos are paid by GCash with the AI
+  // receipt check; any other currency by PayPal, Wise, a bank... to the freelancer's
+  // "other payment details", recorded with a transaction number and a screenshot.
+  const currency = project.currency || DEFAULT_CURRENCY;
+  const isPeso = currency === "PHP";
+  const cash = (value) => formatMoney(value, currency);
+  // How the freelancer checks a payment, in words: their GCash, or that it arrived.
+  const checkWords = isPeso ? "check their GCash" : "check that it arrived";
   // The latest onPaymentsChange, read by the list loader below without
   // starting the live subscription again every time the page draws.
   const onPaymentsChangeRef = useRef(onPaymentsChange);
@@ -80,11 +91,12 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     };
   }, [projectId, reloadKey]);
 
-  // Where to pay (client only).
+  // Where to pay (client only): the GCash details for pesos, the other payment
+  // details (a text the freelancer wrote) for any other currency.
   useEffect(() => {
     if (!iAmClient) return undefined;
     let active = true;
-    getPayDetails(projectId).then(({ data, error }) => {
+    (isPeso ? getPayDetails(projectId) : getOtherPayDetails(projectId)).then(({ data, error }) => {
       if (!active) return;
       if (error) setDetailsError(error);
       else setDetails(data);
@@ -92,23 +104,23 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     return () => {
       active = false;
     };
-  }, [iAmClient, projectId]);
+  }, [iAmClient, projectId, isPeso]);
 
   // The freelancer is told when nobody can pay them yet.
   useEffect(() => {
     if (iAmClient || !currentUserId) return undefined;
     let active = true;
-    getMyGcash(currentUserId).then(({ data, error }) => {
+    (isPeso ? getMyGcash(currentUserId) : getMyPaymentDetails(currentUserId)).then(({ data, error }) => {
       if (active) setMineSaved(error ? undefined : Boolean(data));
     });
     return () => {
       active = false;
     };
-  }, [iAmClient, currentUserId]);
+  }, [iAmClient, currentUserId, isPeso]);
 
   // The project's agreed price (the Price box above), shown as a hint ("" while
   // there is none).
-  const agreedPrice = project.price_status === "agreed" ? priceText(project.agreed_amount, project.price_basis) : "";
+  const agreedPrice = project.price_status === "agreed" ? priceText(project.agreed_amount, project.price_basis, currency) : "";
   // The balance: null when the project has no agreed one-time price (or the
   // list is still loading). The same rule as the database.
   const money = projectMoney(project, payments);
@@ -126,11 +138,13 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
   // payment is recorded from that reading (PLAN-receipt-ai.md).
   const handleRead = (file) => readReceiptScreenshot({ projectId, file });
   const handleRecord = ({ checkId, tip }) => recordPayment({ projectId, checkId, tip });
+  // Any other currency: typed in, with a transaction number and a screenshot.
+  const handleRecordOther = (fields) => recordOtherPayment({ projectId, ...fields });
 
   const handleRecorded = () => {
     setRecording(false);
     setReloadKey((n) => n + 1);
-    showToast(`Payment recorded. ${otherName} was told and will check their GCash.`);
+    showToast(`Payment recorded. ${otherName} was told and will ${checkWords}.`);
   };
 
   // "Received less" was saved (or refused).
@@ -162,6 +176,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
   const renderPayBox = () => {
     if (detailsError) return <p className="text-danger fs-7 mb-3">{detailsError}</p>;
     if (details === undefined) return <Loader size="sm" label="Loading where to pay" className="mb-3" />;
+    if (!isPeso) return renderOtherPayBox();
     if (details === null) {
       return (
         <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 mb-3">
@@ -198,13 +213,48 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
     );
   };
 
+  // Where to pay in another currency (PLAN-currencies.md): the freelancer's own words
+  // ("PayPal: ana@example.com"). No GCash, and no AI receipt check.
+  const renderOtherPayBox = () => {
+    if (details === null) {
+      return (
+        <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 mb-3" data-other-pay-box="missing">
+          <p className="text-white-50 fs-7 mb-2">
+            <i className="bi bi-info-circle me-1"></i>
+            This project's price is in {currencyInfo(currency).code} ({currencyInfo(currency).name}), and {otherName} hasn't added where
+            to send a payment in another currency yet (PayPal, Wise, bank...). Message them and ask them to add it in Settings.
+          </p>
+          {otherId && openChat && (
+            <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-7 fw-bold" onClick={() => openChat(otherId)}>
+              <i className="bi bi-chat-dots-fill me-1"></i> Message {otherName}
+            </button>
+          )}
+        </div>
+      );
+    }
+    return (
+      <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 mb-3" data-other-pay-box>
+        <h5 className="text-white fw-bold fs-6 mb-3">Pay in {currencyInfo(currency).code}</h5>
+        <span className="text-secondary fs-8 d-block">Where {otherName} wants the money</span>
+        <p className="text-white fs-7 mb-0 text-break" style={{ whiteSpace: "pre-line" }} data-other-pay-details>{details}</p>
+        <p className="text-secondary fs-8 mt-3 mb-2">
+          Pay with PayPal, Wise, a bank transfer or a remittance, then come back and record it here with the transaction number and a
+          screenshot. GCash and its receipt check are only for prices in pesos. Only pay people you trust: PhilFreela can't check or
+          refund this payment.
+        </p>
+        {agreedPrice && <p className="text-secondary fs-8 mb-2">Agreed price: {agreedPrice}.</p>}
+        {renderPayAction()}
+      </div>
+    );
+  };
+
   // The client's button under "Pay via GCash". With a balance it depends on what
   // is left: pay the rest, wait for the freelancer, or (fully paid) a tip alone.
   const renderPayAction = () => {
     if (!money) {
       return (
         <>
-          <p className="text-secondary fs-8 mb-2">Want to add a tip? Send it in the same GCash payment and put it in the Tip box when you record it.</p>
+          <p className="text-secondary fs-8 mb-2">Want to add a tip? Send it in the same {isPeso ? "GCash " : ""}payment and put it in the Tip box when you record it.</p>
           <button type="button" className="btn btn-gradient-role text-white rounded-pill px-4 py-2 fw-bold" onClick={() => setRecording("pay")}>
             <i className="bi bi-check2-circle me-1"></i> I've paid
           </button>
@@ -225,13 +275,13 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
       return (
         <p className="text-white-50 fs-7 mb-0">
           <i className="bi bi-hourglass-split me-1"></i>
-          The rest ({formatPeso(money.waiting)}) is recorded and waiting for {otherName} to check their GCash.
+          The rest ({cash(money.waiting)}) is recorded and waiting for {otherName} to {checkWords}.
         </p>
       );
     }
     return (
       <>
-        <p className="text-white fs-7 mb-1">Left to pay: <strong data-left-to-pay>{formatPeso(money.leftForNew)}</strong></p>
+        <p className="text-white fs-7 mb-1">Left to pay: <strong data-left-to-pay>{cash(money.leftForNew)}</strong></p>
         <p className="text-secondary fs-8 mb-2">
           You can pay it all at once or in parts. Want to add a tip? Send it with the last payment and put it in the Tip box.
         </p>
@@ -281,11 +331,11 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
       <div className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 mb-3" data-balance>
         <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2">
           <span className="text-white fs-7">
-            Paid <strong>{formatPeso(money.paid)}</strong> of {formatPeso(money.agreed)}
+            Paid <strong>{cash(money.paid)}</strong> of {cash(money.agreed)}
           </span>
           {money.fullyPaid
             ? <span className="badge rounded-pill bg-success text-white px-3 py-2">Fully paid</span>
-            : <span className="text-warning fw-semibold fs-7">{formatPeso(money.left)} left</span>}
+            : <span className="text-warning fw-semibold fs-7">{cash(money.left)} left</span>}
         </div>
         <div
           className="progress bg-secondary bg-opacity-25"
@@ -300,9 +350,9 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
         </div>
         {(money.waiting > 0 || money.tips > 0) && (
           <p className="text-white-50 fs-8 mb-0 mt-2">
-            {money.waiting > 0 && <>{formatPeso(money.waiting)} recorded, waiting for {iAmClient ? otherName : "you"} to check GCash.</>}
+            {money.waiting > 0 && <>{cash(money.waiting)} recorded, waiting for {iAmClient ? otherName : "you"} to {isPeso ? "check GCash" : "check it"}.</>}
             {money.waiting > 0 && money.tips > 0 && " "}
-            {money.tips > 0 && <>Tips received: {formatPeso(money.tips)}.</>}
+            {money.tips > 0 && <>Tips received: {cash(money.tips)}.</>}
           </p>
         )}
         {!money.fullyPaid && project.files_locked && !project.unlocked_at && (
@@ -329,13 +379,13 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
       <div key={payment.id} className="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25" data-payment-status={short ? "short" : payment.status}>
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
           <span className="text-white fw-bold fs-5">
-            {formatPeso(payment.amount)}
-            {tip > 0 && <span className="text-white-50 fw-normal fs-8 ms-2">incl. {formatPeso(tip)} tip</span>}
+            {cash(payment.amount)}
+            {tip > 0 && <span className="text-white-50 fw-normal fs-8 ms-2">incl. {cash(tip)} tip</span>}
           </span>
           <span className={`badge rounded-pill px-3 py-2 ${status.className}`}>{status.label}</span>
         </div>
         <p className="text-white-50 fs-8 mb-2">
-          Reference <span className="pay-mono text-white">{formatReference(payment.reference_no)}</span>
+          {isPeso ? "Reference" : `${methodLabel(payment.method)} · Transaction no.`} <span className="pay-mono text-white">{formatReference(payment.reference_no)}</span>
           {" · "}Recorded {when(payment.created_at)}
           {payment.answered_at && <>{" · "}Answered {when(payment.answered_at)}</>}
         </p>
@@ -343,7 +393,7 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
 
         {payment.status === "sent" && iAmClient && (
           <p className="text-white-50 fs-7 mb-2" data-unanswered={unanswered ? "true" : undefined}>
-            Waiting for {otherName} to check their GCash and confirm.
+            Waiting for {otherName} to {checkWords} and confirm.
             {unanswered && <> {otherName} hasn't answered for {waitingDays(payment)} days: you can message them, or report it.</>}
           </p>
         )}
@@ -354,8 +404,8 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
           <p className="text-warning fs-7 mb-2" data-short-note>
             <i className="bi bi-exclamation-triangle-fill me-1"></i>
             {iAmClient
-              ? `${otherName} checked their GCash: only ${formatPeso(payment.received_amount)} arrived, not ${formatPeso(payment.amount)}. Message them to sort it out.`
-              : `You said only ${formatPeso(payment.received_amount)} arrived, not ${formatPeso(payment.amount)}.`}
+              ? `${otherName} checked${isPeso ? " their GCash" : ""}: only ${cash(payment.received_amount)} arrived, not ${cash(payment.amount)}. Message them to sort it out.`
+              : `You said only ${cash(payment.received_amount)} arrived, not ${cash(payment.amount)}.`}
           </p>
         )}
         {payment.status === "not_received" && (
@@ -375,7 +425,9 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
           <div className="p-2 rounded-3 border border-secondary border-opacity-50 mb-2">
             <p className="text-white fs-7 mb-2">
               {asking.kind === "confirm"
-                ? `Is ${formatPeso(payment.amount)} in your GCash with this reference? You can't change your answer afterwards.`
+                ? (isPeso
+                  ? `Is ${cash(payment.amount)} in your GCash with this reference? You can't change your answer afterwards.`
+                  : `Did ${cash(payment.amount)} arrive in your ${methodLabel(payment.method)} with this transaction number? You can't change your answer afterwards.`)
                 : "Say that this payment did not arrive? You can't change your answer afterwards."}
             </p>
             <div className="d-flex flex-wrap gap-2">
@@ -403,17 +455,21 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
                 <i className="bi bi-x-lg me-1"></i> Not received
               </button>
             </div>
-            <small className="text-secondary fs-8 d-block mt-2">Open your GCash history first. Confirm only when the amount and reference match. If less arrived, use Received less.</small>
+            <small className="text-secondary fs-8 d-block mt-2">
+              {isPeso
+                ? "Open your GCash history first. Confirm only when the amount and reference match. If less arrived, use Received less."
+                : `Open your ${methodLabel(payment.method)} history first. Confirm only when the amount and transaction number match. If less arrived, use Received less.`}
+            </small>
           </div>
         )}
 
         <div className="d-flex flex-wrap gap-2">
           <button type="button" className="btn btn-dark border border-secondary text-white rounded-pill px-3 fs-8 fw-bold" onClick={() => handleViewReceipt(payment)}>
-            <i className="bi bi-image me-1"></i> GCash screenshot
+            <i className="bi bi-image me-1"></i> {isPeso ? "GCash screenshot" : "Screenshot"}
           </button>
           {short && iAmClient && money && money.leftForNew > 0 && details && (
             <button type="button" className="btn btn-gradient-role text-white rounded-pill px-3 fs-8 fw-bold" onClick={() => setRecording("pay")}>
-              <i className="bi bi-cash-coin me-1"></i> Pay the rest ({formatPeso(money.leftForNew)})
+              <i className="bi bi-cash-coin me-1"></i> Pay the rest ({cash(money.leftForNew)})
             </button>
           )}
           {(payment.status === "not_received" || short || unanswered) && iAmClient && otherId && openChat && (
@@ -450,10 +506,12 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
       )}
 
       {!iAmClient && project.status !== "ended" && mineSaved === false && (
-        <p className="text-warning fs-7 mb-3">
+        <p className="text-warning fs-7 mb-3" data-payment-setup-missing>
           <i className="bi bi-exclamation-triangle me-1"></i>
-          Clients can't see where to pay you yet. Add your GCash number in{" "}
-          <Link to="/dashboard/settings" className="text-role fw-bold text-decoration-none">Settings, GCash Payment</Link>.
+          {isPeso
+            ? "Clients can't see where to pay you yet. Add your GCash number in "
+            : `This project's price is in ${currencyInfo(currency).code}, and clients can't see where to pay you in it yet. Add your payment details for other currencies in `}
+          <Link to="/dashboard/settings?tab=GCash%20Payment" className="text-role fw-bold text-decoration-none">Settings, GCash Payment</Link>.
         </p>
       )}
 
@@ -463,12 +521,12 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
         <p className="text-secondary fs-7 mb-0">
           {iAmClient
             ? "No payments recorded yet."
-            : "No payments recorded yet. When the client records a payment, it shows here and you confirm it after checking your GCash."}
+            : `No payments recorded yet. When the client records a payment, it shows here and you confirm it after ${isPeso ? "checking your GCash" : "checking that it arrived"}.`}
         </p>
       )}
       {payments?.length > 0 && <div className="d-flex flex-column gap-3">{payments.map(renderPayment)}</div>}
 
-      {recording && (
+      {recording && isPeso && (
         <RecordPaymentDialog
           subtitle={`Paid to ${otherName} in the GCash app`}
           otherName={otherName}
@@ -476,6 +534,19 @@ export default function PaymentsSection({ project, iAmClient, currentUserId, oth
           maxAmount={money ? money.leftForNew : null}
           read={handleRead}
           submit={handleRecord}
+          onClose={() => setRecording(false)}
+          onRecorded={handleRecorded}
+        />
+      )}
+      {recording && !isPeso && (
+        <OtherPaymentDialog
+          currency={currency}
+          userId={currentUserId}
+          subtitle={`Paid to ${otherName} in ${currencyInfo(currency).code}`}
+          otherName={otherName}
+          tipOnly={recording === "tip"}
+          maxAmount={money ? money.leftForNew : null}
+          submit={handleRecordOther}
           onClose={() => setRecording(false)}
           onRecorded={handleRecorded}
         />
