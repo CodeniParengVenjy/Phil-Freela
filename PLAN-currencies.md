@@ -1,0 +1,107 @@
+# PLAN: any currency, not only pesos
+
+The user, 2026-11-14: "can you make not only in currency pesos of transactions, can you make all of the
+currency that we have ... in all transactions, as well as subscription, clients to freelancers payment, etc."
+
+## What the user chose (2026-11-14)
+
+1. Each amount has its OWN currency. Whoever posts a job, an offer or a project price picks the currency.
+   Payments, tips, balances and receipts of that project use the same currency. Other people also see a
+   small estimate in THEIR own currency ("US$50.00  ≈ ₱2,900").
+2. About 30 major currencies (not all 160). More can be added later by adding a row.
+3. Premium, Featured posts, billboards and member ads (Xendit): show the price in the viewer's currency as
+   an estimate, but still CHARGE in pesos ("You will be charged ₱149"). Xendit Philippines only takes PHP.
+4. Client to freelancer payments: recorded in the project's currency, with any way of paying (PayPal, bank,
+   Wise, GCash...). The AI receipt check runs only for peso/GCash. For other currencies the freelancer's
+   "Received?" answer is the check.
+
+## What exists today (facts from the code)
+
+- Money columns, all numeric(10,2) and capped at 1,000,000: services.price, job_posts.budget,
+  bookings.price, projects.agreed_amount, payments.amount / tip_amount / received_amount, promotions and
+  checkouts (pesos, Xendit), receipt-check amount.
+- Website: formatPeso() in client/src/lib/payments.js, used in about 48 files; parseAmount() caps at
+  1,000,000; receiptPdf.js writes "PHP 1,500.00" (the PDF font has no peso sign); jobTerms.js and
+  projectPrice.js write "₱5,000 per project"; welcomeGuide.js says "in pesos".
+- Database: about 25 SQL files write "₱" + to_char(...) into notifications, chat messages, error texts and
+  the price_text() sentence.
+- Xendit: pro-checkout sends currency "PHP", and _shared/payments.ts refuses any other currency.
+- Free exchange rates exist: open.er-api.com/v6/latest/PHP (no key, about 160 currencies, updates daily,
+  needs a link back to exchangerate-api.com). I checked it answers today.
+
+## Build steps (each one live and checked before the next)
+
+### Step 1. The currency list and the rates (database + one small function)
+- New table `currencies`: code (PHP, USD, EUR...), name, symbol, decimals (JPY/KRW = 0, others 2),
+  max_amount (about the old ₱1,000,000, written once per currency, so it never depends on live rates),
+  per_php (how many of it one peso buys), rate_updated_at. Seeded with the 30 currencies and today's rates.
+  Everyone logged in can read it; nobody can write it from the website.
+- New SQL helper `money_text(amount, code)` -> "US$50.00" / "¥7,500". Every "₱" + to_char in the database
+  switches to it in Step 2.
+- New column `profiles.display_currency` (default 'PHP'): the currency a person likes to see estimates in.
+- The daily rate update (changed while building, 2026-11-14: no Edge Function needed): two pg_cron jobs.
+  At 9:00 AM Manila ask_exchange_rates() asks open.er-api.com through pg_net (the way the offline emails
+  are sent), at 9:10 read_exchange_rates() reads the answer and apply_exchange_rates() copies the rates.
+  A rate that halves or doubles in one day is ignored as a likely mistake. Every check is written in
+  `exchange_rate_checks` ("updated 30 rates" / "failed: ..."). If it ever fails, the old rates stay.
+- File: database/supabase_currencies_schema.sql (+ database/test_currencies.sql).
+- Tested 2026-11-14: 47/47 on PGlite (schema run twice) and 47/47 in a rolled-back trial on live,
+  nothing left behind.
+
+### Step 2. Prices and payments carry a currency (database)
+- New column `currency` (default 'PHP', references currencies) on: services, job_posts, bookings, projects,
+  payments. Every row that exists today becomes PHP, so nothing old changes.
+- The price rules copy the currency along: booking copies the service's, hire copies the job post's,
+  propose_project_price keeps the project's. A project's currency cannot change once it exists.
+- Payments: record_payment, record_chat_payment, request_payment, confirm_short_payment and the
+  "kulang"/tip rules use the project's currency; the 1,000,000 cap becomes the currency's max_amount.
+- Receipt check and the GCash receipt rules apply only when currency = 'PHP'; otherwise the reference and
+  receipt picture are optional and a short "sent with" text (PayPal, bank...) is kept.
+- Every notification, chat message, error text and price_text() uses money_text(). That means rewriting
+  about 25 functions with `create or replace`, only the changed lines, proved by a diff.
+- Admin numbers that add up client payments (I will find each one while doing this step) convert to pesos
+  at the stored rate and are marked "≈".
+- Applied to live only after the user says go, as before.
+
+### Step 3. Money helpers in the website (no screens change yet)
+- New client/src/lib/money.js: formatMoney(amount, code) (uses Intl, so symbols and decimals are right),
+  parseMoney(input, code) (cap and decimals per currency), estimateIn(amount, from, to), the list of
+  currencies loaded once and kept.
+- formatPeso() stays as a thin wrapper = formatMoney(x, "PHP"), so every Xendit/peso place keeps working.
+- Settings: "Show estimates in" dropdown for display_currency.
+
+### Step 4. Pick a currency where a price is typed, show it where a price is read
+- Post a job (PostNeedView), Offers (ServicesView), Book and Hire dialogs, ProjectPriceBox: a currency box
+  next to the amount, defaulting to PHP.
+- Job and offer cards, lists, details, search, Find Jobs, Browse, project page: the price in its own
+  currency plus a small "≈ ₱..." in the viewer's display currency (hidden when both are the same).
+- jobTerms.js and projectPrice.js sentences, and the pesos wording in welcomeGuide.js, reworded.
+
+### Step 5. Client to freelancer payments in any currency
+- PaymentsSection, RecordPaymentDialog, RequestPaymentDialog, ShortPaymentForm, PaymentCard, OwesNotice,
+  PayBlockNotice, payBlock.js: amounts, balance, tip and "owes" in the project's currency.
+- For a non-peso project the dialog hides GCash (number, QR, receipt AI check) and shows "Sent with" plus an
+  optional receipt picture; the project page says "Ask the freelancer in the chat where to send it".
+- Freelancer's Settings: a small "Other payment details" box (PayPal email, bank...; up to 300 letters),
+  private, shown only to the client of a non-peso project.
+- receiptPdf.js: "USD 1,500.00" (currency code, because the PDF font has no symbols).
+
+### Step 6. Subscriptions, Featured, billboards, admin
+- ProPlans, PromoPayDialog, AdvertiseView, billboard/member-ad pay boxes: "₱149  ≈ US$2.60" and the line
+  "You will be charged ₱149 (pesos)". Charging, receipts and admin Earnings stay in pesos.
+- Admin Overview and Transactions: totals in pesos "≈" plus a per-currency line.
+
+## Defaults I chose (change any)
+- The default currency of every box is PHP, so a freelancer who does nothing changes nothing.
+- Estimates are labelled "≈" and "rates update daily"; they are only a guide, never what is owed.
+- The "fully paid" and balance math never converts: it all happens inside one currency.
+- A project paid in another currency is not unlocked by an AI check; the freelancer's confirmation does it.
+
+## Not in this plan
+- Real charging in other currencies (needs a gateway like Stripe/PayPal, an account and live tests).
+- All 160 currencies, or converting a price after it was agreed.
+- Old rows, old notifications and old receipts stay peso (they were peso).
+
+## Honest limits
+- Never tested with a real foreign payment: the site only records what two people say, like GCash today.
+- Rates come from a free site; if it disappears, the stored rates just stop updating.
