@@ -53,6 +53,7 @@ from receipt_check import judge as judge_receipt
 from recommendations import recommend
 from resume_check import MAX_RESUME_BYTES, check_resume
 from similarity import image_embedding
+from site_check import site_router
 from skills import match_skill, suggest_skills
 from text_embedder import embed_texts
 from text_watermark import add_code as add_text_code
@@ -1706,3 +1707,8 @@ def moodboard_match(image: UploadFile = File(...), authorization: str | None = H
 # Pay to unlock (PLAN-transaction-tracking.md, Step F): the watermarked preview a
 # client sees until a payment on the project is confirmed (deliverable_preview.py).
 app.include_router(preview_router(supabase, get_user_id))
+
+# Verified owner badge (PLAN-site-verification.md): /sites/code gives a freelancer
+# a code for one of their portfolio links, /sites/check visits the website and
+# looks for it (site_check.py).
+app.include_router(site_router(supabase, get_user_id))
