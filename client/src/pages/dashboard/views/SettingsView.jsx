@@ -26,8 +26,10 @@ export default function SettingsView() {
   const navigate = useNavigate();
   // Only freelancers get paid, so only they have the GCash Payment tab. (Freelancer
   // Pro has its own page in the menu now: views/ProView.jsx.)
-  // Purchases (receipts of what they paid PhilFreela for online) is for everyone, last.
-  const menuItems = [...subNavItems, ...(accountType === "freelancer" ? ["GCash Payment"] : []), "Purchases"];
+  // Currency ("My currency", PLAN-currencies.md) is about money, not looks, so it sits
+  // with the money tabs instead of in Appearance (the user, 2026-11-15). Purchases
+  // (receipts of what they paid PhilFreela for online) is for everyone, last.
+  const menuItems = [...subNavItems, "Currency", ...(accountType === "freelancer" ? ["GCash Payment"] : []), "Purchases"];
   // A link can open a tab: /dashboard/settings?tab=GCash%20Payment. It is worked
   // out here, not copied into state, because the account type (and so the
   // freelancer-only tabs) may arrive after the page opens.
@@ -467,15 +469,13 @@ export default function SettingsView() {
               currentUserId ? <PurchasesList userId={currentUserId} showToast={showToast} /> : <Loader size="sm" />
             ) : activeSubNav === "Appearance" ? (
               currentUserId ? (
-                <>
-                  <AppearanceForm userId={currentUserId} accountType={accountType} showToast={showToast} />
-                  {/* "My currency": what new posts, offers and requests start in (PLAN-currencies.md). */}
-                  <hr className="border-secondary my-4" />
-                  <EstimateCurrencyForm userId={currentUserId} showToast={showToast} />
-                </>
+                <AppearanceForm userId={currentUserId} accountType={accountType} showToast={showToast} />
               ) : (
                 <Loader size="sm" />
               )
+            ) : activeSubNav === "Currency" ? (
+              // "My currency": every price shows in it, and new posts, offers and payment requests start in it (PLAN-currencies.md).
+              currentUserId ? <EstimateCurrencyForm userId={currentUserId} showToast={showToast} /> : <Loader size="sm" />
             ) : activeSubNav === "Privacy & Notifications" ? (
               <>
                 <div className="form-check form-switch">

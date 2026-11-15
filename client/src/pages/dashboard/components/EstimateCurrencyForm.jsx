@@ -3,11 +3,12 @@ import CurrencySelect from "../../../components/CurrencySelect";
 import { Busy } from "../../../components/Loaders";
 import { fetchDisplayCurrency, saveDisplayCurrency, setDisplayCurrency, useMyCurrency } from "../../../lib/money";
 
-// Settings > Appearance > "My currency" (PLAN-currencies.md, the user's choice on
+// Settings > Currency > "My currency" (PLAN-currencies.md, the user's choice on
 // 2026-11-15, "Turn into my currency"): every price on the site shows in it, worked out at
 // the day's rate, and the person's new job posts, offers and payment requests start in it.
 // Money that is sent or received stays in its own currency. Saved on the profile, so it
-// follows the person to any device (lib/money.js).
+// follows the person to any device (lib/money.js). It has its own tab because it is about
+// money, not looks (moved out of Appearance at the user's word, 2026-11-15).
 export default function EstimateCurrencyForm({ userId, showToast }) {
   const moneyView = useMyCurrency();
   // Nothing can be changed until the saved choice has loaded.
@@ -47,12 +48,8 @@ export default function EstimateCurrencyForm({ userId, showToast }) {
 
   return (
     <div>
-      <h6 className="text-white fw-bold mb-1">My currency</h6>
-      <p className="text-secondary fs-8 mb-3">
-        Every price on PhilFreela shows in this currency, worked out at the day's rate{ratesDay ? ` (rates of ${ratesDay})` : ""}.
-        Your new job posts, offers and payment requests also start in it. Money you send or receive stays in the
-        currency it is sent in, for example pesos by GCash.
-      </p>
+      {/* Same look as the Name and Username boxes in Profile Settings: label, box, then the explanation. */}
+      <label htmlFor="estimateCurrency" className="form-label text-white-50 fw-semibold fs-7">My currency:</label>
       <div style={{ maxWidth: "22rem" }}>
         <CurrencySelect
           id="estimateCurrency"
@@ -67,6 +64,11 @@ export default function EstimateCurrencyForm({ userId, showToast }) {
           {saving ? <Busy>Saving</Busy> : <Busy>Loading your currency</Busy>}
         </small>
       )}
+      <p className="text-secondary fs-8 mt-2 mb-0">
+        Every price on PhilFreela shows in this currency, worked out at the day's rate{ratesDay ? ` (rates of ${ratesDay})` : ""}.
+        Your new job posts, offers and payment requests also start in it. Money you send or receive stays in the
+        currency it is sent in, for example pesos by GCash.
+      </p>
     </div>
   );
 }

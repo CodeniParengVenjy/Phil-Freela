@@ -159,6 +159,10 @@ currency": every price a person READS shows in their "My currency", worked out a
   budgetTitle() in jobTerms.js, priceText(..., moneyView) in projectPrice.js; the rates load when the dashboard opens.
 - Checks: 114 browser checks against the pretend backend (prices 34, look 19, Settings 15, payments 31, Premium /
   ads / Feature window 15).
+- Moved (same day): after seeing it work the user said "it is not supposed to be appearance section", so "My
+  currency" left Settings > Appearance for its own tab, Settings > Currency, next to the money tabs (… Privacy &
+  Notifications, Currency, GCash Payment, Purchases). Website only; the tour's Settings step names the new tab.
+  Checks: the Settings test, now 23 browser checks (menu order for clients and freelancers, Appearance without it).
 
 Part 2 below was planned for "prices as posted". With prices now converted for reading, its per-currency price
 table is no longer needed; what is left of it is only charging US dollars by card (once Xendit turns USD on).

@@ -18,7 +18,7 @@ import { Busy } from "../../../components/Loaders";
 //   onSent(): called after the request was sent
 export default function RequestPaymentDialog({ userId, conversationId, otherName, onClose, onSent }) {
   const [amount, setAmount] = useState("");
-  // Starts as the freelancer's own currency (Settings > Appearance, the user's choice on
+  // Starts as the freelancer's own currency (Settings > Currency, the user's choice on
   // 2026-11-15); pickedCurrency is set only when they choose one, null = their own.
   const moneyView = useMoneyView();
   const [pickedCurrency, setPickedCurrency] = useState(null);

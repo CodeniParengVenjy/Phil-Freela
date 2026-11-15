@@ -112,7 +112,7 @@ export const TOUR = {
       { page: PROFILE, target: "profile-portfolio", scroll: true, title: "Portfolio", text: "Add your best past work. Clients choose freelancers by it, and your files get your watermark." },
       { page: PROFILE, target: "profile-performance", scroll: true, title: "Your numbers", text: "Completed projects, on-time delivery, your rating and how fast you reply, all from real projects and chats." },
 
-      { page: SETTINGS, target: "settings-tabs", scroll: true, title: "Settings", text: "Profile Settings: your name, picture, cover and description. Account Security: your password. Watermark Settings: the mark on your files. Appearance: dark or light, and your color. Privacy & Notifications: emails and your data." },
+      { page: SETTINGS, target: "settings-tabs", scroll: true, title: "Settings", text: "Profile Settings: your name, picture, cover and description. Account Security: your password. Watermark Settings: the mark on your files. Appearance: dark or light, and your color. Privacy & Notifications: emails and your data. Currency: the money every price shows in, like pesos or dollars." },
       { page: SETTINGS, target: "settings-gcash", scroll: true, title: "GCash Payment", text: "Add your GCash number so clients know where to pay you. PhilFreela never holds your money." },
 
       { page: null, target: "menu-pro", menu: true, title: "Premium", text: "More offers, a free Featured post every month and a gold Premium badge, if you want them. Next opens it." },
@@ -176,7 +176,7 @@ export const TOUR = {
       { page: PROFILE, target: "profile-completed", scroll: true, title: "Completed projects", text: "The projects you marked done. They show freelancers that you're a real client who finishes work." },
       { page: PROFILE, target: "profile-performance", scroll: true, title: "Your numbers", text: "From real projects and chats: projects done, the ratings freelancers gave you, and how fast you reply." },
 
-      { page: SETTINGS, target: "settings-tabs", scroll: true, title: "Settings", text: "Profile Settings: your name, picture, cover and description. Account Security: your password. Watermark Settings: the mark on your files. Appearance: dark or light, and your color. Privacy & Notifications: emails and your data." },
+      { page: SETTINGS, target: "settings-tabs", scroll: true, title: "Settings", text: "Profile Settings: your name, picture, cover and description. Account Security: your password. Watermark Settings: the mark on your files. Appearance: dark or light, and your color. Privacy & Notifications: emails and your data. Currency: the money every price shows in, like pesos or dollars." },
 
       { page: null, target: "menu-pro", menu: true, title: "Premium", text: "A free Featured job post every month and a gold Premium badge, if you want them. Next opens it." },
       { page: "/dashboard/pro", target: "pro-plan", scroll: true, title: "Free or Premium", text: "Free stays free. Premium is ₱149 for 30 days, paid online with GCash, Maya or QR Ph: a free Featured post every month, half-price ones after, view counts on your posts, bigger chat files, the two-color look, and a gold Premium badge." },

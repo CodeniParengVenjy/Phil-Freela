@@ -117,7 +117,7 @@ export const moneyMax = (code) => currencyInfo(code).max;
 // ---- The person's own currency ------------------------------------------------
 
 // Shared by every component that shows a price: the person's own currency (Settings >
-// Appearance > "My currency"), the daily rates (how much of each currency one peso buys)
+// Currency > "My currency"), the daily rates (how much of each currency one peso buys)
 // and the day they are from. Every price a person READS is shown in their currency,
 // worked out at the day's rate (the user's choice on 2026-11-15, "Turn into my
 // currency"): see shownPrice() below. Money that is actually sent or received (payments,

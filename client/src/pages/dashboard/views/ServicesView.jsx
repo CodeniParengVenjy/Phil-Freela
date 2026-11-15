@@ -35,7 +35,7 @@ export default function ServicesView() {
   const [price, setPrice] = useState("");
   // The currency of the starting price (PLAN-currencies.md). A booking copies it, and
   // the project and its payments use it. It starts as the freelancer's own currency
-  // (Settings > Appearance, the user's choice on 2026-11-15); pickedCurrency is set
+  // (Settings > Currency, the user's choice on 2026-11-15); pickedCurrency is set
   // only when they choose one (or edit an offer), null = their own.
   const moneyView = useMoneyView();
   const [pickedCurrency, setPickedCurrency] = useState(null);

@@ -80,7 +80,7 @@ export default function PostNeedView() {
   const [budget, setBudget] = useState("");
   // The currency of the budget (PLAN-currencies.md). The project made from this post
   // and every payment on it use the same currency. It starts as the client's own
-  // currency (Settings > Appearance, the user's choice on 2026-11-15); pickedCurrency
+  // currency (Settings > Currency, the user's choice on 2026-11-15); pickedCurrency
   // is set only when they choose one (or edit a post), null = their own.
   const moneyView = useMyCurrency();
   const [pickedCurrency, setPickedCurrency] = useState(null);
