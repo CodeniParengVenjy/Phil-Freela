@@ -44,18 +44,54 @@ function TermsOfService() {
 
       <h5 className="text-white fw-bold mt-4 mb-2">What PhilFreela is</h5>
       <p className="text-secondary">
-        PhilFreela is a platform for Filipino freelancers and clients to find each other, message, and arrange work
-        directly. <strong className="text-white">PhilFreela never holds, moves or guarantees the money between clients and freelancers.</strong> Clients pay
+        PhilFreela is a platform where Filipino freelancers and clients, from the Philippines or anywhere else, find each
+        other, message, and arrange work directly. <strong className="text-white">PhilFreela never holds, moves or guarantees the money between clients and freelancers.</strong> Clients pay
         freelancers directly, in their own GCash app, outside the platform. PhilFreela only keeps a record of those
         payments (see "Payments" below) and never takes a cut of them. It only charges for its own extras: Featured
         posts, Premium, ads on the Community Billboard and sponsored billboards (see "PhilFreela's own fees" below).
       </p>
+
+      {/* Panel revision (PLAN-panel-revisions.md, item 2): who the platform is for. */}
+      <h5 className="text-white fw-bold mt-4 mb-2">Who can join</h5>
+      <ul className="text-secondary">
+        <li>
+          <strong className="text-white">Freelancers must be Filipino.</strong> A freelancer verifies with a Philippine ID: a
+          PhilSys National ID, an ePhilID, a Driver's License, a UMID, a PRC ID or a Philippine passport.
+        </li>
+        <li>
+          <strong className="text-white">Clients can be from the Philippines or anywhere else.</strong> A client verifies with
+          one of the Philippine IDs above or with a passport from any country. A client may post for a business, but the
+          person who verified is responsible for the account.
+        </li>
+      </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your account</h5>
       <ul className="text-secondary">
         <li>You're responsible for the accuracy of your profile and for keeping your login secure.</li>
         <li>Freelancers must pass identity verification before posting a service, and clients before posting a project or job, so both sides know they're dealing with a real person.</li>
         <li>One account per person. Your face scan is checked against the other accounts, and a face already used on another account is flagged to an admin.</li>
+      </ul>
+
+      {/* Panel revision (PLAN-panel-revisions.md, item 3): how PhilFreela keeps
+          agencies out. Each line matches a real check on the site. */}
+      <h5 className="text-white fw-bold mt-4 mb-2">One person per account (no agencies)</h5>
+      <ul className="text-secondary">
+        <li>
+          A freelancer account belongs to one person. The person who verified the account is the one who talks to clients
+          and does the work. Agencies, teams, and accounts that are shared, lent, rented or sold are not allowed, and a
+          freelancer can't hand a client's project to someone else to do.
+        </li>
+        <li>
+          <strong className="text-white">How PhilFreela checks it.</strong> Every freelancer verifies with their own ID and a
+          live face scan (looking straight, then turning left and right), and the face must match the ID photo. The face is
+          also compared with every other account, so one person can't run several accounts: a face already used on another
+          account is flagged to an admin. A client who wants to be sure can start a video call in the chat and see who they're
+          working with.
+        </li>
+        <li>
+          If you think an account is run by an agency or shared by several people, report it with the Report button on the
+          profile and say why. An admin looks at it and can suspend the account (see "Grounds for suspension or ban").
+        </li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Your name</h5>
@@ -297,6 +333,55 @@ function TermsOfService() {
         </li>
       </ul>
 
+      {/* Panel revision (PLAN-panel-revisions.md, item 8). The same penalty chart
+          the admin's Suspend pop-up uses (lib/violations.js): the admin picks the
+          rule that was broken, and the chart sets the length and what is blocked. */}
+      <h5 className="text-white fw-bold mt-4 mb-2">Grounds for suspension or ban</h5>
+      <p className="text-secondary">
+        An admin suspends or bans an account only for one of the reasons below, usually after a report. The admin picks
+        the reason, and the reason decides how long the suspension lasts and what it blocks, so everyone who breaks the same
+        rule gets the same penalty. "Can't post" means you can't post offers or jobs, apply to jobs or book offers. "Can't
+        message" means you can't send chat messages or call.
+      </p>
+      <ul className="text-secondary">
+        <li><strong className="text-white">Spam</strong> (the same post again and again, ads or links that don't belong): 3 days, can't post.</li>
+        <li><strong className="text-white">Inappropriate content</strong> (sexual, violent or hateful pictures, posts or text): 7 days, can't post.</li>
+        <li><strong className="text-white">Harassment</strong> (threats, insults or abuse in messages or calls): 14 days, can't message.</li>
+        <li><strong className="text-white">Stolen work</strong> (posting someone else's work as your own): 14 days, can't post.</li>
+        <li>
+          <strong className="text-white">Scam / Fraud</strong> (a fake or edited receipt, confirming money that didn't arrive,
+          taking a payment and never delivering, or taking delivered work and never paying): 30 days, can't post or message.
+        </li>
+        <li>
+          <strong className="text-white">Other</strong> (breaking another rule in these Terms, for example a name that pretends
+          to be someone else, or an account run by an agency or shared by several people): the admin writes what happened
+          and picks 3, 7, 14 or 30 days and what is blocked.
+        </li>
+      </ul>
+      <ul className="text-secondary">
+        <li>
+          <strong className="text-white">A ban</strong> is for serious or repeated cases: a proven scam, or breaking a rule
+          again after a suspension for it. A banned account can't log in, has no end date, and is permanently deleted after
+          100 days (never while an appeal is waiting).
+        </li>
+        <li>The person is always told the reason, and the end date of a suspension. When a suspension ends, the account works normally again by itself.</li>
+        <li>Being late is never a reason by itself (see "Delays and reports").</li>
+      </ul>
+
+      {/* Panel revision (PLAN-panel-revisions.md, item 4): the appeal steps as the
+          Appeal page (pages/appeal/AppealPage.jsx) and the appeals table work. */}
+      <h5 className="text-white fw-bold mt-4 mb-2">How appeals work</h5>
+      <ol className="text-secondary">
+        <li>A suspended or banned person opens the Appeal page (a banned person is taken there when they log in) and sees the reason for the penalty.</li>
+        <li>They write why it should be lifted, in 10 to 1,000 characters, and send it. Each penalty can be appealed once.</li>
+        <li>An admin reads the appeal together with the reason for the penalty. The penalty stays while the appeal waits.</li>
+        <li>
+          The admin accepts it, and the penalty is lifted right away, or rejects it with a note that explains why. A suspended
+          person gets a notification with the answer; a banned person sees it on the Appeal page when they log in.
+        </li>
+        <li>A rejected appeal is final for that penalty. A suspension still ends on its date.</li>
+      </ol>
+
       <h5 className="text-white fw-bold mt-4 mb-2">PhilFreela's own fees</h5>
       <ul className="text-secondary">
         <li>
@@ -388,7 +473,7 @@ function PrivacyPolicy() {
     <section>
       <h2 id="privacy-policy" className="text-white fw-bold fs-4 mb-3" style={{ scrollMarginTop: 24 }}>Part 2: Privacy Policy</h2>
       <p className="text-secondary">
-        PhilFreela connects Filipino freelancers and clients. This part explains what information we collect, why, and the
+        PhilFreela connects Filipino freelancers with clients in the Philippines and abroad. This part explains what information we collect, why, and the
         choices you have, following the Philippine Data Privacy Act of 2012 (RA 10173).
       </p>
 
