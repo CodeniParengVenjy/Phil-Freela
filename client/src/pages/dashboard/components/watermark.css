@@ -1,0 +1,54 @@
+/* Settings > Watermark Settings (WatermarkSettingsForm.jsx).
+   One column on narrow screens. When the settings panel itself is at least
+   720px wide (a container query, so it works whether the side menu is open
+   or closed), the settings go on the left and the preview + Save button on
+   the right, staying in view while the settings scroll. */
+
+.wm-layout {
+  container-type: inline-size;
+}
+
+.wm-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+@container (min-width: 720px) {
+  .wm-grid {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .wm-aside {
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+/* The small picture of their own watermark: a gray checkerboard behind it,
+   so a see-through background shows (the same in light and dark mode). */
+.wm-picture-thumb {
+  width: 140px;
+  height: 100px;
+  background-color: #f1f5f9;
+  background-image: conic-gradient(#cbd5e1 25%, transparent 0 50%, #cbd5e1 0 75%, transparent 0);
+  background-size: 16px 16px;
+}
+
+.wm-picture-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.wm-drop {
+  border-style: dashed !important;
+  cursor: pointer;
+}
+
+.wm-drop:hover,
+.wm-drop:focus-within {
+  border-color: var(--accent-role) !important;
+}

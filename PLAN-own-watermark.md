@@ -121,6 +121,17 @@ AI service: `main.py` keeps the copy on upload; new route
 `POST /watermark/reapply` (only the owner's own photos).
 Cost: about twice the storage for new photos.
 
+## Layout tidy-up (2026-11-16, the user: "fix and organize the UI")
+
+The page is now: the On/Off card on top, then three groups (Your watermark,
+Style, Documents) on the left and the preview + Save button on the right,
+staying in view while the settings scroll (`components/watermark.css`: a
+container query, two columns once the settings panel is 720px wide, one
+column on phones). With "My picture" alone, the text choice moves to
+Documents (the only place the words are still used). The Premium box became
+one line, and "You have unsaved changes" shows under Save. 57/57 browser
+checks (layout beside/below, the preview staying in view, the unsaved hint).
+
 ## What was checked (2026-11-15)
 
 - Database: 12/12 in the rolled-back trial (own folder only, mark.png only,
