@@ -101,6 +101,10 @@ What Step 3 does (photos only; videos in Step 7):
   name, custom), position (corners, center, tiled), opacity 10-80%, size,
   color, PhilFreela logo, live preview (`lib/watermarkPreview.js`, same
   layout as `ai-service/visible_watermark.py`). Stored in `watermark_settings`.
+  Added 2026-11-15 (`PLAN-own-watermark.md`): a big On/Off card, and the
+  freelancer's OWN watermark picture (PNG/JPG/WebP logo or signature, with a
+  "Remove background" switch), shown alone or in front of the text, on the
+  photos and videos of service posts and portfolio projects. Free for all.
 - Promo switch (user's request): in Post a Service each picked file is
   "Protected" (default) or "Promo" (an ad, like "Are you looking for a video
   editor?"). Promo = no visible watermark and no name overlay, but it still
