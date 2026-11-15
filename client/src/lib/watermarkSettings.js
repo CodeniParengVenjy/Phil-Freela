@@ -24,10 +24,23 @@ export const DEFAULT_WATERMARK = {
   font: "jakarta",
   show_badge: true,
   // Documents (step 6): the "© @username · PhilFreela" line at the end.
-  document_footer: true
+  document_footer: true,
+  // Their own picture (PLAN-own-watermark.md, lib/watermarkPicture.js): what
+  // the watermark shows, where their mark.png is, and whether "Remove
+  // background" was on when it was made.
+  mark_kind: "text",
+  picture_path: null,
+  picture_bg_removed: false
 };
 
 export const MAX_CUSTOM_TEXT = 40;
+
+// What the watermark shows. The picture is free for everyone.
+export const MARK_KINDS = [
+  { value: "text", label: "Text", icon: "bi-fonts" },
+  { value: "picture", label: "My picture", icon: "bi-image" },
+  { value: "picture_text", label: "My picture + text", icon: "bi-images" }
+];
 
 export const POSITIONS = [
   { value: "top_left", label: "Top left", icon: "bi-arrow-up-left" },
@@ -70,7 +83,7 @@ export async function loadWatermarkSettings(freelancerId) {
   const [{ data, error }, pro] = await Promise.all([
     supabase
       .from("watermark_settings")
-      .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, font, show_badge, document_footer")
+      .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, font, show_badge, document_footer, mark_kind, picture_path, picture_bg_removed")
       .eq("freelancer_id", freelancerId)
       .maybeSingle(),
     supabase.rpc("is_pro", { target: freelancerId })
@@ -117,6 +130,9 @@ export async function saveWatermarkSettings(freelancerId, settings) {
     font: settings.font,
     show_badge: settings.show_badge,
     document_footer: settings.document_footer,
+    mark_kind: settings.mark_kind,
+    picture_path: settings.picture_path,
+    picture_bg_removed: settings.picture_bg_removed,
     updated_at: new Date().toISOString()
   });
   if (error) {

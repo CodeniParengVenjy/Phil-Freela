@@ -73,6 +73,10 @@ def page_style(settings, picture):
         "opacity": PAGE_WATERMARK_OPACITY,
         "color": "black" if light_paper else "white",
         "show_badge": False,
+        # Only the text: their own picture repeated across every page would
+        # make it hard to read (PLAN-own-watermark.md).
+        "mark_kind": "text",
+        "picture": None,
     }
 
 

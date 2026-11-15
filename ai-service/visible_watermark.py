@@ -10,8 +10,15 @@ Premium (PLAN-premium.md) adds any color (#rrggbb), extra small and extra
 large, and 3 more fonts. The database only lets Premium members pick them;
 someone whose Premium ended keeps them saved, and main.py passes their style
 through free_style() so their photos get the nearest free look meanwhile.
+
+The freelancer can also use their own picture, a logo or a signature
+(PLAN-own-watermark.md): mark_kind "picture" draws only the picture,
+"picture_text" puts it in the PhilFreela logo's place in front of the text.
+The website makes the picture (and removes its background if asked); main.py
+downloads it and passes it in as settings["picture"]. Free for everyone.
 """
 
+import io
 import math
 import os
 
@@ -40,7 +47,20 @@ DEFAULTS = {
     "color": "white",
     "font": "jakarta",
     "show_badge": True,
+    # What it shows: "text", "picture" or "picture_text" (their own picture).
+    "mark_kind": "text",
+    # Their own picture, as an RGBA picture (main.py adds it); None = text only.
+    "picture": None,
 }
+
+# The own picture's height, as a multiple of the text size: alone it is drawn
+# bigger, next to the text a little bigger than the PhilFreela logo (1.25).
+# Same numbers as client/src/lib/watermarkPreview.js.
+PICTURE_ALONE = 2.4
+PICTURE_WITH_TEXT = 1.6
+# A watermark picture bigger than this is ignored: the website saves at most
+# 600 x 600, so anything bigger was not made by the website.
+MAX_PICTURE_PIXELS = 1200 * 1200
 
 # Text height as a share of the photo's shorter side. (Made bigger: at 5%
 # the mark was easy to miss on a service card.) Same numbers as
@@ -104,19 +124,48 @@ def _load_logo():
     return _logo
 
 
-def _draw_mark(text, font_px, color, show_badge, font_name="jakarta"):
-    """The watermark itself (logo + text) on a see-through picture, at full strength."""
+def load_picture(data):
+    """The freelancer's own watermark picture (the bytes of their mark.png) as
+    an RGBA picture, or None if it can't be used (broken, or far too big).
+    The size is read before the picture is unpacked, so a small file that
+    would unpack into a huge picture is never loaded."""
+    try:
+        picture = Image.open(io.BytesIO(data))
+        if picture.width * picture.height > MAX_PICTURE_PIXELS:
+            return None
+        return picture.convert("RGBA")
+    except Exception:
+        return None
+
+
+def _fit_height(picture, height):
+    """The picture resized to this height, keeping its shape."""
+    height = max(1, height)
+    return picture.resize((max(1, round(picture.width * height / picture.height)), height), Image.LANCZOS)
+
+
+def _draw_mark(text, font_px, color, show_badge, font_name="jakarta", picture=None, kind="text"):
+    """The watermark itself on a see-through picture, at full strength: the
+    text with the PhilFreela logo in front (kind "text"), the freelancer's own
+    picture alone ("picture"), or their picture in the logo's place in front
+    of the text ("picture_text"). Without a picture it is always the text."""
+    if picture is None:
+        kind = "text"
+    if kind == "picture":
+        return _fit_height(picture, round(font_px * PICTURE_ALONE))
+
     font = ImageFont.truetype(FONT_PATHS.get(font_name, FONT_PATHS["jakarta"]), font_px)
     stroke = max(1, round(font_px / 18))
     text_width = math.ceil(font.getlength(text)) + 2 * stroke
 
     height = round(font_px * 1.3)
     logo = None
-    if show_badge:
-        logo_height = round(font_px * 1.25)
-        source = _load_logo()
-        logo = source.resize((round(source.width * logo_height / source.height), logo_height), Image.LANCZOS)
-        height = max(height, logo_height)
+    if kind == "picture_text":
+        logo = _fit_height(picture, round(font_px * PICTURE_WITH_TEXT))
+    elif show_badge:
+        logo = _fit_height(_load_logo(), round(font_px * 1.25))
+    if logo:
+        height = max(height, logo.height)
     gap = round(font_px * 0.35) if logo else 0
 
     mark = Image.new("RGBA", ((logo.width + gap if logo else 0) + text_width, height), (0, 0, 0, 0))
@@ -174,13 +223,16 @@ def watermark_layer(size, settings, username, full_name):
 
     width, height = size
     text = watermark_text(settings, username, full_name)
+    # Their own picture, if they use one and it loaded (else the text).
+    picture = settings["picture"]
+    kind = settings["mark_kind"] if picture is not None else "text"
     font_px = max(12, round(min(width, height) * SIZE_RATIOS.get(settings["size"], SIZE_RATIOS["medium"])))
-    mark = _draw_mark(text, font_px, settings["color"], settings["show_badge"], settings["font"])
-    # Long text on a small photo: shrink it so it fits.
+    mark = _draw_mark(text, font_px, settings["color"], settings["show_badge"], settings["font"], picture, kind)
+    # Long text (or a wide picture) on a small photo: shrink it so it fits.
     room = width - 2 * round(font_px * 0.8)
     if settings["position"] != "tiled" and mark.width > room:
         font_px = max(10, math.floor(font_px * room / mark.width))
-        mark = _draw_mark(text, font_px, settings["color"], settings["show_badge"], settings["font"])
+        mark = _draw_mark(text, font_px, settings["color"], settings["show_badge"], settings["font"], picture, kind)
     _set_opacity(mark, settings["opacity"])
 
     if settings["position"] == "tiled":

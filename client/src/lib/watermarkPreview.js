@@ -9,6 +9,10 @@ import { FONTS, watermarkText } from "./watermarkSettings";
 // Text height as a share of the photo's shorter side (same numbers as
 // ai-service/visible_watermark.py). xsmall and xlarge are Premium's.
 const SIZE_RATIOS = { xsmall: 0.035, small: 0.05, medium: 0.08, large: 0.11, xlarge: 0.15 };
+// The freelancer's own picture's height as a multiple of the text size: alone,
+// and in front of the text (PLAN-own-watermark.md; same numbers as the AI service).
+const PICTURE_ALONE = 2.4;
+const PICTURE_WITH_TEXT = 1.6;
 const COLORS = { white: "#ffffff", black: "#111111", orange: "#ff6b00" };
 const TILE_ANGLE = 30; // degrees, for the tiled pattern
 
@@ -47,8 +51,24 @@ export function loadWatermarkFont() {
   return fontsReady;
 }
 
-// The watermark itself (logo + text) on its own small canvas, at full strength.
-function drawMark(text, fontPx, color, logo, font) {
+// A picture's real size (an <img> or a <canvas>).
+const widthOf = (picture) => picture.naturalWidth || picture.width;
+const heightOf = (picture) => picture.naturalHeight || picture.height;
+
+// The watermark itself on its own small canvas, at full strength: the text
+// with the PhilFreela logo in front (kind "text", logo = the badge or null),
+// the freelancer's own picture alone ("picture"), or their picture in the
+// logo's place in front of the text ("picture_text").
+function drawMark(text, fontPx, color, badge, font, picture = null, kind = "text") {
+  if (!picture) kind = "text";
+  if (kind === "picture") {
+    const mark = document.createElement("canvas");
+    mark.height = Math.max(1, Math.round(fontPx * PICTURE_ALONE));
+    mark.width = Math.max(1, Math.round((widthOf(picture) * mark.height) / heightOf(picture)));
+    mark.getContext("2d").drawImage(picture, 0, 0, mark.width, mark.height);
+    return mark;
+  }
+  const logo = kind === "picture_text" ? picture : badge;
   const measure = document.createElement("canvas").getContext("2d");
   measure.font = fontCss(font, fontPx);
   const stroke = Math.max(1, Math.round(fontPx / 18));
@@ -58,8 +78,8 @@ function drawMark(text, fontPx, color, logo, font) {
   let logoWidth = 0;
   let logoHeight = 0;
   if (logo) {
-    logoHeight = Math.round(fontPx * 1.25);
-    logoWidth = Math.round((logo.naturalWidth * logoHeight) / logo.naturalHeight);
+    logoHeight = Math.round(fontPx * (kind === "picture_text" ? PICTURE_WITH_TEXT : 1.25));
+    logoWidth = Math.round((widthOf(logo) * logoHeight) / heightOf(logo));
     height = Math.max(height, logoHeight);
   }
   const gap = logo ? Math.round(fontPx * 0.35) : 0;
@@ -85,21 +105,23 @@ function drawMark(text, fontPx, color, logo, font) {
 }
 
 // Draws the watermark for these settings over whatever is already on the canvas.
-// owner: { username, fullName }; logo: a loaded <img> of the PhilFreela logo.
-export function drawWatermark(canvas, settings, owner, logo) {
+// owner: { username, fullName }; logo: a loaded <img> of the PhilFreela logo;
+// picture: the freelancer's own finished watermark picture (a canvas), or null.
+export function drawWatermark(canvas, settings, owner, logo, picture = null) {
   if (!settings.visible_enabled) return;
   const ctx = canvas.getContext("2d");
   const { width, height } = canvas;
   const text = watermarkText(settings, owner);
   const badge = settings.show_badge ? logo : null;
+  const kind = picture ? settings.mark_kind || "text" : "text";
 
   let fontPx = Math.max(12, Math.round(Math.min(width, height) * (SIZE_RATIOS[settings.size] || SIZE_RATIOS.medium)));
-  let mark = drawMark(text, fontPx, settings.color, badge, settings.font);
-  // Long text on a small photo: shrink it so it fits.
+  let mark = drawMark(text, fontPx, settings.color, badge, settings.font, picture, kind);
+  // Long text (or a wide picture) on a small photo: shrink it so it fits.
   const room = width - 2 * Math.round(fontPx * 0.8);
   if (settings.position !== "tiled" && mark.width > room) {
     fontPx = Math.max(10, Math.floor((fontPx * room) / mark.width));
-    mark = drawMark(text, fontPx, settings.color, badge, settings.font);
+    mark = drawMark(text, fontPx, settings.color, badge, settings.font, picture, kind);
   }
   const margin = Math.round(fontPx * 0.8);
 

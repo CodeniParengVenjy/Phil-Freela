@@ -9,12 +9,14 @@ used. From the ai-service folder, run:
 FAIL, and the script exits with 1 if any check failed.
 """
 
+import io
 import sys
 
 from PIL import Image
 
 from document_pages import page_style
-from visible_watermark import FONT_PATHS, SIZE_RATIOS, _draw_mark, _is_dark, _rgb, draw_visible_watermark, free_style, watermark_layer
+from visible_watermark import (FONT_PATHS, SIZE_RATIOS, _draw_mark, _is_dark, _rgb, draw_visible_watermark, free_style,
+                               load_picture, watermark_layer)
 
 results = []
 
@@ -104,6 +106,51 @@ page = page_style(premium, paper)
 check("PDF pages keep the person's font but stay small, black on white paper and tiled",
       page["font"] == "script" and page["size"] == "small" and page["color"] == "black" and page["position"] == "tiled")
 check("a PDF page draws with it", draw_visible_watermark(paper, page, "elena", "Elena Cruz").size == paper.size)
+
+# --- The freelancer's own picture (PLAN-own-watermark.md) ---------------------
+def png_bytes(picture):
+    out = io.BytesIO()
+    picture.save(out, format="PNG")
+    return out.getvalue()
+
+
+# A red logo on a see-through background, 300 x 150.
+logo = Image.new("RGBA", (300, 150), (0, 0, 0, 0))
+logo.paste((220, 30, 30, 255), (40, 20, 260, 130))
+loaded = load_picture(png_bytes(logo))
+check("a PNG picture loads as RGBA", loaded is not None and loaded.mode == "RGBA" and loaded.size == (300, 150))
+check("a broken file is not used", load_picture(b"not a picture") is None)
+check("a picture far bigger than the website makes is not used",
+      load_picture(png_bytes(Image.new("RGBA", (2000, 2000), (0, 0, 0, 0)))) is None)
+
+font_px = round(800 * SIZE_RATIOS["medium"])  # a 1200 x 800 photo, medium
+alone = style(mark_kind="picture", picture=loaded)
+both = style(mark_kind="picture_text", picture=loaded)
+alone_box, both_box, text_box = mark_box(alone), mark_box(both), mark_box(style())
+# (The red part is 110 of the 150 rows; resizing softens its edges by a few pixels.)
+check("picture alone: drawn at 2.4 x the text size", abs(alone_box[1] - round(font_px * 2.4 * 110 / 150)) <= 6, alone_box)
+check("picture + text is wider than the text alone", both_box[0] > text_box[0], (both_box, text_box))
+alone_layer = watermark_layer((1200, 800), alone, "elena", "")
+check("picture alone shows the picture's red", has_color(alone_layer, (220, 30, 30), near=40))
+check("picture alone has no white text", not has_color(alone_layer, (255, 255, 255), near=10))
+check("picture + text shows red and the white text",
+      has_color(watermark_layer((1200, 800), both, "elena", ""), (220, 30, 30), near=40)
+      and has_color(watermark_layer((1200, 800), both, "elena", ""), (255, 255, 255), near=10))
+check("with a picture the PhilFreela logo is left out",
+      mark_box(style(mark_kind="picture_text", picture=loaded, show_badge=True)) == both_box)
+check("picture chosen but it didn't load: the text is drawn",
+      mark_box(style(mark_kind="picture", picture=None)) == text_box)
+check("a picture saved but kind is text: the text is drawn",
+      mark_box(style(mark_kind="text", picture=loaded)) == text_box)
+wide = load_picture(png_bytes(Image.new("RGBA", (600, 40), (220, 30, 30, 255))))
+check("a very wide picture still fits a small photo",
+      mark_box(style(mark_kind="picture", picture=wide, size="large"), (500, 400))[0] <= 500 - 2 * 10)
+check("tiled works with a picture", watermark_layer((1200, 800), {**alone, "position": "tiled"}, "elena", "") is not None)
+check("switched off: no watermark even with a picture",
+      watermark_layer((1200, 800), {**alone, "visible_enabled": False}, "elena", "") is None)
+check("the free look keeps the picture", free_style(alone)["picture"] is loaded and free_style(alone)["mark_kind"] == "picture")
+page = page_style(alone, paper)
+check("PDF pages show only the text", page["mark_kind"] == "text" and page["picture"] is None)
 
 failed = results.count(False)
 print(f"\n{len(results) - failed} passed, {failed} failed")

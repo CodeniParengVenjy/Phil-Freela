@@ -59,7 +59,7 @@ from text_watermark import add_code as add_text_code
 from text_watermark import footer as text_footer
 from text_watermark import paragraphs_for_check, strip_hidden
 from text_watermark import read_code as read_text_code
-from visible_watermark import draw_visible_watermark, free_style, watermark_layer
+from visible_watermark import draw_visible_watermark, free_style, load_picture, watermark_layer
 from watermark_video import code_reads_back, output_size, read_video_code, spread, video_info, watermark_video
 
 load_dotenv()
@@ -496,6 +496,9 @@ SLIDE_UPLOADS_BUCKET = "slide-uploads"
 # The whole, unblurred pages of a PDF (document previews, step B5): only the
 # writer and the admins can open them (database/supabase_private_pages_schema.sql).
 SLIDE_PRIVATE_BUCKET = "slide-private"
+# Freelancers' own watermark pictures (PLAN-own-watermark.md): private, only
+# the owner and this service (database/supabase_own_watermark_schema.sql).
+WATERMARK_PICTURES_BUCKET = "watermark-pictures"
 # What a slide can belong to: its table, the media_slides column pointing at
 # it, and what to call it in messages.
 SLIDE_OWNERS = {
@@ -669,14 +672,17 @@ def watermark_photo(user_id, image, promo):
     return data, (code if has_code else None), embeddings
 
 
-def watermark_style(user_id):
+def watermark_style(user_id, with_picture=True):
     """(settings, username, full_name) for drawing the freelancer's visible
     watermark (settings is None if they never saved their own style).
     Premium's colors, fonts and sizes are drawn only while they have Premium
-    (see free_style in visible_watermark.py)."""
+    (see free_style in visible_watermark.py).
+    If they use their own picture (PLAN-own-watermark.md), it is downloaded and
+    added as settings["picture"]. PDF pages pass with_picture=False: they only
+    show the text."""
     settings = (
         supabase.table("watermark_settings")
-        .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, font, show_badge")
+        .select("visible_enabled, text_mode, custom_text, position, opacity, size, color, font, show_badge, mark_kind, picture_path")
         .eq("freelancer_id", user_id).limit(1).execute().data
     )
     profile = supabase.table("profiles").select("username, full_name").eq("id", user_id).limit(1).execute().data
@@ -684,7 +690,23 @@ def watermark_style(user_id):
     style = settings[0] if settings else None
     if style and not has_premium(user_id):
         style = free_style(style)
+    if (style and with_picture and style.get("visible_enabled")
+            and style.get("mark_kind") in ("picture", "picture_text") and style.get("picture_path")):
+        style = {**style, "picture": watermark_picture(style["picture_path"])}
     return style, profile.get("username", ""), profile.get("full_name", "")
+
+
+def watermark_picture(path):
+    """The freelancer's own watermark picture from the private bucket, or None
+    if it can't be loaded. Then their text is drawn instead, so an upload never
+    fails because of the picture."""
+    try:
+        picture = load_picture(supabase.storage.from_(WATERMARK_PICTURES_BUCKET).download(path))
+    except Exception:
+        picture = None
+    if picture is None:
+        logger.warning("Couldn't use the watermark picture %s; drawing the text instead", path)
+    return picture
 
 
 def has_premium(user_id):
@@ -730,7 +752,7 @@ def preview_pages(user_id, pictures, code):
     the admins (the slide-private bucket)."""
     if not pictures:
         return [], []
-    style = watermark_style(user_id)
+    style = watermark_style(user_id, with_picture=False)
     public = [watermark_page(picture, code, *style)[0] for picture in blur_pages(pictures)]
     private = [clear_page(picture, *style) for picture in pictures]
     return public, private
