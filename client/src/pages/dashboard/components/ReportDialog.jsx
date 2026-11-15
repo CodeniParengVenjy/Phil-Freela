@@ -73,8 +73,10 @@ export default function ReportDialog({ target, onClose, onDone }) {
 
   if (!target) return null;
 
-  // "Stolen work" needs proof: where the original is (see lib/reports.js).
-  const needsDetails = Boolean(reportReasons.find((r) => r.value === reason)?.needsDetails);
+  // "Stolen work" and "Agency / shared account" need proof in the details box,
+  // with their own words (see lib/reports.js).
+  const proof = reportReasons.find((r) => r.value === reason)?.details;
+  const needsDetails = Boolean(proof);
 
   // The chat messages listed (only when reporting from a chat) and which are ticked.
   const chat = target.chat?.messages.length ? target.chat : null;
@@ -113,7 +115,7 @@ export default function ReportDialog({ target, onClose, onDone }) {
       return;
     }
     if (needsDetails && details.trim().length < MIN_PROOF_LENGTH) {
-      setError("Please say where the original is: paste a link, or say whose work it is.");
+      setError(proof.missing);
       return;
     }
 
@@ -204,14 +206,14 @@ export default function ReportDialog({ target, onClose, onDone }) {
         </div>
 
         <label htmlFor="report-details" className="form-label text-white-50 fs-7 mb-1">
-          {needsDetails ? "Where is the original?" : "Details (optional)"}
+          {needsDetails ? proof.label : "Details (optional)"}
         </label>
         <textarea
           id="report-details"
           className="form-control bg-secondary bg-opacity-25 border-secondary text-white fs-7 mb-3"
           rows={3}
           maxLength={1000}
-          placeholder={needsDetails ? "Paste a link to the original, or say whose work it is..." : "Tell us what happened..."}
+          placeholder={needsDetails ? proof.placeholder : "Tell us what happened..."}
           value={details}
           onChange={(e) => setDetails(e.target.value)}
         />

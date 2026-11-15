@@ -100,9 +100,29 @@ export const reportReasons = [
   { value: "harassment", label: "Harassment" },
   // Someone else's work posted as their own (PLAN-stolen-work.md). This is
   // how work taken from outside PhilFreela gets caught: the copy check only
-  // knows what was posted here. needsDetails: the reporter must say where the
-  // original is. notFor: a job post and a comment have no work in them.
-  { value: "stolen_work", label: "Stolen work / plagiarism", needsDetails: true, notFor: ["job_post", "service_review"] },
+  // knows what was posted here. The reporter must say where the
+  // original is (the words in "details"). notFor: a job post and a comment
+  // have no work in them.
+  {
+    value: "stolen_work", label: "Stolen work / plagiarism", notFor: ["job_post", "service_review"],
+    details: {
+      label: "Where is the original?",
+      placeholder: "Paste a link to the original, or say whose work it is...",
+      missing: "Please say where the original is: paste a link, or say whose work it is."
+    }
+  },
+  // An account run by an agency or shared by several people (panel revision,
+  // PLAN-panel-revisions.md, item 3). Only a profile or an offer can show who
+  // is behind an account, so the other targets don't offer it. The reporter
+  // must say what gave it away.
+  {
+    value: "agency", label: "Agency / shared account", notFor: ["job_post", "portfolio_item", "profile_picture", "cover_photo", "service_review"],
+    details: {
+      label: "What shows it's an agency or a shared account?",
+      placeholder: "For example: someone else answered the video call, or they said a team does the work...",
+      missing: "Please say what shows it's an agency or a shared account."
+    }
+  },
   { value: "other", label: "Other" }
 ];
 

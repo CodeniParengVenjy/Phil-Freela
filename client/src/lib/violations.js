@@ -17,6 +17,8 @@ export const violations = [
   // Posting someone else's work as their own (PLAN-stolen-work.md).
   { value: "stolen_work", label: "Stolen work", days: 14, blocksPosting: true, blocksMessaging: false },
   { value: "scam", label: "Scam / Fraud", days: 30, blocksPosting: true, blocksMessaging: true },
+  // An account run by an agency or shared by several people (PLAN-panel-revisions.md).
+  { value: "agency", label: "Agency / shared account", days: 14, blocksPosting: true, blocksMessaging: false },
   // No "Fake profile": identity verification (ID + face scan) stops fake
   // accounts before they can post or apply (database/supabase_remove_fake_profile_schema.sql).
   // The admin explains it and picks the length and what's blocked.

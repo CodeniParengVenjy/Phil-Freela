@@ -58,6 +58,9 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
   // (the "Half" photos are only for the AI's same-person check).
   const [scan, setScan] = useState(null);
   const [consent, setConsent] = useState(false);
+  // Panel revision (PLAN-panel-revisions.md, item 3): the person promises the
+  // account is theirs alone, not an agency's or a team's.
+  const [ownAccount, setOwnAccount] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -195,6 +198,12 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
                   The printed (or downloadable) copy of your PhilSys ID, the one with the big QR code. You'll take a photo of its front and one of its back.
                 </p>
               )}
+              {/* Freelancers must be Filipino; clients can be from anywhere (the AI service refuses a freelancer's foreign passport). */}
+              {isPassport && (
+                <p className="text-secondary fs-8 mt-2 mb-0">
+                  Freelancers need a Philippine passport. Clients can use a passport from any country.
+                </p>
+              )}
             </div>
           </div>
           {phoneOption && <div className="col-md-5">{phoneOption}</div>}
@@ -268,6 +277,14 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
             </label>
           </div>
 
+          <div className="form-check">
+            <input id="wizardOwnAccount" type="checkbox" className="form-check-input" checked={ownAccount} onChange={(e) => setOwnAccount(e.target.checked)} />
+            <label className="form-check-label text-light-50 fs-8" htmlFor="wizardOwnAccount">
+              I'm verifying for myself. This account is mine alone: it is not run by an agency or a team, and I won't
+              share, lend or sell it. As a freelancer, I do my clients' work myself.
+            </label>
+          </div>
+
           {submitError && <p className="text-warning fs-7 mb-0"><i className="bi bi-exclamation-triangle-fill me-1"></i>{submitError}</p>}
         </div>
       )}
@@ -278,7 +295,7 @@ export default function VerificationWizard({ mode, token, onSubmit, phoneOption 
           <i className="bi bi-arrow-left me-1"></i> Back
         </button>
         {current === "review" ? (
-          <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white shadow-glow-role" onClick={handleSubmit} disabled={!consent || submitting}>
+          <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white shadow-glow-role" onClick={handleSubmit} disabled={!consent || !ownAccount || submitting}>
             {submitting ? <Busy kind="upload">Sending</Busy> : "Submit for verification"}
           </button>
         ) : (

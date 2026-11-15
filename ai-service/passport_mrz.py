@@ -11,8 +11,9 @@ it is a flag for the admin. A fake or someone else's passport photo often has
 no readable code lines, or a name that isn't the profile's.
 
 Uses the same pretrained text reader as the resume and receipt checks
-(resume_ocr.py). Only the name is kept: the passport number, birthday and
-expiry date on the second line are never looked at.
+(resume_ocr.py). Only the name is kept. The country code on the first line is
+read too (freelancers must have a Philippine passport) but not saved. The
+passport number, birthday and expiry date on the second line are never looked at.
 
 The reader doesn't always read a line the same way at every photo size (on a
 sample passport it dropped two "<" signs at full size but not when the photo
@@ -91,6 +92,24 @@ def _names_in_line(line):
     return names
 
 
+def _country(line):
+    """Which country issued the passport, from its first code line (panel
+    revision, PLAN-panel-revisions.md: freelancers must be Filipino).
+
+    Returns "PHL" when the country code is the Philippines' (or one misread
+    letter away from it, like "PHI"), "other" when it is clearly another
+    country's, and None when it can't be told. It only says "other" when the
+    "<" after the "P" was read, so the code's place in the line is certain:
+    when in doubt, the passport goes on to the admin instead of being refused."""
+    # After "P<", or right after "P" if the reader dropped the "<".
+    for code in (line[2:5], line[1:4]):
+        if len(code) == 3 and sum(a != b for a, b in zip(code, "PHL")) <= 1:
+            return "PHL"
+    if len(line) >= 5 and line[1] == "<" and line[2:5].isalpha():
+        return "other"
+    return None
+
+
 def _versions(photo):
     """The photo at the sizes in READ_SIDES (a bigger size than the photo is skipped)."""
     side = max(photo.size)
@@ -103,7 +122,7 @@ def _versions(photo):
             yield photo.resize((max(1, round(photo.width * scale)), max(1, round(photo.height * scale))), Image.LANCZOS)
 
 
-def check_passport_mrz(photo, profile_name):
+def check_passport_mrz(photo, profile_name, with_country=False):
     """Looks for the code lines on the passport's photo page (a Pillow image).
 
     Returns (status, name_in_the_code), the same words id_qr.py uses:
@@ -111,10 +130,17 @@ def check_passport_mrz(photo, profile_name):
       "mismatch":   it doesn't (a warning sign for the admin)
       "unreadable": the first code line was found but no name could be read from it
       "not_found":  no code lines could be read in the photo
+    With with_country=True it also returns the issuing country as a third value
+    ("PHL", "other" or None, see _country()).
     """
     deadline = time.monotonic() + SECONDS
     found_a_line = False
     first_names = []  # the names the first reading that could read one said
+    country = None  # the first reading that could tell the country decides it
+
+    def answer(status, name):
+        return (status, name, country) if with_country else (status, name)
+
     for version in _versions(photo):
         left = deadline - time.monotonic()
         if left <= 0:
@@ -124,14 +150,19 @@ def check_passport_mrz(photo, profile_name):
         if line is None:
             continue
         found_a_line = True
+        # A reading that says Philippines wins over one that said "other",
+        # so one misread line can't refuse a Filipino.
+        line_country = _country(line)
+        if line_country == "PHL" or country is None:
+            country = line_country or country
         names = _names_in_line(line)
         for name in names:
             if names_match(profile_name or "", name):
-                return "match", name[:200]
+                return answer("match", name[:200])
         first_names = first_names or names
 
     if not found_a_line:
-        return "not_found", None
+        return answer("not_found", None)
     if not first_names:
-        return "unreadable", None
-    return "mismatch", first_names[0][:200]
+        return answer("unreadable", None)
+    return answer("mismatch", first_names[0][:200])

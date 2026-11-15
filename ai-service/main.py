@@ -253,11 +253,25 @@ def handle_submission(user_id, id_type, id_photo, id_back, selfie, selfie_left, 
     elif id_type == "passport":
         # Same flag for a passport: the name in the two code lines at the bottom
         # of its photo page (passport_mrz.py), saved in the same columns.
+        passport_country, is_freelancer = None, False
         try:
-            profile = supabase.table("profiles").select("full_name").eq("id", user_id).limit(1).execute().data
-            qr_status, qr_name = check_passport_mrz(id_image, (profile[0].get("full_name") if profile else "") or "")
+            profile = supabase.table("profiles").select("full_name, account_type").eq("id", user_id).limit(1).execute().data
+            is_freelancer = bool(profile) and profile[0].get("account_type") == "freelancer"
+            qr_status, qr_name, passport_country = check_passport_mrz(
+                id_image, (profile[0].get("full_name") if profile else "") or "", with_country=True
+            )
         except Exception:
             logger.exception("Reading the passport's code lines failed")
+        # Panel revision (PLAN-panel-revisions.md): freelancers must be Filipino,
+        # clients can be from anywhere. Only a passport whose code lines clearly
+        # name another country is refused; an unreadable one goes on to the
+        # admin. Nothing has been saved yet, so the user just picks another ID.
+        if is_freelancer and passport_country == "other":
+            raise HTTPException(
+                422,
+                "Freelancers on PhilFreela must be Filipino, and this passport isn't from the Philippines. "
+                "Please use a Philippine passport or another Philippine ID.",
+            )
     # 2. The same face on another account's pending or approved verification.
     duplicate_of = None
     try:

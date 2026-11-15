@@ -55,6 +55,14 @@ check("a first line read with spaces still counts", pm._first_line(["P<PHL REYES
 check("lower case letters are fine", pm._first_line([LINE1.lower()]) == LINE1)
 check("a row that is too short is not a code line", pm._first_line(["P<PHLREYES<<MARIA"]) is None)
 
+# The issuing country (panel revision: freelancers must have a Philippine passport).
+check("PHL after P< is the Philippines", pm._country(LINE1) == "PHL")
+check("PHL read with one wrong letter still counts as the Philippines", pm._country("P<PHIREYES<<MARIA<LUZ<<<<<<<<<<<<<<<<<<<<<<<<") == "PHL")
+check("PHL with the < dropped still counts as the Philippines", pm._country("PPHLREYES<<MARIA<LUZ<<<<<<<<<<<<<<<<<<<<<<<<") == "PHL")
+check("another country's code is other", pm._country("P<USASMITH<<JOHN<<<<<<<<<<<<<<<<<<<<<<<<<<<<<") == "other")
+check("a code with the < dropped can't be told (not refused)", pm._country("PUSASMITH<<JOHN<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<") is None)
+check("a code with < inside it (Germany's D<<) can't be told", pm._country("P<D<<MUSTERMANN<<ERIKA<<<<<<<<<<<<<<<<<<<<<<") is None)
+
 
 def first_name(line):
     names = pm._names_in_line(line)
@@ -274,8 +282,8 @@ class Bucket:
 
 
 class FakeSupabase:
-    def __init__(self, full_name):
-        self.db = {"profiles": [{"id": USER, "full_name": full_name}], "identity_verifications": [], "saved": []}
+    def __init__(self, full_name, account_type="client"):
+        self.db = {"profiles": [{"id": USER, "full_name": full_name, "account_type": account_type}], "identity_verifications": [], "saved": []}
         self.storage = types.SimpleNamespace(from_=lambda bucket: Bucket())
 
     def table(self, name):
@@ -294,9 +302,9 @@ main.find_duplicate = lambda *args: None
 main.straighten_id = lambda front, back=None: (front, back)
 
 
-def submit(id_type, full_name, page, back=None):
+def submit(id_type, full_name, page, back=None, account_type="client"):
     """Submits with a pretend database; returns the row that was saved."""
-    main.supabase = FakeSupabase(full_name)
+    main.supabase = FakeSupabase(full_name, account_type)
     face = Image.new("RGB", (64, 64), "gray")
     main.handle_submission(USER, id_type, upload_of(page), upload_of(back) if back else None, upload_of(face), upload_of(face), upload_of(face))
     return main.supabase.db["saved"][-1]
@@ -326,6 +334,29 @@ row = submit("passport", "Maria Luz Reyes", page)
 check("if the reading crashes, the verification is still saved", row["user_id"] == USER and row["id_type"] == "passport", str(row))
 check("... and carries no flag", row["id_qr_status"] is None and row["id_qr_name"] is None, str(row))
 main.check_passport_mrz = real_check
+
+# Panel revision: a freelancer's passport must be Philippine; a client's can be from anywhere.
+row = submit("passport", "Maria Luz Reyes", page, account_type="freelancer")
+check("a freelancer with a Philippine passport is saved", row["id_qr_status"] == "match", str(row))
+
+pretend_reader(["P<USASMITH<<JOHN<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"])
+try:
+    main.supabase = FakeSupabase("John Smith", "freelancer")
+    face = Image.new("RGB", (64, 64), "gray")
+    main.handle_submission(USER, "passport", upload_of(page), None, upload_of(face), upload_of(face), upload_of(face))
+    refused = None
+except main.HTTPException as error:
+    refused = error
+check("a freelancer with another country's passport is refused", refused is not None and refused.status_code == 422 and "Filipino" in refused.detail, str(refused))
+check("... and nothing is saved", main.supabase.db["saved"] == [], str(main.supabase.db["saved"]))
+
+row = submit("passport", "John Smith", page, account_type="client")
+check("a client with another country's passport is saved", row["id_qr_status"] == "match" and row["id_qr_name"] == "JOHN SMITH", str(row))
+
+pretend_reader([])
+row = submit("passport", "John Smith", page, account_type="freelancer")
+check("a freelancer passport whose code lines can't be read goes on to the admin", row["id_qr_status"] == "not_found", str(row))
+pm.read_boxes = real_read_boxes
 
 print(f"\n{sum(results)}/{len(results)} passed")
 sys.exit(0 if all(results) else 1)

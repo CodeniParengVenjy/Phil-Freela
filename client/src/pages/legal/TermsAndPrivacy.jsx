@@ -90,7 +90,8 @@ function TermsOfService() {
         </li>
         <li>
           If you think an account is run by an agency or shared by several people, report it with the Report button on the
-          profile and say why. An admin looks at it and can suspend the account (see "Grounds for suspension or ban").
+          profile or offer, pick "Agency / shared account", and say what showed it. An admin looks at it and can suspend
+          the account (see "Grounds for suspension or ban").
         </li>
       </ul>
 
@@ -352,10 +353,10 @@ function TermsOfService() {
           <strong className="text-white">Scam / Fraud</strong> (a fake or edited receipt, confirming money that didn't arrive,
           taking a payment and never delivering, or taking delivered work and never paying): 30 days, can't post or message.
         </li>
+        <li><strong className="text-white">Agency / shared account</strong> (an account run by an agency or a team, or shared, lent, rented or sold): 14 days, can't post.</li>
         <li>
           <strong className="text-white">Other</strong> (breaking another rule in these Terms, for example a name that pretends
-          to be someone else, or an account run by an agency or shared by several people): the admin writes what happened
-          and picks 3, 7, 14 or 30 days and what is blocked.
+          to be someone else): the admin writes what happened and picks 3, 7, 14 or 30 days and what is blocked.
         </li>
       </ul>
       <ul className="text-secondary">
