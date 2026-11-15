@@ -569,6 +569,9 @@ function PrivacyPolicy() {
         relevant freelancers or jobs, verifying identities, and keeping the community safe (reviewing reports and
         enforcing suspensions or bans). Other signed-in users can find your profile by searching for your name or
         username; the search only shows your name, username, role (freelancer or client) and profile picture.
+        A client's rating feedback appears on the public homepage only if the client ticks "Let PhilFreela show my
+        feedback on its homepage" when rating (it is off by default), and then only with their first name, the stars and
+        the words, never the freelancer or the project.
         PhilFreela does not process, hold or move the money between clients and freelancers: clients pay freelancers in
         the GCash app, and PhilFreela only records the payments people tell it about, so both sides can see what was sent
         and what was received. The only money PhilFreela takes is its own fees (see "PhilFreela's own fees" in Part 1).

@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { resolvePostAuthRoute } from "../../lib/profile";
 import "./homepage.css";
 import OpeningIntro from "../../components/OpeningIntro";
+import { ClientTestimonials, HowHiringWorks } from "./HomepageExtras";
 
 export default function Homepage() {
   // Where the logo goes: "/" for visitors, or the signed-in user's own
@@ -237,6 +238,10 @@ export default function Homepage() {
           </div>
         </div>
       </section>
+
+      {/* Panel revisions (PLAN-panel-revisions.md, items 9 and 11). */}
+      <HowHiringWorks />
+      <ClientTestimonials />
 
       <footer className="border-top border-secondary border-opacity-25 bg-black py-5">
         <div className="container">

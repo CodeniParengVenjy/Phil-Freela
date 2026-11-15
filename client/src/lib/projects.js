@@ -438,7 +438,10 @@ export function ratingStep(project, iRated, seeTheirs, iAmClient = false) {
 }
 
 // Sends a rating. Returns {} when sent, or { error } with a message.
-export async function rateProject(raterId, projectId, rateeId, stars, feedback) {
+// showOnHomepage: the client let PhilFreela show the feedback on the homepage
+// (panel revision; the database decides which ticked ratings really show,
+// database/supabase_homepage_testimonials_schema.sql).
+export async function rateProject(raterId, projectId, rateeId, stars, feedback, showOnHomepage = false) {
   if (!stars || stars < 1 || stars > 5) return { error: "Pick 1 to 5 stars." };
   if (feedback && feedback.length > MAX_FEEDBACK_LENGTH) return { error: `Your feedback can be up to ${MAX_FEEDBACK_LENGTH} characters.` };
 
@@ -447,7 +450,8 @@ export async function rateProject(raterId, projectId, rateeId, stars, feedback) 
     rater_id: raterId,
     ratee_id: rateeId,
     stars,
-    feedback: feedback?.trim() || null
+    feedback: feedback?.trim() || null,
+    show_on_homepage: Boolean(showOnHomepage && feedback?.trim())
   });
   if (error) {
     if (error.code === "23505") return { error: "You already rated this project." };

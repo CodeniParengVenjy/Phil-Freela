@@ -54,6 +54,8 @@ export default function FeedbackView() {
   const [myRating, setMyRating] = useState(undefined);
   const [feedback, setFeedback] = useState("");
   const [stars, setStars] = useState(0);
+  // The client's OK to show their feedback on the homepage (panel revision).
+  const [showOnHomepage, setShowOnHomepage] = useState(false);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -106,7 +108,7 @@ export default function FeedbackView() {
     event.preventDefault();
     if (sending) return;
     setSending(true);
-    const { error } = await rateProject(currentUserId, projectId, other.id, stars, iAmClient ? feedback : "");
+    const { error } = await rateProject(currentUserId, projectId, other.id, stars, iAmClient ? feedback : "", iAmClient && showOnHomepage);
     setSending(false);
     if (error) {
       showToast(error);
@@ -140,6 +142,18 @@ export default function FeedbackView() {
           )}
 
           <StarPicker value={stars} onChange={setStars} label={iAmClient ? "Rate the performance:" : "Rate the trust and transaction:"} />
+
+          {/* Panel revision (PLAN-panel-revisions.md, item 11): client testimonials
+              on the homepage, only with the client's OK. */}
+          {iAmClient && (
+            <div className="form-check">
+              <input id="feedbackHomepage" type="checkbox" className="form-check-input" checked={showOnHomepage} onChange={(e) => setShowOnHomepage(e.target.checked)} />
+              <label className="form-check-label text-light-50 fs-7" htmlFor="feedbackHomepage">
+                Let PhilFreela show my feedback on its homepage, with my first name only.
+                <span className="d-block text-secondary fs-8">Only 4- and 5-star feedback of at least 20 characters is shown, after the blind rating ends.</span>
+              </label>
+            </div>
+          )}
 
           {/* The blind rule, in one line, before they send it. */}
           <p className="text-white-50 fs-7 mb-0">
