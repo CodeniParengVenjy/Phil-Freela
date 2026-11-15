@@ -8,6 +8,10 @@ PhilFreela can't tell whether the site is really theirs. This plan adds a way to
 
 Status: approved 2026-11-15 ("apply it ok", which also covered the database change).
 - Step 1 database: LIVE (migration `site_verifications`, rolled-back trial 16/16 PASS first).
+- Step 2 AI service: `ai-service/site_check.py` + `test_site_check.py` (62/62 offline, 3/3 on real websites).
+- Step 3 website: Verify button, `SiteVerifyDialog.jsx`, badge on the public list, Terms line (browser test 62/62:
+  computer, phone, phone in light mode, and an AI service that isn't updated yet).
+- Not tried yet by a real person: a real freelancer verifying a real website on the live site.
 
 ## The idea, in plain words
 

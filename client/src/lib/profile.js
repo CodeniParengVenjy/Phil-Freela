@@ -249,6 +249,54 @@ export function linkIcon(link) {
   return found ? found[1] : "bi-link-45deg";
 }
 
+// Verified owner badge (PLAN-site-verification.md): a freelancer proves a link
+// is their own website by putting their PhilFreela code on it; the AI service
+// visits the page and saves the date it found the code (site_check.py). The
+// badge lasts 90 days. Pages on shared sites belong to the site, so nobody can
+// add a code to them: those stay plain links (same list as SHARED_SITES in
+// ai-service/site_check.py).
+export const VERIFY_DAYS = 90;
+const SHARED_SITES = [
+  "behance.net", "github.com", "dribbble.com", "linkedin.com", "youtube.com", "youtu.be",
+  "vimeo.com", "instagram.com", "facebook.com", "tiktok.com", "x.com", "twitter.com",
+  "drive.google.com", "docs.google.com", "sites.google.com", "canva.com", "figma.com"
+];
+
+// True for a link to the freelancer's own website (juan.dev, juan.github.io...),
+// false for a page on a shared site (github.com/juan, behance.net/juan...).
+export function canVerifyLink(link) {
+  const host = link.replace(/^https:\/\//i, "").split(/[/:?#]/)[0].toLowerCase();
+  return !SHARED_SITES.some((site) => host === site || host.endsWith(`.${site}`));
+}
+
+// True when the badge is still good: verified in the last 90 days.
+export function isFreshlyVerified(verifiedAt) {
+  if (!verifiedAt) return false;
+  return Date.now() - new Date(verifiedAt).getTime() < VERIFY_DAYS * 24 * 60 * 60 * 1000;
+}
+
+// "Nov 15, 2026"
+export function verifiedDateText(verifiedAt) {
+  return new Date(verifiedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+// The freelancer's own codes and dates, as { [link]: { code, verified_at } }
+// (the database lets each person read only their own rows). {} when they
+// couldn't be loaded, so the box still works without the badges.
+export async function fetchSiteVerifications(userId) {
+  const { data, error } = await supabase.from("site_verifications").select("link, code, verified_at").eq("freelancer_id", userId);
+  if (error || !data) return {};
+  return Object.fromEntries(data.map((row) => [row.link, { code: row.code, verified_at: row.verified_at }]));
+}
+
+// Someone's links that are verified right now (last 90 days, still in their
+// Portfolio Links), as { [link]: verified_at }. Never the codes. {} on errors.
+export async function fetchVerifiedLinks(userId) {
+  const { data, error } = await supabase.rpc("verified_portfolio_links", { p_user: userId });
+  if (error || !data) return {};
+  return Object.fromEntries(data.map((row) => [row.link, row.verified_at]));
+}
+
 // The user's saved links, or null when they couldn't be loaded.
 export async function fetchPortfolioLinks(userId) {
   const { data, error } = await supabase.from("profiles").select("portfolio_links").eq("id", userId).maybeSingle();

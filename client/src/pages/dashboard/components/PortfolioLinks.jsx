@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  MAX_PORTFOLIO_LINKS, cleanPortfolioLink, fetchPortfolioLinks, isSafeLink, linkIcon, linkLabel, savePortfolioLinks
+  MAX_PORTFOLIO_LINKS, canVerifyLink, cleanPortfolioLink, fetchPortfolioLinks, fetchSiteVerifications, isFreshlyVerified,
+  isSafeLink, linkIcon, linkLabel, savePortfolioLinks, verifiedDateText
 } from "../../../lib/profile";
 import { Loader } from "../../../components/Loaders";
+import SiteVerifyDialog from "./SiteVerifyDialog";
 
 // Portfolio links (panel revision, PLAN-panel-revisions.md, item 6): up to 3
 // links to a freelancer's work on other sites.
@@ -10,6 +12,8 @@ import { Loader } from "../../../components/Loaders";
 // <PortfolioLinksBox>: on the freelancer's own Profile. "+ Add Link" opens a
 // box, Enter saves the link right away, the x on a link removes it. Works like
 // the Skills box (SkillsBox.jsx): if a save fails, the list goes back.
+// A link to their own website also gets a Verify button (Verified owner badge,
+// PLAN-site-verification.md), which opens SiteVerifyDialog.
 export function PortfolioLinksBox({ userId, showToast }) {
   // undefined while loading, null when they couldn't load, else the list.
   const [links, setLinks] = useState(undefined);
@@ -17,16 +21,27 @@ export function PortfolioLinksBox({ userId, showToast }) {
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  // { [link]: { code, verified_at } }: the freelancer's own website codes.
+  const [sites, setSites] = useState({});
+  // The link whose Verify pop-up is open, or null.
+  const [verifyLink, setVerifyLink] = useState(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
     if (!userId) return undefined;
     let active = true;
-    fetchPortfolioLinks(userId).then((result) => {
-      if (active) setLinks(result);
+    Promise.all([fetchPortfolioLinks(userId), fetchSiteVerifications(userId)]).then(([result, codes]) => {
+      if (!active) return;
+      setLinks(result);
+      setSites(codes);
     });
     return () => { active = false; };
   }, [userId]);
+
+  const closeVerify = useCallback(() => setVerifyLink(null), []);
+  const handleVerified = useCallback((link, verifiedAt) => {
+    setSites((before) => ({ ...before, [link]: { ...before[link], verified_at: verifiedAt } }));
+  }, []);
 
   useEffect(() => {
     if (adding) inputRef.current?.focus();
@@ -71,6 +86,36 @@ export function PortfolioLinksBox({ userId, showToast }) {
   };
 
   const full = links?.length >= MAX_PORTFOLIO_LINKS;
+  // Own-website links that don't have a badge yet (they get the hint below the list).
+  const canStillVerify = links?.some((link) => canVerifyLink(link) && !isFreshlyVerified(sites[link]?.verified_at));
+
+  // The button after an own-website link: Verify, the green Verified badge
+  // (click to check again), or Check again once 90 days have passed.
+  const verifyButton = (link) => {
+    if (!canVerifyLink(link)) return null;
+    const verifiedAt = sites[link]?.verified_at;
+    if (isFreshlyVerified(verifiedAt)) {
+      return (
+        <button
+          type="button"
+          className="badge rounded-pill bg-success text-white border-0 fw-semibold flex-shrink-0"
+          title={`Verified owner since ${verifiedDateText(verifiedAt)}. Click to check again.`}
+          onClick={() => setVerifyLink(link)}
+        >
+          <i className="bi bi-patch-check-fill me-1"></i>Verified
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-warning rounded-pill py-0 px-2 fs-8 fw-bold flex-shrink-0"
+        onClick={() => setVerifyLink(link)}
+      >
+        {verifiedAt ? "Check again" : "Verify"}
+      </button>
+    );
+  };
 
   return (
     <div>
@@ -85,7 +130,7 @@ export function PortfolioLinksBox({ userId, showToast }) {
       {links === null && <p className="text-secondary fs-7 mb-0">Couldn't load your links.</p>}
       {links?.length === 0 && !adding && (
         <p className="text-secondary fs-7 mb-0">
-          No links yet. Add up to {MAX_PORTFOLIO_LINKS} links to your work on other sites, like Behance, GitHub or Google Drive.
+          No links yet. Add up to {MAX_PORTFOLIO_LINKS} links to your work on other sites, like Behance, GitHub or Google Drive, or to your own website.
         </p>
       )}
 
@@ -97,6 +142,7 @@ export function PortfolioLinksBox({ userId, showToast }) {
               <a href={isSafeLink(link) ? link : undefined} target="_blank" rel="noopener noreferrer nofollow" className="text-light text-decoration-none text-truncate">
                 {linkLabel(link)}
               </a>
+              {verifyButton(link)}
               <button
                 type="button"
                 className="btn-close btn-close-white"
@@ -138,6 +184,13 @@ export function PortfolioLinksBox({ userId, showToast }) {
         </div>
       )}
       {full && <p className="text-secondary fs-8 mt-2 mb-0">You've added the most links allowed ({MAX_PORTFOLIO_LINKS}).</p>}
+      {canStillVerify && (
+        <p className="text-secondary fs-8 mt-2 mb-0">
+          <i className="bi bi-patch-check me-1"></i>A link to your own website can get a Verified owner badge: click Verify to prove it&apos;s yours.
+        </p>
+      )}
+
+      {verifyLink && <SiteVerifyDialog key={verifyLink} link={verifyLink} onClose={closeVerify} onVerified={handleVerified} />}
     </div>
   );
 }
@@ -145,9 +198,12 @@ export function PortfolioLinksBox({ userId, showToast }) {
 // <PortfolioLinksList>: on a freelancer's public page. Each link opens in a
 // new tab; "nofollow noopener noreferrer" keeps the other site from reaching
 // back into PhilFreela's tab. Nothing shows when there are no links.
-export function PortfolioLinksList({ links }) {
+// verified: { [link]: verified_at } from fetchVerifiedLinks(): those links get
+// the green Verified owner badge.
+export function PortfolioLinksList({ links, verified = {} }) {
   const safe = (links || []).filter(isSafeLink);
   if (!safe.length) return null;
+  const anyVerified = safe.some((link) => verified[link]);
   return (
     <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
       <h5 className="text-white fw-bold mb-3"><i className="bi bi-link-45deg text-orange me-2"></i> Portfolio Links</h5>
@@ -162,11 +218,23 @@ export function PortfolioLinksList({ links }) {
           >
             <i className={`bi ${linkIcon(link)}`}></i>
             <span className="text-truncate">{linkLabel(link)}</span>
+            {verified[link] && (
+              <span
+                className="badge rounded-pill bg-success text-white fw-semibold flex-shrink-0"
+                title={`Verified owner: checked ${verifiedDateText(verified[link])}`}
+                aria-label={`Verified owner, checked ${verifiedDateText(verified[link])}`}
+              >
+                <i className="bi bi-patch-check-fill me-1"></i>Verified owner
+              </span>
+            )}
             <i className="bi bi-box-arrow-up-right fs-8 opacity-75"></i>
           </a>
         ))}
       </div>
-      <p className="text-secondary fs-8 mt-2 mb-0">These open other websites. PhilFreela doesn't check what's on them.</p>
+      <p className="text-secondary fs-8 mt-2 mb-0">
+        These open other websites. PhilFreela doesn't check what's on them.
+        {anyVerified && " A Verified owner badge means the freelancer proved they control that website (checked in the last 90 days)."}
+      </p>
     </div>
   );
 }

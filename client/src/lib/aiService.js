@@ -231,6 +231,31 @@ export async function matchSkill(text) {
   }
 }
 
+// Verified owner badge (PLAN-site-verification.md, ai-service/site_check.py).
+// getSiteCode(link): the freelancer's code for one of their own portfolio links,
+// { code: "pf-7k3q9x2m", verified_at: null or a date }.
+// checkSite(link): PhilFreela visits the website and looks for the code:
+// { verified: true, verified_at } or { verified: false, message, verified_at }.
+// Both fail with a message to show (not saved link, wait 30 seconds...).
+const SITE_CHECK_NOT_READY = "Verifying isn't ready yet. Please try again in a few minutes.";
+
+async function siteRequest(path, link) {
+  try {
+    return await request(path, {
+      method: "POST",
+      headers: { ...(await authHeader()), "Content-Type": "application/json" },
+      body: JSON.stringify({ link })
+    });
+  } catch (error) {
+    // An AI service that isn't updated yet doesn't know these addresses.
+    if (error.message === "Not Found") throw new Error(SITE_CHECK_NOT_READY);
+    throw error;
+  }
+}
+
+export const getSiteCode = (link) => siteRequest("/sites/code", link);
+export const checkSite = (link) => siteRequest("/sites/check", link);
+
 // Asks the AI service whether a resume file (a PDF, a Word file or a picture)
 // looks like a resume. Returns { verdict: "yes" | "unsure" | "no", message },
 // or null when there is no answer: the service is offline, or too slow (30

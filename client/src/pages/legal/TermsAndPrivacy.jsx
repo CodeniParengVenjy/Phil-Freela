@@ -226,7 +226,10 @@ function TermsOfService() {
       <p className="text-secondary">
         A freelancer can add up to 3 portfolio links (https only) to their profile, for work kept on other sites like
         Behance, GitHub or Google Drive. They must lead to the freelancer's own work. PhilFreela doesn't check what's on
-        those sites, and work kept there doesn't get PhilFreela's invisible mark.
+        those sites, and work kept there doesn't get PhilFreela's invisible mark. A link to the freelancer's own website can
+        get a "Verified owner" badge: the freelancer puts a PhilFreela code on the page, and PhilFreela visits that one page
+        when they click Check now. The badge means they control that website (checked in the last 90 days). It doesn't
+        prove who designed it.
       </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Payments</h5>

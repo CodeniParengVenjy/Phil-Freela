@@ -3,6 +3,7 @@ import { useOutletContext, useParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { fetchIsVerified } from "../../../lib/verification";
 import { countPortfolio } from "../../../lib/portfolio";
+import { fetchVerifiedLinks } from "../../../lib/profile";
 import { fetchProfileStats } from "../../../lib/profileStats";
 import { SLIDES_SELECT } from "../../../lib/slides";
 import { useServiceRatings } from "../../../lib/useServiceRatings";
@@ -51,6 +52,8 @@ function PublicProfile({ userId }) {
   // always shows; a client's only when they have work in it (from the time
   // they were a freelancer).
   const [portfolioCount, setPortfolioCount] = useState(0);
+  // { [link]: verified_at }: their portfolio links with a Verified owner badge.
+  const [verifiedLinks, setVerifiedLinks] = useState({});
   // The person being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
   // Which picture is open bigger: "picture", "cover", or null (none).
@@ -70,12 +73,14 @@ function PublicProfile({ userId }) {
     Promise.all([
       supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, cover_path, description, skills, available_for_work, portfolio_links").eq("id", userId).maybeSingle(),
       fetchIsVerified(userId),
-      countPortfolio(userId)
-    ]).then(([{ data }, isVerified, count]) => {
+      countPortfolio(userId),
+      fetchVerifiedLinks(userId)
+    ]).then(([{ data }, isVerified, count, siteBadges]) => {
       if (!active) return;
       setPerson(data || null);
       setVerified(isVerified);
       setPortfolioCount(count);
+      setVerifiedLinks(siteBadges);
     });
     return () => {
       active = false;
@@ -177,7 +182,7 @@ function PublicProfile({ userId }) {
       )}
 
       {/* Links to their work on other sites (panel revision; hidden until they add some). */}
-      {isFreelancer && <PortfolioLinksList links={person.portfolio_links} />}
+      {isFreelancer && <PortfolioLinksList links={person.portfolio_links} verified={verifiedLinks} />}
 
       {/* A freelancer's services: the way to a booking is through one of them. */}
       {isFreelancer && <ServicesOffered freelancerId={person.id} />}
