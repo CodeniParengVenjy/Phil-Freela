@@ -24,8 +24,9 @@ export const hasReceipt = (payment) => payment?.status === "confirmed";
 const peso = (n) => formatMoneyCode(n, "PHP");
 
 // The logo for paper: the site's SVG with "Freela" dark instead of white and no
-// shadow, drawn on a canvas, empty edges cut off, kept as a PNG.
-async function logoForPaper() {
+// shadow, drawn on a canvas, empty edges cut off, kept as a PNG. Also used by
+// the Contract of Service (lib/contractPdf.js).
+export async function logoForPaper() {
   const svg = (await (await fetch("/logo-philfreela.svg")).text())
     .replace('fill="#f5f5f5"', 'fill="#212529"')
     .replace('filter="url(#softShadow)" ', "");

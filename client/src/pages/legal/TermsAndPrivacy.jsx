@@ -156,6 +156,13 @@ function TermsOfService() {
           PhilFreela doesn't count revisions for you. Keep to what was booked, and agree on anything extra in the chat. A
           freelancer's terms can't override these Terms of Service.
         </li>
+        <li>
+          <strong className="text-white">Contract of Service.</strong> Once both people agree on a project's price, either of
+          them can download a Contract of Service (PDF) from the project page: both names, the work, the dates, the agreed
+          price, the booked offer's revisions and terms, and these rules for delivery, payment and ending a project. It is
+          made on your own device from PhilFreela's saved records, can be printed and signed, and PhilFreela is not a party
+          to it.
+        </li>
       </ul>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Due dates and late work</h5>

@@ -7,6 +7,7 @@ import {
 } from "../../../lib/projects";
 import { makeDeliverablePreview } from "../../../lib/aiService";
 import { unlocksWhenFullyPaid } from "../../../lib/payments";
+import { downloadContract, hasContract } from "../../../lib/contractPdf";
 import { profilePath } from "../../../lib/profileStats";
 import { hasRatedOffer } from "../../../lib/serviceReviews";
 import Avatar from "../../../components/Avatar";
@@ -32,6 +33,8 @@ import { Loader, Busy } from "../../../components/Loaders";
 export default function ProjectDetailsView() {
   const { projectId } = useParams();
   const { currentUserId, openChat, showToast } = useOutletContext();
+  // The Contract of Service PDF being made (panel revision, lib/contractPdf.js).
+  const [makingContract, setMakingContract] = useState(false);
   // undefined while loading, null when it doesn't exist or isn't the user's.
   const [project, setProject] = useState(undefined);
   const [working, setWorking] = useState(false);
@@ -444,6 +447,36 @@ export default function ProjectDetailsView() {
               <ProjectPriceBox project={project} currentUserId={currentUserId} otherName={otherName} showToast={showToast} onChanged={reloadProject} />
             </div>
           )}
+
+          {/* Contract of Service (panel revision, PLAN-panel-revisions.md, item 12):
+              a PDF of what the two people agreed, for both of them, once there is a price. */}
+          <div className="col-12">
+            <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 d-flex flex-column flex-sm-row align-items-sm-center gap-2">
+              <div className="flex-grow-1">
+                <span className="text-white fw-semibold fs-7 d-block"><i className="bi bi-file-earmark-text text-role me-2"></i>Contract of Service</span>
+                <span className="text-secondary fs-8">
+                  {hasContract(project)
+                    ? "Both of you can download it: the people, the work, the dates, the agreed price, revisions and PhilFreela's rules."
+                    : "It can be downloaded once you both agree on a price."}
+                </span>
+              </div>
+              {hasContract(project) && (
+                <button
+                  type="button"
+                  className="btn btn-outline-role rounded-pill px-3 fw-bold fs-7 flex-shrink-0"
+                  disabled={makingContract}
+                  onClick={async () => {
+                    setMakingContract(true);
+                    const problem = await downloadContract(project.id);
+                    setMakingContract(false);
+                    if (problem) showToast(problem);
+                  }}
+                >
+                  {makingContract ? <Busy>Making the PDF</Busy> : <><i className="bi bi-download me-1"></i>Download (PDF)</>}
+                </button>
+              )}
+            </div>
+          </div>
 
           <div className="col-12">
             <div className="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">

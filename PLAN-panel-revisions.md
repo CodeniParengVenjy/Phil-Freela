@@ -16,7 +16,17 @@ The panel's handwritten revisions list (12 items), as read on 2026-11-15:
 12. COS (read as Contract of Service)
 
 The user answered "ok" to the suggestions table, so the suggestions below are the plan.
-Status: WAITING for the user's OK on this plan.
+Status (2026-11-15): ALL 7 STEPS LIVE, approved with "ok" (which also covered the 4 database changes).
+- Step 1 Terms text: 9499ffa
+- Step 2 agency check: 58695bc (migration agency_reason)
+- Step 3 portfolio links: a7ef583 (migration portfolio_links)
+- Step 4 revisions and terms: bd1bb24 (migration service_terms)
+- Step 5 homepage hiring steps + testimonials: 16849ae (migration homepage_testimonials)
+- Step 6 admin ratio: cbc74b0
+- Step 7 Contract of Service PDF: see git log
+Every database change was tried first in a rolled-back trial on the live database (test files in database/test_*.sql).
+Not tried yet by a real person on the live site: a real ID check with the new tick box, a real report with the new reason,
+a client rating with the homepage box ticked (the homepage section stays hidden until one exists), a real contract download.
 
 ## What is already there (checked 2026-11-15)
 
@@ -83,6 +93,21 @@ Status: WAITING for the user's OK on this plan.
 - `client/src/pages/dashboard/views/ProjectDetailsView.jsx`: a "Contract (PDF)" button for both people once the price is agreed.
 
 ## Paper only (no website change)
+
+Draft text for the paper (check with the adviser before using):
+
+- Item 1, government requirements: "Before PhilFreela can run as a real business, it needs (1) its business name
+  registered with the DTI (sole proprietorship) or the SEC (corporation); (2) a Mayor's (business) permit from its city
+  or municipality; (3) BIR registration (Certificate of Registration, Form 2303), so it can issue official receipts for
+  its own fees; and (4) under the Data Privacy Act of 2012 (RA 10173), a Data Protection Officer and registration with
+  the National Privacy Commission, which issues a Seal of Registration that may be shown on the site. As a student
+  capstone project PhilFreela is not registered yet, so the site shows no seal; it will be added to the footer only
+  after it is issued." (Also worth checking with the adviser: what the Internet Transactions Act of 2023, RA 11967,
+  asks of online platforms.)
+- Item 5, creative field only?: "PhilFreela focuses on creative and digital work: its AI moodboard matching and its
+  watermark protection are built for visual and creative files. It still keeps other online work categories (virtual
+  assistance, data entry, tutoring and others), so Filipino freelancers in those fields can join too."
+
 - Item 1 paragraph: the registrations a real platform needs (business name with DTI or SEC, BIR, mayor's permit, NPC registration of the Data Protection Officer). PhilFreela will show the NPC Seal of Registration only after it's issued.
 - Item 5 answer, and flowcharts for the hiring and appeal processes (in `PhilFreela-Diagrams/`, if wanted).
 
