@@ -13,7 +13,8 @@ import { Link } from "react-router-dom";
 //   parts    [{ label: "Current Freelancers", value: 18, color: "var(--trend-orange)", to: "/admin/users?role=freelancer" }]
 //            (`to` is optional)
 //   format   optional: how a value is written (pesos: "₱1,250.00"); default: the number
-export default function SplitBar({ title, summary, parts, format = (value) => value }) {
+// note (optional): one more line under the legend, e.g. the freelancer-to-client ratio.
+export default function SplitBar({ title, summary, parts, format = (value) => value, note = null }) {
   const total = parts.reduce((sum, part) => sum + part.value, 0);
   const percent = (value) => (total ? Math.round((value / total) * 100) : 0);
 
@@ -48,6 +49,7 @@ export default function SplitBar({ title, summary, parts, format = (value) => va
           </li>
         ))}
       </ul>
+      {note && <p className="text-secondary fs-8 mt-2 mb-0">{note}</p>}
     </div>
   );
 }

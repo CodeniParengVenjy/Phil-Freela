@@ -514,6 +514,7 @@ export default function AdminOverviewView() {
                     { label: "Current Freelancers", value: stats.freelancers, color: "var(--trend-orange)", to: "/admin/users?role=freelancer" },
                     { label: "Current Clients", value: stats.clients, color: "var(--trend-blue)", to: "/admin/users?role=client" }
                   ]}
+                  note={<>Freelancer-to-client ratio: <strong className="text-white">{roleRatio(stats.freelancers, stats.clients)}</strong>{ratioInWords(stats.freelancers, stats.clients)}</>}
                 />
               </div>
               <div className="col-12 col-md-6">
@@ -786,4 +787,24 @@ export default function AdminOverviewView() {
       )}
     </section>
   );
+}
+
+// The freelancer-to-client ratio (panel revision, PLAN-panel-revisions.md,
+// item 10), from the two counts the Users card already loads: "1.3 : 1" means
+// about 1.3 freelancers for every client, "1 : 2" twice as many clients.
+function roleRatio(freelancers, clients) {
+  if (!freelancers && !clients) return "no users yet";
+  if (!clients) return `${freelancers} : 0`;
+  if (!freelancers) return `0 : ${clients}`;
+  const oneDecimal = (n) => String(Math.round(n * 10) / 10);
+  return freelancers >= clients ? `${oneDecimal(freelancers / clients)} : 1` : `1 : ${oneDecimal(clients / freelancers)}`;
+}
+
+// The same ratio in words, after the numbers (empty when there's nothing to compare).
+function ratioInWords(freelancers, clients) {
+  if (!freelancers || !clients) return "";
+  const oneDecimal = (n) => String(Math.round(n * 10) / 10);
+  return freelancers >= clients
+    ? ` (about ${oneDecimal(freelancers / clients)} freelancers for every client)`
+    : ` (about ${oneDecimal(clients / freelancers)} clients for every freelancer)`;
 }
