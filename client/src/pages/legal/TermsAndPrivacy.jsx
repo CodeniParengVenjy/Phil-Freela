@@ -140,6 +140,24 @@ function TermsOfService() {
         </li>
       </ul>
 
+      {/* Panel revision (PLAN-panel-revisions.md, item 7). */}
+      <h5 className="text-white fw-bold mt-4 mb-2">Revisions and the freelancer's terms</h5>
+      <ul className="text-secondary">
+        <li>
+          Every offer says how many revisions (rounds of changes) its price includes: none, 1 to 5, or unlimited. An older
+          offer may say "Not stated": ask the freelancer in a chat before booking. The freelancer can also write their own
+          short terms on the offer (up to 500 characters), for example what an extra revision costs.
+        </li>
+        <li>
+          When a client books an offer, its revisions and terms are saved with the booking as they are at that moment. A
+          later change to the offer doesn't change a booking that was already sent.
+        </li>
+        <li>
+          PhilFreela doesn't count revisions for you. Keep to what was booked, and agree on anything extra in the chat. A
+          freelancer's terms can't override these Terms of Service.
+        </li>
+      </ul>
+
       <h5 className="text-white fw-bold mt-4 mb-2">Due dates and late work</h5>
       <ul className="text-secondary">
         <li>

@@ -20,9 +20,10 @@ import { isPostingBlocked } from "../../../lib/suspensions";
 import { Loader, Busy } from "../../../components/Loaders";
 import CurrencySelect from "../../../components/CurrencySelect";
 import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney, useMoneyView } from "../../../lib/money";
+import { MAX_EXTRA_TERMS, REVISION_OPTIONS } from "../../../lib/serviceTerms";
 
 // description and skill are here so the Edit form can be filled in from the list.
-const SERVICE_COLUMNS = "id, title, category, description, skill, price, currency, image_url, media_type, created_at, updated_at";
+const SERVICE_COLUMNS = "id, title, category, description, skill, price, currency, revisions, extra_terms, image_url, media_type, created_at, updated_at";
 
 export default function ServicesView() {
   const { currentUserId, showToast, suspension } = useOutletContext();
@@ -33,6 +34,10 @@ export default function ServicesView() {
   const [description, setDescription] = useState("");
   const [skill, setSkill] = useState("");
   const [price, setPrice] = useState("");
+  // How many revisions the price includes and the freelancer's own terms
+  // (panel revision, lib/serviceTerms.js). "" = not picked yet.
+  const [revisions, setRevisions] = useState("");
+  const [extraTerms, setExtraTerms] = useState("");
   // The currency of the starting price (PLAN-currencies.md). A booking copies it, and
   // the project and its payments use it. It starts as the freelancer's own currency
   // (Settings > Currency, the user's choice on 2026-11-15); pickedCurrency is set
@@ -120,6 +125,8 @@ export default function ServicesView() {
     setSkill(editing.skill || "");
     setPrice(editing.price ? String(editing.price) : "");
     setPickedCurrency(editing.currency || DEFAULT_CURRENCY);
+    setRevisions(editing.revisions || "");
+    setExtraTerms(editing.extra_terms || "");
     setSlideItems([]);
     setSlidesError("");
   } else if (!editing && filledFromId) {
@@ -140,6 +147,8 @@ export default function ServicesView() {
     setSkill("");
     setPrice("");
     setPickedCurrency(null);
+    setRevisions("");
+    setExtraTerms("");
     setSearchParams({}, { replace: true });
   };
 
@@ -206,7 +215,9 @@ export default function ServicesView() {
         description: description.trim(),
         skill: skill || null,
         price: amount,
-        currency
+        currency,
+        revisions: revisions || null,
+        extra_terms: extraTerms.trim() || null
       })
       .eq("id", editing.id)
       .select(SERVICE_COLUMNS)
@@ -250,7 +261,9 @@ export default function ServicesView() {
         description: description.trim(),
         skill: skill || null,
         price: amount,
-        currency
+        currency,
+        revisions: revisions || null,
+        extra_terms: extraTerms.trim() || null
       })
       .select(SERVICE_COLUMNS)
       .single();
@@ -279,6 +292,8 @@ export default function ServicesView() {
     setSkill("");
     setPrice("");
     setPickedCurrency(null);
+    setRevisions("");
+    setExtraTerms("");
     setSlideItems([]);
 
     // Files held back for an admin (steps 5-9), and how many passed the
@@ -412,6 +427,39 @@ export default function ServicesView() {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Panel revision (PLAN-panel-revisions.md, item 7): revisions and the
+                    freelancer's own terms, read by the client before booking and
+                    saved with each booking (lib/serviceTerms.js). */}
+                <div>
+                  <label htmlFor="serviceRevisions" className="form-label text-white fw-semibold fs-7">Revisions included:</label>
+                  <select
+                    id="serviceRevisions"
+                    className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    value={revisions}
+                    onChange={(e) => setRevisions(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>How many rounds of changes does the price include?</option>
+                    {REVISION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="serviceTerms" className="form-label text-white fw-semibold fs-7">Your terms (optional):</label>
+                  <textarea
+                    id="serviceTerms"
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
+                    rows="3"
+                    maxLength={MAX_EXTRA_TERMS}
+                    placeholder="e.g. Extra revisions are 300 each. Source files are included. Rush jobs (under 3 days) cost 20% more."
+                    value={extraTerms}
+                    onChange={(e) => setExtraTerms(e.target.value)}
+                  ></textarea>
+                  <small className="text-secondary fs-8 d-block mt-1">
+                    Clients read these before booking, and they are saved with each booking. {extraTerms.length}/{MAX_EXTRA_TERMS}
+                  </small>
                 </div>
 
                 {editing && (

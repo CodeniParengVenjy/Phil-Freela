@@ -23,6 +23,7 @@ import ServiceReviews from "../components/ServiceReviews";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
 import { postedTitle, shownPrice, useMyCurrency } from "../../../lib/money";
+import { revisionsLabel } from "../../../lib/serviceTerms";
 
 // One service offer (a "project offer"), opened from a card on Browse Services
 // or the AI search results, or from a freelancer's page. This is the only place
@@ -61,7 +62,7 @@ function ServiceDetails({ serviceId }) {
 
     supabase
       .from("services")
-      .select(`id, title, category, description, price, currency, skill, image_url, created_at, updated_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, avatar_path, available_for_work, skills), ${SLIDES_SELECT}`)
+      .select(`id, title, category, description, price, currency, revisions, extra_terms, skill, image_url, created_at, updated_at, freelancer:profiles!services_freelancer_id_fkey(id, full_name, username, avatar_path, available_for_work, skills), ${SLIDES_SELECT}`)
       .eq("id", serviceId)
       .maybeSingle()
       .then(({ data }) => {
@@ -295,6 +296,28 @@ function ServiceDetails({ serviceId }) {
         <h4 className="text-white fw-bold mb-3"><i className="bi bi-card-text text-role me-2"></i> Description</h4>
         <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-25 text-light-50 fs-7 lh-lg mb-4 text-break" style={{ whiteSpace: "pre-wrap" }}>
           <CensoredText text={service.description} />
+        </div>
+
+        {/* Panel revision (PLAN-panel-revisions.md, item 7): what the price
+            includes, read before booking. Copied into the booking when it is
+            sent, so a later edit of the offer doesn't change it. */}
+        <h4 className="text-white fw-bold mb-3"><i className="bi bi-arrow-repeat text-role me-2"></i> Revisions and terms</h4>
+        <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-25 fs-7 mb-4">
+          <p className="mb-0">
+            <span className="text-white fw-semibold">Revisions included: </span>
+            {revisionsLabel(service.revisions)
+              ? <span className="text-light-50">{revisionsLabel(service.revisions)}</span>
+              : <span className="text-secondary">Not stated. Ask {freelancerName} in a chat before booking.</span>}
+          </p>
+          {service.extra_terms && (
+            <>
+              <p className="text-white fw-semibold mt-3 mb-1">{freelancerName}'s terms:</p>
+              <p className="text-light-50 mb-0 text-break" style={{ whiteSpace: "pre-wrap" }}><CensoredText text={service.extra_terms} /></p>
+            </>
+          )}
+          <p className="text-secondary fs-8 mt-3 mb-0">
+            These are saved with your booking, so a later change to this offer doesn't change what you booked.
+          </p>
         </div>
 
         {/* The offer's skill and the freelancer's profile skills (hidden when there are none). */}
