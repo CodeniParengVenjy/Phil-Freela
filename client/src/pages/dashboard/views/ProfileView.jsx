@@ -8,6 +8,7 @@ import PortfolioSection from "../components/PortfolioSection";
 import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import SkillsBox from "../components/SkillsBox";
+import { PortfolioLinksBox } from "../components/PortfolioLinks";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
 import PictureViewer from "../../../components/PictureViewer";
@@ -84,6 +85,13 @@ export default function ProfileView() {
               {accountType === "freelancer" && currentUserId && (
                 <div data-tour="profile-skills" className="text-start mb-4">
                   <SkillsBox userId={currentUserId} showToast={showToast} />
+                </div>
+              )}
+
+              {/* Links to their work on other sites (panel revision, freelancers only). */}
+              {accountType === "freelancer" && currentUserId && (
+                <div className="text-start mb-4">
+                  <PortfolioLinksBox userId={currentUserId} showToast={showToast} />
                 </div>
               )}
 

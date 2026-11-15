@@ -20,6 +20,7 @@ import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import ReportDialog from "../components/ReportDialog";
 import ServiceCard from "../components/ServiceCard";
+import { PortfolioLinksList } from "../components/PortfolioLinks";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
 
@@ -67,7 +68,7 @@ function PublicProfile({ userId }) {
   useEffect(() => {
     let active = true;
     Promise.all([
-      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, cover_path, description, skills, available_for_work").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, cover_path, description, skills, available_for_work, portfolio_links").eq("id", userId).maybeSingle(),
       fetchIsVerified(userId),
       countPortfolio(userId)
     ]).then(([{ data }, isVerified, count]) => {
@@ -174,6 +175,9 @@ function PublicProfile({ userId }) {
           </div>
         </div>
       )}
+
+      {/* Links to their work on other sites (panel revision; hidden until they add some). */}
+      {isFreelancer && <PortfolioLinksList links={person.portfolio_links} />}
 
       {/* A freelancer's services: the way to a booking is through one of them. */}
       {isFreelancer && <ServicesOffered freelancerId={person.id} />}

@@ -195,6 +195,75 @@ export function addSkillsFromText(current, text) {
   return next;
 }
 
+// A freelancer's portfolio links (panel revision, PLAN-panel-revisions.md,
+// item 6): up to 3 links to work kept on other sites (Behance, GitHub, Google
+// Drive, their own website...). The database has the same rule
+// (supabase_portfolio_links_schema.sql): at most 3, each an https:// address
+// of at most 200 characters. Only https, so a link can never run code on the
+// page (a "javascript:" link) and always opens over a secure connection.
+export const MAX_PORTFOLIO_LINKS = 3;
+export const MAX_LINK_LENGTH = 200;
+const PORTFOLIO_LINK_PATTERN = /^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d{1,5})?(\/[^\s<>"]*)?$/;
+
+// Turns what was typed into a link, or returns { error }. "behance.net/juan"
+// becomes "https://behance.net/juan"; an http:// link is refused (not secure).
+export function cleanPortfolioLink(text) {
+  let link = text.trim();
+  if (!link) return { error: "Paste a link first." };
+  if (/^http:\/\//i.test(link)) return { error: "Use a secure link: it must start with https://" };
+  if (!/^https:\/\//i.test(link)) link = `https://${link}`;
+  link = link.replace(/^https:\/\//i, "https://");
+  if (link.length > MAX_LINK_LENGTH) return { error: `A link can be at most ${MAX_LINK_LENGTH} characters.` };
+  if (!PORTFOLIO_LINK_PATTERN.test(link)) return { error: "That doesn't look like a web address, e.g. https://behance.net/yourname" };
+  return { link };
+}
+
+// True only for a link the page may open (the same rule as above).
+export function isSafeLink(link) {
+  return typeof link === "string" && PORTFOLIO_LINK_PATTERN.test(link);
+}
+
+// A short name for a link ("behance.net/juan") and an icon for its site.
+export function linkLabel(link) {
+  const short = link.replace(/^https:\/\/(www\.)?/i, "").replace(/\/$/, "");
+  return short.length > 40 ? `${short.slice(0, 39)}…` : short;
+}
+
+const SITE_ICONS = [
+  ["behance.net", "bi-behance"],
+  ["github.com", "bi-github"],
+  ["drive.google.com", "bi-google"],
+  ["docs.google.com", "bi-google"],
+  ["dribbble.com", "bi-dribbble"],
+  ["linkedin.com", "bi-linkedin"],
+  ["youtube.com", "bi-youtube"],
+  ["youtu.be", "bi-youtube"],
+  ["vimeo.com", "bi-vimeo"],
+  ["instagram.com", "bi-instagram"],
+  ["facebook.com", "bi-facebook"]
+];
+
+export function linkIcon(link) {
+  const host = link.replace(/^https:\/\//i, "").split(/[/:?#]/)[0].toLowerCase();
+  const found = SITE_ICONS.find(([site]) => host === site || host.endsWith(`.${site}`));
+  return found ? found[1] : "bi-link-45deg";
+}
+
+// The user's saved links, or null when they couldn't be loaded.
+export async function fetchPortfolioLinks(userId) {
+  const { data, error } = await supabase.from("profiles").select("portfolio_links").eq("id", userId).maybeSingle();
+  if (error) return null;
+  return data?.portfolio_links ?? [];
+}
+
+// Saves the whole list. Returns "" when saved, or a message to show.
+export async function savePortfolioLinks(userId, links) {
+  if (links.length > MAX_PORTFOLIO_LINKS) return `You can add up to ${MAX_PORTFOLIO_LINKS} links.`;
+  const { data, error } = await supabase.from("profiles").update({ portfolio_links: links }).eq("id", userId).select("id");
+  if (error || !data?.length) return "Couldn't save your links. Please try again.";
+  return "";
+}
+
 // The "People" section of the Search page: the people whose name or @username
 // contains the typed text (at most 20, names that start with it first). The
 // database function leaves out yourself and anyone banned or suspended (see

@@ -198,6 +198,11 @@ function TermsOfService() {
         not allowed and can get your account suspended. If you see work that isn't the poster's own, use the Report
         button on the project, service, or profile, pick "Stolen work / plagiarism", and tell us where the original is.
       </p>
+      <p className="text-secondary">
+        A freelancer can add up to 3 portfolio links (https only) to their profile, for work kept on other sites like
+        Behance, GitHub or Google Drive. They must lead to the freelancer's own work. PhilFreela doesn't check what's on
+        those sites, and work kept there doesn't get PhilFreela's invisible mark.
+      </p>
 
       <h5 className="text-white fw-bold mt-4 mb-2">Payments</h5>
       <ul className="text-secondary">
