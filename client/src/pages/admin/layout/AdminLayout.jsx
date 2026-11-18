@@ -1,7 +1,7 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { fetchMyLink, switchToOtherAccount } from "../../../lib/accountSwitch";
+import { fetchMyLinks, switchToOtherAccount } from "../../../lib/accountSwitch";
 import { getPendingAdCount } from "../../../lib/adminMemberAds";
 import AdminCreatePassword from "../components/AdminCreatePassword";
 import { FlyingLogo, PageLoader } from "../../../components/Loaders";
@@ -228,17 +228,21 @@ export default function AdminLayout() {
   // This admin's own freelancer or client account, if they linked one (see
   // lib/accountSwitch.js): { other_name, ... }, or null. It decides whether the
   // top bar shows "Switch to my user account". My Profile links and unlinks it.
-  const [userLink, setUserLink] = useState(null);
+  // Since Freelancer and Client accounts were separated, the linked person can
+  // have two user accounts (PLAN-separate-accounts.md Step 9): userLinks holds
+  // all of them (the directly linked one first), userLink the directly linked one.
+  const [userLinks, setUserLinks] = useState([]);
+  const userLink = userLinks.find((link) => link.direct) ?? userLinks[0] ?? null;
   const loadUserLink = useCallback(async () => {
-    const link = await fetchMyLink();
-    setUserLink(link?.side === "admin" ? link : null);
+    const links = await fetchMyLinks();
+    setUserLinks(links.filter((link) => link.side === "admin"));
   }, []);
 
-  // Swaps to the user account. If this browser has no saved sign-in for it,
-  // My Profile asks for that account's password once.
-  const handleSwitchToUser = async () => {
-    const result = await switchToOtherAccount(userLink);
-    if (result.needsPassword || result.error) navigate("/admin/profile", { state: { switchProblem: result.error || "" } });
+  // Swaps to one of the user accounts. If this browser has no saved sign-in for
+  // it, My Profile asks for the password once (switchTo says which account).
+  const handleSwitchToUser = async (link) => {
+    const result = await switchToOtherAccount(link);
+    if (result.needsPassword || result.error) navigate("/admin/profile", { state: { switchProblem: result.error || "", switchTo: link.other_id } });
   };
 
   // Called by My Profile after a name change, so the top bar shows the new name.
@@ -252,8 +256,8 @@ export default function AdminLayout() {
   useEffect(() => {
     if (!adminRowId) return undefined;
     let active = true;
-    fetchMyLink().then((link) => {
-      if (active) setUserLink(link?.side === "admin" ? link : null);
+    fetchMyLinks().then((links) => {
+      if (active) setUserLinks(links.filter((link) => link.side === "admin"));
     });
     return () => { active = false; };
   }, [adminRowId]);
@@ -393,10 +397,28 @@ export default function AdminLayout() {
             <i className="bi bi-person-circle me-1"></i> {adminName}
             {isSuperAdmin && <span className="badge admin-badge-orange ms-2 fw-normal">Super admin</span>}
           </Link>
-          {userLink && (
-            <button className="btn btn-outline-warning btn-sm rounded-pill" onClick={handleSwitchToUser} title={`Open ${userLink.other_name}'s account`}>
+          {userLinks.length === 1 && (
+            <button className="btn btn-outline-warning btn-sm rounded-pill" onClick={() => handleSwitchToUser(userLink)} title={`Open ${userLink.other_name}'s account`}>
               <i className="bi bi-arrow-left-right me-1"></i> <span className="d-none d-md-inline">Switch to my user account</span><span className="d-md-none">User account</span>
             </button>
+          )}
+          {/* A separated person: one button, a small menu with the Freelancer and the Client account. */}
+          {userLinks.length > 1 && (
+            <div className="dropdown">
+              <button className="btn btn-outline-warning btn-sm rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i className="bi bi-arrow-left-right me-1"></i> <span className="d-none d-md-inline">Switch to my user account</span><span className="d-md-none">User account</span>
+              </button>
+              <ul className="dropdown-menu dropdown-menu-end dropdown-menu-dark border border-secondary border-opacity-25 shadow-lg p-2">
+                {userLinks.map((link) => (
+                  <li key={link.other_id}>
+                    <button type="button" className="dropdown-item rounded-2 text-white" onClick={() => handleSwitchToUser(link)}>
+                      <i className={`bi ${link.other_role === "client" ? "bi-briefcase text-info" : "bi-person-workspace text-warning"} me-2`}></i>
+                      {link.other_role === "client" ? "Client" : "Freelancer"}: @{link.other_username}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <button className="btn btn-outline-light btn-sm rounded-pill" onClick={handleSignOut}>
             <i className="bi bi-box-arrow-right me-1"></i> Sign Out
@@ -418,7 +440,7 @@ export default function AdminLayout() {
             <main className="col-12 col-md-9 col-xl-10">
               {/* isAdmin tells the shared user pages (Browse Services / Jobs)
                   to show admin buttons instead of user ones. */}
-              <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingMemberAds, refreshPendingApprovals }} />
+              <Outlet context={{ adminId: admin.id, adminName, isAdmin: true, isSuperAdmin, reloadAdmin, userLink, userLinks, reloadUserLink: loadUserLink, refreshPendingReports, refreshPendingVerifications, refreshPendingAppeals, refreshPendingFlagged, refreshPendingUsers, refreshPendingMemberAds, refreshPendingApprovals }} />
             </main>
           </PageTransition>
         </div>

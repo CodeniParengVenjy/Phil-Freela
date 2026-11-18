@@ -122,6 +122,17 @@ The 4 separated accounts showed as 4 new users (47 users, 4 new this week).
 3. Files: `database/supabase_admin_stats_people_schema.sql` (trial: 43 / 47 / 4 / 25 / 22 / 0,
    migration admin_stats_people), `AdminOverviewView.jsx`.
 
+### Step 9: The admin's "Switch to my user account" opens BOTH accounts (the user, 2026-11-18)
+The admin (sp_adminVG) is linked to @venjokes only; since the split there is also @venjokes_client.
+1. `my_links()`: every account a login can switch to. Admin: the linked account (direct) and its
+   separated partner. A user (either of the pair): the admin, so "Switch to admin" shows on both.
+   `my_link()` stays for older code. File `database/supabase_admin_switch_both_schema.sql`
+   (trial: admin -> venjokes + venjokes_client, both user accounts -> admin, others none; migration admin_switch_both).
+2. `lib/accountSwitch.js`: the browser remembers sign-ins for several accounts (old one-slot data still read);
+   the password box takes the email of either account of the pair and saves both (one shared password).
+3. Admin top bar: one "Switch to my user account" button with a menu (Freelancer: @venjokes / Client: @venjokes_client);
+   My Profile: a Switch button per account, and the password box says which account it is for.
+
 ## Status (2026-11-18)
 - Steps 1-3 live on the website (09eb8fc, 2184f89). Step 4 applied (migration account_type_lock, 4/4 PASS).
 - Step 5 applied (migration account_splits): rolled-back trials 14/14 PASS (freelancer side, moved

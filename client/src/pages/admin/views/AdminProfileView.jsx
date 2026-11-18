@@ -13,7 +13,10 @@ const emptyPasswords = { current: "", next: "", confirm: "" };
 // The admin's own page: who they are, name and username (with waiting times),
 // password, and signing out their other devices.
 export default function AdminProfileView() {
-  const { adminId, isSuperAdmin, reloadAdmin, userLink, reloadUserLink } = useOutletContext();
+  // userLinks: every user account the admin can switch to (the linked one and,
+  // for a separated person, its Freelancer/Client partner: Step 9 of
+  // PLAN-separate-accounts.md); userLink: the directly linked one.
+  const { adminId, isSuperAdmin, reloadAdmin, userLink, userLinks = [], reloadUserLink } = useOutletContext();
   // The top bar's Switch button sends the admin here when this browser has no
   // saved sign-in for their user account yet.
   const location = useLocation();
@@ -36,7 +39,12 @@ export default function AdminProfileView() {
   // is already linked (askPassword).
   const [userEmail, setUserEmail] = useState(null);
   const [userPassword, setUserPassword] = useState("");
-  const [askPassword, setAskPassword] = useState(location.state?.switchProblem !== undefined);
+  // Which account the password box is for (its id), or null when no box is shown.
+  const [askFor, setAskFor] = useState(location.state?.switchProblem !== undefined ? (location.state?.switchTo ?? "linked") : null);
+  const askPassword = askFor !== null;
+  const setAskPassword = (show) => setAskFor(show ? "linked" : null);
+  // The account the password box is for ("linked" = the directly linked one).
+  const askLink = userLinks.find((link) => link.other_id === askFor) ?? userLink;
   const [switchMessage, setSwitchMessage] = useState(() => (location.state?.switchProblem ? { text: location.state.switchProblem, type: "error" } : { text: "", type: "" }));
   const [switching, setSwitching] = useState(false);
 
@@ -133,14 +141,14 @@ export default function AdminProfileView() {
     setSwitchMessage({ text: "Linked. You can now switch between the two accounts with one click.", type: "success" });
   };
 
-  // Swaps to the user account; if this browser has no saved sign-in for it, asks for the password.
-  const handleSwitch = async () => {
+  // Swaps to one user account; if this browser has no saved sign-in for it, asks for the password.
+  const handleSwitch = async (link) => {
     if (switching) return;
     setSwitching(true);
     setSwitchMessage({ text: "", type: "" });
-    const result = await switchToOtherAccount(userLink);
+    const result = await switchToOtherAccount(link);
     setSwitching(false);
-    if (result.needsPassword) setAskPassword(true);
+    if (result.needsPassword) setAskFor(link.other_id);
     else if (result.error) setSwitchMessage({ text: result.error, type: "error" });
   };
 
@@ -150,11 +158,13 @@ export default function AdminProfileView() {
     if (switching) return;
     setSwitching(true);
     setSwitchMessage({ text: "", type: "" });
-    const problem = await rememberOtherAccount(userLink, shownUserEmail, userPassword);
+    // The other accounts in the list are saved too when the password fits (one password per pair).
+    const target = askLink;
+    const problem = await rememberOtherAccount(target, shownUserEmail, userPassword, userLinks);
     if (problem) return failSwitch(problem);
     setUserPassword("");
     setAskPassword(false);
-    const result = await switchToOtherAccount(userLink);
+    const result = await switchToOtherAccount(target);
     setSwitching(false);
     if (result.error || result.needsPassword) setSwitchMessage({ text: result.error || "Couldn't switch. Please try again.", type: "error" });
   };
@@ -290,10 +300,14 @@ export default function AdminProfileView() {
               <>
                 <p className="text-white-50 fs-7 mb-3">
                   Linked to your user account <strong className="text-white">{userLink.other_name}</strong> (@{userLink.other_username}). The Switch button in the top bar opens it, and it has a Switch to admin button that comes back here. Only the two of you can use it.
+                  {userLinks.length > 1 && <> Its separated {userLinks.filter((link) => !link.direct).map((link) => `${link.other_role === "client" ? "Client" : "Freelancer"} account @${link.other_username}`).join(", ")} can be opened the same way.</>}
                 </p>
                 {askPassword ? (
                   <form className="d-flex flex-column gap-3" style={{ maxWidth: 420 }} noValidate onSubmit={handleRememberAndSwitch}>
-                    <p className="text-white-50 fs-8 mb-0">This browser doesn't have that account's sign-in saved yet. Type it once; after that switching is one click.</p>
+                    <p className="text-white-50 fs-8 mb-0">
+                      This browser doesn't have the sign-in of @{askLink?.other_username} saved yet. Type it once; after that switching is one click.
+                      {userLinks.length > 1 && " The Freelancer and Client accounts share one password, so the email of either works, and both are saved."}
+                    </p>
                     <div>
                       <label htmlFor="switchUserEmail" className="form-label text-white-50 fw-semibold fs-7 mb-1">User account email</label>
                       <input id="switchUserEmail" type="email" className="form-control admin-input" autoComplete="off" value={shownUserEmail} onChange={(e) => setUserEmail(e.target.value)} disabled={switching} />
@@ -309,9 +323,17 @@ export default function AdminProfileView() {
                   </form>
                 ) : (
                   <div className="d-flex flex-wrap gap-2">
-                    <button type="button" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" onClick={handleSwitch} disabled={switching}>
-                      {switching ? <Busy>Switching</Busy> : <><i className="bi bi-arrow-left-right me-1"></i>Switch to my user account</>}
-                    </button>
+                    {userLinks.length > 1 ? (
+                      userLinks.map((link) => (
+                        <button key={link.other_id} type="button" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" onClick={() => handleSwitch(link)} disabled={switching}>
+                          {switching ? <Busy>Switching</Busy> : <><i className={`bi ${link.other_role === "client" ? "bi-briefcase" : "bi-person-workspace"} me-1`}></i>Switch to {link.other_role === "client" ? "Client" : "Freelancer"} (@{link.other_username})</>}
+                        </button>
+                      ))
+                    ) : (
+                      <button type="button" className="btn btn-warning btn-sm rounded-pill px-4 fw-bold" onClick={() => handleSwitch(userLink)} disabled={switching}>
+                        {switching ? <Busy>Switching</Busy> : <><i className="bi bi-arrow-left-right me-1"></i>Switch to my user account</>}
+                      </button>
+                    )}
                     <button type="button" className="btn btn-outline-light btn-sm rounded-pill px-3" onClick={handleUnlink} disabled={switching}>Unlink</button>
                   </div>
                 )}
