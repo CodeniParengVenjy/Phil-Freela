@@ -81,6 +81,11 @@ function AllUsersCard({ stats }) {
         <div>
           <div className="admin-stat-value">{stats ? stats.total_users : <LoadingDots />}</div>
           <div className="text-secondary fs-7">All Users</div>
+          {/* People, not logins: a separated Freelancer + Client pair is one person
+              (admin_stats, PLAN-separate-accounts.md Step 8). The login count shows here. */}
+          {stats?.total_accounts > stats?.total_users && (
+            <div className="text-secondary fs-8">{stats.total_accounts} accounts ({stats.total_accounts - stats.total_users} separated)</div>
+          )}
         </div>
       </Link>
       <Link to="/admin/users?presence=online&sort=online&dir=desc" className="admin-stat-link d-inline-block fs-8 text-success fw-semibold mt-1" style={{ marginLeft: 60 }}>
@@ -509,12 +514,12 @@ export default function AdminOverviewView() {
               <div className="col-12 col-md-6">
                 <SplitBar
                   title="Users by role"
-                  summary={`${stats.freelancers + stats.clients} users`}
+                  summary={`${stats.freelancers + stats.clients} accounts`}
                   parts={[
                     { label: "Current Freelancers", value: stats.freelancers, color: "var(--trend-orange)", to: "/admin/users?role=freelancer" },
                     { label: "Current Clients", value: stats.clients, color: "var(--trend-blue)", to: "/admin/users?role=client" }
                   ]}
-                  note={<>Freelancer-to-client ratio: <strong className="text-white">{roleRatio(stats.freelancers, stats.clients)}</strong>{ratioInWords(stats.freelancers, stats.clients)}</>}
+                  note={<>Freelancer-to-client ratio: <strong className="text-white">{roleRatio(stats.freelancers, stats.clients)}</strong>{ratioInWords(stats.freelancers, stats.clients)}{stats.total_accounts > stats.total_users && ". A person with both a Freelancer and a Client account counts in each."}</>}
                 />
               </div>
               <div className="col-12 col-md-6">

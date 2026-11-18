@@ -131,17 +131,35 @@ export default function Login() {
   // Google's redirect). A Freelancer account can't be opened from the Client
   // side or the other way round: it is signed out again and told where to go.
   // picked = the side they chose, or null when unknown (then no check).
-  const finishSignIn = useCallback(async (user, picked) => {
+  // password = what they typed (email sign-in only), used for the partner below.
+  const finishSignIn = useCallback(async (user, picked, password) => {
     // Kept for Complete Profile, in case this is a first Google sign-in.
     rememberChosenRole(picked);
     const destination = await resolvePostAuthRoute(user);
     const actual = roleOfRoute(destination);
     if (picked && actual && actual !== picked) {
-      await supabase.auth.signOut();
+      // A separated account (PLAN-separate-accounts.md, Step 7): the same person
+      // has a partner account on the side they picked, with the same password
+      // (the database keeps the pair's password the same). Open that one instead.
+      const { data: partnerEmail } = await supabase.rpc("my_linked_account", { p_side: picked });
+      // "local": only this browser; the account stays signed in on their other devices.
+      await supabase.auth.signOut({ scope: "local" });
+      if (partnerEmail && password) {
+        const { data: partner, error: partnerError } = await supabase.auth.signInWithPassword({ email: partnerEmail, password });
+        if (!partnerError && partner?.user) {
+          const partnerDestination = await resolvePostAuthRoute(partner.user);
+          forgetChosenRole();
+          navigate(partnerDestination, { replace: true });
+          return;
+        }
+      }
       forgetChosenRole();
       setWrongSide({ actual, picked });
       setMessage({
-        text: `This email has a ${ROLE_TEXT[actual].name} account, not a ${ROLE_TEXT[picked].name} account. Sign in on the ${ROLE_TEXT[actual].name} side.`,
+        // Google has no password to open the partner with.
+        text: partnerEmail && !password
+          ? `Your ${ROLE_TEXT[picked].name} account opens with your email and password. "Continue with Google" opens your ${ROLE_TEXT[actual].name} account.`
+          : `This email has a ${ROLE_TEXT[actual].name} account, not a ${ROLE_TEXT[picked].name} account. Sign in on the ${ROLE_TEXT[actual].name} side.`,
         type: "error"
       });
       return;
@@ -433,7 +451,7 @@ export default function Login() {
 
         setMessage({ text: "Signed in successfully.", type: "success" });
         // sideRef: "Sign in as Client" re-sends the form before the new side is drawn.
-        await finishSignIn(data.user, sideRef.current);
+        await finishSignIn(data.user, sideRef.current, form.password);
       }
     } catch (error) {
       // error.field is only set by fieldError(); any other error stays at the

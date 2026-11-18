@@ -101,6 +101,27 @@ The approved ID check of a verified old account was copied to its new account
 duplicate_of = the old account). Trial 2/2 then applied: @Ellen_freelancer and @venjokes_client are
 verified. @testingVG1 and @tinetestingnganeh were never verified, so their new accounts aren't either.
 
+### Step 7: One email for both sides (the user, 2026-11-18, after hitting the wrong-side message)
+"They can be used both emails at the same time": a separated person signs in to EITHER account with
+the same email and password, just by picking the side.
+1. `my_linked_account(side)`: the signed-in account's separated partner on that side (its login email).
+2. A pair shares one password: trigger `sync_linked_password` on auth.users copies a new password
+   (also "Forgot password") to the partner. One time, the 4 new logins got their old account's password.
+3. Login.jsx `finishSignIn`: on the wrong side, if a partner exists on the picked side, sign in to it
+   with the typed password and open its dashboard. Google has no password: it says the other side
+   opens with email and password. Wrong-side sign-outs are now this browser only (`scope: "local"`).
+4. Files: `database/supabase_linked_signin_schema.sql` (trial 8/8 PASS, migration linked_signin), `Login.jsx`.
+
+### Step 8: Admin Overview counts people (the user: "this must be fixed already")
+The 4 separated accounts showed as 4 new users (47 users, 4 new this week).
+1. `admin_stats()`: total_users = people (a separated pair counts once), new total_accounts,
+   verified_users = people, new_this_week leaves out separated halves. Freelancers/clients stay per account.
+   Helper `account_person(id)`.
+2. All Users card: 43, with "47 accounts (4 separated)" under it; the role chart says "accounts" and
+   notes that a person with both counts in each.
+3. Files: `database/supabase_admin_stats_people_schema.sql` (trial: 43 / 47 / 4 / 25 / 22 / 0,
+   migration admin_stats_people), `AdminOverviewView.jsx`.
+
 ## Status (2026-11-18)
 - Steps 1-3 live on the website (09eb8fc, 2184f89). Step 4 applied (migration account_type_lock, 4/4 PASS).
 - Step 5 applied (migration account_splits): rolled-back trials 14/14 PASS (freelancer side, moved
