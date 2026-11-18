@@ -74,6 +74,10 @@ function App() {
     <Routes>
       <Route path="/" element={<Homepage />} />
       <Route path="/login" element={<Login />} />
+      {/* Freelancer and Client accounts are separate (PLAN-separate-accounts.md):
+          /signup picks one, /signup/freelancer and /signup/client are their own forms. */}
+      <Route path="/signup" element={<Login />} />
+      <Route path="/signup/:role" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       {/* First Google sign-in (or any account without a profile yet) picks a username, gender and role here. */}

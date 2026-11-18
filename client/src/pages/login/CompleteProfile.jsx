@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { MAX_NAME_LENGTH, checkName, cleanName, dashboardRouteFor, resolvePostAuthRoute, noAutofill } from "../../lib/profile";
+import { MAX_NAME_LENGTH, checkName, cleanName, dashboardRouteFor, resolvePostAuthRoute, noAutofill, chosenRole, forgetChosenRole } from "../../lib/profile";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import "../../styles/auth.css";
 import { Busy, MessageText } from "../../components/Loaders";
@@ -28,7 +28,11 @@ export default function CompleteProfile() {
   const navigate = useNavigate();
   // The signed-in user, once we know they really need this page.
   const [user, setUser] = useState(null);
-  const [form, setForm] = useState({ fullName: "", username: "", gender: "male", accountType: "client" });
+  // Freelancer and Client accounts are separate (PLAN-separate-accounts.md).
+  // The side picked before Google (a sign-up page or the Sign In picker) is
+  // fixed here; only someone who came without one picks it on this page.
+  const [lockedRole] = useState(chosenRole);
+  const [form, setForm] = useState(() => ({ fullName: "", username: "", gender: "male", accountType: lockedRole || "client" }));
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
 
@@ -105,17 +109,19 @@ export default function CompleteProfile() {
     // Keep the same details on the login account, like email sign up does
     // (the emails greet people by this full_name).
     await supabase.auth.updateUser({ data: { full_name: fullName, username, gender: form.gender, account_type: accountType } });
+    forgetChosenRole();
     navigate(dashboardRouteFor(accountType), { replace: true });
   };
 
   // "Not you?": sign out so they can pick another Google account.
   const handleUseAnotherAccount = async () => {
+    forgetChosenRole();
     await supabase.auth.signOut();
     navigate("/login", { replace: true });
   };
 
   const roleButton = (value) =>
-    `btn flex-grow-1 rounded-3 fw-bold py-2 fs-7 ${form.accountType === value ? "btn-gradient-orange text-white" : "btn-outline-secondary text-white-50"}`;
+    `btn flex-grow-1 rounded-3 fw-bold py-2 fs-7 ${form.accountType === value ? `${value === "client" ? "btn-gradient-cyan" : "btn-gradient-orange"} text-white` : "btn-outline-secondary text-white-50"}`;
 
   return (
     <div className="auth-page-body d-flex align-items-center justify-content-center min-vh-100 py-5">
@@ -137,17 +143,29 @@ export default function CompleteProfile() {
 
           {user && (
             <form className="d-flex flex-column gap-3" noValidate onSubmit={handleSubmit}>
-              <div className="field">
-                <label className="form-label text-white-50 fw-semibold fs-7 mb-1">I'm joining as a...</label>
-                <div className="d-flex gap-2" role="radiogroup" aria-label="Account type">
-                  <button type="button" role="radio" aria-checked={form.accountType === "freelancer"} className={roleButton("freelancer")} onClick={() => setForm((prev) => ({ ...prev, accountType: "freelancer" }))}>
-                    <i className="bi bi-person-badge me-1"></i> Freelancer
-                  </button>
-                  <button type="button" role="radio" aria-checked={form.accountType === "client"} className={roleButton("client")} onClick={() => setForm((prev) => ({ ...prev, accountType: "client" }))}>
-                    <i className="bi bi-briefcase me-1"></i> Client
-                  </button>
+              {lockedRole ? (
+                <div className={`role-note role-note-${lockedRole} rounded-3 px-3 py-2 fs-8`}>
+                  <i className={`bi ${lockedRole === "client" ? "bi-briefcase" : "bi-person-workspace"} me-2`}></i>
+                  You're making a <strong>{lockedRole === "client" ? "Client" : "Freelancer"}</strong> account. It can't be changed later.
+                  For the other kind, make a separate account with another email.
                 </div>
-              </div>
+              ) : (
+                <div className="field">
+                  <label className="form-label text-white-50 fw-semibold fs-7 mb-1">I'm joining as a...</label>
+                  <div className="d-flex gap-2" role="radiogroup" aria-label="Account type">
+                    <button type="button" role="radio" aria-checked={form.accountType === "freelancer"} className={roleButton("freelancer")} onClick={() => setForm((prev) => ({ ...prev, accountType: "freelancer" }))}>
+                      <i className="bi bi-person-workspace me-1"></i> Freelancer
+                    </button>
+                    <button type="button" role="radio" aria-checked={form.accountType === "client"} className={roleButton("client")} onClick={() => setForm((prev) => ({ ...prev, accountType: "client" }))}>
+                      <i className="bi bi-briefcase me-1"></i> Client
+                    </button>
+                  </div>
+                  <p className="text-white-50 fs-8 mt-2 mb-0">
+                    <i className="bi bi-info-circle me-1"></i>
+                    Freelancer and Client accounts are separate. This can't be changed later.
+                  </p>
+                </div>
+              )}
 
               <div className="field">
                 <label htmlFor="fullName" className="form-label text-white-50 fw-semibold fs-7 mb-1">Name</label>

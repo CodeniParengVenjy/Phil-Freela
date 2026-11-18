@@ -6,6 +6,45 @@ export function dashboardRouteFor(accountType) {
   return accountType === "freelancer" ? "/dashboard-freelancer" : "/dashboard-client";
 }
 
+// The role a dashboard address belongs to, or null for any other page
+// (Complete Profile, the appeal page, ...).
+export function roleOfRoute(route) {
+  if (route === "/dashboard-freelancer") return "freelancer";
+  if (route === "/dashboard-client") return "client";
+  return null;
+}
+
+// Freelancer and Client accounts are separate (PLAN-separate-accounts.md).
+// The side picked on the Sign In or sign-up page is kept here for a moment
+// (this tab only), so it is still known after the trip to Google and on the
+// Complete Profile page.
+const CHOSEN_ROLE_KEY = "philfreela.chosenRole";
+
+export function rememberChosenRole(role) {
+  try {
+    if (role === "freelancer" || role === "client") sessionStorage.setItem(CHOSEN_ROLE_KEY, role);
+  } catch {
+    // Storage can be blocked (private window); the pages still work without it.
+  }
+}
+
+export function chosenRole() {
+  try {
+    const role = sessionStorage.getItem(CHOSEN_ROLE_KEY);
+    return role === "freelancer" || role === "client" ? role : null;
+  } catch {
+    return null;
+  }
+}
+
+export function forgetChosenRole() {
+  try {
+    sessionStorage.removeItem(CHOSEN_ROLE_KEY);
+  } catch {
+    // nothing to forget
+  }
+}
+
 // Returns this user's ban or suspension if it's still in effect, or null.
 // Users can only read their own suspension row (database rule).
 export async function getActiveSuspension(userId) {

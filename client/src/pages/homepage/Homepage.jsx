@@ -70,8 +70,8 @@ export default function Homepage() {
           </div>
 
           <div className="d-none d-lg-flex align-items-center gap-5">
-            <Link to="/login?mode=signup&role=freelancer" className="nav-link text-white hover-orange font-weight-600">Join as Freelancer</Link>
-            <Link to="/login?mode=signup&role=client" className="nav-link text-white hover-orange font-weight-600">Become a Client</Link>
+            <Link to="/signup/freelancer" className="nav-link text-white hover-orange font-weight-600">Join as Freelancer</Link>
+            <Link to="/signup/client" className="nav-link text-white hover-orange font-weight-600">Become a Client</Link>
             <a href={dashboardHref} className="nav-link text-white hover-orange font-weight-600">Services</a>
             <Link to="/login" className="btn btn-gradient-orange px-4 py-2 rounded-pill fw-bold text-white shadow-glow">Sign In</Link>
           </div>
@@ -101,8 +101,8 @@ export default function Homepage() {
         </div>
         <div className="offcanvas-body d-flex flex-column justify-content-between p-4">
           <div className="d-flex flex-column gap-3">
-            <Link to="/login?mode=signup&role=freelancer" className="mobile-nav-item"><i className="bi bi-person-workspace"></i> Join as Freelancer</Link>
-            <Link to="/login?mode=signup&role=client" className="mobile-nav-item"><i className="bi bi-briefcase"></i> Become a Client</Link>
+            <Link to="/signup/freelancer" className="mobile-nav-item"><i className="bi bi-person-workspace"></i> Join as Freelancer</Link>
+            <Link to="/signup/client" className="mobile-nav-item"><i className="bi bi-briefcase"></i> Become a Client</Link>
             <a href={dashboardHref} className="mobile-nav-item"><i className="bi bi-grid"></i> Services</a>
             <a href={dashboardHref} className="mobile-nav-item"><i className="bi bi-speedometer2"></i> Dashboard</a>
           </div>
@@ -156,7 +156,7 @@ export default function Homepage() {
                   <li><i className="bi bi-check-circle-fill text-orange me-2"></i> Portfolio showcase with watermark protection</li>
                 </ul>
 
-                <Link to="/login?mode=signup&role=freelancer" className="btn btn-outline-warning btn-lg rounded-pill w-100 fw-bold hover-bg-orange">
+                <Link to="/signup/freelancer" className="btn btn-outline-warning btn-lg rounded-pill w-100 fw-bold hover-bg-orange">
                   Join as Freelancer <i className="bi bi-arrow-up-right ms-1"></i>
                 </Link>
               </div>
@@ -183,7 +183,7 @@ export default function Homepage() {
                   <li><i className="bi bi-check-circle-fill text-cyan me-2"></i> Easy resume &amp; pitch submissions</li>
                 </ul>
 
-                <Link to="/login?mode=signup&role=client" className="btn btn-outline-info btn-lg rounded-pill w-100 fw-bold hover-bg-cyan">
+                <Link to="/signup/client" className="btn btn-outline-info btn-lg rounded-pill w-100 fw-bold hover-bg-cyan">
                   Become a Client <i className="bi bi-arrow-up-right ms-1"></i>
                 </Link>
               </div>

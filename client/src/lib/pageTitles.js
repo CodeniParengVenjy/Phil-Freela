@@ -4,7 +4,10 @@ import { useLocation } from "react-router-dom";
 // The browser tab title for each page. It shows as "PhilFreela - <title>".
 // A page that is not listed here just shows "PhilFreela".
 const pageTitles = {
-  "/login": "Sign In & Register",
+  "/login": "Sign In",
+  "/signup": "Create Account",
+  "/signup/freelancer": "Create a Freelancer Account",
+  "/signup/client": "Create a Client Account",
   "/forgot-password": "Forgot Password",
   "/reset-password": "Reset Password",
   "/complete-profile": "Complete Your Profile",

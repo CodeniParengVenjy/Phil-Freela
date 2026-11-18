@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { isSupabaseConfigured, setRememberMe, supabase } from "../../lib/supabaseClient";
-import { MAX_NAME_LENGTH, checkName, checkNameWords, cleanName, dashboardRouteFor, resolvePostAuthRoute, noAutofill } from "../../lib/profile";
+import {
+  MAX_NAME_LENGTH, checkName, checkNameWords, cleanName, dashboardRouteFor, resolvePostAuthRoute, noAutofill,
+  roleOfRoute, rememberChosenRole, chosenRole, forgetChosenRole
+} from "../../lib/profile";
 import { EMAIL_PATTERN, getPasswordStrengthMessage } from "../../lib/validators";
 import { getFriendlyErrorMessage } from "../../lib/errors";
 import { renderGoogleButton } from "../../lib/googleSignIn";
@@ -15,10 +18,45 @@ const initialForm = {
   password: "",
   confirmPassword: "",
   gender: "male",
-  accountType: "client",
   keepLogin: false,
   agreedToTerms: false
 };
+
+// Freelancer and Client accounts are separate (PLAN-separate-accounts.md).
+// One email = one role, forever. The pages:
+//   /login              Sign In, with a Freelancer | Client picker
+//   /signup             two cards: I'm a Freelancer / I'm a Client
+//   /signup/freelancer  the Freelancer sign-up form (no role toggle)
+//   /signup/client      the Client sign-up form
+const ROLE_TEXT = {
+  freelancer: {
+    name: "Freelancer",
+    other: "client",
+    icon: "bi-person-workspace",
+    pitch: "Find work and get hired for your skills.",
+    points: ["Post your offers and portfolio", "Apply to clients' job posts", "Get paid straight to your GCash"],
+    alsoDo: "hire people"
+  },
+  client: {
+    name: "Client",
+    other: "freelancer",
+    icon: "bi-briefcase",
+    pitch: "Hire Filipino freelancers for your projects.",
+    points: ["Post jobs and projects", "Book freelancers' offers", "Pay and rate when the work is done"],
+    alsoDo: "work as a freelancer"
+  }
+};
+
+// The Sign In side last used on this device, so most people never touch the picker.
+const SIGN_IN_SIDE_KEY = "philfreela.signInSide";
+
+function savedSignInSide() {
+  try {
+    return localStorage.getItem(SIGN_IN_SIDE_KEY) === "client" ? "client" : "freelancer";
+  } catch {
+    return "freelancer";
+  }
+}
 
 // An error that belongs to one box of the form. It is shown right under that
 // box instead of at the bottom of the card.
@@ -43,11 +81,18 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState(searchParams.get("mode") === "signup" ? "signup" : "signin");
-  const [form, setForm] = useState(() => ({
-    ...initialForm,
-    accountType: searchParams.get("role") === "freelancer" ? "freelancer" : "client"
-  }));
+  // Which page this is comes from the address (see ROLE_TEXT above).
+  const isSignup = location.pathname.startsWith("/signup");
+  const signupRole = location.pathname === "/signup/freelancer" ? "freelancer"
+    : location.pathname === "/signup/client" ? "client" : null;
+  const choosingRole = isSignup && !signupRole;
+  // The Sign In picker: which kind of account they are signing in to.
+  const [side, setSide] = useState(savedSignInSide);
+  // The role this page is about: the sign-up page's role, or the Sign In side.
+  const pageRole = isSignup ? signupRole : side;
+  // Set when someone signed in on the wrong side: { actual, picked }.
+  const [wrongSide, setWrongSide] = useState(null);
+  const [form, setForm] = useState(initialForm);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState(() => {
@@ -72,19 +117,49 @@ export default function Login() {
   const [googleButtonState, setGoogleButtonState] = useState(isSupabaseConfigured ? "loading" : "fallback");
   const googleButtonRef = useRef(null);
   const cardRef = useRef(null);
+  const formRef = useRef(null);
+  // Always the latest values, for the Google button's callback (drawn once)
+  // and for "Sign in as Client" re-sending the form right away.
+  const pageRoleRef = useRef(pageRole);
+  const sideRef = useRef(side);
+  useEffect(() => {
+    pageRoleRef.current = pageRole;
+    sideRef.current = side;
+  }, [pageRole, side]);
 
-  const isSignup = mode === "signup";
+  // The last step of every sign-in (email and password, Google's button,
+  // Google's redirect). A Freelancer account can't be opened from the Client
+  // side or the other way round: it is signed out again and told where to go.
+  // picked = the side they chose, or null when unknown (then no check).
+  const finishSignIn = useCallback(async (user, picked) => {
+    // Kept for Complete Profile, in case this is a first Google sign-in.
+    rememberChosenRole(picked);
+    const destination = await resolvePostAuthRoute(user);
+    const actual = roleOfRoute(destination);
+    if (picked && actual && actual !== picked) {
+      await supabase.auth.signOut();
+      forgetChosenRole();
+      setWrongSide({ actual, picked });
+      setMessage({
+        text: `This email has a ${ROLE_TEXT[actual].name} account, not a ${ROLE_TEXT[picked].name} account. Sign in on the ${ROLE_TEXT[actual].name} side.`,
+        type: "error"
+      });
+      return;
+    }
+    if (destination !== "/complete-profile") forgetChosenRole();
+    navigate(destination, { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     let active = true;
 
     // Covers a Google sign-in landing back here with an active session
     // already, and anyone who is already signed in opening /login directly.
+    // chosenRole() is only set while a Google redirect is under way.
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!active || !session) return;
       try {
-        const destination = await resolvePostAuthRoute(session.user);
-        if (active) navigate(destination, { replace: true });
+        await finishSignIn(session.user, chosenRole());
       } catch (error) {
         // If the account checks fail, say why instead of doing nothing.
         // (Banned users aren't an error: they're sent to /appeal.)
@@ -95,12 +170,14 @@ export default function Login() {
     return () => {
       active = false;
     };
-  }, [navigate]);
+  }, [finishSignIn]);
 
   // Draws Google's own "Continue with Google" button (lib/googleSignIn.js), so
   // Google's window names phil-freela.pages.dev instead of the Supabase address.
+  // Not on the "Freelancer or Client?" page: the button only appears once a
+  // side is picked (Google can't draw into a hidden box).
   useEffect(() => {
-    if (!isSupabaseConfigured) return undefined;
+    if (!isSupabaseConfigured || choosingRole) return undefined;
     let active = true;
 
     renderGoogleButton(googleButtonRef.current, {
@@ -108,8 +185,8 @@ export default function Login() {
         setMessage({ text: "Signed in with Google.", type: "success" });
         try {
           // Same next page as any sign-in: Complete Profile the first time,
-          // otherwise their dashboard.
-          navigate(await resolvePostAuthRoute(user), { replace: true });
+          // otherwise their dashboard (if this page's side is right).
+          await finishSignIn(user, pageRoleRef.current);
         } catch (error) {
           setMessage({ text: error.message, type: "error" });
         }
@@ -126,7 +203,39 @@ export default function Login() {
     return () => {
       active = false;
     };
-  }, [navigate]);
+  }, [finishSignIn, choosingRole]);
+
+  // The Sign In picker. The choice is remembered on this device.
+  const chooseSide = (value) => {
+    setSide(value);
+    sideRef.current = value;
+    setWrongSide(null);
+    try {
+      localStorage.setItem(SIGN_IN_SIDE_KEY, value);
+    } catch {
+      // not remembered, that's all
+    }
+  };
+
+  // The Sign In / Create Account tabs open their own address.
+  const openTab = (path) => {
+    setMessage({ text: "", type: "" });
+    setWrongSide(null);
+    navigate(path);
+  };
+
+  // "Sign in as Client" after signing in on the wrong side: picks the right
+  // side and, when the email and password are still filled in, signs in again.
+  const goToRightSide = () => {
+    const target = wrongSide.actual;
+    chooseSide(target);
+    if (isSignup) navigate("/login");
+    if (!isSignup && form.email && form.password) {
+      formRef.current?.requestSubmit();
+    } else {
+      setMessage({ text: `Now sign in on the ${ROLE_TEXT[target].name} side.`, type: "" });
+    }
+  };
 
   // The older redirect sign-in (Google's window shows the Supabase address).
   // Only used when Google's own button can't load.
@@ -141,6 +250,8 @@ export default function Login() {
 
     setGoogleSubmitting(true);
     setMessage({ text: "Redirecting to Google...", type: "", kind: "go" });
+    // The side is checked when Google sends them back here (finishSignIn).
+    rememberChosenRole(pageRoleRef.current);
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -232,6 +343,7 @@ export default function Login() {
     setSubmitting(true);
     setMessage({ text: isSignup ? "Creating account..." : "Signing in...", type: "" });
     setResendEmail("");
+    setWrongSide(null);
     setRememberMe(form.keepLogin);
 
     try {
@@ -253,7 +365,8 @@ export default function Login() {
               full_name: cleanName(form.fullName),
               username: form.username.trim(),
               gender: form.gender,
-              account_type: form.accountType
+              // Fixed by the page (/signup/freelancer or /signup/client).
+              account_type: signupRole
             }
           }
         });
@@ -272,7 +385,7 @@ export default function Login() {
             full_name: cleanName(form.fullName),
             username: form.username.trim(),
             gender: form.gender,
-            account_type: form.accountType
+            account_type: signupRole
           });
 
           if (profileError) {
@@ -281,7 +394,7 @@ export default function Login() {
           }
 
           setMessage({ text: "Account created successfully.", type: "success" });
-          navigate(dashboardRouteFor(form.accountType), { replace: true });
+          navigate(dashboardRouteFor(signupRole), { replace: true });
           return;
         }
 
@@ -290,7 +403,9 @@ export default function Login() {
         // resolvePostAuthRoute), once user_metadata has full_name/username/gender.
         setMessage({ text: "Account created! Check your email and click the confirmation link to open your dashboard. Can't find it? Look in your Spam or Promotions folder, and if it's there, mark it \"Not spam\".", type: "success" });
         setResendEmail(normalizedEmail);
-        setMode("signin");
+        // Sign In opens on the side of the account just made.
+        chooseSide(signupRole);
+        navigate("/login");
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: normalizedEmail,
@@ -317,8 +432,8 @@ export default function Login() {
         }
 
         setMessage({ text: "Signed in successfully.", type: "success" });
-        const destination = await resolvePostAuthRoute(data.user);
-        navigate(destination, { replace: true });
+        // sideRef: "Sign in as Client" re-sends the form before the new side is drawn.
+        await finishSignIn(data.user, sideRef.current);
       }
     } catch (error) {
       // error.field is only set by fieldError(); any other error stays at the
@@ -346,6 +461,22 @@ export default function Login() {
       : { text: `A new confirmation link was sent to ${resendEmail}. Check your inbox (and spam folder).`, type: "success" });
   };
 
+  // Old links (/login?mode=signup&role=client) open the new sign-up pages.
+  if (location.pathname === "/login" && searchParams.get("mode") === "signup") {
+    const oldRole = searchParams.get("role");
+    return <Navigate to={oldRole === "freelancer" || oldRole === "client" ? `/signup/${oldRole}` : "/signup"} replace />;
+  }
+
+  // The words at the top of the card, for each page.
+  const heading = choosingRole
+    ? { eyebrow: "CREATE AN ACCOUNT", title: "How will you use PhilFreela?", text: "Pick one. Freelancer and Client accounts are separate." }
+    : signupRole
+      ? { eyebrow: `${ROLE_TEXT[signupRole].name.toUpperCase()} ACCOUNT`, title: `Create your ${ROLE_TEXT[signupRole].name} account`, text: ROLE_TEXT[signupRole].pitch }
+      : { eyebrow: "PHILFREELA ACCESS PORTAL", title: "Work Without Limits", text: "Sign in to your Freelancer or Client account." };
+  // Client pages use cyan, Freelancer pages orange (like the homepage cards).
+  const accentText = pageRole === "client" ? "text-info" : "text-warning";
+  const submitClass = pageRole === "client" ? "btn-gradient-cyan" : "btn-gradient-orange";
+
   return (
     <div className="auth-page-body d-flex align-items-center justify-content-center min-vh-100 py-5">
       <main className={`auth-wrapper position-relative w-100 px-3 ${isSignup ? "max-w-900" : "max-w-500"}`}>
@@ -362,9 +493,9 @@ export default function Login() {
             <Link to="/" className="d-inline-block mb-3">
               <img src="/logo-philfreela.svg" alt="PhilFreela" style={{ height: 46 }} className="logo-glow" />
             </Link>
-            <p className="text-warning fw-extrabold tracking-widest fs-8 text-uppercase mb-1">PHILFREELA ACCESS PORTAL</p>
-            <h1 className="fw-black text-white h3 mb-1">Work Without Limits</h1>
-            <p className="text-secondary fs-7 mb-0">Sign in to your account or create one in seconds.</p>
+            <p className={`${choosingRole ? "text-warning" : accentText} fw-extrabold tracking-widest fs-8 text-uppercase mb-1`}>{heading.eyebrow}</p>
+            <h1 className="fw-black text-white h3 mb-1">{heading.title}</h1>
+            <p className="text-secondary fs-7 mb-0">{heading.text}</p>
           </div>
 
           {!isSupabaseConfigured && (
@@ -380,10 +511,10 @@ export default function Login() {
           >
             <button
               type="button"
-              className={`mode-btn btn flex-grow-1 rounded-pill fw-bold py-2 fs-7 ${mode === "signin" ? "is-active text-white" : "text-white-50"}`}
+              className={`mode-btn btn flex-grow-1 rounded-pill fw-bold py-2 fs-7 ${!isSignup ? "is-active text-white" : "text-white-50"}`}
               role="tab"
-              aria-selected={mode === "signin"}
-              onClick={() => { setMode("signin"); setMessage({ text: "", type: "" }); }}
+              aria-selected={!isSignup}
+              onClick={() => openTab("/login")}
             >
               <i className="bi bi-box-arrow-in-right me-1"></i> Sign In
             </button>
@@ -392,36 +523,73 @@ export default function Login() {
               className={`mode-btn btn flex-grow-1 rounded-pill fw-bold py-2 fs-7 ${isSignup ? "is-active text-white" : "text-white-50"}`}
               role="tab"
               aria-selected={isSignup}
-              onClick={() => { setMode("signup"); setMessage({ text: "", type: "" }); }}
+              onClick={() => openTab("/signup")}
             >
               <i className="bi bi-person-plus me-1"></i> Create Account
             </button>
           </div>
 
-          <form className="d-flex flex-column gap-3" noValidate onSubmit={handleSubmit}>
-            {isSignup && (
+          {/* /signup: two big cards, each opens its own sign-up page. */}
+          {choosingRole && (
+            <>
+              <div className="row g-3">
+                {["freelancer", "client"].map((role) => (
+                  <div className="col-md-6" key={role}>
+                    <Link to={`/signup/${role}`} className={`role-card role-card-${role} d-flex flex-column h-100 text-decoration-none rounded-4 p-4`}>
+                      <span className="role-card-icon"><i className={`bi ${ROLE_TEXT[role].icon}`}></i></span>
+                      <h2 className="h5 fw-bold text-white mt-3 mb-1">I'm a {ROLE_TEXT[role].name}</h2>
+                      <p className="text-secondary fs-7 mb-3">{ROLE_TEXT[role].pitch}</p>
+                      <ul className="list-unstyled fs-8 text-white-50 d-flex flex-column gap-1 mb-4">
+                        {ROLE_TEXT[role].points.map((point) => (
+                          <li key={point}><i className="bi bi-check2 role-card-accent me-2"></i>{point}</li>
+                        ))}
+                      </ul>
+                      <span className="role-card-accent fw-bold fs-7 mt-auto">
+                        Create a {ROLE_TEXT[role].name} account <i className="bi bi-arrow-right ms-1"></i>
+                      </span>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+              <p className="text-center text-white-50 fs-8 mt-3 mb-0">
+                <i className="bi bi-info-circle me-1"></i>
+                To work and hire, make one of each with two different emails.
+              </p>
+            </>
+          )}
+
+          {!choosingRole && (
+          <form ref={formRef} className="d-flex flex-column gap-3" noValidate onSubmit={handleSubmit}>
+            {/* Sign In: which kind of account. The wrong side is refused (finishSignIn). */}
+            {!isSignup && (
               <div className="field">
-                <label className="form-label text-white-50 fw-semibold fs-7 mb-1">I'm signing up as a...</label>
-                <div className="d-flex gap-2" role="radiogroup" aria-label="Account type">
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={form.accountType === "freelancer"}
-                    className={`btn flex-grow-1 rounded-3 fw-bold py-2 fs-7 ${form.accountType === "freelancer" ? "btn-gradient-orange text-white" : "btn-outline-secondary text-white-50"}`}
-                    onClick={() => setForm((prev) => ({ ...prev, accountType: "freelancer" }))}
-                  >
-                    <i className="bi bi-person-badge me-1"></i> Freelancer
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={form.accountType === "client"}
-                    className={`btn flex-grow-1 rounded-3 fw-bold py-2 fs-7 ${form.accountType === "client" ? "btn-gradient-orange text-white" : "btn-outline-secondary text-white-50"}`}
-                    onClick={() => setForm((prev) => ({ ...prev, accountType: "client" }))}
-                  >
-                    <i className="bi bi-briefcase me-1"></i> Client
-                  </button>
+                <label className="form-label text-white-50 fw-semibold fs-7 mb-1">Sign in as</label>
+                <div className="d-flex gap-2" role="radiogroup" aria-label="Sign in as">
+                  {["freelancer", "client"].map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      role="radio"
+                      aria-checked={side === role}
+                      className={`btn flex-grow-1 rounded-3 fw-bold py-2 fs-7 ${side === role ? `${role === "client" ? "btn-gradient-cyan" : "btn-gradient-orange"} text-white` : "btn-outline-secondary text-white-50"}`}
+                      onClick={() => chooseSide(role)}
+                    >
+                      <i className={`bi ${ROLE_TEXT[role].icon} me-1`}></i> {ROLE_TEXT[role].name}
+                    </button>
+                  ))}
                 </div>
+              </div>
+            )}
+
+            {/* Sign-up page: the role is fixed by the page, not a toggle. */}
+            {signupRole && (
+              <div className={`role-note role-note-${signupRole} rounded-3 px-3 py-2 fs-8`}>
+                <i className={`bi ${ROLE_TEXT[signupRole].icon} me-2`}></i>
+                This will always be a <strong>{ROLE_TEXT[signupRole].name}</strong> account. To {ROLE_TEXT[signupRole].alsoDo} too,
+                make a separate {ROLE_TEXT[ROLE_TEXT[signupRole].other].name} account with another email.{" "}
+                <Link to={`/signup/${ROLE_TEXT[signupRole].other}`} className="fw-semibold text-decoration-none role-note-link">
+                  Make a {ROLE_TEXT[ROLE_TEXT[signupRole].other].name} account instead
+                </Link>
               </div>
             )}
 
@@ -612,14 +780,17 @@ export default function Login() {
 
             <button
               type="submit"
-              className="btn btn-gradient-orange btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2"
+              className={`btn ${submitClass} btn-lg w-100 rounded-3 fw-bold text-white shadow-glow py-2`}
               disabled={submitting}
             >
-              {isSignup ? "Create Account" : "Sign In"}
+              {isSignup ? `Create ${ROLE_TEXT[signupRole].name} Account` : `Sign In as ${ROLE_TEXT[side].name}`}
             </button>
           </form>
+          )}
 
-          <div className="d-flex align-items-center gap-2 my-3">
+          {/* Kept in the page (only hidden) on the cards page, so Google's
+              button box stays the same one when a side is picked. */}
+          <div className={`align-items-center gap-2 my-3 ${choosingRole ? "d-none" : "d-flex"}`}>
             <hr className="flex-grow-1 border-secondary border-opacity-25 m-0" />
             <span className="text-secondary fs-8 text-uppercase fw-semibold">or</span>
             <hr className="flex-grow-1 border-secondary border-opacity-25 m-0" />
@@ -628,11 +799,11 @@ export default function Login() {
           {/* Google draws its own button in here (see the effect above). */}
           <div
             ref={googleButtonRef}
-            className={`justify-content-center ${googleButtonState === "fallback" ? "d-none" : "d-flex"}`}
+            className={`justify-content-center ${googleButtonState === "fallback" || choosingRole ? "d-none" : "d-flex"}`}
             style={{ minHeight: 44 }}
           ></div>
 
-          {googleButtonState === "fallback" && (
+          {googleButtonState === "fallback" && !choosingRole && (
             <button
               type="button"
               className="btn btn-outline-light w-100 rounded-3 fw-semibold py-2 d-flex align-items-center justify-content-center gap-2"
@@ -649,6 +820,20 @@ export default function Login() {
             <p className={`auth-message mt-3 text-center fs-7 fw-semibold mb-0 ${message.type}`} aria-live="polite">
               <MessageText message={message} />
             </p>
+          )}
+
+          {/* Signed in on the wrong side: one button to the right one. */}
+          {message.text && !message.field && wrongSide && (
+            <div className="text-center mt-2">
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill fw-bold px-3 text-white ${wrongSide.actual === "client" ? "btn-gradient-cyan" : "btn-gradient-orange"}`}
+                onClick={goToRightSide}
+                disabled={submitting}
+              >
+                <i className={`bi ${ROLE_TEXT[wrongSide.actual].icon} me-1`}></i> Sign in as {ROLE_TEXT[wrongSide.actual].name}
+              </button>
+            </div>
           )}
 
           {message.text && !message.field && resendEmail && (
