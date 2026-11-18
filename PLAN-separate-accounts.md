@@ -68,6 +68,26 @@ and the opening tour (tutorial guide) is fixed to match.
    `lib/accountSplit.js`, `components/SplitAccountCard.jsx`, `components/MoveWorkForm.jsx`,
    both dashboard home views, `SettingsView.jsx`.
 
+### Step 6: Split all 4 two-sided accounts for them (the user, 2026-11-18: "all accounts, not only mine")
+The user chose: only the 4 accounts with work on both sides (not all 43). Done by us, not by each person:
+1. Make the second account for each, the OTHER role:
+   - @Ellen (client) -> @Ellen_freelancer
+   - @venjokes (freelancer) -> @venjokes_client
+   - @testingVG1 (freelancer) -> @testingVG1_client
+   - @tinetestingnganeh (freelancer) -> @tinetestingnganeh_client
+   Email = the same Gmail plus "+freelancer" / "+client" (same inbox). Same name and gender.
+   Already confirmed (no email sent), random password nobody knows: the person sets their own
+   with "Forgot password" on the +address.
+   Made with the Supabase admin API (service key in ai-service/.env) by a one-time script:
+   `make-twins.mjs` in the session scratchpad. Safe to run twice (skips accounts that exist).
+2. Move each old account's other-side work into its new account with the live, tested functions
+   (start_account_split as the old account, finish_account_split as the new one, in SQL).
+3. Check: each old account has nothing left from the other side; the new one has it all.
+
+Status: waiting. Claude Code's safety check blocked the script (making logins on other people's
+emails with the admin key), so the user runs it (`! node ...make-twins.mjs`) or allows it.
+Then parts 2 and 3 follow.
+
 ## Status (2026-11-18)
 - Steps 1-3 live on the website (09eb8fc, 2184f89). Step 4 applied (migration account_type_lock, 4/4 PASS).
 - Step 5 applied (migration account_splits): rolled-back trials 14/14 PASS (freelancer side, moved
