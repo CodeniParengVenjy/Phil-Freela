@@ -42,11 +42,14 @@ export default function SwitchToAdminDialog({ open, link, onClose }) {
     if (result.error || result.needsPassword) setError(result.error || "Couldn't switch. Please try again.");
   };
 
+  // Only Cancel or Escape close it, never a click on the dark area around it:
+  // the user reported it "closing by itself" while typing (2026-11-18). Pressing
+  // in a box (say, to select a typo) and letting go just past the popup's edge
+  // counts as a click on the dark area, and so does a click a few pixels outside.
   return createPortal(
     <div
       className="role-confirm-backdrop"
       style={{ position: "fixed", inset: 0, zIndex: 1300, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
-      onClick={busy ? undefined : onClose}
     >
       <form
         role="dialog"
@@ -54,7 +57,6 @@ export default function SwitchToAdminDialog({ open, link, onClose }) {
         aria-labelledby="switch-admin-title"
         className="role-confirm-card bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4"
         style={{ maxWidth: 420, width: "100%" }}
-        onClick={(event) => event.stopPropagation()}
         onSubmit={handleSubmit}
         noValidate
       >
@@ -67,7 +69,9 @@ export default function SwitchToAdminDialog({ open, link, onClose }) {
         </p>
         <div className="mb-3">
           <label htmlFor="switchAdminEmail" className="form-label text-white-50 fw-semibold fs-7">Admin email</label>
-          <input id="switchAdminEmail" type="email" className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} />
+          {/* autoFocus: the cursor starts here. Otherwise it stayed on the Switch to
+              admin button behind the popup, and typing went nowhere. */}
+          <input id="switchAdminEmail" type="email" className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2" autoComplete="off" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} />
         </div>
         <div className="mb-3">
           <label htmlFor="switchAdminPassword" className="form-label text-white-50 fw-semibold fs-7">Admin password</label>
