@@ -95,6 +95,12 @@ Check after: 0 accounts with work on both sides (47 accounts now). Stayed on pur
 1 job application (it has a resume file in her folder).
 To use a new account: "Forgot password" with the Gmail +freelancer / +client address.
 
+Part 4 (the user: "how about to those who verified? separate the account as well"): DONE 2026-11-18.
+The approved ID check of a verified old account was copied to its new account
+(`database/oneoff_separate_copy_verification.sql`; same photos, admin_note says where it came from,
+duplicate_of = the old account). Trial 2/2 then applied: @Ellen_freelancer and @venjokes_client are
+verified. @testingVG1 and @tinetestingnganeh were never verified, so their new accounts aren't either.
+
 ## Status (2026-11-18)
 - Steps 1-3 live on the website (09eb8fc, 2184f89). Step 4 applied (migration account_type_lock, 4/4 PASS).
 - Step 5 applied (migration account_splits): rolled-back trials 14/14 PASS (freelancer side, moved
