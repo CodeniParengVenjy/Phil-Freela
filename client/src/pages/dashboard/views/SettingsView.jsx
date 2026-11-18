@@ -12,6 +12,7 @@ import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
 import EstimateCurrencyForm from "../components/EstimateCurrencyForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
+import MoveWorkForm from "../components/MoveWorkForm";
 import GcashSettingsForm from "../components/GcashSettingsForm";
 import OtherPaymentDetailsForm from "../components/OtherPaymentDetailsForm";
 import PurchasesList from "../components/PurchasesList";
@@ -546,8 +547,13 @@ export default function SettingsView() {
               </>
             ) : (
               // The tab left is Account Security: how you sign in, changing
-              // your password, and signing out your other devices.
-              <AccountSecurityForm showToast={showToast} />
+              // your password, and signing out your other devices. Below it, a
+              // new account can take the work of an older two-sided account
+              // (PLAN-separate-accounts.md, Step 5).
+              <>
+                <AccountSecurityForm showToast={showToast} />
+                <MoveWorkForm accountType={accountType} showToast={showToast} />
+              </>
             )}
           </div>
         </div>

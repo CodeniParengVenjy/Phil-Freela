@@ -5,6 +5,7 @@ import SuspensionBanner from "../components/SuspensionBanner";
 import DashboardBillboard from "../components/DashboardBillboard";
 import DashboardMemberAds from "../components/DashboardMemberAds";
 import GetStartedCard from "../components/GetStartedCard";
+import SplitAccountCard from "../components/SplitAccountCard";
 import WelcomeBanner from "../components/WelcomeBanner";
 import Avatar from "../../../components/Avatar";
 import ProBadge from "../../../components/ProBadge";
@@ -116,6 +117,9 @@ export default function FreelancerDashboardLayout({
 
             {/* The checklist for a new account: what to do first (hides itself when done). */}
             {isDashboardHome && <GetStartedCard userId={currentUserId} accountType={accountType} />}
+
+            {/* Only for an older account that still has client work too (PLAN-separate-accounts.md). */}
+            {isDashboardHome && <SplitAccountCard userId={currentUserId} />}
 
             {/* What an admin posted for this user (admin panel > Billboard) and the ads members
                 paid for (Community Billboard). On a wide screen they sit side by side, 60% and

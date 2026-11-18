@@ -49,7 +49,7 @@ and the opening tour (tutorial guide) is fixed to match.
    It keeps the role it has now; the other side's work moves to a new account.
 2. The person makes the new account (other side, another email), then on the OLD account taps
    "Get my move code" (8 letters, 7 days, one use).
-3. Signed in on the NEW account, Settings > Account > "Move work from an old account": enter the code.
+3. Signed in on the NEW account, Settings > Account Security > "Move work from an old account": enter the code.
    The code proves the old account; being signed in proves the new one.
 4. What moves (old id -> new id, one transaction):
    - Freelancer side: services, portfolio items, job applications, bookings/projects/payments as freelancer,
@@ -58,12 +58,23 @@ and the opening tour (tutorial guide) is fixed to match.
    - Client side: job posts, bookings/projects/payments as client, receipt checks, offer reviews written,
      ratings on the moved projects.
 5. What stays with the old account: chats, notifications, profile picture, Premium, ads, reports, ID verification
-   (the new account verifies its own ID).
+   (the new account verifies its own ID; the admin sees "same face" on it and can approve it).
+   Rows tied to a FILE in the old account's private folder stay too, because the database checks that
+   such a file is in its owner's folder and SQL can't move files: a job application with a resume,
+   a payment / receipt check with a receipt picture, a watermark with its own picture.
 6. Table `account_splits` (from_user, move_side, code, expires_at, to_user, done_at); functions
    `my_split_summary()`, `start_account_split()`, `finish_account_split(code)` (security definer).
 7. Files: `database/supabase_account_splits_schema.sql`, `database/test_account_splits.sql`,
    `lib/accountSplit.js`, `components/SplitAccountCard.jsx`, `components/MoveWorkForm.jsx`,
    both dashboard home views, `SettingsView.jsx`.
+
+## Status (2026-11-18)
+- Steps 1-3 live on the website (09eb8fc, 2184f89). Step 4 applied (migration account_type_lock, 4/4 PASS).
+- Step 5 applied (migration account_splits): rolled-back trials 14/14 PASS (freelancer side, moved
+  4 offers, 4 bookings, 3 projects, 1 portfolio piece, 4 ratings) and 2/2 PASS (client side).
+- Accounts that see the card on 2026-11-18: @Ellen (freelancer work), @venjokes (client work),
+  @testingVG1 (1 offer review written as a client), @tinetestingnganeh (1 job post).
+- Not tried by a real person yet: a real split, a real wrong-side sign-in, a real Google sign-up on a side page.
 
 ## Defaults chosen
 - The 2 two-sided accounts keep their current role; nothing is deleted.
