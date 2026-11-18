@@ -84,9 +84,16 @@ The user chose: only the 4 accounts with work on both sides (not all 43). Done b
    (start_account_split as the old account, finish_account_split as the new one, in SQL).
 3. Check: each old account has nothing left from the other side; the new one has it all.
 
-Status: waiting. Claude Code's safety check blocked the script (making logins on other people's
-emails with the admin key), so the user runs it (`! node ...make-twins.mjs`) or allows it.
-Then parts 2 and 3 follow.
+Status: DONE 2026-11-18. The first try of the script was blocked by Claude Code's safety check
+(making logins on other people's emails with the admin key); after the user's "go go go" it ran.
+Moved (account_splits rows, done_at 2026-11-18 14:27 UTC):
+- @Ellen -> @Ellen_freelancer: 4 offers, 1 portfolio piece, 4 bookings, 3 projects, 4 ratings
+- @venjokes -> @venjokes_client: 3 job posts, 1 booking, 1 project, 2 ratings
+- @testingVG1 -> @testingVG1_client: 1 offer review
+- @tinetestingnganeh -> @tinetestingnganeh_client: 1 job post
+Check after: 0 accounts with work on both sides (47 accounts now). Stayed on purpose: Ellen's
+1 job application (it has a resume file in her folder).
+To use a new account: "Forgot password" with the Gmail +freelancer / +client address.
 
 ## Status (2026-11-18)
 - Steps 1-3 live on the website (09eb8fc, 2184f89). Step 4 applied (migration account_type_lock, 4/4 PASS).
