@@ -65,7 +65,7 @@ export const TOUR = {
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post services, find jobs, handle bookings and projects, and get paid. You can skip it any time.", next: "Start tour" },
       { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: My Services, Bookings, Project, Premium and Advertise. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to look for jobs, services or people, then press Enter." },
-      { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between freelancer and client, and signing out are in this menu." },
+      { page: "home", target: "account", title: "Your account", text: "Your profile, your settings and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
       { page: "home", target: "get-started-verify", when: "unverified", scroll: true, title: "First step: verify your identity", text: "Freelancers must be verified before they can post a service or apply to a job. It takes about 3 minutes: a photo of a government ID and a quick face scan.", next: "Let's verify" }
     ],
@@ -131,7 +131,7 @@ export const TOUR = {
       { page: "home", target: null, when: "verified", title: "Welcome to PhilFreela!", text: "This tour shows you around step by step: your dashboard first, then how to post a project, book services, hire freelancers and pay them. You can skip it any time.", next: "Start tour" },
       { page: "home", target: "sidebar", menu: true, title: "Your menu", text: "Your work is here: Bookings, Post a Project, Projects & Resumes, Premium and Advertise. The menu button at the top left opens and closes it." },
       { page: "home", target: "search", title: "Search", text: "Type here to find freelancers and services, then press Enter. On a computer, the camera button lets you search with a picture." },
-      { page: "home", target: "account", title: "Your account", text: "Your profile, your settings, switching between client and freelancer, and signing out are in this menu." },
+      { page: "home", target: "account", title: "Your account", text: "Your profile, your settings and signing out are in this menu." },
       { page: "home", target: "get-started", scroll: true, title: "Start here", text: "This checklist shows what to do first. It ticks itself as you go, and only the next step has a button." },
       { page: "home", target: "get-started-verify", when: "unverified", scroll: true, title: "First step: verify your identity", text: "Clients must be verified before they can post a project, and freelancers trust a verified client more. It takes about 3 minutes: a photo of a government ID and a quick face scan.", next: "Let's verify" }
     ],

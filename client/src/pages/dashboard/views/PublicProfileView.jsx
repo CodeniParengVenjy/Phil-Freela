@@ -27,10 +27,9 @@ import { Loader } from "../../../components/Loaders";
 
 const ROLE_LABELS = { freelancer: "Freelancer", client: "Client" };
 
-// A person's public profile: ONE page for every account, whatever role they
-// have today. Both addresses open it (/dashboard/freelancers/:userId and
-// /dashboard/clients/:userId), so a link to a person keeps working after they
-// switch roles. Reached from a person's name or picture anywhere on the site.
+// A person's public profile: ONE page for every account, freelancer or
+// client. Both addresses open it (/dashboard/freelancers/:userId and
+// /dashboard/clients/:userId), so an old link with the other address still works. Reached from a person's name or picture anywhere on the site.
 export default function PublicProfileView() {
   const { userId } = useParams();
   // key: start fresh (back to the loading animation) when moving from one person's page to another's.
@@ -103,7 +102,7 @@ function PublicProfile({ userId }) {
   }
 
   const name = person.full_name || person.username;
-  // The role they have today (they can switch in the menu).
+  // The account's role (it never changes: PLAN-separate-accounts.md).
   const roleToday = person.account_type === "client" ? "client" : "freelancer";
   const isFreelancer = roleToday === "freelancer";
 
@@ -259,8 +258,8 @@ function ServicesOffered({ freelancerId }) {
 // Performance numbers and the projects marked Done. It is kept apart for the
 // two roles, because the numbers mean different things (on-time delivery only
 // makes sense for work done as a freelancer). The role they have today shows
-// first. If they also have a record in the other role (they switched at some
-// point), two tabs let the visitor see both.
+// first. If they also have a record in the other role (from before accounts
+// were separated, PLAN-separate-accounts.md), two tabs let the visitor see both.
 function TrackRecord({ userId, roleToday }) {
   const otherRole = roleToday === "freelancer" ? "client" : "freelancer";
   // The role whose record is on screen.

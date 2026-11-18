@@ -44,8 +44,7 @@ export default function ClientDashboardLayout({
   suspension,
   toast, closeToast, showToast,
   preview, openPreview, closePreview,
-  roleConfirm, resolveRoleConfirm,
-  openChat, handleSignOut, switchRole, toggleSidebar, closeSidebar
+  openChat, handleSignOut, toggleSidebar, closeSidebar
 }) {
   // The welcome banner belongs on the dashboard home only, not every
   // sub-page (chat, inbox, profile, ...) that reuses this same layout.
@@ -58,7 +57,7 @@ export default function ClientDashboardLayout({
 
   return (
     <div className="bg-dark text-light">
-      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} unreadMessages={unreadCount} unreadNotifications={unreadNotifications} onNotificationsRead={refreshUnreadNotifications} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} onSwitchRole={switchRole} showToast={showToast} openChat={openChat} isPro={isPro} />
+      <DashboardTopNav displayName={displayName} avatarPath={avatarPath} accountType={accountType} currentUserId={currentUserId} unreadMessages={unreadCount} unreadNotifications={unreadNotifications} onNotificationsRead={refreshUnreadNotifications} onToggleSidebar={toggleSidebar} onSignOut={handleSignOut} showToast={showToast} openChat={openChat} isPro={isPro} />
 
       <div className="app-container d-flex">
         <aside data-tour="sidebar" className="sidebar-wrapper border-end border-secondary border-opacity-25" id="appSidebar">
@@ -133,7 +132,7 @@ export default function ClientDashboardLayout({
         </PageTransition>
       </div>
 
-      <DashboardOverlays preview={preview} onClosePreview={closePreview} toast={toast} onCloseToast={closeToast} roleConfirm={roleConfirm} onResolveRoleConfirm={resolveRoleConfirm} nameMissing={nameMissing} userId={currentUserId} accountType={accountType} onNameSaved={handleNameSaved} onSignOut={handleSignOut} />
+      <DashboardOverlays preview={preview} onClosePreview={closePreview} toast={toast} onCloseToast={closeToast} nameMissing={nameMissing} userId={currentUserId} accountType={accountType} onNameSaved={handleNameSaved} onSignOut={handleSignOut} />
     </div>
   );
 }

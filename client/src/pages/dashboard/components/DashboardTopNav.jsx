@@ -17,10 +17,8 @@ import TopNavMessages from "./TopNavMessages";
 // Identical between the freelancer and client dashboards -- brand, search,
 // the bell and chat icons, and the account dropdown -- so both layouts share
 // this instead of each keeping their own copy.
-export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, unreadMessages, unreadNotifications, onNotificationsRead, onToggleSidebar, onSignOut, onSwitchRole, showToast, openChat, isPro }) {
+export default function DashboardTopNav({ displayName, avatarPath, accountType, currentUserId, unreadMessages, unreadNotifications, onNotificationsRead, onToggleSidebar, onSignOut, showToast, openChat, isPro }) {
   const isVerified = useVerifiedIds([currentUserId]).has(currentUserId);
-  const switchLabel = accountType === "client" ? "Switch to Freelancer" : "Switch to Client";
-  const switchHref = accountType === "client" ? "/dashboard-freelancer" : "/dashboard-client";
   // The logo takes a signed-in user back to their own dashboard home, not the public homepage.
   const homeHref = dashboardRouteFor(accountType);
   const { pathname } = useLocation();
@@ -170,8 +168,9 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
             <i className="bi bi-search fs-5"></i>
           </NavLink>
           {/* (No "Join as Freelancer" / "Become a Client" / "Services" links here:
-              switching roles is in the account menu below, and My Services is a
-              sidebar link for freelancers. One way to reach each thing.) */}
+              Freelancer and Client accounts are separate, with no switching
+              (PLAN-separate-accounts.md), and My Services is a sidebar link for
+              freelancers. One way to reach each thing.) */}
 
           {/* Notifications and messages, like on Facebook: a red number for the
               unread ones, and the newest ones in a list when pressed. (They
@@ -203,7 +202,6 @@ export default function DashboardTopNav({ displayName, avatarPath, accountType, 
             <ul className="dropdown-menu dropdown-menu-end dropdown-menu-dark border border-secondary border-opacity-25 shadow-lg p-2">
               <li><NavLink className="dropdown-item rounded-2 text-white" to="/dashboard/profile"><i className="bi bi-person me-2 text-orange"></i> My Profile</NavLink></li>
               <li><NavLink className="dropdown-item rounded-2 text-white" to="/dashboard/settings"><i className="bi bi-gear me-2 text-info"></i> Account Settings</NavLink></li>
-              <li><a className="dropdown-item rounded-2 text-white" href={switchHref} onClick={onSwitchRole}><i className="bi bi-arrow-left-right me-2 text-warning"></i> {switchLabel}</a></li>
               {adminLink && (
                 <li><a className="dropdown-item rounded-2 text-white" href="/admin" onClick={handleSwitchToAdmin}><i className="bi bi-shield-lock me-2 text-orange"></i> Switch to admin</a></li>
               )}

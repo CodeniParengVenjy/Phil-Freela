@@ -176,7 +176,7 @@ function ServiceDetails({ serviceId }) {
       return <p className="text-secondary fs-7 mb-0">This is your offer. Clients who book it show up in <Link to="/dashboard/bookings" className="text-role fw-bold text-decoration-none">Bookings</Link>.</p>;
     }
     if (accountType !== "client") {
-      return <p className="text-secondary fs-7 mb-0">Only client accounts can book. Use "Switch to Client" in your account menu (top right) to switch.</p>;
+      return <p className="text-secondary fs-7 mb-0">Only client accounts can book. To hire freelancers, make a separate Client account with another email.</p>;
     }
     if (freelancer?.available_for_work === false) {
       return <p className="text-secondary fs-7 mb-0">{freelancerName} isn't taking new work right now. You can still message them.</p>;

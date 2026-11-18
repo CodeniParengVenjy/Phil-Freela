@@ -100,8 +100,8 @@ function App() {
       </Route>
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route path="profile" element={<ProfileView />} />
-        {/* One public profile page for everyone: both addresses open it, so a
-            link to a person still works after they switch roles. */}
+        {/* One public profile page for everyone: both addresses open it, so an
+            old link with the other address still works. */}
         <Route path="freelancers/:userId" element={<PublicProfileView />} />
         <Route path="clients/:userId" element={<PublicProfileView />} />
         <Route path="find-jobs" element={<FindJobsView />} />

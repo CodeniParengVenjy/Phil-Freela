@@ -236,7 +236,7 @@ export default function JobDetailsView() {
       );
     }
     if (accountType !== "freelancer") {
-      return <p className="text-secondary fs-7 mb-0">Only freelancer accounts can apply. Use "Switch to Freelancer" in your account menu (top right) to switch.</p>;
+      return <p className="text-secondary fs-7 mb-0">Only freelancer accounts can apply. To work as a freelancer, make a separate Freelancer account with another email.</p>;
     }
     if (isPostingBlocked(suspension)) {
       return <BlockedNotice suspension={suspension} what="apply to jobs" compact />;

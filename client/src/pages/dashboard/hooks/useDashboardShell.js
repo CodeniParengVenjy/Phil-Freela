@@ -61,9 +61,7 @@ export function useDashboardShell() {
   const [nameMissing, setNameMissing] = useState(() => lastShell?.nameMissing ?? false);
   const [toast, setToast] = useState({ message: "", visible: false });
   const [preview, setPreview] = useState({ src: "", title: "", visible: false });
-  const [roleConfirm, setRoleConfirm] = useState({ visible: false, nextType: null });
   const toastTimer = useRef(null);
-  const roleConfirmResolveRef = useRef(null);
   // Read inside the realtime handler below instead of depending on
   // location.pathname directly -- that would tear down and resubscribe the
   // channel on every navigation, risking missed events during the churn.
@@ -152,8 +150,8 @@ export function useDashboardShell() {
       }
       setCurrentUserId(session.user.id);
 
-      // profiles.account_type is the source of truth (it's what RLS checks
-      // and what switchRole updates first) -- reading it here instead of
+      // profiles.account_type is the source of truth (it's what RLS checks,
+      // and it never changes: PLAN-separate-accounts.md) -- reading it here instead of
       // session.user.user_metadata means the dashboard can't show the wrong
       // role if the two ever fall out of sync.
       const { data: profile, error: profileError } = await supabase
@@ -417,21 +415,7 @@ export function useDashboardShell() {
     setPreview((prev) => ({ ...prev, visible: false }));
   }, []);
 
-  // Replaces window.confirm's native browser dialog with an app-styled one
-  // (rendered by DashboardOverlays). Resolves to true/false once the person
-  // picks Cancel or Confirm in that modal.
-  const requestRoleConfirm = useCallback((nextType) => {
-    return new Promise((resolve) => {
-      roleConfirmResolveRef.current = resolve;
-      setRoleConfirm({ visible: true, nextType });
-    });
-  }, []);
 
-  const resolveRoleConfirm = useCallback((confirmed) => {
-    setRoleConfirm({ visible: false, nextType: null });
-    roleConfirmResolveRef.current?.(confirmed);
-    roleConfirmResolveRef.current = null;
-  }, []);
 
   const openChat = useCallback(async (otherUserId) => {
     if (!otherUserId || otherUserId === currentUserId) {
@@ -455,43 +439,6 @@ export function useDashboardShell() {
     navigate("/login", { replace: true });
   }, [navigate]);
 
-  // Lets a signed-in user flip their account between freelancer and client.
-  // Updates both the `profiles` row (what RLS checks on insert -- e.g.
-  // "services: freelancers can insert own") and the auth user_metadata
-  // (what decides which dashboard shell renders), then sends them to their
-  // new role's dashboard so the switch is immediately visible.
-  //
-  // targetType is optional: the account menu's single toggle omits it (always
-  // flips to the other role); a caller may also name the role to switch to.
-  const switchRole = useCallback(async (event, targetType) => {
-    event.preventDefault();
-    if (!currentUserId) return;
-
-    const nextType = targetType || (accountType === "client" ? "freelancer" : "client");
-    if (nextType === accountType) return;
-
-    const confirmed = await requestRoleConfirm(nextType);
-    if (!confirmed) return;
-
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({ account_type: nextType })
-      .eq("id", currentUserId);
-    if (profileError) {
-      showToast("Couldn't switch roles. Please try again.");
-      return;
-    }
-
-    const { error: authError } = await supabase.auth.updateUser({ data: { account_type: nextType } });
-    if (authError) {
-      showToast("Couldn't switch roles. Please try again.");
-      return;
-    }
-
-    // The fresh frame of the other dashboard starts with the new role.
-    if (lastShell) lastShell = { ...lastShell, accountType: nextType };
-    navigate(nextType === "client" ? "/dashboard-client" : "/dashboard-freelancer", { replace: true });
-  }, [accountType, currentUserId, navigate, showToast, requestRoleConfirm]);
 
   const toggleSidebar = useCallback(() => {
     const cls = window.innerWidth < 992 ? "sidebar-open" : "sidebar-collapsed";
@@ -520,7 +467,6 @@ export function useDashboardShell() {
     suspension,
     toast, closeToast, showToast,
     preview, openPreview, closePreview,
-    roleConfirm, resolveRoleConfirm,
-    openChat, handleSignOut, switchRole, toggleSidebar, closeSidebar
+    openChat, handleSignOut, toggleSidebar, closeSidebar
   };
 }
