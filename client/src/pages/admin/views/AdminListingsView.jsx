@@ -10,6 +10,7 @@ import { formatPrice } from "../../../lib/money";
 import MediaCarousel from "../../dashboard/components/MediaCarousel";
 import HiringTrail from "../components/HiringTrail";
 import { SkeletonTableRows, LoadingDots } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // The two kinds of listings share one page. Each tab says which table it
 // reads, which column holds the owner, and how its price is labeled.
@@ -295,7 +296,7 @@ export default function AdminListingsView() {
 
       {/* View pop-up: the full listing, including description and photo/video */}
       {viewing && (
-        <div className="admin-modal-backdrop" onClick={() => setViewing(null)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => setViewing(null))}>
           <div className="admin-card admin-modal admin-modal-wide rounded-4 p-4" onClick={(e) => e.stopPropagation()}>
             <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
               <h2 className="h5 fw-bold text-white mb-0">{viewing.title}</h2>

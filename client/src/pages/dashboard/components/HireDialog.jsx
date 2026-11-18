@@ -5,6 +5,7 @@ import { getOwedProject } from "../../../lib/payBlock";
 import { MAX_PROJECT_NOTE_LENGTH, hireApplicant, todayInManila } from "../../../lib/projects";
 import { Busy } from "../../../components/Loaders";
 import OwesNotice from "./OwesNotice";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // The Hire popup on Projects & Resumes. The client writes a note for the
 // freelancer and picks the due date; Hire starts the project (screen 2).
@@ -71,7 +72,7 @@ export default function HireDialog({ applicant, onClose, onHired }) {
           background: "rgba(0,0,0,0.65)",
           display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
         }}
-        onClick={onClose}
+        {...closeOnBackdrop(onClose)}
       >
         <div
           role="dialog"
@@ -103,7 +104,7 @@ export default function HireDialog({ applicant, onClose, onHired }) {
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={hiring ? undefined : onClose}
+      {...closeOnBackdrop(hiring ? undefined : onClose)}
     >
       <form
         role="dialog"

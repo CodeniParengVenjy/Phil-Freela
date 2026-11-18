@@ -8,6 +8,7 @@ import {
 import { MAX_SLIDES, SLIDE_ACCEPT_WITH_DOCUMENTS, SLIDE_HINT_WITH_DOCUMENTS, addPickedFiles, uploadSlides } from "../../../lib/slides";
 import SlidePicker from "./SlidePicker";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // The "+ Add to Portfolio" popup (step 10: one form for everything): a title,
 // a short description, a category, up to 5 tags, and up to 10 files: photos,
@@ -134,7 +135,7 @@ export default function PortfolioUploadDialog({ userId, onSaved, onClose }) {
         background: "rgba(0,0,0,0.75)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={saving ? undefined : onClose}
+      {...closeOnBackdrop(saving ? undefined : onClose)}
     >
       <form
         role="dialog"

@@ -4,6 +4,7 @@ import { PAYMENT_METHODS, checkReceiptFile, isValidTransactionNumber, uploadRece
 import { currencyInfo, formatMoney, moneyRule, parseMoney } from "../../../lib/money";
 import "../payments.css";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 const round = (value, decimals) => Math.round(value * 10 ** decimals) / 10 ** decimals;
 
@@ -121,7 +122,7 @@ export default function OtherPaymentDialog({
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={sending ? undefined : onClose}
+      {...closeOnBackdrop(sending ? undefined : onClose)}
     >
       <form
         role="dialog"

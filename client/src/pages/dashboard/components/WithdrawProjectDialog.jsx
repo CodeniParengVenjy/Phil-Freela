@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { withdrawFromProject } from "../../../lib/projects";
 import { Busy } from "../../../components/Loaders";
 import EndReasonBox from "./EndReasonBox";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // "Withdraw from this project" on a project's page, for the FREELANCER (PLAN-end-project.md): they
 // step out of a project that is still waiting for their work, and can write why (optional). The
@@ -48,7 +49,7 @@ export default function WithdrawProjectDialog({ project, otherName, hasPayments,
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={working ? undefined : onClose}
+      {...closeOnBackdrop(working ? undefined : onClose)}
     >
       <div
         role="dialog"

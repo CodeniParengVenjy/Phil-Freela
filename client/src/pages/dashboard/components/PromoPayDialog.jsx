@@ -6,6 +6,7 @@ import { onlinePaymentsReady, startFeatureCheckout } from "../../../lib/checkout
 import { FEATURE_CODES, formatFeatureDate, getIsPro, getPromoPrices, getSlotsLeft } from "../../../lib/featured";
 import { Loader, Busy } from "../../../components/Loaders";
 import { shownPrice, useMyCurrency } from "../../../lib/money";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // "Feature this post" (PLAN-monetization.md, Step 4, and PLAN-premium.md): the
 // owner of an offer or an open job post pays for 3, 7 or 14 days in the
@@ -94,7 +95,7 @@ export default function PromoPayDialog({ target, userId, until, onClose }) {
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={sending ? undefined : onClose}
+      {...closeOnBackdrop(sending ? undefined : onClose)}
     >
       <form
         role="dialog"

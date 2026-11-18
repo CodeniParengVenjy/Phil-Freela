@@ -8,6 +8,7 @@ import MediaCarousel from "./MediaCarousel";
 import ProtectedText from "./ProtectedText";
 import "./portfolio.css";
 import CensoredText from "../../../components/CensoredText";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // A portfolio project opened big: its slideshow (or, for older writing, a
 // preview of its text), title, category, tags, the "Original" badge (step 10) and description.
@@ -41,7 +42,7 @@ export default function PortfolioViewer({ item, ownerName, onDelete, onReport, o
         background: "rgba(0,0,0,0.75)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={onClose}
+      {...closeOnBackdrop(onClose)}
     >
       <div
         role="dialog"

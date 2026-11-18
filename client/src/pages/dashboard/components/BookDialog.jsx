@@ -8,6 +8,7 @@ import { todayInManila } from "../../../lib/projects";
 import CensoredText from "../../../components/CensoredText";
 import { Busy } from "../../../components/Loaders";
 import OwesNotice from "./OwesNotice";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // The Book popup. A client says what they need and the date they need it by;
 // "Send booking" asks the freelancer (see lib/bookings.js). It uses the same
@@ -73,7 +74,7 @@ export default function BookDialog({ target, onClose, onBooked }) {
           background: "rgba(0,0,0,0.65)",
           display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
         }}
-        onClick={onClose}
+        {...closeOnBackdrop(onClose)}
       >
         <div
           role="dialog"
@@ -105,7 +106,7 @@ export default function BookDialog({ target, onClose, onBooked }) {
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={sending ? undefined : onClose}
+      {...closeOnBackdrop(sending ? undefined : onClose)}
     >
       <form
         role="dialog"

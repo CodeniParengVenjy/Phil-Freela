@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // Styled "are you sure you want to delete?" popup, in the same look and
 // animation as the role-switch popup (it reuses the role-confirm-* CSS classes).
@@ -28,7 +29,7 @@ export default function DeleteConfirmDialog({ open, title, message, busy, onConf
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={busy ? undefined : onCancel}
+      {...closeOnBackdrop(busy ? undefined : onCancel)}
     >
       <div
         role="dialog"

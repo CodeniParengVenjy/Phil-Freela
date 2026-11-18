@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
+import { closeOnBackdrop } from "../lib/backdrop";
 
 // The popup that shows a profile picture or a cover photo bigger, opened by
 // clicking it on a profile page. Not full screen: the picture is shown at a
@@ -38,7 +39,7 @@ export default function PictureViewer({ picture, onClose, onReport, changeTo }) 
         background: "rgba(0,0,0,0.75)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={onClose}
+      {...closeOnBackdrop(onClose)}
     >
       <div
         role="dialog"

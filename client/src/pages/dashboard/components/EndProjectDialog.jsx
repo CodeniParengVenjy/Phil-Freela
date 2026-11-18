@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { endProject } from "../../../lib/projects";
 import { Busy } from "../../../components/Loaders";
 import EndReasonBox from "./EndReasonBox";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // "End project" on a project's page (PLAN-end-project.md): the client confirms ending a project
 // that is more than 7 days late and was never sent, and can write why (optional). The database
@@ -49,7 +50,7 @@ export default function EndProjectDialog({ project, otherName, daysLate, hasPaym
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={ending ? undefined : onClose}
+      {...closeOnBackdrop(ending ? undefined : onClose)}
     >
       <div
         role="dialog"

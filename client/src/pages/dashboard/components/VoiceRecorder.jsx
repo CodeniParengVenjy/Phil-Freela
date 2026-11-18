@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_VOICE_SECONDS, showVoiceLength } from "../../../lib/chatFiles";
 import { Busy, Loader } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // Recording formats to try, best first. Chrome and Firefox record WebM or
 // Ogg; Safari (iPhone) records MP4.
@@ -130,7 +131,7 @@ export default function VoiceRecorder({ onSend, onClose }) {
     <div
       className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
       style={{ background: "rgba(0,0,0,0.65)", zIndex: 1300 }}
-      onClick={sending || stage === "recording" ? undefined : onClose}
+      {...closeOnBackdrop(sending || stage === "recording" ? undefined : onClose)}
     >
       <div
         className="bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4 text-center"

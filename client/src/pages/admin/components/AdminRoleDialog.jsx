@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // What a super admin can do that a regular admin cannot. Kept in one list so
 // the Promote and Demote pop-ups always describe the same powers.
@@ -28,7 +29,7 @@ export default function AdminRoleDialog({ admin, newRole, busy, error, onConfirm
   }, [busy, onCancel]);
 
   return (
-    <div className="admin-modal-backdrop" onClick={() => !busy && onCancel()}>
+    <div className="admin-modal-backdrop" {...closeOnBackdrop(() => !busy && onCancel())}>
       <div
         className={`admin-card admin-modal admin-role-modal rounded-4 text-center ${promoting ? "is-promote" : "is-demote"}`}
         role="dialog"

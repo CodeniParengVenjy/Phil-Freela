@@ -22,6 +22,7 @@ import PaymentCard from "../components/PaymentCard";
 import RequestPaymentDialog from "../components/RequestPaymentDialog";
 import { listConversationPayments, watchConversationPayments } from "../../../lib/payments";
 import { SkeletonChat, SkeletonRows, Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // Same upload rules as the Post a Service media dropzone.
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -809,7 +810,7 @@ export default function ChatView() {
         <div
           className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
           style={{ background: "rgba(0,0,0,0.65)", zIndex: 1300 }}
-          onClick={() => { setForwardMessage(null); setForwardConversations(null); }}
+          {...closeOnBackdrop(() => { setForwardMessage(null); setForwardConversations(null); })}
         >
           <div
             className="bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4"
@@ -869,7 +870,7 @@ export default function ChatView() {
         <div
           className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
           style={{ background: "rgba(0,0,0,0.65)", zIndex: 1300 }}
-          onClick={uploadingMedia ? undefined : cancelSendMedia}
+          {...closeOnBackdrop(uploadingMedia ? undefined : cancelSendMedia)}
         >
           <div
             className="bg-dark text-white border border-secondary border-opacity-25 rounded-4 p-4"

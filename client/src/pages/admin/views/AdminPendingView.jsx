@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getFriendlyErrorMessage } from "../../../lib/errors";
 import { resendConfirmation, useResendWait } from "../../../lib/resendConfirmation";
 import { SkeletonRows, Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // How often the list quietly checks again, so someone who has just confirmed
 // their email drops off without the admin pressing Refresh.
@@ -278,7 +279,7 @@ export default function AdminPendingView() {
       {/* Delete pop-up. Deleting can't be undone, so it asks first; Cancel,
           Escape or a click outside close it without deleting anything. */}
       {deleteTarget && (
-        <div className="admin-modal-backdrop" onClick={() => !deleting && setDeleteTarget(null)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => !deleting && setDeleteTarget(null))}>
           <div
             className="admin-card admin-modal rounded-4 p-4 text-center"
             role="dialog"

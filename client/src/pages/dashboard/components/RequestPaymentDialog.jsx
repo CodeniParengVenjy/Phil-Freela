@@ -5,6 +5,7 @@ import { MAX_PAYMENT_NOTE_LENGTH, getMyGcash, getMyPaymentDetails, requestPaymen
 import { currencyInfo, moneyRule, parseMoney, useMoneyView } from "../../../lib/money";
 import CurrencySelect from "../../../components/CurrencySelect";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // "Request payment" in a chat (PLAN-gcash-payments.md): the freelancer asks the
 // other person to pay, with an amount, its currency (PLAN-currencies.md) and a short
@@ -81,7 +82,7 @@ export default function RequestPaymentDialog({ userId, conversationId, otherName
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={sending ? undefined : onClose}
+      {...closeOnBackdrop(sending ? undefined : onClose)}
     >
       <form
         role="dialog"

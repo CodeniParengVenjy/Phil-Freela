@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { AUTO_REJECT_HOURS, ID_TYPES, aiSuggestion, autoRejectTime, suggestionBadgeClass, suggestionLabels } from "../../../lib/verification";
 import AiSummaryCard from "../components/AiSummaryCard";
 import { Loader, Busy, LoadingDots } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 const statusTabs = [
   { key: "pending", label: "Pending" },
@@ -271,7 +272,7 @@ export default function AdminVerificationsView() {
 
       {/* One pop-up for Approve and Reject. */}
       {action && (
-        <div className="admin-modal-backdrop" onClick={() => !busy && setAction(null)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => !busy && setAction(null))}>
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmAction}>
             <h2 className="h5 fw-bold text-white mb-1">
               {action.kind === "approve" ? "Approve verification" : "Reject verification"}

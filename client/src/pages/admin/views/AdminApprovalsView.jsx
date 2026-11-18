@@ -9,6 +9,7 @@ import { removeReportedPicture, reportPictureKinds, reportReasonLabel, reportTar
 import { saveSuspension } from "../../../lib/suspensions";
 import { buildPenalty, getViolation } from "../../../lib/violations";
 import { Loader, LoadingDots, Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 const tabs = [
   { key: "pending", label: "Waiting" },
@@ -294,7 +295,7 @@ export default function AdminApprovalsView() {
 
       {/* Approve / Decline pop-up. Approving shows what will happen first. */}
       {dialog && (
-        <div className="admin-modal-backdrop" onClick={() => !busy && setDialog(null)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => !busy && setDialog(null))}>
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmDialog}>
             <h2 className="h5 fw-bold text-white mb-1">
               {dialog.mode === "approve" ? "Approve" : "Decline"}: {requestText(dialog.request)}

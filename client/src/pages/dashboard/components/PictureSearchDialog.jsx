@@ -10,6 +10,7 @@ import VerifiedBadge from "../../../components/VerifiedBadge";
 import Avatar from "../../../components/Avatar";
 import PhotoPreview from "./PhotoPreview";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // Scans one picture: asks the AI service who matches, then loads each
 // freelancer and their matching picture under the normal database rules.
@@ -102,7 +103,7 @@ export default function PictureSearchDialog({ picture, onClose, currentUserId, o
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={onClose}
+      {...closeOnBackdrop(onClose)}
     >
       <div
         role="dialog"

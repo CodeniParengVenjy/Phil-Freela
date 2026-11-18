@@ -12,6 +12,7 @@ import { buildPenalty, emptyViolationFields } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
 import AdminPagination from "../components/AdminPagination";
 import { SkeletonTableRows, Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // How many users one page of the table shows (the page numbers are under it).
 const USERS_PER_PAGE = 10;
@@ -469,7 +470,7 @@ export default function AdminUsersView() {
       {/* Filters and sorting pop-up. Choices apply at once, so the list behind it
           changes while the admin presses; Reset puts everything back to the start. */}
       {filterOpen && (
-        <div className="admin-modal-backdrop" onClick={() => setFilterOpen(false)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => setFilterOpen(false))}>
           <div className="admin-card admin-modal admin-filter-modal rounded-4 p-4" role="dialog" aria-modal="true" aria-label="Filters and sorting" onClick={(e) => e.stopPropagation()}>
             <div className="d-flex align-items-center justify-content-between mb-3">
               <h2 className="h5 fw-bold text-white mb-0">Filters and sorting</h2>
@@ -693,7 +694,7 @@ export default function AdminUsersView() {
       {/* Suspend / Ban pop-up: the admin picks the violation, and the penalty
           chart decides the rest. */}
       {blockTarget && (
-        <div className="admin-modal-backdrop" onClick={() => !busy && setBlockTarget(null)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => !busy && setBlockTarget(null))}>
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmBlock}>
             <h2 className="h5 fw-bold text-white mb-1">{blockText[blockTarget.kind].title} {nameOf(blockTarget.user)}?</h2>
             <p className="text-secondary fs-7 mb-3">{blockText[blockTarget.kind].info}</p>
@@ -723,7 +724,7 @@ export default function AdminUsersView() {
       {/* Archive account pop-up: says what happens (and what doesn't) before the
           admin confirms. A regular admin's button sends it for approval. */}
       {archiveTarget && (
-        <div className="admin-modal-backdrop" onClick={() => !busy && setArchiveTarget(null)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => !busy && setArchiveTarget(null))}>
           <div
             className="admin-card admin-modal rounded-4 p-4 text-center"
             role="dialog"
@@ -758,7 +759,7 @@ export default function AdminUsersView() {
       {/* Unsuspend / Unban pop-up: shows the penalty being lifted before the
           admin confirms. */}
       {liftTarget && (
-        <div className="admin-modal-backdrop" onClick={() => !busy && setLiftTarget(null)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => !busy && setLiftTarget(null))}>
           <div
             className="admin-card admin-modal rounded-4 p-4 text-center"
             role="dialog"

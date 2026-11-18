@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { DELAY_MAX_DAYS, MAX_DELAY_REASON_LENGTH, delayWhat, requestDelay } from "../../../lib/delayRequests";
 import { formatDay } from "../../../lib/projects";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // "Ask for more time" on a project's page (PLAN-delay-requests.md): the freelancer asks the
 // client for more days to send the work, or the client asks the freelancer for more days to
@@ -56,7 +57,7 @@ export default function DelayRequestDialog({ projectId, projectTitle, kind, curr
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={sending ? undefined : onClose}
+      {...closeOnBackdrop(sending ? undefined : onClose)}
     >
       <form
         role="dialog"

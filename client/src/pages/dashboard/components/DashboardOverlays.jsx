@@ -2,6 +2,7 @@ import CallDialog from "./CallDialog";
 import MissingNameDialog from "./MissingNameDialog";
 import WelcomeGuide from "./WelcomeGuide";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // Identical between the freelancer and client dashboards -- the image
 // preview modal, the toast notification, the
@@ -21,7 +22,7 @@ export default function DashboardOverlays({ preview, onClosePreview, toast, onCl
 
       {preview.visible && (
         <div
-          onClick={onClosePreview}
+          {...closeOnBackdrop(onClosePreview)}
           style={{
             position: "fixed", inset: 0, zIndex: 1200,
             background: "rgba(0,0,0,0.65)",

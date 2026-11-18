@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Busy, Loader } from "../../../components/Loaders";
 import { checkSite, getSiteCode } from "../../../lib/aiService";
 import { VERIFY_DAYS, isFreshlyVerified, linkLabel, verifiedDateText } from "../../../lib/profile";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // Verified owner badge (PLAN-site-verification.md): the pop-up behind the
 // Verify button on a portfolio link to the freelancer's own website.
@@ -97,7 +98,7 @@ export default function SiteVerifyDialog({ link, onClose, onVerified }) {
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={checking ? undefined : onClose}
+      {...closeOnBackdrop(checking ? undefined : onClose)}
     >
       <div
         role="dialog"

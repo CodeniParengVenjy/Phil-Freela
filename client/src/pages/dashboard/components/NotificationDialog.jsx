@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { notificationIcons, notificationLinkLabels } from "../../../lib/notifications";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // The popup that opens when a notification is clicked: the full message, and
 // a button to the related page when it has one (e.g. Verify Identity). Same
@@ -37,7 +38,7 @@ export default function NotificationDialog({ item, onClose }) {
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={onClose}
+      {...closeOnBackdrop(onClose)}
     >
       <div
         role="dialog"

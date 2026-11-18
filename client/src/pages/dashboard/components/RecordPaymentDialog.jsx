@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { asSentence, checkReceiptFile, formatPeso, formatReference, parseAmount, receiptTime } from "../../../lib/payments";
 import "../payments.css";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 const round = (value) => Math.round(value * 100) / 100;
 
@@ -211,7 +212,7 @@ export default function RecordPaymentDialog({
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={sending || reading ? undefined : onClose}
+      {...closeOnBackdrop(sending || reading ? undefined : onClose)}
     >
       <form
         role="dialog"

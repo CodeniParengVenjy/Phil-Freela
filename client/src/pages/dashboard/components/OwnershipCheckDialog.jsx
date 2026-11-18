@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import PictureOwnershipCheck from "./PictureOwnershipCheck";
 import TextOwnershipCheck from "./TextOwnershipCheck";
 import VideoOwnershipCheck from "./VideoOwnershipCheck";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 const TABS = [["picture", "bi-image", "Picture"], ["video", "bi-camera-video", "Video"], ["text", "bi-file-earmark-text", "Text"]];
 
@@ -34,9 +35,9 @@ export default function OwnershipCheckDialog({ onClose }) {
         background: "rgba(0,0,0,0.75)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      // Pressed down on the backdrop itself, so selecting pasted text and
-      // letting go outside the box doesn't close it.
-      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+      // Only a press that starts and ends on the dark layer closes it, so
+      // selecting pasted text and letting go outside the box doesn't (lib/backdrop.js).
+      {...closeOnBackdrop(onClose)}
     >
       <div
         role="dialog"

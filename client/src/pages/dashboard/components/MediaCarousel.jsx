@@ -4,6 +4,7 @@ import { fetchSlideText } from "../../../lib/slides";
 import ProtectedText from "./ProtectedText";
 import "./slides.css";
 import { Loader } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // Stops the browser's "Save image/video as..." menu.
 const blockSaveMenu = (event) => event.preventDefault();
@@ -38,7 +39,7 @@ function DocumentReader({ text, hiddenChars, pages = [], ownerName, seed, onClos
         background: "rgba(0,0,0,0.75)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={onClose}
+      {...closeOnBackdrop(onClose)}
       {...stopTouch}
     >
       <div
@@ -174,7 +175,7 @@ function FullScreenSlides({ slides, startIndex, alt, ownerName, onClose }) {
   }, [onClose]);
 
   return createPortal(
-    <div className="media-fullscreen role-confirm-backdrop" onClick={onClose}>
+    <div className="media-fullscreen role-confirm-backdrop" {...closeOnBackdrop(onClose)}>
       <div role="dialog" aria-modal="true" aria-label={alt || "Photos"} className="media-fullscreen-box" onClick={(event) => event.stopPropagation()}>
         <MediaCarousel slides={slides} startIndex={startIndex} height="min(85vh, 900px)" fit="contain" alt={alt} ownerName={ownerName} />
         <button type="button" className="media-fullscreen-close btn btn-light rounded-circle" aria-label="Close" onClick={onClose}>

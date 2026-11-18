@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { ARCHIVE_DELETE_DAYS, archiveDeletionDay } from "../../../lib/archives";
 import { formatUserNumber } from "../../../lib/userNumber";
 import { SkeletonTableRows, Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // Someone who signed up before names were required can have no name. In
 // sentences ("Restore ...'s account?") they are called by their @username.
@@ -166,7 +167,7 @@ export default function AdminArchivesView() {
       {/* Restore / Delete forever pop-up. Deleting is permanent, so it spells out
           what is lost before the admin confirms. */}
       {dialog && (
-        <div className="admin-modal-backdrop" onClick={() => !busy && setDialog(null)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => !busy && setDialog(null))}>
           <div
             className="admin-card admin-modal rounded-4 p-4 text-center"
             role="dialog"

@@ -4,6 +4,7 @@ import { MAX_SCREENSHOTS, checkScreenshot, reasonsFor, reportReasons, sendReport
 import { messageSummary } from "../../../lib/reportMessages";
 import { formatPeso, formatReference } from "../../../lib/payments";
 import { Busy } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 // For "Stolen work", the reporter must say where the original is, in at
 // least this many characters (so "x" or "idk" isn't enough for an admin).
@@ -165,7 +166,7 @@ export default function ReportDialog({ target, onClose, onDone }) {
         background: "rgba(0,0,0,0.65)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem"
       }}
-      onClick={sending ? undefined : close}
+      {...closeOnBackdrop(sending ? undefined : close)}
     >
       <form
         role="dialog"

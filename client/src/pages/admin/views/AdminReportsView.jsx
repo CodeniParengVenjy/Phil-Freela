@@ -14,6 +14,7 @@ import { blockedBadges, saveSuspension, suspensionStatus } from "../../../lib/su
 import { buildPenalty, emptyViolationFields, getViolation } from "../../../lib/violations";
 import ViolationFields from "../components/ViolationFields";
 import { Loader, LoadingDots } from "../../../components/Loaders";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 
 const statusTabs = [
   { key: "pending", label: "Pending" },
@@ -650,7 +651,7 @@ export default function AdminReportsView() {
 
       {/* One pop-up for every action; the text changes with the action. */}
       {action && (
-        <div className="admin-modal-backdrop" onClick={() => !busy && setAction(null)}>
+        <div className="admin-modal-backdrop" {...closeOnBackdrop(() => !busy && setAction(null))}>
           <form className="admin-card admin-modal rounded-4 p-4" onClick={(e) => e.stopPropagation()} onSubmit={confirmAction}>
             <h2 className="h5 fw-bold text-white mb-1">
               {action.kind === "remove" ? `Remove ${removeWord(action.report).toLowerCase()}` : actionText[action.kind].title}
