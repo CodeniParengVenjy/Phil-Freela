@@ -8,7 +8,19 @@ asked for it "in the PhilFreela": a freelancer's highlight, made from their real
 visitors can watch.
 
 Status: the user said "ok" on 2026-11-19 (with the default below: visitors see the real level, only the
-owner gets a level switch). **Step 1 done** (`lib/highlights.js`); Step 2 next.
+owner gets a level switch). **All 3 steps built** on 2026-11-19.
+
+How it was built (small changes from the steps below):
+- The music stayed inside `highlightsEngine.js` instead of a separate `highlightsSound.js`: it follows the
+  film's state (part, card draw, level) too closely to split cleanly.
+- The film runs in a box of its own that it builds when it starts and removes when it stops, so nothing it
+  added stays behind (React mounts things twice in development).
+- The player is downloaded only when someone opens a highlight (its own 37 KB file), so other pages don't get slower.
+- `components/highlights/HighlightsButton.jsx` holds the button and the owner's level switch for both profile pages.
+- The site's pages can't be shown in a frame (`_headers`: X-Frame-Options DENY), so the film runs in the page
+  itself, with all its styles under `.hl-film` and its animation names starting with `hl-`.
+- Tested with a stand-in database (made-up people, the preview's sample files): 25 checks on the public
+  profile, your own profile (light mode), a beginner and a phone. Not yet tried by a real person on live data.
 
 ## What is there today (checked 2026-11-19)
 

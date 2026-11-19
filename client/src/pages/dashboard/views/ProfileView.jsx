@@ -15,6 +15,7 @@ import PictureViewer from "../../../components/PictureViewer";
 import { avatarUrl, coverUrl, fetchCoverPath } from "../../../lib/avatar";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
+import HighlightsButton from "../../../components/highlights/HighlightsButton";
 
 export default function ProfileView() {
   const { displayName, avatarPath, currentUserId, accountType, username, showToast, isPro } = useOutletContext();
@@ -65,6 +66,13 @@ export default function ProfileView() {
                   ? `${views.profile} ${views.profile === 1 ? "person" : "people"} opened your profile in the last 30 days.`
                   : <>Premium shows how many people open your profile. <Link to="/dashboard/pro" className="text-role fw-semibold text-decoration-none">See Premium</Link></>}
               </p>
+
+              {/* Your highlight, as visitors see it (PLAN-highlights.md), with a level switch only you get. */}
+              {accountType === "freelancer" && currentUserId && (
+                <div className="mb-4">
+                  <HighlightsButton userId={currentUserId} username={username} isOwn className="justify-content-center" />
+                </div>
+              )}
 
               {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
               <div data-tour="profile-description" className="text-start bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary border-opacity-25 mb-4">

@@ -24,6 +24,7 @@ import ServiceCard from "../components/ServiceCard";
 import { PortfolioLinksList } from "../components/PortfolioLinks";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
+import HighlightsButton from "../../../components/highlights/HighlightsButton";
 
 const ROLE_LABELS = { freelancer: "Freelancer", client: "Client" };
 
@@ -140,9 +141,23 @@ function PublicProfile({ userId }) {
             </p>
           </div>
           {isOwnPage ? (
-            <span className="text-secondary fs-8">This is how others see your profile.</span>
+            <div className="d-flex flex-column align-items-sm-end gap-2 flex-shrink-0">
+              <span className="text-secondary fs-8">This is how others see your profile.</span>
+              {/* Your highlight, as visitors see it (PLAN-highlights.md), with a level switch only you get. */}
+              {isFreelancer && <HighlightsButton userId={person.id} username={person.username} isOwn />}
+            </div>
           ) : (
             <div className="d-flex flex-wrap gap-2 flex-shrink-0">
+              {/* A freelancer's highlight: their profile as a short film (PLAN-highlights.md). */}
+              {isFreelancer && (
+                <HighlightsButton
+                  userId={person.id}
+                  username={person.username}
+                  onMessage={() => openChat(person.id)}
+                  onReport={(item) => setReportTarget({ type: "portfolio_item", id: item.id, name: item.title })}
+                  reportOpen={Boolean(reportTarget)}
+                />
+              )}
               <button type="button" className="btn btn-gradient-role rounded-pill px-4 fw-bold text-white" onClick={() => openChat(person.id)}>
                 <i className="bi bi-chat-dots-fill me-1"></i> Message
               </button>
@@ -241,7 +256,8 @@ function ServicesOffered({ freelancerId }) {
   if (!services?.length) return null;
 
   return (
-    <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
+    // (id: the highlight's "See services" button scrolls here)
+    <div id="profile-services" className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
       <h5 className="text-white fw-bold mb-3"><i className="bi bi-grid-fill text-orange me-2"></i> Services offered</h5>
       <div className="row g-3">
         {services.map((service) => (
