@@ -165,6 +165,10 @@ export async function loadHighlight(userId) {
   if (!cats.length) cats = [...new Set(projects.map((project) => project.cat))];
   const roles = cats.filter((cat) => welcomeRoles[cat]).map((cat) => ({ cat, name: welcomeRoles[cat].name, color: CATEGORY_COLORS[cat] || "#f97316", icon: getCategory(cat).icon }));
   const names = roles.map((role) => role.name);
+  // Every kind of work that shows up (services and projects): its label, job title, color and icon.
+  const catInfo = Object.fromEntries([...new Set([...services.map((service) => service.cat), ...projects.map((project) => project.cat)])].map((cat) => [cat, {
+    label: getCategory(cat).label, role: welcomeRoles[cat]?.name || getCategory(cat).label, color: CATEGORY_COLORS[cat] || "#f97316", icon: getCategory(cat).icon || "bi-briefcase-fill"
+  }]));
   const title = !names.length ? "Freelancer on PhilFreela" : names.length === 1 ? `A skillful ${names[0]}` : names.slice(0, 3).join(" · ") + (names.length > 3 ? ` · +${names.length - 3} more` : "");
 
   // "from ₱1,200": only when all their prices are in one currency, so they compare.
@@ -187,7 +191,7 @@ export async function loadHighlight(userId) {
     portfolio: projects, videos, videoCount,
     done, breakdown, ratingCount, avg, rating: Math.round(avg * 10) / 10, trust: Math.round(avg * 20),
     feedback, phrases: feedback.map((entry) => `${entry.stars}★ ${entry.who.toUpperCase()}`),
-    roles, title, multi: names.length > 1,
+    roles, catInfo, title, multi: names.length > 1,
     lvl
   };
   return { data, items: visibleItems };
