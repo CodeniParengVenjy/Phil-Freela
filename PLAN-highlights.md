@@ -130,9 +130,14 @@ button as the way to open one.
 - The hint now reads "Point at a project, then click View project" (touchscreen: "Tap the eye on a project to
   open it").
 - The Video reel already worked this way (only "View this video" opens).
-- The service cards in the Services part still open the offer page on a click. The user has not asked about them.
 - Tests: 66 checks. The new ones cover the wall with a mouse, Bea's two panels, and the phone's eye buttons,
   plus a click on a picture going next in each.
+- Then the service cards too (the user: "yes do the service cards too"):
+  - A click on a card in the Services part moves on. Its own "View offer" button goes to the offer page
+    (where Book is).
+  - On narrow screens the fan of cards opens just wide enough that every card's button shows past the card
+    on top of it.
+  - Tests: 71 checks, including "every card's View offer button can be tapped" on a phone.
 
 ## Defaults chosen (the user can change these)
 

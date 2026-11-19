@@ -530,8 +530,11 @@
 .hl-film.touchy .t-view { left: auto; top: auto; right: 7px; bottom: 7px; width: 38px; height: 38px; padding: 0; justify-content: center; opacity: 1; pointer-events: auto; transform: none; }
 .hl-film.touchy .t-view .tv-l { display: none; }
 @container (max-width: 130px) { .hl-film.touchy .t-view { width: 30px; height: 30px; right: 5px; bottom: 5px; } }
-.hl-film .scard { cursor: pointer; }
-.hl-film .scard:focus-visible { outline: 2px solid #fdba74; outline-offset: 2px; }
+/* A service card's own View offer button (a click anywhere else on the card moves on). */
+.hl-film .s-view { justify-self: start; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.06); color: #ffffff; font-family: inherit; font-size: 0.74rem; font-weight: 800; line-height: 1.1; white-space: nowrap; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+.hl-film .s-view svg { flex: none; width: 13px; height: 13px; }
+.hl-film .s-view:hover, .hl-film .s-view:focus-visible { background: var(--rc); border-color: transparent; color: #0b0d14; }
+.hl-film .s-view:focus-visible { outline: 2px solid #fdba74; outline-offset: 2px; }
 
 /* Stats: after the numbers slam in one by one, they come back together and wait */
 .hl-film .st-all { position: absolute; left: 0; right: 0; top: var(--bar); bottom: var(--bar); display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 3vh 6vw; padding: 0 5vw; text-align: center; opacity: 0; pointer-events: none; }

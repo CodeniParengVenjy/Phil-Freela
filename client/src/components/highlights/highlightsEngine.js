@@ -449,15 +449,18 @@ export function startHighlights(host, U, opts = {}) {
       const rt = c.querySelector(".srate");
       if (s.count) { rt.textContent = "★ " + Number(s.rating).toFixed(1) + " "; rt.appendChild(txt("span", "", "(" + s.count + ")")); } else rt.appendChild(txt("span", "", "New"));
       c.addEventListener("contextmenu", (e) => e.preventDefault());
-      // Under the pointer (or with keyboard focus) a card lifts; a click goes to that offer (where Book lives).
+      // Under the pointer (or with keyboard focus on its button) a card lifts. The card itself is not a button: a
+      // click on it moves on, like anywhere else in the film (the user asked for this, 2026-11-19). Its own
+      // View offer button goes to that offer (where Book lives).
       const card = { el: c, cat: s.cat, hov: false, h: 0 };
-      c.tabIndex = 0; c.setAttribute("role", "button"); c.setAttribute("aria-label", s.title + (s.price ? ", from " + s.price : ""));
       c.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") card.hov = true; });
-      c.addEventListener("pointerleave", () => { card.hov = false; });
-      c.addEventListener("focus", () => { card.hov = true; }); c.addEventListener("blur", () => { card.hov = false; });
-      const openSvc = () => { if (opts.onOpenService) opts.onOpenService(s.id); };
-      c.addEventListener("click", openSvc);
-      c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSvc(); } });
+      c.addEventListener("pointerleave", () => { if (!c.querySelector(":focus-visible")) card.hov = false; });
+      const vb = el("button", "s-view", EYE + "View offer"); vb.type = "button";
+      vb.setAttribute("aria-label", "View offer: " + s.title + (s.price ? ", from " + s.price : ""));
+      vb.addEventListener("click", () => { if (opts.onOpenService) opts.onOpenService(s.id); });
+      vb.addEventListener("focus", () => { if (vb.matches(":focus-visible")) card.hov = true; });
+      vb.addEventListener("blur", () => { card.hov = false; });
+      c.querySelector(".sbody").appendChild(vb);
       fan.appendChild(c); return card;
     });
     // Projects: wall, strip or showcase, depending on how many there are; videos play inside. The clean @name
@@ -1153,10 +1156,20 @@ export function startHighlights(host, U, opts = {}) {
       list.push({ id: "services", dur: Infinity, label: "Services", chord: "Dm", kicker: $("svcKicker"), ready: 1.7 + n * 0.42 + 0.7,
         cues: [...cards.map((c, i) => [0.5 + i * 0.12, () => SFX.tick(0.09)]), ...cards.map((c, i) => [1.7 + i * 0.42, () => SFX.ping([880, 987.8, 1046.5, 1174.7, 1318.5, 1568][i % 6], 0.07)])],
         enter() { cards.forEach((c) => { c.h = 0; }); },
+        // How far the fan opens (degrees). On a narrow screen just enough that each card's View offer button
+        // shows past the card on top of it (the cards turn around a point far below them: transform-origin 360%).
+        spread() {
+          if (n < 2) return 0;
+          if (W >= 640) return Math.min(48, (n - 1) * 12);
+          const cw = cards[0].el.offsetWidth || 140, R = (cards[0].el.offsetHeight || 250) * 3.1;
+          const step = Math.min(cw * 0.92, Math.max(0, W * 0.94 - cw) / (n - 1));
+          return Math.min(48, 2 * Math.asin(Math.min(1, (step * (n - 1)) / 2 / R)) * 180 / Math.PI);
+        },
         update(t, dt) {
           // Dealt from below into a fan; each card lifts in turn and lights up its job title. After that a card
-          // lifts under the pointer (or with keyboard focus).
-          const A2 = n > 1 ? Math.min(48, (n - 1) * 12) * (W < 640 ? 0.42 : 1) : 0, lit = new Set();
+          // lifts under the pointer (or with keyboard focus on its button).
+          if (this.fanW !== W) { this.fanW = W; this.fanA = this.spread(); }
+          const A2 = this.fanA, lit = new Set();
           cards.forEach((c, i) => {
             const ang = n > 1 ? -A2 / 2 + i * A2 / (n - 1) : 0, p = eOut((t - 0.45 - i * 0.12) / 0.85);
             const lt = t - (1.7 + i * 0.42), pass = lt > 0 && lt < 0.9 ? Math.sin(Math.PI * lt / 0.9) : 0;
