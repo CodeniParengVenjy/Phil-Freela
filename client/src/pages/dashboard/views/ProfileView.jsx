@@ -15,7 +15,6 @@ import PictureViewer from "../../../components/PictureViewer";
 import { avatarUrl, coverUrl, fetchCoverPath } from "../../../lib/avatar";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
-import HighlightsButton from "../../../components/highlights/HighlightsButton";
 
 export default function ProfileView() {
   const { displayName, avatarPath, currentUserId, accountType, username, showToast, isPro } = useOutletContext();
@@ -67,13 +66,6 @@ export default function ProfileView() {
                   : <>Premium shows how many people open your profile. <Link to="/dashboard/pro" className="text-role fw-semibold text-decoration-none">See Premium</Link></>}
               </p>
 
-              {/* Your highlight, as visitors see it (PLAN-highlights.md), with a level switch only you get. */}
-              {accountType === "freelancer" && currentUserId && (
-                <div className="mb-4">
-                  <HighlightsButton userId={currentUserId} username={username} isOwn className="justify-content-center" />
-                </div>
-              )}
-
               {/* (data-tour: parts the opening tour points at, components/WelcomeGuide.jsx) */}
               <div data-tour="profile-description" className="text-start bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary border-opacity-25 mb-4">
                 <h5 className="text-white fw-bold mb-2"><i className="bi bi-text-paragraph text-orange me-2"></i> Description</h5>
@@ -110,10 +102,10 @@ export default function ProfileView() {
                 </div>
               )}
 
-              {/* Only freelancers have a portfolio. */}
+              {/* Only freelancers have a portfolio, and it is their highlight (PLAN-highlights.md). */}
               {accountType === "freelancer" && currentUserId && (
                 <div data-tour="profile-portfolio" className="text-start">
-                  <PortfolioSection freelancerId={currentUserId} ownerName={username} isOwner />
+                  <PortfolioSection freelancerId={currentUserId} ownerName={username} isOwner asHighlights ownerDisplayName={displayName} coverPath={coverPath} />
                 </div>
               )}
             </div>

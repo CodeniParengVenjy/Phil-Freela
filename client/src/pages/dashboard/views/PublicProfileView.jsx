@@ -141,11 +141,8 @@ function PublicProfile({ userId }) {
             </p>
           </div>
           {isOwnPage ? (
-            <div className="d-flex flex-column align-items-sm-end gap-2 flex-shrink-0">
-              <span className="text-secondary fs-8">This is how others see your profile.</span>
-              {/* Your highlight, as visitors see it (PLAN-highlights.md), with a level switch only you get. */}
-              {isFreelancer && <HighlightsButton userId={person.id} username={person.username} isOwn />}
-            </div>
+            // (Your own highlight is the Portfolio box further down: HighlightsPoster.jsx.)
+            <span className="text-secondary fs-8">This is how others see your profile.</span>
           ) : (
             <div className="d-flex flex-wrap gap-2 flex-shrink-0">
               {/* A freelancer's highlight: their profile as a short film (PLAN-highlights.md). */}
@@ -205,7 +202,8 @@ function PublicProfile({ userId }) {
 
       {(isFreelancer || portfolioCount > 0) && (
         <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
-          <PortfolioSection freelancerId={person.id} ownerName={person.username} />
+          {/* A freelancer's portfolio is their highlight (PLAN-highlights.md); a client's old work stays a grid. */}
+          <PortfolioSection freelancerId={person.id} ownerName={person.username} asHighlights={isFreelancer} ownerDisplayName={name} coverPath={person.cover_path} />
         </div>
       )}
 

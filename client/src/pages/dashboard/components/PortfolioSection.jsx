@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useOutletContext } from "react-router-dom";
 import { getCategory } from "../../../lib/categories";
 import { deletePortfolioItem, fetchPortfolio, withoutHiddenCharacters } from "../../../lib/portfolio";
 import { fetchSlideText, isOriginalWork, itemSlides, ownershipPassedMessage, underReviewMessage } from "../../../lib/slides";
+import { closeOnBackdrop } from "../../../lib/backdrop";
 import OriginalBadge from "../../../components/OriginalBadge";
+import HighlightsPoster from "../../../components/highlights/HighlightsPoster";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import OwnershipCheckDialog from "./OwnershipCheckDialog";
 import PortfolioUploadDialog from "./PortfolioUploadDialog";
@@ -35,15 +38,17 @@ function DocumentCover({ url }) {
   );
 }
 
-// A freelancer's portfolio as a grid of cards: projects (the first file is
-// the cover: a photo, a video, a PDF's first page, or a document's first lines) and older
-// writing items; clicking one opens it big. Each card shows its category and,
-// if it earned it, the "Original" badge (step 10); chips on top filter by
-// category. Used on the owner's own Profile page (isOwner: can add and
-// delete) and on the public portfolio page.
-// ownerName: the freelancer's @username, shown over the slides (see MediaCarousel).
-export default function PortfolioSection({ freelancerId, ownerName, isOwner = false }) {
-  const { showToast, currentUserId } = useOutletContext();
+// A freelancer's portfolio. On a freelancer's profile (asHighlights) the box IS their highlight
+// (PLAN-highlights.md): one big poster that plays it, and visitors open each project from the project wall
+// inside the film; the owner manages the projects (open, delete) in the "Manage projects" pop-up. Elsewhere
+// (a client's old work) it is the grid of cards: each card's first file is the cover (a photo, a video, a
+// PDF's first page, or a document's first lines), its category and, if earned, the "Original" badge (step 10);
+// chips on top filter by category; clicking one opens it big.
+//   isOwner: your own Profile page (add, check a file, manage and delete)
+//   ownerName: the freelancer's @username, shown over the slides (see MediaCarousel)
+//   ownerDisplayName, coverPath: their name and cover photo, for the poster
+export default function PortfolioSection({ freelancerId, ownerName, isOwner = false, asHighlights = false, ownerDisplayName = "", coverPath = "" }) {
+  const { showToast, currentUserId, openChat } = useOutletContext();
   const [items, setItems] = useState(null);
   const [loadError, setLoadError] = useState("");
   // The project opened big, the "+ Add" popup, and the project being deleted.
@@ -53,10 +58,13 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
   const [checkingOwnership, setCheckingOwnership] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  // The "Manage projects" pop-up (the owner's list of projects, under the highlight).
+  const [managing, setManaging] = useState(false);
   // The project being reported (null = Report popup closed). Visitors can
   // report a project, for example as stolen work; nobody reports their own.
   const [reportTarget, setReportTarget] = useState(null);
-  const canReport = !isOwner && freelancerId !== currentUserId;
+  const isOwnProfile = isOwner || freelancerId === currentUserId;
+  const canReport = !isOwnProfile;
   // The category chip picked ("" = all).
   const [shownCategory, setShownCategory] = useState("");
 
@@ -74,6 +82,16 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
       active = false;
     };
   }, [freelancerId]);
+
+  // Escape closes the "Manage projects" pop-up, unless something opened over it handles that key.
+  useEffect(() => {
+    if (!managing) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !viewing && !toDelete && !adding && !checkingOwnership && !reportTarget) setManaging(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [managing, viewing, toDelete, adding, checkingOwnership, reportTarget]);
 
   const handleSaved = (project, failed) => {
     setItems((prev) => [project, ...(prev || [])]);
@@ -106,30 +124,9 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
   const usedCategories = [...new Set((items || []).map((item) => item.category).filter(Boolean))];
   const shownItems = items?.filter((item) => !shownCategory || item.category === shownCategory);
 
-  return (
-    <div>
-      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h5 className="text-white fw-bold mb-0"><i className="bi bi-grid-3x3-gap-fill text-orange me-2"></i> Portfolio</h5>
-        {isOwner && (
-          <div className="d-flex flex-wrap gap-2">
-            <button type="button" className="btn btn-sm btn-outline-info rounded-pill fs-8 fw-bold" onClick={() => setCheckingOwnership(true)}>
-              <i className="bi bi-shield-check me-1"></i> Check a file I found
-            </button>
-            <button type="button" className="btn btn-sm btn-outline-warning rounded-pill fs-8 fw-bold" onClick={() => setAdding(true)}>
-              + Add to Portfolio
-            </button>
-          </div>
-        )}
-      </div>
-
-      {loadError && <p className="text-danger fs-7 mb-0">{loadError}</p>}
-      {!loadError && items === null && <Loader size="sm" />}
-      {items?.length === 0 && (
-        <p className="text-secondary fs-7 mb-0">
-          {isOwner ? "You haven't added anything yet. Show clients your best work!" : "No portfolio projects yet."}
-        </p>
-      )}
-
+  // The grid of cards (inline for a client's old work, and inside the owner's "Manage projects" pop-up).
+  const grid = (
+    <>
       {/* Category chips, once the projects have more than one category. */}
       {usedCategories.length > 1 && (
         <div className="d-flex flex-wrap gap-2 mb-3">
@@ -185,6 +182,88 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
           );
         })}
       </div>
+    </>
+  );
+
+  return (
+    <div>
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h5 className="text-white fw-bold mb-0"><i className="bi bi-grid-3x3-gap-fill text-orange me-2"></i> Portfolio</h5>
+        {isOwner && (
+          <div className="d-flex flex-wrap gap-2">
+            {asHighlights && items?.length > 0 && (
+              <button type="button" className="btn btn-sm btn-outline-secondary text-white-50 rounded-pill fs-8 fw-bold" onClick={() => setManaging(true)}>
+                <i className="bi bi-collection me-1"></i> Manage projects
+              </button>
+            )}
+            <button type="button" className="btn btn-sm btn-outline-info rounded-pill fs-8 fw-bold" onClick={() => setCheckingOwnership(true)}>
+              <i className="bi bi-shield-check me-1"></i> Check a file I found
+            </button>
+            <button type="button" className="btn btn-sm btn-outline-warning rounded-pill fs-8 fw-bold" onClick={() => setAdding(true)}>
+              + Add to Portfolio
+            </button>
+          </div>
+        )}
+      </div>
+
+      {loadError && <p className="text-danger fs-7 mb-0">{loadError}</p>}
+
+      {asHighlights ? (
+        // Their highlight is their portfolio: the poster plays it (HighlightsPoster.jsx).
+        !loadError && (
+          <HighlightsPoster
+            userId={freelancerId}
+            username={ownerName}
+            displayName={ownerDisplayName}
+            coverPath={coverPath}
+            items={items}
+            isOwn={isOwnProfile}
+            onMessage={isOwnProfile || !openChat ? undefined : () => openChat(freelancerId)}
+            onReport={canReport ? (item) => setReportTarget({ type: "portfolio_item", id: item.id, name: item.title }) : undefined}
+            reportOpen={Boolean(reportTarget)}
+          />
+        )
+      ) : (
+        <>
+          {!loadError && items === null && <Loader size="sm" />}
+          {items?.length === 0 && (
+            <p className="text-secondary fs-7 mb-0">
+              {isOwner ? "You haven't added anything yet. Show clients your best work!" : "No portfolio projects yet."}
+            </p>
+          )}
+          {grid}
+        </>
+      )}
+
+      {/* The owner's projects, to open and delete (visitors see them inside the highlight). */}
+      {managing && createPortal(
+        <div
+          className="role-confirm-backdrop"
+          style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+          {...closeOnBackdrop(() => setManaging(false))}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="portfolio-manage-title"
+            className="role-confirm-card bg-dark text-white border border-secondary border-opacity-25 rounded-4"
+            style={{ maxWidth: 900, width: "100%", maxHeight: "90vh", overflowY: "auto" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="p-4">
+              <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
+                <h5 id="portfolio-manage-title" className="fw-bold mb-0"><i className="bi bi-collection me-2"></i>Your projects</h5>
+                <button type="button" className="btn btn-sm btn-outline-light rounded-circle flex-shrink-0" aria-label="Close" onClick={() => setManaging(false)}>
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              </div>
+              <p className="text-secondary fs-8 mb-3">Open a project to see it big or delete it. Visitors see your projects inside your highlights.</p>
+              {grid}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       <PortfolioViewer
         item={viewing}

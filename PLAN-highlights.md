@@ -8,7 +8,8 @@ asked for it "in the PhilFreela": a freelancer's highlight, made from their real
 visitors can watch.
 
 Status: the user said "ok" on 2026-11-19 (with the default below: visitors see the real level, only the
-owner gets a level switch). **All 3 steps built** on 2026-11-19.
+owner gets a level switch). **All 3 steps built** on 2026-11-19. Then the user asked for the highlight to
+*be* the portfolio ("the highlights serve as portfolio"): **Step 4 built** the same day (see Step 4 below).
 
 How it was built (small changes from the steps below):
 - The music stayed inside `highlightsEngine.js` instead of a separate `highlightsSound.js`: it follows the
@@ -90,6 +91,31 @@ How it was built (small changes from the steps below):
    - sound on and off;
    - a freelancer with nothing yet, and one with photos.
 5. Each step is committed and pushed, then checked on the live site.
+
+### Step 4: The Portfolio box is the highlight (asked and approved 2026-11-19, "ok lesgooooo go build it")
+The user: "no more like this portfolio, it will change as the highlights like we talked about".
+1. On a freelancer's profile the Portfolio box no longer shows the grid of cards and category chips. It shows
+   one poster (`components/highlights/HighlightsPoster.jsx`): their project pictures slowly changing behind a
+   big play button that plays the highlight. Visitors open each project from the project wall inside the film.
+   - Pictures: up to 6, each project's first file. Photos and PDF pages come first; a video shows its frame at
+     2 seconds, because many videos fade in from black. Files under review are left out.
+   - With no projects there is still a poster: their cover photo, or a dark one with a glow in the user's color.
+2. Your own Profile page: the poster reads "Preview my highlights", and the level switch sits under it.
+   "+ Add to Portfolio" and "Check a file I found" stay in the box's header. A new "Manage projects" button
+   opens the old grid in a pop-up, where a project can be opened big and deleted.
+3. The "Watch highlights" button next to Message stays for visitors. The own-page buttons (under your name and
+   on your public page) are gone, because the poster replaced them.
+4. A client's profile with old portfolio work keeps the plain grid (`PortfolioSection` without `asHighlights`).
+5. No database change. Files: `PortfolioSection.jsx` (new `asHighlights`, `ownerDisplayName` and `coverPath`
+   props, and the Manage pop-up), `HighlightsButton.jsx` (exports `HighlightsOverlay` and `LevelSwitch` for the
+   poster), `highlights-poster.css`, both profile pages, and the tour's Portfolio step (`welcomeGuide.js`).
+6. Tested with the stand-in database: 56 checks. They cover:
+   - the poster for a visitor, and the poster playing the film;
+   - Report on a project inside the film, where each Escape closes one layer;
+   - the owner in light mode: the level switch, and Manage projects (open, Escape, delete, a click on the
+     dark area);
+   - your own page as others see it, a phone, a freelancer with no projects, and a client's grid.
+   Not yet tried by a real person on live data.
 
 ## Defaults chosen (the user can change these)
 

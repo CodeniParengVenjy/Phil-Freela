@@ -1,0 +1,20 @@
+/* The Portfolio box's poster (HighlightsPoster.jsx): the freelancer's project pictures slowly changing behind
+   one big play button, like a video's cover. The picture area is media, so it stays dark in light mode too;
+   the colors come from the user's accent (dashboard.css). */
+.hl-poster { position: relative; display: block; width: 100%; aspect-ratio: 16 / 7; min-height: 220px; max-height: 360px; padding: 0; border: 0; border-radius: 1rem; overflow: hidden; background: #05060a; color: #ffffff; text-align: left; cursor: pointer; isolation: isolate; }
+@media (max-width: 575.98px) { .hl-poster { aspect-ratio: 4 / 3; } }
+.hl-poster-pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.02); transition: opacity 1.2s ease, transform 6s ease-out; }
+.hl-poster-pic.on { opacity: 1; transform: scale(1.1); }
+.hl-poster-pic.bg { background-size: cover; background-position: center; }
+.hl-poster-shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(5, 6, 10, 0.88) 0%, rgba(5, 6, 10, 0.5) 45%, rgba(5, 6, 10, 0.15) 70%, rgba(5, 6, 10, 0.5) 100%), linear-gradient(0deg, rgba(5, 6, 10, 0.65), transparent 55%); }
+.hl-poster-body { position: absolute; left: 1.5rem; right: 6.5rem; bottom: 1.4rem; z-index: 2; display: grid; gap: 0.35rem; }
+.hl-poster-kicker { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-role, #f97316); }
+.hl-poster-title { font-family: "Syne", "Plus Jakarta Sans", sans-serif; font-weight: 800; font-size: clamp(1.3rem, 3vw, 2rem); line-height: 1.08; color: #ffffff; }
+.hl-poster-sub { font-size: 0.86rem; color: rgba(255, 255, 255, 0.82); }
+.hl-poster-play { position: absolute; right: 1.5rem; bottom: 1.4rem; z-index: 2; width: 4rem; height: 4rem; border-radius: 50%; display: grid; place-items: center; font-size: 2rem; color: var(--accent-on, #ffffff); background: linear-gradient(135deg, var(--accent-role, #ea580c), var(--accent-role-2, #f97316)); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); transition: transform 0.25s ease; }
+.hl-poster-play::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.55); animation: hl-poster-ring 1.8s ease-out infinite; }
+@keyframes hl-poster-ring { from { transform: scale(0.9); opacity: 0.9; } to { transform: scale(1.35); opacity: 0; } }
+.hl-poster:hover .hl-poster-play { transform: scale(1.07); }
+.hl-poster:focus-visible { outline: 3px solid var(--accent-role, #f97316); outline-offset: 3px; }
+@media (max-width: 575.98px) { .hl-poster-body { left: 1rem; right: 5rem; bottom: 1rem; } .hl-poster-play { right: 1rem; bottom: 1rem; width: 3.4rem; height: 3.4rem; font-size: 1.7rem; } }
+@media (prefers-reduced-motion: reduce) { .hl-poster-pic { transition: opacity 0.3s ease; transform: none !important; } .hl-poster-play::after { animation: none; } }
