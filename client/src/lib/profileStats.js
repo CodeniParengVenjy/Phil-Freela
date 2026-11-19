@@ -15,11 +15,12 @@ export async function fetchProfileStats(userId, role) {
   return data?.[0] ?? null;
 }
 
-// The person's completed projects, newest first (up to 20), or null when they
-// couldn't be loaded. project_id is only filled in for projects the signed-in
-// user is on, so only those rows can open their project.
-export async function fetchProfileHistory(userId, role) {
-  const { data, error } = await supabase.rpc("profile_history", { target: userId, as_role: role, max_rows: 20 });
+// The person's completed projects, newest first (up to 20, or maxRows: the
+// database allows at most 50), or null when they couldn't be loaded. project_id
+// is only filled in for projects the signed-in user is on, so only those rows
+// can open their project.
+export async function fetchProfileHistory(userId, role, maxRows = 20) {
+  const { data, error } = await supabase.rpc("profile_history", { target: userId, as_role: role, max_rows: maxRows });
   if (error) return null;
   return data;
 }
