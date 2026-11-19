@@ -338,14 +338,28 @@ export function startHighlights(host, U, opts = {}) {
     });
   }
   function vtag(dur) { return '<span class="vtag">' + ICON.tri + (dur || "Video") + "</span>"; }
-  // A project tile or panel opens the viewer: a click or tap, or Enter/Space with keyboard focus. Under the mouse it lifts.
+  // Under the mouse a project tile lifts (and shows its View project button).
+  function liftOnHover(node) {
+    node.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") { node._hov = true; node.classList.add("hov"); } });
+    node.addEventListener("pointerleave", () => { if (!node.querySelector(":focus-visible")) { node._hov = false; node.classList.remove("hov"); } });
+    node.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+  // The "+N more" tile is a button as a whole: a click or tap, or Enter/Space with keyboard focus, opens the viewer.
   function makeOpenable(node, i, label) {
     node.tabIndex = 0; node.setAttribute("role", "button"); node.setAttribute("aria-label", label);
     node.addEventListener("click", () => { if (!wallDragged) openViewer(i, node); });
     node.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openViewer(i, node); } });
-    node.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") { node._hov = true; node.classList.add("hov"); } });
-    node.addEventListener("pointerleave", () => { node._hov = false; node.classList.remove("hov"); });
-    node.addEventListener("contextmenu", (e) => e.preventDefault());
+    liftOnHover(node);
+  }
+  // A project itself is not a button: a click on it moves on, like anywhere else in the film (the user asked for this,
+  // 2026-11-19). Its own View project button opens it. With a mouse the button shows on the tile under the pointer
+  // (or with keyboard focus); on a touchscreen every tile shows a small eye button in its corner (.touchy).
+  function viewButton(node, i, title, cls, label) {
+    const b = el("button", cls, EYE + label); b.type = "button"; b.setAttribute("aria-label", "View project: " + title);
+    b.addEventListener("click", () => { if (!wallDragged) openViewer(i, b); });
+    b.addEventListener("focus", () => { if (b.matches(":focus-visible")) { node._hov = true; node.classList.add("hov"); } });
+    b.addEventListener("blur", () => { node._hov = false; node.classList.remove("hov"); });
+    return b;
   }
   const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5c-5 0-9 4.6-10 6.5 1 1.9 5 6.5 10 6.5s9-4.6 10-6.5c-1-1.9-5-6.5-10-6.5z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>';
   // A picture element for a file link (never built as HTML text, so a link can't break the page).
@@ -465,16 +479,18 @@ export function startHighlights(host, U, opts = {}) {
       } else t.insertBefore(p.img ? picture(p.img) : writingTile(p), t.firstChild);
       if (p.mark) t.querySelector(".mk").textContent = "@" + U.handle;
       t.querySelector(".tcap").textContent = p.title;
-      makeOpenable(t, k, "View project: " + p.title); wall.appendChild(t); return t;
+      liftOnHover(t); t.appendChild(viewButton(t, k, p.title, "t-view", '<span class="tv-l">View<span class="tv-w"> project</span></span>'));
+      wall.appendChild(t); return t;
     });
     if (pc > MAX_TILES) { const m = el("div", "tile more", "<div><b>+" + (pc - MAX_TILES + 1) + "</b><small>more projects</small></div>"); makeOpenable(m, MAX_TILES - 1, "View the other " + (pc - MAX_TILES + 1) + " projects"); wall.appendChild(m); tiles.push(m); }
     const sc = $("showcase"); sc.innerHTML = ""; sc.className = "showcase n" + Math.min(pc, 2);
     showPanels = projLayout !== "showcase" ? [] : U.portfolio.map((p, k) => {
-      const f = el("figure", "sc-p", (p.mark ? '<span class="mk"></span>' : "") + (p.video ? vtag("Video") : "") + '<figcaption><span class="fc-cat"></span><span class="sc-t"></span><span class="sc-view">' + EYE + "View project</span></figcaption>");
+      const f = el("figure", "sc-p", (p.mark ? '<span class="mk"></span>' : "") + (p.video ? vtag("Video") : "") + '<figcaption><span class="fc-cat"></span><span class="sc-t"></span></figcaption>');
       f.insertBefore(p.video ? makeVideo(p, "") : p.img ? picture(p.img) : writingTile(p), f.firstChild);
       if (p.mark) f.querySelector(".mk").textContent = "@" + U.handle;
       f.querySelector(".fc-cat").textContent = catOf(p.cat).label; f.querySelector(".sc-t").textContent = p.title;
-      makeOpenable(f, k, "View project: " + p.title); sc.appendChild(f); return f;
+      f.querySelector("figcaption").appendChild(viewButton(f, k, p.title, "sc-view", "View project"));
+      f.addEventListener("contextmenu", (e) => e.preventDefault()); sc.appendChild(f); return f;
     });
     $("wallCam").hidden = projLayout === "showcase"; sc.hidden = projLayout !== "showcase"; $("focusCap").hidden = projLayout === "showcase";
     sceneEl("projects").classList.toggle("is-showcase", projLayout === "showcase");
@@ -1201,7 +1217,7 @@ export function startHighlights(host, U, opts = {}) {
           this.ex = { s: es, z: P * (1 - 1 / es), mx: Math.max(0, (ww * es - aw) / 2 / es), my: Math.max(0, (wh * es - ah) / 2 / es), yOff: (chip / 2 + 4) / es };
           this.px = 0; this.py = 0; wallDrag.x = 0; wallDrag.y = 0;
           const pan = this.ex.mx > 4 || this.ex.my > 4;
-          $("peHint").textContent = touchy() ? (pan ? "Drag to look around, tap one to open it" : "Tap one to open it") : (pan ? "Move the mouse to look around, click one to open it" : "Click one to open it");
+          $("peHint").textContent = touchy() ? (pan ? "Drag to look around, tap the eye to open one" : "Tap the eye on a project to open it") : (pan ? "Move the mouse to look around, then click View project" : "Point at a project, then click View project");
           if (mega) {
             // A long glide over the whole wall first, so the size of the portfolio shows, then down to the featured project.
             this.K = [
@@ -1583,7 +1599,7 @@ export function startHighlights(host, U, opts = {}) {
     PCOL = TIER.gold ? ["#fffbeb", "#fde68a", "#f59e0b"] : ["#ffffff", "#fdba74", "#f97316"];
     if (A.sfx) A.sfx.gain.value = TIER.hype ? 0.85 : 0.65;
     const coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
-    lastPointer = coarse ? "touch" : "mouse"; $("ghLong").textContent = coarse ? "Tap anywhere to continue" : "Click anywhere to continue";
+    lastPointer = coarse ? "touch" : "mouse"; film.classList.toggle("touchy", coarse); $("ghLong").textContent = coarse ? "Tap anywhere to continue" : "Click anywhere to continue";
     xtTurn = 0; embers = []; lines = null; shakeV = 0; wallDrag = { x: 0, y: 0 };
     playing = false; buildFilm(); resize();
     conf = []; flashV = 0; clock = 0; last = 0; idx = 0; trans = null;
@@ -1626,10 +1642,12 @@ export function startHighlights(host, U, opts = {}) {
     if (y < BAR || y > H - BAR) return;
     advance();
   });
-  film.addEventListener("pointermove", (e) => { mxT = (e.clientX / W - 0.5) * 2; myT = (e.clientY / H - 0.5) * 2; if (e.pointerType) lastPointer = e.pointerType; });
+  // (.touchy: the last pointer was a finger or a pen, so project tiles show their eye buttons all the time)
+  function setPointer(type) { if (type && type !== lastPointer) { lastPointer = type; film.classList.toggle("touchy", type !== "mouse"); } }
+  film.addEventListener("pointermove", (e) => { mxT = (e.clientX / W - 0.5) * 2; myT = (e.clientY / H - 0.5) * 2; setPointer(e.pointerType); });
   // A swipe on a touchscreen: left for the next part, right to go back.
   film.addEventListener("pointerdown", (e) => {
-    lastPointer = e.pointerType || "mouse"; swipe = e.pointerType === "mouse" ? null : { id: e.pointerId, x: e.clientX, y: e.clientY, t: clock };
+    setPointer(e.pointerType || "mouse"); swipe = e.pointerType === "mouse" ? null : { id: e.pointerId, x: e.clientX, y: e.clientY, t: clock };
     if (A.ctx && A.ctx.state === "suspended" && playing) A.ctx.resume();   // some phones only let sound start on a touch
   });
   film.addEventListener("pointerup", (e) => {

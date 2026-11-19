@@ -117,6 +117,23 @@ The user: "no more like this portfolio, it will change as the highlights like we
    - your own page as others see it, a phone, a freelancer with no projects, and a client's grid.
    Not yet tried by a real person on live data.
 
+### Fix after Step 4: a click on a project goes to the next part (2026-11-19)
+The user tried the film: a click meant for "next" opened a project instead. They pointed at the "View project"
+button as the way to open one.
+- A project picture is no longer a button. A click on it moves on, like a click anywhere else in the film.
+- Only a project's own View project button opens it:
+  - 1 or 2 projects (the big panels): the "View project" pill under each title, now a real button.
+  - The wall (3 or more): with a mouse, the tile under the pointer lifts and shows a "View project" button.
+    On a touchscreen every tile has a small eye button in its corner (the film gets the `touchy` class from the
+    last pointer). Keyboard users reach the buttons with Tab.
+  - The "+N more" tile and "View all" still open the viewer.
+- The hint now reads "Point at a project, then click View project" (touchscreen: "Tap the eye on a project to
+  open it").
+- The Video reel already worked this way (only "View this video" opens).
+- The service cards in the Services part still open the offer page on a click. The user has not asked about them.
+- Tests: 66 checks. The new ones cover the wall with a mouse, Bea's two panels, and the phone's eye buttons,
+  plus a click on a picture going next in each.
+
 ## Defaults chosen (the user can change these)
 
 1. Only freelancers get highlights (no button on client profiles).

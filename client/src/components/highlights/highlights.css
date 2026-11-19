@@ -495,8 +495,11 @@
 .hl-film .xt-line { display: block; width: min(440px, 62vw); height: 2px; background: linear-gradient(90deg, transparent, rgb(var(--tc)), transparent); box-shadow: 0 0 18px rgba(var(--tc), 0.85); transform: scaleX(0); }
 .hl-film.in-x .go-hint { opacity: 0; }
 
-/* Projects can be opened: under the pointer a tile lifts and shows its title; a click opens it big. */
-.hl-film .tile { cursor: pointer; outline: 2px solid transparent; outline-offset: -2px; transition: outline-color 0.25s ease, box-shadow 0.25s ease; }
+/* Projects open with their own View project button: under the pointer a tile lifts and shows its title and that
+   button. A click anywhere else on a project moves on, like the rest of the film. (container-type: the button's
+   label gets shorter on small tiles.) */
+.hl-film .tile { container-type: inline-size; outline: 2px solid transparent; outline-offset: -2px; transition: outline-color 0.25s ease, box-shadow 0.25s ease; }
+.hl-film .tile.more { cursor: pointer; }
 .hl-film .tile .tcap { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding: 28px 10px 9px; background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.86)); font-size: clamp(0.62rem, 1vw, 0.82rem); font-weight: 700; line-height: 1.25; color: #ffffff; opacity: 0; transform: translateY(6px); transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; }
 .hl-film .tile.hov, .hl-film .tile:focus-visible { outline-color: #fdba74; box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6), 0 0 44px rgba(249, 115, 22, 0.5); }
 .hl-film .tile.hov .tcap, .hl-film .tile:focus-visible .tcap { opacity: 1; transform: none; }
@@ -510,12 +513,23 @@
 .hl-film .pe-all { flex: none; border: 0; border-radius: 999px; padding: 6px 13px; background: linear-gradient(135deg, #ea580c, #f97316); color: #ffffff; font-weight: 800; font-size: 0.76rem; cursor: pointer; }
 .hl-film.tier-advanced .pe-all { background: linear-gradient(135deg, #d97706, #fbbf24); color: #1a1205; }
 @media (max-width: 600px) { .hl-film .proj-explore .pe-hint { display: none; } }
-.hl-film .sc-p { cursor: pointer; }
 /* Full-screen layers above the projects and the reel must let clicks through to them */
 .hl-film .scene[data-scene="projects"] .layer, .hl-film .focus-cap, .hl-film .reel-title { pointer-events: none; }
-.hl-film .sc-view { justify-self: start; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 6px 13px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.3); font-size: 0.78rem; font-weight: 700; }
+.hl-film .sc-view { justify-self: start; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 6px 13px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.3); color: #ffffff; font-family: inherit; font-size: 0.78rem; font-weight: 700; line-height: 1.2; cursor: pointer; transition: background-color 0.2s ease; }
 .hl-film .sc-view svg { width: 12px; height: 12px; }
-.hl-film .sc-p:hover .sc-view, .hl-film .sc-p:focus-visible .sc-view { background: #f97316; border-color: transparent; }
+.hl-film .sc-p:not(.cap) .sc-view { pointer-events: none; }
+.hl-film .sc-view:hover, .hl-film .sc-view:focus-visible { background: #f97316; border-color: transparent; }
+.hl-film .t-view { position: absolute; left: 50%; top: 46%; z-index: 4; display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 12px); padding: 9px 17px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.4); background: rgba(10, 12, 18, 0.72); color: #ffffff; font-family: inherit; font-size: 0.95rem; font-weight: 800; line-height: 1.1; white-space: nowrap; cursor: pointer; opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(0.9); transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.hl-film .t-view svg { flex: none; width: 16px; height: 16px; }
+.hl-film .tile.hov .t-view, .hl-film .t-view:focus-visible { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%); }
+.hl-film .t-view:hover, .hl-film .t-view:focus-visible { background: #f97316; border-color: transparent; }
+.hl-film .sc-view:focus-visible, .hl-film .t-view:focus-visible { outline: 2px solid #fdba74; outline-offset: 2px; }
+.hl-film.tier-advanced .sc-view:hover, .hl-film.tier-advanced .sc-view:focus-visible, .hl-film.tier-advanced .t-view:hover, .hl-film.tier-advanced .t-view:focus-visible { background: #fbbf24; color: #1a1205; }
+@container (max-width: 170px) { .hl-film .t-view .tv-w { display: none; } }
+/* Touchscreens can't point, so every tile shows a small eye button in its corner. */
+.hl-film.touchy .t-view { left: auto; top: auto; right: 7px; bottom: 7px; width: 38px; height: 38px; padding: 0; justify-content: center; opacity: 1; pointer-events: auto; transform: none; }
+.hl-film.touchy .t-view .tv-l { display: none; }
+@container (max-width: 130px) { .hl-film.touchy .t-view { width: 30px; height: 30px; right: 5px; bottom: 5px; } }
 .hl-film .scard { cursor: pointer; }
 .hl-film .scard:focus-visible { outline: 2px solid #fdba74; outline-offset: 2px; }
 
