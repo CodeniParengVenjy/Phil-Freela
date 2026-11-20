@@ -561,4 +561,36 @@
 .hl-film .tdoc { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 8px; padding: 14px; overflow: hidden; background: linear-gradient(160deg, #f8fafc, #e2e8f0); color: #1f2937; }
 .hl-film .tdoc b { font-family: var(--font-display); font-size: 0.92rem; line-height: 1.2; }
 .hl-film .tdoc span { font-family: Georgia, "Times New Roman", serif; font-size: 0.74rem; line-height: 1.5; color: #374151; }
+/* A document in the big two-panel showcase (two projects or fewer): its page is a card in the middle of the panel,
+   clear of the counters at the top and the caption at the bottom (white counters over a white page were hard to
+   read, PLAN-highlight-styles.md). left/top/width/height place it, because the film's slow zoom sets its
+   transform. Each style dresses the panel and the page its own way (styles/*.css). */
+.hl-film .sc-p.doc { background: radial-gradient(circle at 50% 42%, #1e293b, #0b0d14 72%); }
+.hl-film .sc-p.doc > img, .hl-film .sc-p.doc > .tdoc { left: 12%; top: 35%; right: auto; bottom: auto; width: 76%; height: 34%; z-index: 1; border-radius: 8px; box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55); }
+/* On a phone the panels are stacked and the counters would cover the top one: they hide when a panel is a
+   document (the ending card shows the same numbers), and the page uses the space above the caption. */
+@media (max-width: 700px) {
+  .hl-film .is-showcase.has-doc .proj-hud { display: none; }
+  .hl-film .sc-p.doc > img, .hl-film .sc-p.doc > .tdoc { left: 8%; top: 7%; width: 84%; height: 50%; }
+}
+.hl-film .sc-p.doc > img { object-fit: cover; object-position: top center; background: #ffffff; }
+.hl-film .sc-p.doc > .tdoc { padding: 16px 18px; gap: 8px; }
+.hl-film .sc-p.doc > .tdoc b { font-size: clamp(0.95rem, 1.5vw, 1.25rem); }
+.hl-film .sc-p.doc > .tdoc span { font-size: clamp(0.78rem, 1.05vw, 0.92rem); }
+.hl-film .sc-p.doc::after { background: linear-gradient(180deg, transparent 60%, rgba(0, 0, 0, 0.75)); }
+.hl-film .sc-p.doc figcaption { z-index: 2; }   /* (a very long title stays on top of the page) */
+
+/* ---------- Highlight styles (PLAN-highlight-styles.md) ----------
+   Each Premium style has its own file in styles/, loaded only when a highlight in that style opens. Here: what
+   they share. Every style uses PhilFreela orange (no color choice): --th and its shades, the same values the
+   approved preview used. */
+.hl-film { --th: #f97316; --th-rgb: 249, 115, 22; --th-lt: #fcae78; --th-dk: #cc5e12; --th-deep: #642e09; --th-on: #ffffff; }
+/* Decoration layers a style fills in (empty, and hidden, in the Director's Cut) */
+.hl-film .deco-bg, .hl-film .deco-fg { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.hl-film .deco-bg { z-index: 1; }
+.hl-film .deco-fg { z-index: 7; }
+.hl-film .deco-bg:empty, .hl-film .deco-fg:empty { display: none; }
+/* A pop a style shows on top of the film (comic words, pixel scores, puffs, stickers) */
+.hl-film .spop { position: absolute; width: 0; height: 0; pointer-events: none; }
+.hl-film .spop > * { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); white-space: nowrap; }
 .hl-loading { position: fixed; inset: 0; z-index: 1080; display: grid; place-items: center; align-content: center; gap: 14px; background: #05060a; color: #f8fafc; text-align: center; padding: 16px; }

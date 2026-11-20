@@ -9,6 +9,7 @@ import { getCategory } from "./categories";
 import { welcomeRoles } from "./welcomeTitles";
 import { avatarUrl, coverUrl } from "./avatar";
 import { shownPrice } from "./money";
+import { STYLE_IDS, isPremiumStyle } from "../components/highlights/styles/index.js";
 
 // Highlights (PLAN-highlights.md): a short film of a freelancer's profile that
 // visitors can watch from the profile page (components/highlights). Everything
@@ -113,6 +114,7 @@ function serviceOf(service, rating) {
     rawPrice: service.price, currency: service.currency,
     img: cover?.mediaType === "image" ? cover.url : cover?.mediaType === "document" ? cover.pages?.[0] || null : null,
     video: cover?.mediaType === "video" ? cover.url : null,
+    doc: cover?.mediaType === "document",
     rating: rating?.average ?? null,
     count: rating?.count ?? 0
   };
@@ -123,7 +125,7 @@ function serviceOf(service, rating) {
 // the project viewer (PortfolioViewer) when a visitor opens one.
 export async function loadHighlight(userId) {
   const [profileRes, verified, verifiedLinks, proRes, servicesRes, items, stats, history] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, cover_path, description, skills, available_for_work, portfolio_links").eq("id", userId).maybeSingle(),
+    supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, cover_path, description, skills, available_for_work, portfolio_links, highlight_style").eq("id", userId).maybeSingle(),
     fetchIsVerified(userId),
     fetchVerifiedLinks(userId),
     supabase.from("pro_members").select("pro_until").eq("user_id", userId).maybeSingle(),
@@ -178,11 +180,16 @@ export async function loadHighlight(userId) {
 
   const done = stats?.completed_count || 0;
   const lvl = levelOf({ done, ratingCount, positiveShare, portfolio: projects.length, services: services.length, verified });
+  // Their highlight style (PLAN-highlight-styles.md): a Premium style plays only while they have Premium; the
+  // saved choice is kept when Premium ends (the same rule as the two-color look), so it comes back with Premium.
+  const premium = Boolean(proRes.data && Date.parse(proRes.data.pro_until) > Date.now());
+  const savedStyle = STYLE_IDS.includes(person.highlight_style) ? person.highlight_style : "cinema";
   const data = {
     id: person.id, name, first: firstName(name), handle: person.username,
     ava: person.avatar_path ? avatarUrl(person.avatar_path) : initialsPicture(name),
     cover: person.cover_path ? coverUrl(person.cover_path) : null,
-    verified, premium: Boolean(proRes.data && Date.parse(proRes.data.pro_until) > Date.now()), available: Boolean(person.available_for_work),
+    verified, premium, available: Boolean(person.available_for_work),
+    style: premium || !isPremiumStyle(savedStyle) ? savedStyle : "cinema", savedStyle,
     since: formatMemberSince(stats?.member_since),
     bio: bioWithSkills(person.description, person.skills),
     skills: (person.skills || []).slice(0, 8),

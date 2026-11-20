@@ -1,0 +1,253 @@
+/* Moved from the approved preview (previews/highlights-styles/st-paper.css). Every rule sits inside
+   .hl-film (.hl-st is on the film while a style other than the Director's Cut plays), and every animation
+   name starts with hl-, so nothing here can change the rest of the site. */
+/* Papercut: cut paper and card on a paper stage, in stop motion. Everything sits on cream paper with hard paper
+   shadows; titles are cut-paper letters; photos are prints with tape; the edges of the screen are cardboard.
+   --th is the freelancer's color; the level colors (--glow, --w1, --f*) still come from the card draw. */
+.hl-film.hl-st.st-paper {
+  --font-display: "Baloo 2", "Plus Jakarta Sans", system-ui, sans-serif; --mono: "Patrick Hand", "Baloo 2", system-ui, sans-serif;
+  --pp-ink: #2b2118; --pp-ink2: rgba(43, 33, 24, 0.74); --pp-card: #fffaf0; --pp-cream: #f3e7d3; --pp-kraft: #c9a27a; --pp-board: #a9814f;
+  --pp-sh: 3px 4px 0 rgba(60, 40, 20, 0.22); --pp-sh2: 5px 7px 0 rgba(60, 40, 20, 0.2);
+  --pp-t1: color-mix(in srgb, var(--th) 22%, #fffaf0); --pp-t2: color-mix(in srgb, var(--th) 50%, #fffaf0); --pp-t4: color-mix(in srgb, var(--th) 78%, #2b2118);
+  background: var(--pp-cream); color: var(--pp-ink); font-family: "Baloo 2", "Plus Jakarta Sans", system-ui, sans-serif;
+}
+/* Stop motion: every animation and transition moves in steps (and the film draws 12 pictures a second) */
+.hl-film.hl-st.st-paper *, .hl-film.hl-st.st-paper *::before, .hl-film.hl-st.st-paper *::after { animation-timing-function: steps(5, end) !important; transition-timing-function: steps(6, end) !important; }
+@keyframes hl-pp-boil { 0% { translate: 0 0; rotate: -0.25deg; } 25% { translate: 0.7px -0.4px; rotate: 0.2deg; } 50% { translate: -0.5px 0.6px; rotate: -0.12deg; } 75% { translate: 0.4px 0.5px; rotate: 0.28deg; } 100% { translate: 0 0; rotate: -0.25deg; } }
+.hl-film.hl-st.st-paper:not(.paused) :is(.p-wrap, .svc-head, .fb-left, .rate, .end, .proj-hud, .reel-lower, .pp-sun, .pp-cloud, .pull-word, .xt-body, .tap-prompt) { animation: hl-pp-boil 0.66s steps(1, end) infinite; }
+.hl-film.hl-st.st-paper #bg, .hl-film.hl-st.st-paper .vignette, .hl-film.hl-st.st-paper .pulse, .hl-film.hl-st.st-paper .pull-flare, .hl-film.hl-st.st-paper .pull-spot, .hl-film.hl-st.st-paper .fan-glow, .hl-film.hl-st.st-paper .xt-slats, .hl-film.hl-st.st-paper .xt-ring, .hl-film.hl-st.st-paper .tf-lines, .hl-film.hl-st.st-paper .pcf-foil, .hl-film.hl-st.st-paper .p-shade { display: none; }
+.hl-film.hl-st.st-paper .grain { opacity: 0.055; mix-blend-mode: multiply; animation-duration: 0.66s; }
+.hl-film.hl-st.st-paper .flash { background: #fffaf0; }
+
+/* The paper stage behind every part */
+.hl-film .pp-stage { position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--th) 12%, #fbf3e4) 0%, #f3e7d3 62%); }
+.hl-film .pp-stage i { position: absolute; display: block; }
+.hl-film .pp-sun { right: 8%; top: calc(var(--bar) + 3vh); width: clamp(54px, 9vw, 112px); aspect-ratio: 1; border-radius: 50%; background: #ffd25e; box-shadow: 4px 6px 0 rgba(60, 40, 20, 0.15), inset -6px -6px 0 rgba(230, 160, 40, 0.35); }
+.hl-film .pp-cloud { width: clamp(90px, 16vw, 220px); height: clamp(26px, 4.4vw, 60px); border-radius: 999px; background: #fffaf0; box-shadow: 4px 6px 0 rgba(60, 40, 20, 0.12); }
+.hl-film .pp-cloud::before { content: ""; position: absolute; left: 22%; top: -55%; width: 42%; height: 120%; border-radius: 50%; background: inherit; }
+.hl-film .pp-cloud.c1 { left: 6%; top: calc(var(--bar) + 6vh); }
+.hl-film .pp-cloud.c2 { left: 52%; top: calc(var(--bar) + 15vh); scale: 0.7; }
+.hl-film .pp-hills { position: absolute; left: -2%; bottom: 0; width: 104%; height: 30%; }
+.hl-film .pp-hills path { stroke: rgba(60, 40, 20, 0.16); stroke-width: 4; }
+.hl-film .pp-hills .h3 { fill: color-mix(in srgb, var(--th) 18%, #fdf6ea); }
+.hl-film .pp-hills .h2 { fill: color-mix(in srgb, var(--th) 32%, #fdf6ea); }
+.hl-film .pp-hills .h1 { fill: color-mix(in srgb, var(--th) 46%, #fdf6ea); }
+.hl-film.hl-st.st-paper[data-part="pull"] .pp-hills, .hl-film.hl-st.st-paper[data-part="feedback"] .pp-hills, .hl-film.hl-st.st-paper[data-part="ratings"] .pp-hills { translate: 0 45%; }
+/* The edges of the screen are cardboard */
+.hl-film.hl-st.st-paper .bar, .hl-film.hl-st.st-paper .squeeze { background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 9px), linear-gradient(180deg, #b48a57, #9c7646); }
+.hl-film.hl-st.st-paper .bar.top { box-shadow: 0 4px 0 rgba(60, 40, 20, 0.25); }
+.hl-film.hl-st.st-paper .bar.bot { box-shadow: 0 -4px 0 rgba(60, 40, 20, 0.25); }
+
+/* Words and labels */
+.hl-film.hl-st.st-paper :is(.hud-top, .go-hint) { color: #fff4dc; font-family: "Patrick Hand", sans-serif; letter-spacing: 0.08em; font-size: 0.9rem; }
+.hl-film.hl-st.st-paper .chapter b, .hl-film.hl-st.st-paper .rec span { color: #fff4dc; }
+.hl-film.hl-st.st-paper .rec i { background: var(--th); box-shadow: none; border-radius: 2px; }
+.hl-film.hl-st.st-paper .lvl-chip { color: #2b2118; background: #fff4dc; border: 0; }
+.hl-film.hl-st.st-paper .kicker { justify-self: start; display: inline-block; width: max-content; padding: 1px 12px 1px 20px; background: var(--pp-t1); color: var(--pp-ink); font-size: clamp(0.85rem, 1.4vw, 1.05rem); letter-spacing: 0.06em; text-transform: none; box-shadow: var(--pp-sh); rotate: -2deg; position: relative; }
+.hl-film.hl-st.st-paper .kicker::before { content: ""; position: absolute; left: 7px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--pp-cream); box-shadow: inset 1px 1px 0 rgba(60, 40, 20, 0.3); }
+.hl-film.hl-st.st-paper :is(.p-handle, .plinks, .svc-sub, .rate-sub, .fb-note, .ec-title, .odo-block > span, .rm-note, .made, .trust-txt span, .b5, .chat-head small, .meta, .ec-stat span, .st-label, .st-all span, .score-of, .pull-hint, .intro-sub) { color: var(--pp-ink2); text-shadow: none; }
+.hl-film.hl-st.st-paper :is(.p-name, .bio, .svc-title, .fb-title, .ec-name, .sc-t, .fc-title, .rl-title, .rt-big, .rm-sub, .odo, .trust-txt b, .chat-head b) { color: var(--pp-ink); text-shadow: 2px 2px 0 rgba(60, 40, 20, 0.12); }
+.hl-film.hl-st.st-paper .p-name .w > span, .hl-film.hl-st.st-paper .rt-big .w > span { background: var(--th); color: var(--th-on); padding: 0 0.18em; box-shadow: var(--pp-sh2); text-shadow: none; }
+.hl-film.hl-st.st-paper .p-name .w:nth-child(2) > span { background: var(--pp-t2); color: var(--pp-ink); rotate: 1.5deg; }
+.hl-film.hl-st.st-paper .p-name .w:first-child > span { rotate: -1.5deg; }
+.hl-film.hl-st.st-paper .p-name .w { overflow: visible; padding: 0.06em 0.04em 0.16em; }
+.hl-film.hl-st.st-paper .bio { font-weight: 700; }
+.hl-film.hl-st.st-paper .bio .kw { background-image: linear-gradient(var(--pp-t2), var(--pp-t2)); background-position: 0 88%; }
+.hl-film.hl-st.st-paper .scene.on .bio .kw { animation-name: hl-wd, hl-pp-kw; }
+@keyframes hl-pp-kw { from { background-size: 0% 0.4em; } to { background-size: 100% 0.4em; } }
+.hl-film.hl-st.st-paper .svc-title, .hl-film.hl-st.st-paper .fb-title, .hl-film.hl-st.st-paper .ec-name { width: max-content; max-width: 100%; }
+.hl-film.hl-st.st-paper .fb-title em { color: var(--pp-t4); }
+.hl-film.hl-st.st-paper .avail, .hl-film.hl-st.st-paper .vb { background: #dff3d8; color: #2f6b22; }
+.hl-film.hl-st.st-paper .chip3, .hl-film.hl-st.st-paper .fbadge { background: var(--pp-card); border: 0; color: var(--pp-ink); box-shadow: var(--pp-sh); border-radius: 4px; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-paper .chip3:nth-child(odd) { rotate: -1.5deg; }
+.hl-film.hl-st.st-paper .chip3:nth-child(even) { rotate: 1.2deg; background: var(--pp-t1); }
+.hl-film.hl-st.st-paper .role { background: var(--pp-card); border: 0; color: var(--pp-ink); box-shadow: var(--pp-sh); border-radius: 4px; }
+.hl-film.hl-st.st-paper .role .ri { color: #ffffff; border-radius: 3px; }
+.hl-film.hl-st.st-paper .role.lit { background: color-mix(in srgb, var(--rc) 30%, #fffaf0); box-shadow: var(--pp-sh2); }
+.hl-film.hl-st.st-paper .nic { color: var(--th); }
+/* Pictures: round paper badges for faces, prints with tape for photos */
+.hl-film.hl-st.st-paper :is(.p-ava, .intro-ava, .ec-ava) { background: var(--th); padding: 6px; box-shadow: var(--pp-sh2), inset 0 0 0 3px rgba(255, 255, 255, 0.55); }
+.hl-film.hl-st.st-paper :is(.p-ava, .intro-ava, .ec-ava) img { border: 3px solid var(--pp-card); }
+.hl-film.hl-st.st-paper .p-cover { inset: auto; right: 6vw; top: calc(var(--bar) + 3.5vh); width: min(44vw, 560px); height: min(34vh, 330px); border: 9px solid var(--pp-card); border-bottom-width: 26px; box-shadow: var(--pp-sh2); rotate: 2.5deg; }
+.hl-film.hl-st.st-paper .p-cover::after { content: ""; position: absolute; left: 50%; top: -18px; width: 90px; height: 26px; margin-left: -45px; background: rgba(255, 238, 190, 0.78); rotate: -3deg; box-shadow: 0 1px 2px rgba(60, 40, 20, 0.12); }
+@media (max-width: 640px) { .hl-film.hl-st.st-paper .p-cover { left: 10vw; right: 10vw; width: auto; height: 22vh; } }
+
+/* Services: paper postcards */
+.hl-film.hl-st.st-paper .scard { background: var(--pp-card); border: 0; border-radius: 4px; box-shadow: var(--pp-sh2); color: var(--pp-ink); overflow: visible; }
+.hl-film.hl-st.st-paper .scard .simg { margin: 7px 7px 0; border-radius: 2px; }
+.hl-film.hl-st.st-paper .scard .simg::after { height: 0; }
+.hl-film.hl-st.st-paper .scard.lift { box-shadow: 8px 12px 0 rgba(60, 40, 20, 0.18); }
+.hl-film.hl-st.st-paper .scard::after { content: ""; position: absolute; left: 50%; top: -9px; width: 54px; height: 18px; margin-left: -27px; background: rgba(255, 238, 190, 0.8); rotate: 3deg; z-index: 2; }
+.hl-film.hl-st.st-paper .srole { color: var(--pp-ink); font-family: "Patrick Hand", sans-serif; font-size: 0.82rem; letter-spacing: 0.04em; text-transform: none; }
+.hl-film.hl-st.st-paper .srole .ri { border-radius: 3px; color: #ffffff; }
+.hl-film.hl-st.st-paper .scard .sprice { color: var(--pp-t4); }
+.hl-film.hl-st.st-paper .scard .sprice small, .hl-film.hl-st.st-paper .scard .srate span { color: var(--pp-ink2); }
+.hl-film.hl-st.st-paper .scard .srate { color: #b7791f; }
+.hl-film.hl-st.st-paper .s-view { border: 0; background: var(--pp-t1); color: var(--pp-ink); box-shadow: 2px 3px 0 rgba(60, 40, 20, 0.2); border-radius: 4px; }
+.hl-film.hl-st.st-paper .s-view:hover, .hl-film.hl-st.st-paper .s-view:focus-visible { background: var(--th); color: var(--th-on); }
+
+/* Projects: prints pinned on the wall, with tape */
+.hl-film.hl-st.st-paper .tile { padding: 6px 6px 20px; background: var(--pp-card); border-radius: 3px; box-shadow: var(--pp-sh2); }
+.hl-film.hl-st.st-paper .tile::after { content: ""; position: absolute; left: 50%; top: 0; width: 46px; height: 14px; margin-left: -23px; background: rgba(255, 238, 190, 0.85); rotate: -4deg; z-index: 5; }
+.hl-film.hl-st.st-paper .tile:nth-child(3n) { rotate: 1.4deg; }
+.hl-film.hl-st.st-paper .tile:nth-child(3n + 1) { rotate: -1.2deg; }
+.hl-film.hl-st.st-paper .tile img, .hl-film.hl-st.st-paper .tile video { border-radius: 2px; }
+.hl-film.hl-st.st-paper .tile .tcap { background: var(--pp-card); color: var(--pp-ink); padding: 6px 8px; font-family: "Patrick Hand", sans-serif; font-size: 0.85rem; }
+.hl-film.hl-st.st-paper .tile.hov, .hl-film.hl-st.st-paper .tile:focus-visible { outline-color: var(--th); box-shadow: 8px 12px 0 rgba(60, 40, 20, 0.2); }
+.hl-film.hl-st.st-paper .tile.more { background: var(--pp-t1); border: 0; }
+.hl-film.hl-st.st-paper .tile.more b { color: var(--pp-t4); }
+.hl-film.hl-st.st-paper .tile.more small { color: var(--pp-ink2); }
+.hl-film.hl-st.st-paper .t-view, .hl-film.hl-st.st-paper .sc-view { border: 0; border-radius: 4px; background: var(--pp-card); color: var(--pp-ink); box-shadow: 3px 4px 0 rgba(60, 40, 20, 0.25); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-paper .t-view:hover, .hl-film.hl-st.st-paper .t-view:focus-visible, .hl-film.hl-st.st-paper .sc-view:hover, .hl-film.hl-st.st-paper .sc-view:focus-visible { background: var(--th); color: var(--th-on); }
+.hl-film.hl-st.st-paper .vtag, .hl-film.hl-st.st-paper .tile .fstar { background: var(--pp-card); color: var(--pp-ink); }
+.hl-film.hl-st.st-paper .tile .mk, .hl-film.hl-st.st-paper .sc-p .mk, .hl-film.hl-st.st-paper .scard .mk { color: rgba(255, 255, 255, 0.92); }
+.hl-film.hl-st.st-paper .proj-shade { background: linear-gradient(100deg, rgba(243, 231, 211, 0.95) 0%, rgba(243, 231, 211, 0.6) 36%, transparent 60%); }
+@media (max-width: 700px) { .hl-film.hl-st.st-paper .proj-shade { background: linear-gradient(180deg, rgba(243, 231, 211, 0.95) 0%, rgba(243, 231, 211, 0.6) 40%, transparent 66%); } }
+.hl-film.hl-st.st-paper .odo .dg { background: var(--pp-card); box-shadow: var(--pp-sh); margin-right: 4px; padding: 0 0.06em; border-radius: 3px; }
+.hl-film.hl-st.st-paper .focus-cap, .hl-film.hl-st.st-paper .reel-lower { justify-items: start; }
+.hl-film.hl-st.st-paper .fc-title, .hl-film.hl-st.st-paper .rl-title { background: var(--pp-card); padding: 0.05em 0.3em; box-shadow: var(--pp-sh2); text-shadow: none; }
+.hl-film.hl-st.st-paper .fc-cat, .hl-film.hl-st.st-paper .rl-count { color: var(--pp-ink); background: var(--pp-t1); padding: 0 8px; }
+.hl-film.hl-st.st-paper .fc-video, .hl-film.hl-st.st-paper .rl-meta { background: var(--pp-card); color: var(--pp-ink); }
+.hl-film.hl-st.st-paper .proj-explore { background: var(--pp-card); border: 0; border-radius: 6px; box-shadow: var(--pp-sh2); color: var(--pp-ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-paper .proj-explore .pe-hint { color: var(--pp-ink2); }
+.hl-film.hl-st.st-paper .pe-all, .hl-film.hl-st.st-paper .nextbtn, .hl-film.hl-st.st-paper .pbtn:not(.ghost) { background: var(--th); color: var(--th-on); border-radius: 6px; box-shadow: 3px 4px 0 rgba(60, 40, 20, 0.3); animation: none; }
+.hl-film.hl-st.st-paper .showcase { gap: 16px; padding: 16px; }
+.hl-film.hl-st.st-paper .sc-p { border: 9px solid var(--pp-card); border-bottom-width: 22px; box-shadow: var(--pp-sh2); }
+.hl-film.hl-st.st-paper .sc-p:nth-child(2) { rotate: 1deg; }
+.hl-film.hl-st.st-paper .sc-p::after { background: linear-gradient(180deg, transparent 50%, rgba(43, 33, 24, 0.55)); }
+.hl-film.hl-st.st-paper .sc-p .sc-t { color: #ffffff; text-shadow: 2px 2px 0 rgba(43, 33, 24, 0.5); }
+.hl-film.hl-st.st-paper .sc-p .fc-cat { background: var(--pp-card); }
+.hl-film.hl-st.st-paper .showcase.n2 .sc-p + .sc-p { box-shadow: var(--pp-sh2); }
+
+/* Video reel: a framed print that plays */
+.hl-film.hl-st.st-paper .reel-stage { inset: calc(var(--bar) + 2.5vh) 5vw calc(var(--bar) + 2.5vh); border: 10px solid var(--pp-card); box-shadow: var(--pp-sh2); overflow: hidden; }
+.hl-film.hl-st.st-paper .reel-title, .hl-film.hl-st.st-paper .reel-more { background: var(--pp-cream); }
+.hl-film.hl-st.st-paper .rm-shade { background: radial-gradient(circle, rgba(243, 231, 211, 0.6), rgba(243, 231, 211, 0.95) 70%); }
+.hl-film.hl-st.st-paper .rm-big { color: var(--pp-t4); }
+.hl-film.hl-st.st-paper .rm-wall span { border: 4px solid var(--pp-card); box-shadow: var(--pp-sh); }
+.hl-film.hl-st.st-paper .reel-mark { color: #ffffff; }
+.hl-film.hl-st.st-paper .rl-view { background: var(--pp-card); color: var(--pp-ink); border: 0; border-radius: 4px; box-shadow: var(--pp-sh); }
+
+/* Ratings: paper stars and a big cut-paper score */
+.hl-film.hl-st.st-paper .stars5 svg { filter: drop-shadow(3px 4px 0 rgba(60, 40, 20, 0.22)); }
+.hl-film.hl-st.st-paper .sline { stroke: rgba(43, 33, 24, 0.55); stroke-width: 0.6; }
+.hl-film.hl-st.st-paper .score-num { background: none; color: var(--th); -webkit-text-fill-color: var(--th); text-shadow: 5px 6px 0 rgba(60, 40, 20, 0.22); }
+.hl-film.hl-st.st-paper .rate-row { background: var(--pp-card); border: 0; border-radius: 6px; box-shadow: var(--pp-sh2); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-paper .trust .tb { stroke: rgba(43, 33, 24, 0.12); }
+.hl-film.hl-st.st-paper .trust .tf { stroke: var(--th); stroke-linecap: butt; }
+.hl-film.hl-st.st-paper .b5-t { background: rgba(43, 33, 24, 0.1); border-radius: 2px; }
+.hl-film.hl-st.st-paper .b5-t i { background: var(--th); border-radius: 2px; }
+.hl-film .pp-sticker > b { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #ffd25e; color: #2b2118; font-size: 34px; box-shadow: 3px 4px 0 rgba(60, 40, 20, 0.25); animation: hl-pp-stick 0.5s steps(4, end) both; }
+.hl-film .pp-tag > b { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 6px; background: var(--th, #f97316); color: #ffffff; font-size: 22px; box-shadow: 3px 4px 0 rgba(60, 40, 20, 0.25); animation: hl-pp-stick 0.4s steps(3, end) both; }
+@keyframes hl-pp-stick { 0% { transform: translate(-50%, -50%) scale(1.8) rotate(-30deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: translate(-50%, -50%) rotate(-8deg); opacity: 1; } }
+
+/* Feedback: paper notes */
+.hl-film.hl-st.st-paper .kw-layer span { color: rgba(43, 33, 24, 0.06); }
+.hl-film.hl-st.st-paper .chat { background: var(--pp-kraft); border: 0; border-radius: 6px; box-shadow: var(--pp-sh2); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-paper .chat-head { border-bottom: 2px dashed rgba(43, 33, 24, 0.25); }
+.hl-film.hl-st.st-paper .chat-head b, .hl-film.hl-st.st-paper .chat-head small, .hl-film.hl-st.st-paper .meta { color: #3b2a16; }
+.hl-film.hl-st.st-paper .live { color: #3b2a16; }
+.hl-film.hl-st.st-paper .live i { background: var(--th); box-shadow: none; }
+.hl-film.hl-st.st-paper .bubble { background: var(--pp-card); border-radius: 4px; box-shadow: var(--pp-sh); color: var(--pp-ink); }
+.hl-film.hl-st.st-paper .msg:nth-child(even) .bubble { rotate: 0.8deg; background: #fff6c9; }
+.hl-film.hl-st.st-paper .msg:nth-child(odd) .bubble { rotate: -0.6deg; }
+.hl-film.hl-st.st-paper .ava-stack i, .hl-film.hl-st.st-paper .msg .av { border-color: var(--pp-kraft); box-shadow: 2px 2px 0 rgba(60, 40, 20, 0.25); }
+
+/* The ending: a paper greeting card */
+.hl-film.hl-st.st-paper .endcard { background: var(--pp-card); border: 0; border-radius: 8px; box-shadow: 8px 10px 0 rgba(60, 40, 20, 0.2); color: var(--pp-ink); }
+.hl-film.hl-st.st-paper .endcard::before { display: none; }
+.hl-film.hl-st.st-paper .endcard::after { content: ""; position: absolute; left: 50%; top: -10px; width: 96px; height: 24px; margin-left: -48px; background: rgba(255, 238, 190, 0.85); rotate: -2deg; z-index: 3; }
+.hl-film.hl-st.st-paper .shine { display: none; }
+.hl-film.hl-st.st-paper .ec-banner { opacity: 1; -webkit-mask-image: none; mask-image: none; height: 38%; border-bottom: 6px solid var(--pp-card); }
+.hl-film.hl-st.st-paper .ec-stat { background: var(--pp-t1); border: 0; border-radius: 4px; box-shadow: var(--pp-sh); }
+.hl-film.hl-st.st-paper .ec-stat b { color: var(--pp-t4); }
+.hl-film.hl-st.st-paper .ec-name { background: var(--pp-card); padding: 0 0.35em; box-shadow: var(--pp-sh2); rotate: -1.5deg; text-shadow: none; }
+.hl-film.hl-st.st-paper .pbtn.ghost { background: var(--pp-card); color: var(--pp-ink); border: 0; border-radius: 6px; box-shadow: 3px 4px 0 rgba(60, 40, 20, 0.25); }
+.hl-film.hl-st.st-paper .replay2 { color: var(--pp-ink); }
+/* The controls at the bottom: paper buttons on the cardboard */
+.hl-film.hl-st.st-paper .cbtn { background: var(--pp-card); color: var(--pp-ink); border: 0; box-shadow: 2px 3px 0 rgba(43, 30, 15, 0.45); }
+.hl-film.hl-st.st-paper .cbtn:hover { background: var(--pp-t1); }
+
+/* Stats (Intermediate and Advanced): numbers cut from paper */
+.hl-film.hl-st.st-paper :is(.st-num, .st-all b) { background: none; color: var(--th); -webkit-text-fill-color: var(--th); text-shadow: 5px 6px 0 rgba(60, 40, 20, 0.2); }
+
+/* ---------- The card draw: a kraft card on a paper stage ---------- */
+.hl-film.hl-st.st-paper .pull-dark { background: radial-gradient(ellipse 30% 36% at 50% 52%, rgba(43, 33, 24, 0) 35%, rgba(43, 33, 24, 0.86) 100%); }
+.hl-film.hl-st.st-paper .env-tint { background: radial-gradient(ellipse 50% 46% at 50% 52%, rgba(var(--glow), 0.28), transparent 72%); }
+.hl-film.hl-st.st-paper .env-room { background: repeating-conic-gradient(from 0deg at 50% 54%, rgba(var(--room), 0.3) 0deg 9deg, rgba(255, 250, 240, 0.25) 9deg 18deg); }
+.hl-film.hl-st.st-paper .pull-rays { background: repeating-conic-gradient(from 0deg, rgba(var(--room), 0.55) 0deg 7deg, rgba(var(--ray), 0.4) 7deg 14deg, transparent 14deg 22deg); -webkit-mask-image: radial-gradient(circle, #000000 0%, #000000 18%, transparent 36%); mask-image: radial-gradient(circle, #000000 0%, #000000 18%, transparent 36%); }
+.hl-film.hl-st.st-paper .pull-pillars i { filter: none; background: rgba(var(--room), 0.75); clip-path: polygon(0 6%, 25% 0, 50% 6%, 75% 0, 100% 6%, 100% 100%, 0 100%); box-shadow: none; }
+.hl-film.hl-st.st-paper .pull-floor { background: radial-gradient(closest-side, rgba(var(--room), 0.55), rgba(var(--room), 0.2) 70%, transparent 72%); }
+.hl-film.hl-st.st-paper .pull-floor i { border: 3px dashed rgba(43, 33, 24, 0.4); box-shadow: none; }
+.hl-film.hl-st.st-paper .pc-aura { filter: none; border-radius: 50%; inset: -34% -40%; background: repeating-conic-gradient(rgba(var(--glow), 0.75) 0deg 12deg, rgba(var(--glow), 0.25) 12deg 24deg); -webkit-mask-image: radial-gradient(closest-side, #000000 60%, transparent 62%); mask-image: radial-gradient(closest-side, #000000 60%, transparent 62%); }
+.hl-film.hl-st.st-paper .pc-back { background: repeating-linear-gradient(35deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 7px), linear-gradient(160deg, #d4ae84, #b98d5e); box-shadow: inset 0 0 0 6px rgb(var(--glow)), inset 0 0 0 9px rgba(255, 250, 240, 0.7), 6px 8px 0 rgba(60, 40, 20, 0.28); }
+.hl-film.hl-st.st-paper .pc-back::before { inset: 1em; border: 2px dashed rgba(255, 250, 240, 0.7); border-radius: 3%; }
+.hl-film.hl-st.st-paper .pc-back::after { display: none; }
+.hl-film.hl-st.st-paper .pc-back img { filter: drop-shadow(3px 4px 0 rgba(60, 40, 20, 0.3)); }
+.hl-film.hl-st.st-paper .pc-back span { font-family: "Patrick Hand", sans-serif; font-size: 0.8em; letter-spacing: 0.12em; color: #3b2a16; }
+.hl-film.hl-st.st-paper .pc-face { border-radius: 4%; }
+.hl-film.hl-st.st-paper .pc-front { box-shadow: 6px 8px 0 rgba(60, 40, 20, 0.28); }
+.hl-film.hl-st.st-paper .pcf { background: var(--pp-card); border-radius: 3%; }
+.hl-film.hl-st.st-paper .pcf-art { height: 44%; margin: 0.4em; border-radius: 2px; }
+.hl-film.hl-st.st-paper .pcf-art::before, .hl-film.hl-st.st-paper .pcf-art::after { display: none; }
+.hl-film.hl-st.st-paper .pcf-top { top: 0.8em; left: 0.9em; right: 0.9em; }
+.hl-film.hl-st.st-paper .pcf-score { background: var(--pp-card); padding: 0.25em 0.4em; border-radius: 4px; box-shadow: 2px 3px 0 rgba(60, 40, 20, 0.25); }
+.hl-film.hl-st.st-paper .pcf-score b { background: none; color: var(--f3); -webkit-text-fill-color: var(--f3); filter: none; }
+.hl-film.hl-st.st-paper .pcf-score span { color: var(--pp-ink2); text-shadow: none; }
+.hl-film.hl-st.st-paper .pcf-rar { background: var(--pp-card); color: var(--pp-ink); border: 0; box-shadow: 2px 3px 0 rgba(60, 40, 20, 0.25); }
+.hl-film.hl-st.st-paper .pcf-ava { background: var(--f2); box-shadow: 3px 4px 0 rgba(60, 40, 20, 0.25); }
+.hl-film.hl-st.st-paper .pcf-ava img { border-color: var(--pp-card); }
+.hl-film.hl-st.st-paper .pcf-name { color: var(--pp-ink); }
+.hl-film.hl-st.st-paper .pcf-title { color: var(--pp-ink2); }
+.hl-film.hl-st.st-paper .pcf-stats { border-top: 2px dashed rgba(43, 33, 24, 0.25); }
+.hl-film.hl-st.st-paper .pcf-stats div + div { border-left: 2px dashed rgba(43, 33, 24, 0.18); }
+.hl-film.hl-st.st-paper .pcf-stats b { color: var(--f3); }
+.hl-film.hl-st.st-paper .pcf-stats span, .hl-film.hl-st.st-paper .pcf-badges { color: var(--pp-ink2); }
+.hl-film.hl-st.st-paper .pc-cracks path { stroke: #fffaf0; stroke-width: 2.4; filter: drop-shadow(1px 1px 0 rgba(43, 33, 24, 0.55)); }
+.hl-film.hl-st.st-paper .pc-leak { mix-blend-mode: normal; background: radial-gradient(circle at 50% 46%, rgba(var(--crkg, 251,191,36), 0.6), rgba(var(--crkg, 251,191,36), 0.2) 50%, transparent 72%); }
+.hl-film.hl-st.st-paper .pc-burst { background: radial-gradient(circle at 50% 45%, rgba(255, 250, 235, 0.95), rgba(var(--glow), 0.3) 45%, transparent 72%); }
+.hl-film.hl-st.st-paper .tap-ring { border: 3px dashed rgba(43, 33, 24, 0.45); }
+.hl-film.hl-st.st-paper .pull-stage { z-index: 0; }
+.hl-film.hl-st.st-paper .pull-stage.pp-popped::before { content: ""; position: absolute; left: 50%; top: 50%; width: 260%; aspect-ratio: 1; translate: -50% -50%; z-index: -1; border-radius: 50%; background: repeating-conic-gradient(#f7d774 0deg 12deg, #e7b43f 12deg 24deg); box-shadow: 0 0 0 10px rgba(255, 250, 240, 0.6); animation: hl-pp-pop 1s steps(6, end) both; }
+@keyframes hl-pp-pop { from { transform: scale(0.2) rotate(-40deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.hl-film.hl-st.st-paper .pull-word { background: var(--pp-card); color: var(--f3); -webkit-text-fill-color: var(--f3); text-shadow: none; padding: 0 0.5em; box-shadow: 5px 6px 0 rgba(60, 40, 20, 0.25); }
+.hl-film.hl-st.st-paper .rar-plain .pull-word { color: var(--pp-ink); }
+.hl-film.hl-st.st-paper .pull-hint.top { background: var(--pp-card); color: var(--pp-ink); border: 0; border-radius: 6px; box-shadow: var(--pp-sh2); }
+.hl-film.hl-st.st-paper .tap-prompt { background: var(--pp-card); color: var(--pp-ink); border: 0; border-radius: 6px; box-shadow: var(--pp-sh2); font-family: "Patrick Hand", sans-serif; font-size: 1rem; letter-spacing: 0.08em; }
+.hl-film.hl-st.st-paper .tp-hand { color: var(--pp-ink); }
+.hl-film.hl-st.st-paper .pm-big { padding: 0.12em 1em; background: linear-gradient(180deg, #f9dc7c, #e9b949); clip-path: polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%); filter: drop-shadow(3px 4px 0 rgba(60, 40, 20, 0.3)); }
+.hl-film.hl-st.st-paper .pm-big .ch { background: none; color: #3b2a12; -webkit-text-fill-color: #3b2a12; }
+.hl-film.hl-st.st-paper .pm-sub { color: var(--pp-ink); text-shadow: none; font-size: 1rem; letter-spacing: 0.08em; }
+.hl-film.hl-st.st-paper .tf-word { font-family: "Baloo 2", sans-serif; color: var(--th-dk); background: var(--pp-card); padding: 0.05em 0.35em; border-radius: 6px; text-shadow: none; box-shadow: 3px 4px 0 rgba(60, 40, 20, 0.25); }
+.hl-film.hl-st.st-paper .tf-burst { background: rgb(var(--c)); filter: drop-shadow(3px 4px 0 rgba(60, 40, 20, 0.2)); }
+.hl-film.hl-st.st-paper .tf-ring { border: 3px dashed rgba(43, 33, 24, 0.5); }
+
+/* ---------- The change between parts: a sheet of paper (or a pop-up page) in their color ---------- */
+.hl-film.hl-st.st-paper .xt-bg { opacity: 1 !important; background: repeating-linear-gradient(35deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 8px), linear-gradient(180deg, var(--th), var(--th-dk)); }
+.hl-film.hl-st.st-paper .xt.sheet .xt-bg::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% - 1px); height: 28px; background: var(--th-dk); clip-path: polygon(0 0, 100% 0, 100% 40%, 96% 80%, 92% 35%, 87% 90%, 82% 45%, 77% 85%, 72% 30%, 67% 75%, 62% 40%, 57% 95%, 52% 35%, 47% 80%, 42% 45%, 37% 90%, 32% 30%, 27% 70%, 22% 40%, 17% 85%, 12% 35%, 7% 75%, 3% 40%, 0 70%); }
+.hl-film.hl-st.st-paper .xt.popup .xt-bg { box-shadow: inset 0 0 0 14px rgba(255, 250, 240, 0.85); }
+.hl-film.hl-st.st-paper .xt-num { color: var(--pp-ink); background: var(--pp-card); padding: 2px 14px; letter-spacing: 0.2em; box-shadow: var(--pp-sh); rotate: -2deg; font-size: 1.1rem; }
+.hl-film.hl-st.st-paper .xt-title span { background: none; color: #fffaf0; -webkit-text-fill-color: #fffaf0; text-shadow: 4px 4px 0 var(--pp-t4), 8px 9px 0 rgba(43, 33, 24, 0.25); }
+.hl-film.hl-st.st-paper .xt-sub { color: #fffaf0; font-family: "Patrick Hand", sans-serif; font-size: clamp(1.1rem, 2.2vw, 1.5rem); }
+.hl-film.hl-st.st-paper .xt-line { height: 0; background: none; border-top: 3px dashed rgba(255, 250, 240, 0.8); box-shadow: none; }
+
+/* The project viewer: a paper card */
+.hl-film.hl-st.st-paper .vw-back { background: rgba(43, 33, 24, 0.55); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-paper .vw-box { background: var(--pp-card); border: 0; border-radius: 8px; box-shadow: 10px 12px 0 rgba(30, 20, 10, 0.35); color: var(--pp-ink); }
+.hl-film.hl-st.st-paper .vw-media { background: var(--pp-cream); margin: 10px; border-radius: 3px; }
+.hl-film.hl-st.st-paper .vw-blur { opacity: 0.35; }
+.hl-film.hl-st.st-paper .vw-info { border-left: 2px dashed rgba(43, 33, 24, 0.2); }
+.hl-film.hl-st.st-paper :is(.vw-desc, .vw-protect) { color: var(--pp-ink2); }
+.hl-film.hl-st.st-paper .vw-count { color: var(--pp-ink); }
+.hl-film.hl-st.st-paper .vw-chip { background: var(--pp-t1); border: 0; color: var(--pp-ink); }
+
+/* Documents (the site's portfolio has them; PLAN-highlight-styles.md, Step 2). A PDF or Word file shows its first
+   page as a print, like a photo. Typed writing is a lined paper note: a red margin and blue lines under the words. */
+.hl-film.hl-st.st-paper .tdoc { gap: 6px; padding: 12px 12px 12px 30px; border-radius: 2px; color: var(--pp-ink); background: linear-gradient(90deg, transparent 21px, rgba(220, 38, 38, 0.45) 21px 23px, transparent 23px), #fffdf6; }
+.hl-film.hl-st.st-paper .tile .tdoc { inset: 6px 6px 20px; }
+.hl-film.hl-st.st-paper .tdoc b { font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 0.98rem; line-height: 1.15; }
+.hl-film.hl-st.st-paper .tdoc span { font-family: "Patrick Hand", sans-serif; font-size: 0.88rem; line-height: 22px; color: var(--pp-ink2); background: repeating-linear-gradient(180deg, transparent 0 21px, rgba(59, 130, 246, 0.32) 21px 22px); }
+/* In the two-panel showcase: the page is pinned on kraft paper with a hard paper shadow */
+.hl-film.hl-st.st-paper .sc-p.doc { background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.04) 0 2px, transparent 2px 10px), var(--pp-kraft); }
+.hl-film.hl-st.st-paper .sc-p.doc > img, .hl-film.hl-st.st-paper .sc-p.doc > .tdoc { border-radius: 2px; box-shadow: var(--pp-sh2); rotate: -1.2deg; }
+.hl-film.hl-st.st-paper :is(.vw-nav, .vw-close, .vw-play) { background: var(--pp-card); color: var(--pp-ink); border: 0; box-shadow: 2px 3px 0 rgba(60, 40, 20, 0.3); backdrop-filter: none; -webkit-backdrop-filter: none; }

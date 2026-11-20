@@ -38,7 +38,7 @@
 .film.st-comic :is(.p-ava, .intro-ava, .ec-ava, .pcf-ava) { border-radius: 0; padding: 0; background: #ffffff; border: 4px solid var(--cm-ink); box-shadow: var(--cm-sh); }
 .film.st-comic :is(.p-ava, .intro-ava, .ec-ava, .pcf-ava) img { border-radius: 0; border: 0; }
 /* Photos get printed in halftone */
-.film.st-comic :is(.tile, .simg, .sc-p, .pcf-art, .ec-banner, .reel-stage) { position: relative; }
+.film.st-comic :is(.tile, .simg, .sc-p) { position: relative; }   /* (the card art, the end banner and the reel are already placed by the film) */
 .film.st-comic :is(.tile, .scard .simg, .sc-p)::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: radial-gradient(circle, rgba(17, 17, 17, 0.22) 0.9px, transparent 1.3px) 0 0 / 5px 5px; mix-blend-mode: multiply; }
 .film.st-comic :is(.tile img, .tile video, .simg img, .sc-p img, .sc-p video, .p-cover, .pcf-art, .ec-banner) { filter: contrast(1.25) saturate(1.45); }
 .film.st-comic .p-cover { inset: auto; left: 4vw; right: 4vw; top: calc(var(--bar) + 2.5vh); height: 34vh; border: 5px solid var(--cm-ink); box-shadow: var(--cm-sh2); }

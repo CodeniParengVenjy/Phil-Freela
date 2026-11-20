@@ -4,6 +4,7 @@ import { loadHighlight } from "../../lib/highlights";
 import PortfolioViewer from "../../pages/dashboard/components/PortfolioViewer";
 import { Loader } from "../Loaders";
 import { startHighlights } from "./highlightsEngine";
+import { loadStyle } from "./styles/index.js";
 import "./highlights.css";
 
 // Space Mono (the film's small monospace labels) is the one font the site doesn't load already; it is
@@ -18,15 +19,17 @@ function loadFilmFont() {
 }
 
 // The Highlights player (PLAN-highlights.md): a freelancer's highlight, full screen over the page. It loads
-// their data (lib/highlights.js), then runs the film (highlightsEngine.js) in an empty box here.
+// their data (lib/highlights.js) and their highlight style (styles/, only the one that plays), then runs the film
+// (highlightsEngine.js) in an empty box here.
 //   userId      whose highlight
 //   levelPick   the owner previewing another level's style (null = their real level)
+//   stylePick   the owner previewing another highlight style (null = the style their highlight plays in)
 //   ownerName   their @username, drawn over project files in the project viewer
 //   onClose     closes the player
 //   onMessage, onSeeServices, onOpenService(id): the film's buttons (the page closes the player first);
 //               onMessage is left out on your own highlight, so the film has no Message button
 //   onReport(item), reportOpen: the Report button of the project viewer, and whether that form is open
-export default function HighlightsPlayer({ userId, levelPick = null, ownerName, onClose, onMessage, onSeeServices, onOpenService, onReport, reportOpen = false }) {
+export default function HighlightsPlayer({ userId, levelPick = null, stylePick = null, ownerName, onClose, onMessage, onSeeServices, onOpenService, onReport, reportOpen = false }) {
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   // { data, items } once loaded, or { error }.
@@ -65,12 +68,31 @@ export default function HighlightsPlayer({ userId, levelPick = null, ownerName, 
     };
   }, [userId]);
 
-  // The film starts once the data is there and stops (music, videos and all) when the player closes.
+  // The style it plays in (lib/highlights.js gives the Director's Cut when a Premium style's freelancer has no
+  // Premium). A Premium style's file and fonts load first; one that can't load plays as the Director's Cut.
+  const look = loaded?.data ? stylePick || loaded.data.style || "cinema" : null;
+  const [style, setStyle] = useState(null);   // { id, def } once a Premium style's file has loaded
   useEffect(() => {
-    if (!loaded?.data || !hostRef.current) return undefined;
+    if (!look || look === "cinema") return undefined;
+    let active = true;
+    loadStyle(look)
+      .then((def) => active && setStyle({ id: look, def }))
+      .catch(() => active && setStyle({ id: look, def: null }));
+    return () => {
+      active = false;
+    };
+  }, [look]);
+  // null = the Director's Cut, undefined = still loading
+  const styleDef = look === "cinema" ? null : style && style.id === look ? style.def : undefined;
+  const ready = Boolean(loaded?.data) && styleDef !== undefined;
+
+  // The film starts once the data (and the style) is there and stops (music, videos and all) when the player closes.
+  useEffect(() => {
+    if (!ready || !hostRef.current) return undefined;
     const items = loaded.items;
     const engine = startHighlights(hostRef.current, loaded.data, {
       levelPick,
+      style: styleDef,
       onClose: () => actions.current.onClose?.(),
       onMessage: hasMessage ? () => actions.current.onMessage?.() : undefined,
       onSeeServices: () => actions.current.onSeeServices?.(),
@@ -84,17 +106,17 @@ export default function HighlightsPlayer({ userId, levelPick = null, ownerName, 
       engine.stop();
       engineRef.current = null;
     };
-  }, [loaded, levelPick, hasMessage]);
+  }, [ready, loaded, levelPick, styleDef, hasMessage]);
 
   // Escape closes it while it is still loading (once the film runs, the film handles its own keys).
   useEffect(() => {
-    if (loaded?.data) return undefined;
+    if (ready) return undefined;
     const handleKeyDown = (event) => {
       if (event.key === "Escape") actions.current.onClose?.();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [loaded]);
+  }, [ready]);
 
   // The project viewer closed: the film carries on. (While the Report form is open on top, Escape closes only that form.)
   const closeViewer = () => {
@@ -106,7 +128,7 @@ export default function HighlightsPlayer({ userId, levelPick = null, ownerName, 
   return createPortal(
     <>
       <div ref={hostRef} />
-      {!loaded?.data && (
+      {!ready && (
         <div className="hl-loading" role="status">
           {loaded?.error ? (
             <>

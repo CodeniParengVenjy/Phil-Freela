@@ -3,7 +3,8 @@
 Last updated: 2026-11-20. To continue in a new Claude session, say:
 "Read PLAN-highlight-styles.md and continue from the current step."
 
-Status: the user said "ok" on 2026-11-20. **Step 1 is DONE:** after the user typed "apply it", `database/supabase_highlight_style_schema.sql` was applied to the live database (migration `highlight_style`, version 20261120032743). `database/test_highlight_style.sql` passed 7 of 7 before and after (rolled back each time). **Next: Step 2.**
+Status: the user said "ok" on 2026-11-20. **Step 1 is DONE:** after the user typed "apply it", `database/supabase_highlight_style_schema.sql` was applied to the live database (migration `highlight_style`, version 20261120032743). `database/test_highlight_style.sql` passed 7 of 7 before and after (rolled back each time). **Step 2 is DONE**
+(the styles inside the player, 2026-11-20). **Next: Step 3.**
 
 ## What the user asked
 
@@ -81,6 +82,29 @@ Cartoony, Kinetic type and Comic book.
    - the Director's Cut's 71 checks still pass;
    - a freelancer without Premium gets the Director's Cut;
    - a document project shows in every style.
+
+**How it was built (2026-11-20):**
+- The five style files and their CSS were converted from the preview by a script (`.film` became
+  `.hl-film.hl-st`, and every animation name got `hl-`).
+  - From now on, the site's files in `components/highlights/styles/` are the ones to change; the preview is the
+    reference.
+  - The document looks (item 6) were added on the site only.
+- `styles/index.js` lists the six styles and loads one style's file and fonts. `styles/kit.js` is the preview's
+  `styles.js` without the launch page's "Hear it".
+- The colour theming of the preview is not needed (there is no colour choice), so the Director's Cut keeps its
+  exact colours. The styles get fixed orange `--th` variables in `highlights.css`.
+- Found while testing: Comic book's CSS made the card art, the end banner and the video reel `position: relative`,
+  which hid them. Fixed on the site and in the preview copy.
+- Also found while testing (an old Director's Cut problem): in the two-panel layout (two projects or fewer), the
+  counters at the top covered a typed document's title and first lines. Fix:
+  - A document's page is now a card in the middle of the panel, in every style, clear of the counters and the
+    caption.
+  - On a phone the counters hide when a panel is a document (the ending card shows the same numbers).
+- Test results (stand-in database, nothing live):
+  - Full run: 163 checks (every style at every level on a computer, every style on a phone, documents, the
+    Premium rule, a style file that fails to load, and Retro without permission to read pictures).
+  - Documents again after the card change: 38 of 38.
+  - The Director's Cut's own checks: 71 of 71.
 
 ### Step 3: Picking the style on your own profile
 1. Add a "Highlight style" choice under the poster, next to the level switch (only the owner sees it).

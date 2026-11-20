@@ -1,0 +1,218 @@
+/* Moved from the approved preview (previews/highlights-styles/st-toon.css). Every rule sits inside
+   .hl-film (.hl-st is on the film while a style other than the Director's Cut plays), and every animation
+   name starts with hl-, so nothing here can change the rest of the site. */
+/* Cartoony: thick black outlines, flat bright colors, a turning sunburst and puffy clouds, bouncy motion.
+   Titles are Luckiest Guy with an outline; text is Fredoka. --th is the freelancer's color. */
+.hl-film.hl-st.st-toon {
+  --font-display: "Luckiest Guy", "Fredoka", system-ui, sans-serif; --mono: "Fredoka", system-ui, sans-serif;
+  --tn-ink: #1b1b1b; --tn-paper: #fffdf7; --tn-sh: 4px 4px 0 var(--tn-ink); --tn-sh2: 6px 6px 0 var(--tn-ink);
+  --tn-t1: color-mix(in srgb, var(--th) 30%, #ffffff); --tn-t2: color-mix(in srgb, var(--th) 62%, #ffffff);
+  background: var(--th); color: var(--tn-ink); font-family: "Fredoka", system-ui, sans-serif; font-weight: 600;
+}
+.hl-film.hl-st.st-toon #bg, .hl-film.hl-st.st-toon .grain, .hl-film.hl-st.st-toon .vignette, .hl-film.hl-st.st-toon .pulse, .hl-film.hl-st.st-toon .pull-flare, .hl-film.hl-st.st-toon .pull-spot, .hl-film.hl-st.st-toon .fan-glow, .hl-film.hl-st.st-toon .xt-slats, .hl-film.hl-st.st-toon .xt-ring, .hl-film.hl-st.st-toon .tf-lines, .hl-film.hl-st.st-toon .pcf-foil, .hl-film.hl-st.st-toon .shine, .hl-film.hl-st.st-toon .p-shade { display: none; }
+.hl-film.hl-st.st-toon .flash { background: #ffffff; }
+/* Bouncy entrances everywhere */
+.hl-film.hl-st.st-toon .scene.on :is(.chip3, .fbadge, .role, .nic) { animation-timing-function: cubic-bezier(.3, 1.8, .5, 1) !important; }
+@keyframes hl-tn-wob { 0%, 100% { rotate: -1.5deg; } 50% { rotate: 1.5deg; } }
+@keyframes hl-tn-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+/* The sunburst and the clouds */
+.hl-film .tn-burst { position: absolute; left: 50%; top: 50%; width: 260vmax; height: 260vmax; margin: -130vmax 0 0 -130vmax; background: repeating-conic-gradient(from 0deg, var(--th) 0deg 9deg, var(--tn-t2) 9deg 18deg); animation: hl-tn-spin 60s linear infinite; }
+.hl-film.hl-st.st-toon:not([data-part="pull"]) .tn-burst { opacity: 0.55; }
+.hl-film.hl-st.st-toon .deco-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 55%, color-mix(in srgb, var(--th) 20%, #ffffff), transparent 70%); opacity: 0.55; }
+@keyframes hl-tn-spin { to { transform: rotate(360deg); } }
+.hl-film .tn-clouds { position: absolute; inset: 0; }
+.hl-film .tn-cloud { position: absolute; width: clamp(110px, 17vw, 240px); height: auto; overflow: visible; }
+.hl-film .tn-cloud path { fill: #ffffff; stroke: #1b1b1b; stroke-width: 5; stroke-linejoin: round; }
+.hl-film .tn-cloud.c1 { left: 5%; top: calc(var(--bar) + 4vh); animation: hl-tn-drift 9s ease-in-out infinite alternate; }
+.hl-film .tn-cloud.c2 { right: 6%; top: calc(var(--bar) + 16vh); width: clamp(80px, 12vw, 170px); animation: hl-tn-drift 7s ease-in-out infinite alternate-reverse; }
+@keyframes hl-tn-drift { to { translate: 40px 6px; } }
+.hl-film.hl-st.st-toon .bar { background: var(--tn-ink); }
+.hl-film.hl-st.st-toon .squeeze { background: var(--tn-ink); }
+
+/* Words */
+.hl-film.hl-st.st-toon :is(.hud-top, .go-hint) { color: #ffffff; font-family: "Fredoka", sans-serif; font-weight: 700; letter-spacing: 0.06em; font-size: 0.8rem; }
+.hl-film.hl-st.st-toon .chapter b { color: var(--tn-t2); }
+.hl-film.hl-st.st-toon .rec i { background: #ff4757; box-shadow: none; }
+.hl-film.hl-st.st-toon .lvl-chip { background: var(--lc); color: var(--tn-ink); border: 2px solid #ffffff; font-family: "Fredoka", sans-serif; font-weight: 700; }
+.hl-film.hl-st.st-toon .kicker { justify-self: start; width: max-content; padding: 3px 14px; border-radius: 999px; background: #ffe14d; color: var(--tn-ink); border: 3px solid var(--tn-ink); box-shadow: var(--tn-sh); font-family: "Fredoka", sans-serif; font-weight: 700; font-size: clamp(0.78rem, 1.2vw, 0.95rem); letter-spacing: 0.04em; text-transform: none; rotate: -3deg; }
+.hl-film.hl-st.st-toon :is(.p-name, .svc-title, .fb-title, .ec-name, .rt-big, .fc-title, .rl-title, .sc-t, .rm-big, .odo, .trust-txt b) { color: #ffffff; font-weight: 400; letter-spacing: 0.02em; -webkit-text-stroke: 3px var(--tn-ink); paint-order: stroke fill; text-shadow: 4px 5px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .p-name { font-size: clamp(2rem, 5.6vw, 4.6rem); }
+.hl-film.hl-st.st-toon .p-name .w > span { animation-timing-function: cubic-bezier(.3, 1.8, .5, 1) !important; }
+.hl-film.hl-st.st-toon .fb-title em { color: #ffe14d; }
+.hl-film.hl-st.st-toon .bio { position: relative; font-family: "Fredoka", sans-serif; font-weight: 600; font-size: clamp(1.05rem, 1.9vw, 1.55rem); line-height: 1.25; color: var(--tn-ink); background: var(--tn-paper); border: 3px solid var(--tn-ink); border-radius: 22px; padding: 12px 18px; box-shadow: var(--tn-sh2); text-shadow: none; max-width: 44ch; }
+.hl-film.hl-st.st-toon .bio::before { content: ""; position: absolute; left: 34px; top: -17px; width: 26px; height: 18px; background: var(--tn-paper); border: 3px solid var(--tn-ink); border-bottom: 0; clip-path: polygon(0 100%, 30% 0, 100% 100%); }
+.hl-film.hl-st.st-toon .bio .kw { background-image: linear-gradient(#ffe14d, #ffe14d); background-position: 0 85%; color: var(--tn-ink); }
+.hl-film.hl-st.st-toon .scene.on .bio .kw { animation-name: hl-wd, hl-tn-kw; }
+@keyframes hl-tn-kw { from { background-size: 0% 0.45em; } to { background-size: 100% 0.45em; } }
+.hl-film.hl-st.st-toon :is(.p-handle, .plinks, .svc-sub, .rate-sub, .fb-note, .odo-block > span, .rm-note, .rm-sub, .made, .st-label, .st-all span, .score-of, .pull-hint, .intro-sub, .xt-sub) { color: #ffffff; text-shadow: 2px 2px 0 var(--tn-ink); font-weight: 700; }
+.hl-film.hl-st.st-toon :is(.chip3, .fbadge, .role) { background: var(--tn-paper); color: var(--tn-ink); border: 3px solid var(--tn-ink); box-shadow: var(--tn-sh); font-weight: 700; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-toon .chip3:nth-child(3n + 1) { background: #ffe14d; }
+.hl-film.hl-st.st-toon .chip3:nth-child(3n + 2) { background: var(--tn-t1); }
+.hl-film.hl-st.st-toon .role .ri { border: 2px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .role.lit { background: color-mix(in srgb, var(--rc) 40%, #ffffff); transform: translateY(-4px) rotate(-3deg); box-shadow: var(--tn-sh2); }
+.hl-film.hl-st.st-toon .avail, .hl-film.hl-st.st-toon .vb { background: #7cf29a; color: var(--tn-ink); border: 2px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .nic { color: #ffe14d; filter: drop-shadow(2px 2px 0 var(--tn-ink)); }
+.hl-film.hl-st.st-toon :is(.p-ava, .intro-ava, .ec-ava, .pcf-ava) { background: #ffe14d; padding: 5px; border: 4px solid var(--tn-ink); box-shadow: var(--tn-sh2); }
+.hl-film.hl-st.st-toon :is(.p-ava, .intro-ava, .ec-ava, .pcf-ava) img { border: 3px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .scene.on .p-ava { animation-timing-function: cubic-bezier(.3, 1.9, .5, 1) !important; }
+.hl-film.hl-st.st-toon .p-cover { inset: auto; right: 5vw; top: calc(var(--bar) + 3vh); width: min(40vw, 500px); height: min(32vh, 300px); border: 5px solid var(--tn-ink); border-radius: 26px; box-shadow: var(--tn-sh2); rotate: 3deg; }
+@media (max-width: 640px) { .hl-film.hl-st.st-toon .p-cover { left: 8vw; right: 8vw; width: auto; height: 20vh; } }
+/* Services */
+.hl-film.hl-st.st-toon .scard { background: var(--tn-paper); color: var(--tn-ink); border: 4px solid var(--tn-ink); border-radius: 22px; box-shadow: var(--tn-sh2); }
+.hl-film.hl-st.st-toon .scard .simg { margin: 8px 8px 0; border: 3px solid var(--tn-ink); border-radius: 14px; }
+.hl-film.hl-st.st-toon .scard .simg::after { height: 0; }
+.hl-film.hl-st.st-toon .scard.lift { border-color: var(--tn-ink); box-shadow: 9px 10px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .srole { color: var(--tn-ink); font-family: "Fredoka", sans-serif; font-size: 0.74rem; letter-spacing: 0.04em; }
+.hl-film.hl-st.st-toon .srole .ri { border: 2px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .scard .sprice { font-family: "Luckiest Guy", sans-serif; font-weight: 400; color: var(--th); -webkit-text-stroke: 1.5px var(--tn-ink); paint-order: stroke fill; }
+.hl-film.hl-st.st-toon .scard .sprice small, .hl-film.hl-st.st-toon .scard .srate span { color: rgba(27, 27, 27, 0.7); -webkit-text-stroke: 0; }
+.hl-film.hl-st.st-toon .scard .srate { color: #e8a400; }
+.hl-film.hl-st.st-toon :is(.s-view, .t-view, .sc-view, .rl-view, .pe-all, .nextbtn, .pbtn, .cbtn, .vw-nav, .vw-close, .vw-play) { border: 3px solid var(--tn-ink); background: var(--tn-paper); color: var(--tn-ink); box-shadow: var(--tn-sh); font-family: "Fredoka", sans-serif; font-weight: 700; animation: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-toon :is(.nextbtn, .pbtn:not(.ghost), .pe-all) { background: #ffe14d; }
+.hl-film.hl-st.st-toon :is(.s-view, .t-view, .sc-view, .rl-view, .pe-all, .nextbtn, .pbtn, .cbtn, .vw-nav, .vw-close, .vw-play):is(:hover, :focus-visible) { background: var(--th); color: var(--th-on); }
+.hl-film.hl-st.st-toon.ready .nextbtn { animation: hl-tn-bob 0.9s ease-in-out infinite; }
+/* Projects */
+.hl-film.hl-st.st-toon .tile { border: 4px solid var(--tn-ink); border-radius: 18px; box-shadow: var(--tn-sh2); background: var(--tn-paper); }
+.hl-film.hl-st.st-toon .tile .tcap { background: linear-gradient(180deg, transparent, rgba(27, 27, 27, 0.85)); font-weight: 700; }
+.hl-film.hl-st.st-toon .tile.hov, .hl-film.hl-st.st-toon .tile:focus-visible { outline: 0; border-color: var(--tn-ink); box-shadow: 9px 10px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .tile.more { background: #ffe14d; border: 4px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .tile.more b { color: #ffffff; -webkit-text-stroke: 2px var(--tn-ink); paint-order: stroke fill; }
+.hl-film.hl-st.st-toon .tile.more small { color: var(--tn-ink); }
+.hl-film.hl-st.st-toon .vtag, .hl-film.hl-st.st-toon .tile .fstar, .hl-film.hl-st.st-toon .fc-video, .hl-film.hl-st.st-toon .rl-meta { background: var(--tn-paper); color: var(--tn-ink); border: 2px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .proj-shade { background: none; }
+.hl-film.hl-st.st-toon .proj-hud { background: var(--tn-paper); border: 4px solid var(--tn-ink); border-radius: 22px; box-shadow: var(--tn-sh2); padding: 14px 18px; }
+.hl-film.hl-st.st-toon .proj-hud .odo { color: var(--th); }
+.hl-film.hl-st.st-toon .odo-block > span { color: var(--tn-ink); text-shadow: none; }
+.hl-film.hl-st.st-toon .fc-cat, .hl-film.hl-st.st-toon .rl-count { color: #ffffff; text-shadow: 2px 2px 0 var(--tn-ink); font-weight: 700; }
+.hl-film.hl-st.st-toon .proj-explore { background: var(--tn-paper); border: 3px solid var(--tn-ink); box-shadow: var(--tn-sh); color: var(--tn-ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-toon .proj-explore .pe-hint { color: rgba(27, 27, 27, 0.7); }
+.hl-film.hl-st.st-toon .showcase { gap: 14px; padding: 14px; }
+.hl-film.hl-st.st-toon .sc-p { border: 5px solid var(--tn-ink); border-radius: 26px; box-shadow: var(--tn-sh2); }
+.hl-film.hl-st.st-toon .sc-p::after { background: linear-gradient(180deg, transparent 45%, rgba(27, 27, 27, 0.8)); }
+.hl-film.hl-st.st-toon .showcase.n2 .sc-p + .sc-p { box-shadow: var(--tn-sh2); }
+/* Video reel: a cartoon TV */
+.hl-film.hl-st.st-toon .reel-stage { inset: calc(var(--bar) + 2vh) 4vw; border: 6px solid var(--tn-ink); border-radius: 34px; overflow: hidden; box-shadow: 8px 8px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .reel-title, .hl-film.hl-st.st-toon .reel-more { background: transparent; }
+.hl-film.hl-st.st-toon .rm-shade { background: radial-gradient(circle, transparent 30%, rgba(27, 27, 27, 0.75)); }
+.hl-film.hl-st.st-toon .rm-wall span { border: 3px solid var(--tn-ink); border-radius: 12px; }
+/* Ratings */
+.hl-film.hl-st.st-toon .stars5 svg { filter: drop-shadow(4px 4px 0 var(--tn-ink)); }
+.hl-film.hl-st.st-toon .sline { stroke: var(--tn-ink); stroke-width: 1.4; }
+.hl-film.hl-st.st-toon .stars5 svg { animation: hl-tn-bob 1.2s ease-in-out infinite; }
+.hl-film.hl-st.st-toon .stars5 svg:nth-child(even) { animation-delay: 0.3s; }
+.hl-film.hl-st.st-toon .score-num { background: none; color: #ffe14d; -webkit-text-fill-color: #ffe14d; -webkit-text-stroke: 5px var(--tn-ink); paint-order: stroke fill; text-shadow: 8px 9px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .score-of { color: #ffffff; text-shadow: 3px 3px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .rate-row { background: var(--tn-paper); border: 4px solid var(--tn-ink); border-radius: 22px; box-shadow: var(--tn-sh2); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-toon .rate-row :is(.trust-txt span, .b5) { color: var(--tn-ink); text-shadow: none; }
+.hl-film.hl-st.st-toon .rate-row .trust-txt b { color: var(--th); }
+.hl-film.hl-st.st-toon .trust .tb { stroke: rgba(27, 27, 27, 0.15); }
+.hl-film.hl-st.st-toon .trust .tf { stroke: var(--th); }
+.hl-film.hl-st.st-toon .b5-t { background: rgba(27, 27, 27, 0.12); border: 2px solid var(--tn-ink); height: 10px; }
+.hl-film.hl-st.st-toon .b5-t i { background: #ffe14d; }
+/* Feedback */
+.hl-film.hl-st.st-toon .kw-layer span { color: rgba(255, 255, 255, 0.18); -webkit-text-stroke: 0; }
+.hl-film.hl-st.st-toon .chat { background: var(--tn-paper); border: 4px solid var(--tn-ink); border-radius: 26px; box-shadow: 8px 8px 0 var(--tn-ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-toon .chat-head { border-bottom: 3px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .chat-head b, .hl-film.hl-st.st-toon .chat-head small, .hl-film.hl-st.st-toon .meta { color: var(--tn-ink); text-shadow: none; }
+.hl-film.hl-st.st-toon .live { color: var(--tn-ink); }
+.hl-film.hl-st.st-toon .live i { background: #ff4757; box-shadow: none; }
+.hl-film.hl-st.st-toon .bubble { background: #ffffff; color: var(--tn-ink); border: 3px solid var(--tn-ink); border-radius: 20px 20px 20px 6px; box-shadow: var(--tn-sh); }
+.hl-film.hl-st.st-toon .msg:nth-child(even) .bubble { background: #fff6b8; }
+.hl-film.hl-st.st-toon .ava-stack i, .hl-film.hl-st.st-toon .msg .av { border: 3px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .scene.on .msg.show .bubble { animation-timing-function: cubic-bezier(.3, 1.9, .5, 1); }
+/* The ending */
+.hl-film.hl-st.st-toon .endcard { background: var(--tn-paper); color: var(--tn-ink); border: 5px solid var(--tn-ink); border-radius: 30px; box-shadow: 10px 10px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .endcard::before { display: none; }
+.hl-film.hl-st.st-toon .ec-banner { opacity: 1; -webkit-mask-image: none; mask-image: none; height: 36%; border-bottom: 4px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .ec-name { color: var(--th); -webkit-text-stroke: 2px var(--tn-ink); }
+.hl-film.hl-st.st-toon .ec-title { color: rgba(27, 27, 27, 0.75); }
+.hl-film.hl-st.st-toon .ec-stat { background: #ffe14d; border: 3px solid var(--tn-ink); border-radius: 16px; box-shadow: var(--tn-sh); }
+.hl-film.hl-st.st-toon .ec-stat b { color: var(--tn-ink); font-family: "Luckiest Guy", sans-serif; font-weight: 400; }
+.hl-film.hl-st.st-toon .ec-stat span { color: var(--tn-ink); }
+.hl-film.hl-st.st-toon .replay2 { color: #ffffff; text-shadow: 2px 2px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon :is(.st-num, .st-all b) { background: none; color: #ffe14d; -webkit-text-fill-color: #ffe14d; -webkit-text-stroke: 5px var(--tn-ink); paint-order: stroke fill; text-shadow: 8px 9px 0 var(--tn-ink); font-family: "Luckiest Guy", sans-serif; font-weight: 400; }
+
+/* ---------- The card draw ---------- */
+.hl-film.hl-st.st-toon .pull-dark { background: radial-gradient(ellipse 30% 36% at 50% 52%, rgba(27, 27, 27, 0) 35%, rgba(27, 27, 27, 0.9) 100%); }
+.hl-film.hl-st.st-toon .env-tint { background: radial-gradient(ellipse 50% 46% at 50% 52%, rgba(var(--glow), 0.45), transparent 72%); }
+.hl-film.hl-st.st-toon .env-room { background: repeating-conic-gradient(from 0deg at 50% 54%, rgba(var(--room), 0.9) 0deg 9deg, rgba(255, 255, 255, 0.5) 9deg 18deg); }
+.hl-film.hl-st.st-toon .pull-rays { background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.55) 0deg 6deg, transparent 6deg 14deg); -webkit-mask-image: radial-gradient(circle, #000000 0%, #000000 25%, transparent 40%); mask-image: radial-gradient(circle, #000000 0%, #000000 25%, transparent 40%); }
+.hl-film.hl-st.st-toon .pull-pillars i { filter: none; background: linear-gradient(0deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.1)); clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%); }
+.hl-film.hl-st.st-toon .pull-floor { background: none; }
+.hl-film.hl-st.st-toon .pull-floor i { border: 4px solid var(--tn-ink); background: rgba(255, 255, 255, 0.4); box-shadow: none; }
+.hl-film.hl-st.st-toon .pc-aura { filter: none; border-radius: 50%; inset: -36% -42%; background: repeating-conic-gradient(rgba(var(--glow), 0.95) 0deg 12deg, rgba(255, 255, 255, 0.85) 12deg 24deg); -webkit-mask-image: radial-gradient(closest-side, #000000 62%, transparent 64%); mask-image: radial-gradient(closest-side, #000000 62%, transparent 64%); }
+.hl-film.hl-st.st-toon .pc-face { border-radius: 9%; }
+.hl-film.hl-st.st-toon .pc-back { background: radial-gradient(circle, rgba(var(--glow), 0.55) 18%, transparent 20%) 0 0 / 1.4em 1.4em, #ffffff; box-shadow: inset 0 0 0 5px var(--tn-ink), inset 0 0 0 11px rgb(var(--glow)), inset 0 0 0 15px var(--tn-ink); }
+.hl-film.hl-st.st-toon .pc-back::before, .hl-film.hl-st.st-toon .pc-back::after { display: none; }
+.hl-film.hl-st.st-toon .pc-back img { filter: drop-shadow(3px 3px 0 var(--tn-ink)); }
+.hl-film.hl-st.st-toon .pc-back span { font-family: "Luckiest Guy", sans-serif; font-size: 0.75em; letter-spacing: 0.08em; color: #ffffff; -webkit-text-stroke: 1.5px var(--tn-ink); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .pc-front { padding: 0.25em; background: linear-gradient(135deg, var(--f1), var(--f2) 40%, var(--f4)); box-shadow: 0 0 0 5px var(--tn-ink), 10px 12px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .pcf { background: var(--tn-paper); border-radius: 7%; border: 3px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .pcf-art { margin: 0.35em; border-radius: 0.6em; border: 3px solid var(--tn-ink); height: 44%; }
+.hl-film.hl-st.st-toon .pcf-art::before, .hl-film.hl-st.st-toon .pcf-art::after { display: none; }
+.hl-film.hl-st.st-toon .pcf-score { background: #ffe14d; border: 3px solid var(--tn-ink); border-radius: 50%; width: 2.6em; height: 2.6em; place-content: center; box-shadow: 2px 2px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .pcf-score b { background: none; color: var(--tn-ink); -webkit-text-fill-color: var(--tn-ink); filter: none; font-family: "Luckiest Guy", sans-serif; font-weight: 400; font-size: 1.3em; }
+.hl-film.hl-st.st-toon .pcf-score span { display: none; }
+.hl-film.hl-st.st-toon .pcf-rar { background: var(--tn-paper); color: var(--tn-ink); border: 2px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .pcf-name { color: var(--tn-ink); font-weight: 400; letter-spacing: 0.03em; }
+.hl-film.hl-st.st-toon .pcf-title, .hl-film.hl-st.st-toon .pcf-stats span, .hl-film.hl-st.st-toon .pcf-badges { color: rgba(27, 27, 27, 0.75); }
+.hl-film.hl-st.st-toon .pcf-stats { border-top: 3px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .pcf-stats div + div { border-left: 3px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .pcf-stats b { color: var(--f3); font-family: "Luckiest Guy", sans-serif; font-weight: 400; }
+.hl-film.hl-st.st-toon .pc-cracks path { stroke: var(--tn-ink); stroke-width: 3; filter: none; }
+.hl-film.hl-st.st-toon .pc-leak { mix-blend-mode: normal; background: radial-gradient(circle at 50% 46%, rgba(255, 255, 255, 0.9), rgba(var(--crkg, 251,191,36), 0.6) 35%, transparent 70%); }
+.hl-film.hl-st.st-toon .pc-burst { background: radial-gradient(circle at 50% 45%, #ffffff 0 35%, rgba(var(--glow), 0.6) 45%, transparent 70%); }
+.hl-film.hl-st.st-toon .tap-ring { border: 5px solid var(--tn-ink); border-radius: 12%; }
+.hl-film.hl-st.st-toon .pull-word { font-weight: 400; background: none; color: #ffffff; -webkit-text-fill-color: var(--w1); -webkit-text-stroke: 4px var(--tn-ink); paint-order: stroke fill; letter-spacing: 0.06em; filter: drop-shadow(5px 6px 0 var(--tn-ink)); }
+.hl-film.hl-st.st-toon .pull-hint.top { background: var(--tn-paper); color: var(--tn-ink); border: 3px solid var(--tn-ink); box-shadow: var(--tn-sh); text-shadow: none; }
+.hl-film.hl-st.st-toon .tap-prompt { background: #ffffff; color: var(--tn-ink); border: 3px solid var(--tn-ink); box-shadow: var(--tn-sh); font-family: "Fredoka", sans-serif; font-weight: 700; letter-spacing: 0.06em; animation: hl-tn-bob 0.9s ease-in-out infinite; }
+.hl-film.hl-st.st-toon .tp-hand { color: var(--tn-ink); }
+.hl-film.hl-st.st-toon .pm-big { position: relative; padding: 0.3em 0.8em; background: #ffffff; border: 4px solid var(--tn-ink); border-radius: 26px; box-shadow: 6px 6px 0 var(--tn-ink); filter: none; font-family: "Luckiest Guy", sans-serif; font-weight: 400; }
+.hl-film.hl-st.st-toon .pm-big .ch { background: none; color: var(--tn-ink); -webkit-text-fill-color: var(--tn-ink); }
+.hl-film.hl-st.st-toon .pull-msg.on .pm-big .ch { animation-timing-function: cubic-bezier(.3, 1.9, .5, 1); }
+.hl-film.hl-st.st-toon .pm-sub { color: #ffffff; text-shadow: 2px 2px 0 var(--tn-ink); font-weight: 700; }
+.hl-film.hl-st.st-toon .tf-word { font-family: "Luckiest Guy", sans-serif; font-weight: 400; color: #ffe14d; -webkit-text-stroke: 3px var(--tn-ink); paint-order: stroke fill; text-shadow: 4px 4px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .tf-burst { background: #ffffff; filter: drop-shadow(0 0 0 var(--tn-ink)) drop-shadow(3px 3px 0 var(--tn-ink)); }
+.hl-film.hl-st.st-toon .tf-ring { border: 0.1em solid var(--tn-ink); }
+/* Pops: cartoon words and puffs of smoke */
+.hl-film .tn-word > b { font-family: "Luckiest Guy", sans-serif; font-weight: 400; font-size: clamp(30px, 5vw, 56px); color: #ffe14d; -webkit-text-stroke: 4px #1b1b1b; paint-order: stroke fill; text-shadow: 5px 5px 0 #1b1b1b; rotate: var(--rot, -8deg); animation: hl-tn-pop 0.9s cubic-bezier(.3, 1.9, .5, 1) both; }
+.hl-film .tn-word.big > b { font-size: clamp(40px, 8vw, 90px); }
+@keyframes hl-tn-pop { 0% { transform: translate(-50%, -50%) scale(0); } 60% { transform: translate(-50%, -50%) scale(1); } 85% { opacity: 1; } 100% { transform: translate(-50%, -60%) scale(1); opacity: 0; } }
+.hl-film .tn-puff i { width: 90px; height: 90px; border-radius: 50%; background: #ffffff; border: 4px solid #1b1b1b; animation: hl-tn-puff 1.2s ease-out both; }
+.hl-film .tn-puff.big i { width: 140px; height: 140px; }
+.hl-film .tn-puff i:nth-child(1) { --dx: -150px; --dy: -60px; }
+.hl-film .tn-puff i:nth-child(2) { --dx: 160px; --dy: -40px; }
+.hl-film .tn-puff i:nth-child(3) { --dx: -110px; --dy: 110px; }
+.hl-film .tn-puff i:nth-child(4) { --dx: 120px; --dy: 120px; }
+.hl-film .tn-puff i:nth-child(5) { --dx: 0px; --dy: -150px; }
+.hl-film .tn-puff i:nth-child(6) { --dx: 10px; --dy: 160px; }
+@keyframes hl-tn-puff { from { transform: translate(-50%, -50%) scale(0.2); opacity: 1; } 70% { opacity: 1; } to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.3); opacity: 0; } }
+
+/* ---------- The change between parts: a star iris or a bouncing title card ---------- */
+.hl-film.hl-st.st-toon .xt-bg { opacity: 1 !important; background: repeating-conic-gradient(from 0deg at 50% 50%, var(--th) 0deg 9deg, var(--tn-t2) 9deg 18deg); }
+.hl-film.hl-st.st-toon .xt.bounce .xt-bg { border-bottom: 8px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .xt-num { padding: 4px 16px; border-radius: 999px; background: #ffe14d; color: var(--tn-ink); border: 3px solid var(--tn-ink); box-shadow: var(--tn-sh); font-family: "Fredoka", sans-serif; font-weight: 700; letter-spacing: 0.12em; }
+.hl-film.hl-st.st-toon .xt-title { font-weight: 400; letter-spacing: 0.03em; }
+.hl-film.hl-st.st-toon .xt-title span { background: none; color: #ffffff; -webkit-text-fill-color: #ffffff; -webkit-text-stroke: 5px var(--tn-ink); paint-order: stroke fill; text-shadow: 8px 9px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .xt-line { height: 6px; border-radius: 99px; background: #ffe14d; box-shadow: 0 0 0 3px var(--tn-ink); }
+
+/* The project viewer */
+.hl-film.hl-st.st-toon .vw-back { background: rgba(27, 27, 27, 0.7); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film.hl-st.st-toon .vw-box { background: var(--tn-paper); color: var(--tn-ink); border: 5px solid var(--tn-ink); border-radius: 30px; box-shadow: 10px 10px 0 var(--tn-ink); }
+.hl-film.hl-st.st-toon .vw-media { background: var(--th); }
+.hl-film.hl-st.st-toon .vw-info { border-left: 4px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon :is(.vw-desc, .vw-protect) { color: rgba(27, 27, 27, 0.75); }
+.hl-film.hl-st.st-toon .vw-count { color: var(--th); }
+.hl-film.hl-st.st-toon .vw-title { font-weight: 400; letter-spacing: 0.02em; }
+.hl-film.hl-st.st-toon .vw-chip { background: #ffe14d; color: var(--tn-ink); border: 2px solid var(--tn-ink); }
+.hl-film.hl-st.st-toon .avail, .hl-film.hl-st.st-toon .vb { text-shadow: none; }
+
+/* Documents (the site's portfolio has them; PLAN-highlight-styles.md, Step 2). A PDF or Word file shows its first
+   page inside the thick cartoon frame. Typed writing is a notebook page: spiral holes, ruled lines, a big title. */
+.hl-film.hl-st.st-toon .tdoc { gap: 6px; padding: 14px 12px 12px 34px; color: var(--tn-ink); background: radial-gradient(circle at 15px 13px, var(--th) 0 3.5px, var(--tn-ink) 3.5px 5.5px, transparent 6px) 0 0 / 30px 26px repeat-y, linear-gradient(90deg, transparent 27px, var(--tn-ink) 27px 29px, transparent 29px), var(--tn-paper); }
+.hl-film.hl-st.st-toon .tdoc b { font-family: "Luckiest Guy", "Fredoka", sans-serif; font-weight: 400; font-size: 1.1rem; line-height: 1.05; letter-spacing: 0.02em; color: var(--th); -webkit-text-stroke: 2px var(--tn-ink); paint-order: stroke fill; }
+.hl-film.hl-st.st-toon .tdoc span { font-family: "Fredoka", sans-serif; font-weight: 600; font-size: 0.82rem; line-height: 21px; color: var(--tn-ink); background: repeating-linear-gradient(180deg, transparent 0 20px, rgba(27, 27, 27, 0.22) 20px 21px); }
+/* In the two-panel showcase: the page with a thick outline on a light orange panel */
+.hl-film.hl-st.st-toon .sc-p.doc { background: color-mix(in srgb, var(--th) 62%, #ffffff); }
+.hl-film.hl-st.st-toon .sc-p.doc > img, .hl-film.hl-st.st-toon .sc-p.doc > .tdoc { border: 4px solid var(--tn-ink); border-radius: 14px; box-shadow: var(--tn-sh2); }
+@media (min-width: 701px) { .hl-film.hl-st.st-toon .sc-p.doc > img, .hl-film.hl-st.st-toon .sc-p.doc > .tdoc { top: 34%; height: 31%; } }   /* (the big titles take more room) */

@@ -11,7 +11,13 @@
 // How it works: a list of parts ("scenes"), each with an entrance and a "ready" time; frame() draws about 60
 // times a second; the viewer moves on with a tap, Next, the arrow keys or a swipe (nothing runs on a timer). The
 // opening is a card draw whose color depends on the freelancer's level; the music is made live with Web Audio.
+//
+// Highlight styles (PLAN-highlight-styles.md): opts.style is a Premium style (components/highlights/styles/),
+// loaded by HighlightsPlayer, or nothing for the Director's Cut. A style is a set of hooks (ST) that this file
+// calls: its frame rate, backgrounds, effects, changes between parts, sounds and music. Without hooks everything
+// here plays exactly as the Director's Cut.
 import { FILM_MARKUP } from "./highlightsMarkup";
+import { makeStyle } from "./styles/kit";
 
 export function startHighlights(host, U, opts = {}) {
   // The player's own box: built fresh each time and removed by stop(), so nothing it added stays behind.
@@ -82,6 +88,7 @@ export function startHighlights(host, U, opts = {}) {
       style: "the LEGENDARY gold draw: about 10 seconds of build-up (a fake-out, cracks of gold light, camera cuts, a frozen moment), then the room turns gold and the message \"You found a better person.\" comes in under the card; then festival-level music (supersaws, brass hits, sub bass) and everything gold" }
   };
   let TIER = TIERS.beginner;   // the style of the level now playing (set in start())
+  const THEME = "#f97316";     // every highlight style uses PhilFreela orange (no color choice, the user's rule)
   function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
   // ---------- Elements ----------
@@ -240,6 +247,8 @@ export function startHighlights(host, U, opts = {}) {
     // A snare roll that speeds up (4 hits a second up to 24), timed ahead
     roll(dur, v) { if (!A.ctx) return; const t0 = now(); for (let t = t0; t < t0 + dur;) { const p = (t - t0) / dur; snare(t, v * (0.3 + 0.7 * p), A.sfx); t += 1 / (4 + 20 * p * p); } }
   };
+  const SFX0 = Object.assign({}, SFX);   // the Director's Cut sounds; a style swaps in its own (applyLook)
+  let ST = {};                            // the hooks of the style now playing (none for the Director's Cut)
   // While the card waits: a dark drone on the hype levels (a soft pad on the others) that opens up with every
   // tap, and a heartbeat that gets faster. The build and the drop are timed by the card draw itself.
   function droneStart(vol) {
@@ -267,6 +276,7 @@ export function startHighlights(host, U, opts = {}) {
   const beatOn = (s) => !!s && (BEAT_SCENES.has(s.id) || (s.id === "pull" && local >= DS.drop));
   function schedule() {
     if (!A.ctx || A.ctx.state !== "running" || !playing) return;
+    if (ST.music) { ST.music.schedule(); return; }   // a style plays its own music (styles/kit.js)
     const s = SC[idx];
     if (s && s.id === "pull" && !beatOn(s)) {
       // Waiting for taps (hype levels): a heartbeat after the first tap, faster after the second
@@ -439,6 +449,7 @@ export function startHighlights(host, U, opts = {}) {
     cards = U.services.map((s) => {
       const c = el("div", "scard", '<div class="simg"></div><div class="sbody"><span class="srole"><span class="ri"></span><span></span></span><span class="stitle"></span><div class="srow"><span class="sprice"></span><span class="srate"></span></div></div>');
       const cat = catOf(s.cat), simg = c.querySelector(".simg"); c.style.setProperty("--rc", cat.color);
+      if (s.doc) c.classList.add("doc");   // its cover is a document's first page (Retro keeps it readable)
       if (s.video) { const v = makeVideo({ video: s.video + "#t=0.5" }, ""); v.preload = "metadata"; simg.appendChild(v); }
       else if (s.img) simg.appendChild(picture(s.img));
       else simg.appendChild(el("div", "snone", '<i class="bi ' + cat.icon + '"></i>'));
@@ -475,7 +486,7 @@ export function startHighlights(host, U, opts = {}) {
     const shownP = projLayout === "showcase" ? [] : pc > MAX_TILES ? U.portfolio.slice(0, MAX_TILES - 1) : U.portfolio;
     tiles = shownP.map((p, k) => {
       const tag = p.video ? vtag("Video") : p.doc ? '<span class="vtag"><i class="bi bi-file-earmark-text-fill"></i>Document</span>' : "";
-      const t = el("div", "tile", (p.mark ? '<span class="mk"></span>' : "") + tag + '<span class="tcap"></span>');
+      const t = el("div", "tile" + (p.doc ? " doc" : ""), (p.mark ? '<span class="mk"></span>' : "") + tag + '<span class="tcap"></span>');   // .doc: each style dresses documents its own way
       if (p.video) {
         const v = makeVideo(p, ""); t.insertBefore(v, t.firstChild);
         v.addEventListener("loadedmetadata", () => { const vt = t.querySelector(".vtag"); if (vt && isFinite(v.duration)) vt.lastChild.textContent = fmtDur(v.duration); });
@@ -488,7 +499,7 @@ export function startHighlights(host, U, opts = {}) {
     if (pc > MAX_TILES) { const m = el("div", "tile more", "<div><b>+" + (pc - MAX_TILES + 1) + "</b><small>more projects</small></div>"); makeOpenable(m, MAX_TILES - 1, "View the other " + (pc - MAX_TILES + 1) + " projects"); wall.appendChild(m); tiles.push(m); }
     const sc = $("showcase"); sc.innerHTML = ""; sc.className = "showcase n" + Math.min(pc, 2);
     showPanels = projLayout !== "showcase" ? [] : U.portfolio.map((p, k) => {
-      const f = el("figure", "sc-p", (p.mark ? '<span class="mk"></span>' : "") + (p.video ? vtag("Video") : "") + '<figcaption><span class="fc-cat"></span><span class="sc-t"></span></figcaption>');
+      const f = el("figure", "sc-p" + (p.doc ? " doc" : ""), (p.mark ? '<span class="mk"></span>' : "") + (p.video ? vtag("Video") : "") + '<figcaption><span class="fc-cat"></span><span class="sc-t"></span></figcaption>');
       f.insertBefore(p.video ? makeVideo(p, "") : p.img ? picture(p.img) : writingTile(p), f.firstChild);
       if (p.mark) f.querySelector(".mk").textContent = "@" + U.handle;
       f.querySelector(".fc-cat").textContent = catOf(p.cat).label; f.querySelector(".sc-t").textContent = p.title;
@@ -497,6 +508,7 @@ export function startHighlights(host, U, opts = {}) {
     });
     $("wallCam").hidden = projLayout === "showcase"; sc.hidden = projLayout !== "showcase"; $("focusCap").hidden = projLayout === "showcase";
     sceneEl("projects").classList.toggle("is-showcase", projLayout === "showcase");
+    sceneEl("projects").classList.toggle("has-doc", projLayout === "showcase" && U.portfolio.some((p) => p.doc));   // (a page as a card: highlights.css)
     if (pc) {
       const fp = U.portfolio[focusIdx]; $("fcCat").textContent = catOf(fp.cat).label; $("fcTitle").textContent = fp.title;
       $("fcVideo").hidden = !fp.video; $("fcVideo").innerHTML = ICON.tri + "Video";
@@ -662,13 +674,14 @@ export function startHighlights(host, U, opts = {}) {
   function burst(x, y, n, colors) {
     if (!TIER.confetti) return;
     const cols = colors || (TIER.gold ? ["#fbbf24", "#fde68a", "#fff7d6", "#f59e0b"] : ["#fbbf24", "#f97316", "#fde68a", "#ffffff"]);
-    for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3, v = 380 + Math.random() * 760; conf.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: Math.random() * 6.28, vr: (Math.random() - 0.5) * 14, w: 5 + Math.random() * 7, h: 3 + Math.random() * 4, c: cols[i % 4], life: 0 }); }
+    for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3, v = 380 + Math.random() * 760; conf.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: Math.random() * 6.28, vr: (Math.random() - 0.5) * 14, w: 5 + Math.random() * 7, h: 3 + Math.random() * 4, c: cols[i % 4], life: 0, k: Math.floor(Math.random() * 4) }); }   // k: a style's shape for this piece
   }
   function drawConfetti(dt) {
     if (!conf.length) return;
     conf = conf.filter((p) => p.y < H + 40 && p.life < 4.5);
     for (const p of conf) {
       if (playing) { p.vy += 1300 * dt; p.vx *= 1 - 0.9 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt; p.life += dt; }
+      if (ST.confetti) { ST.confetti(fxX, p); continue; }   // a style draws its own pieces (paper bits, pixels, stars...)
       fxX.save(); fxX.translate(p.x, p.y); fxX.rotate(p.r); fxX.fillStyle = p.c; fxX.globalAlpha = clamp(1.2 - p.life / 4);
       fxX.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 1.7))); fxX.restore();
     }
@@ -682,6 +695,7 @@ export function startHighlights(host, U, opts = {}) {
   function drawLines() {
     if (!lines) return; const q = (clock - lines.t0) / 0.5; if (q >= 1) { lines = null; return; }
     const cx = W / 2, cy = H / 2, R = Math.hypot(W, H) / 2, rnd = mulberry(lines.seed);
+    if (ST.lines) { ST.lines(fxX, q, rnd, cx, cy, R, lines.s); return; }
     fxX.save(); fxX.globalCompositeOperation = "lighter"; fxX.strokeStyle = TIER.gold ? "rgb(253,224,140)" : "rgb(255,196,140)";
     for (let i = 0; i < 46; i++) {
       const a = rnd() * Math.PI * 2, r0 = R * (0.22 + rnd() * 0.3) + q * R * 0.5, len = R * (0.18 + rnd() * 0.35) * (1 - q);
@@ -789,14 +803,16 @@ export function startHighlights(host, U, opts = {}) {
     if (!embers.length) return;
     embers = embers.filter((p) => p.life < p.max);
     const g = pullGeom();
-    fxX.save(); fxX.globalCompositeOperation = "lighter";
+    fxX.save(); fxX.globalCompositeOperation = ST.ember ? "source-over" : "lighter";
     for (const p of embers) {
       if (playing && !fxFrozen) {   // in the freeze, every ember hangs in the air
         p.life += dt;
         if (!p.in) { p.vx *= 1 - p.drag * dt; p.vy = p.vy * (1 - p.drag * dt) + p.grav * dt; p.x += p.vx * dt + (p.ph != null ? Math.sin(p.life * 3 + p.ph) * 0.3 : 0); p.y += p.vy * dt; }
         if (p.shard) p.rot += p.vr * dt;
+        if (p.spin == null) p.spin = Math.random() * 6.28; p.spin += dt * 5;   // (a style's sparks turn)
       }
       if (p.life < 0) continue;
+      if (ST.ember) { ST.ember(fxX, p, clamp(p.life / p.max), g); continue; }   // a style draws its own sparks
       const k = clamp(p.life / p.max), rgb = p.c.join(",");
       if (p.in) {
         // A streak of light pulled into the card
@@ -838,6 +854,7 @@ export function startHighlights(host, U, opts = {}) {
     }
     rings.forEach(([at, c, v, len]) => {
       const qq = (t - at) / len; if (qq <= 0 || qq >= 1) return;
+      if (ST.ring) { ST.ring(fxX, g.cx, g.cy, g.w * 0.45 + eOut(qq) * R * 0.8 * v, c, (1 - qq) * 0.9 * v, 10 * (1 - qq) * v + 1, qq); return; }
       fxX.save(); fxX.globalCompositeOperation = "lighter"; fxX.globalAlpha = (1 - qq) * 0.9 * v; fxX.strokeStyle = "rgb(" + c.join(",") + ")"; fxX.lineWidth = 10 * (1 - qq) * v + 1;
       fxX.beginPath(); fxX.arc(g.cx, g.cy, g.w * 0.45 + eOut(qq) * R * 0.8 * v, 0, Math.PI * 2); fxX.stroke(); fxX.restore();
     });
@@ -894,7 +911,7 @@ export function startHighlights(host, U, opts = {}) {
         const b = $("drawTap"); b.hidden = false; b.setAttribute("aria-label", "Tap to open the card");
         $("tapFx").innerHTML = ""; this.el.classList.add("waiting");
         // The waiting music: a dark drone on the hype levels, a soft pad on the others
-        if (A.ctx) { padTo(null); droneStop(0.2); if (hype) droneStart(gold ? 0.07 : 0.055); else padTo("F", 0.016); }
+        if (A.ctx) { padTo(null); droneStop(0.2); if (ST.music) ST.music.waitStart(); else if (hype) droneStart(gold ? 0.07 : 0.055); else padTo("F", 0.016); }
       },
       // The third tap: everything after it is timed from now.
       open(T) {
@@ -912,6 +929,7 @@ export function startHighlights(host, U, opts = {}) {
           const goldCr = th.crackGlow === "gold", crEm = RARITY[goldCr ? "gold" : "purple"].ember;
           th.cracks.forEach((ck, i) => at(ck, () => {
             SFX.crack(goldCr ? 0.7 + i * 0.1 : 0.55 + i * 0.12); flash(goldCr ? 0.14 + i * 0.04 : 0.12); shake(goldCr ? 5 + i * 1.5 : 4 + i); spawnEmbers(goldCr ? 14 + i * 6 : 16, crEm, "burst");
+            if (ST.hit) { const g = pullGeom(); ST.hit("crack", g.cx + (i % 2 ? 1 : -1) * g.w * (0.35 + 0.1 * Math.random()), g.cy - g.h * (0.3 - 0.12 * i), i); }
             if (i === 0) {
               if (goldCr) { const left = th.freeze[0] - ck; SFX.roll(left, 0.085); SFX.sweep(left); SFX.shimmer(left); setPal(["#92400e", "#120c06", "#5c2a0a"]); }   // the second build
               else setPal(["#581c87", "#07050c", "#3b0764"]);
@@ -924,15 +942,16 @@ export function startHighlights(host, U, opts = {}) {
         this.cues.push([DS.reveal, () => {
           fxFrozen = false; droneStop(0.3);
           setPal(top.pal, hype);
-          padTo(gold ? "Cmaj" : hype ? "Am" : "F");
+          if (ST.music) ST.music.reveal(); else padTo(gold ? "Cmaj" : hype ? "Am" : "F");
+          if (ST.hit) ST.hit("reveal", W / 2, H * 0.5);
           const arp = (fs, v) => fs.forEach((f, i) => setTimeout(() => SFX.ping(f, v), 60 + i * 75));
           if (gold) {
             SFX.impact(1.4); SFX.whoosh(1.0, true); SFX.shimmer(2.6); arp([1046.5, 1318.5, 1568, 2093, 2637], 0.08);
-            if (A.ctx) { const n0 = now(); crash(n0, 0.12); brass(n0, [130.81, 196, 261.63, 329.63], 0.11); sub(n0, 55, 0.4, 1.2); }
+            if (A.ctx && !ST.music) { const n0 = now(); crash(n0, 0.12); brass(n0, [130.81, 196, 261.63, 329.63], 0.11); sub(n0, 55, 0.4, 1.2); }
             flash(1); shake(20); spawnEmbers(170, top.ember, "burst"); spawnEmbers(26, top.ember, "shard"); speedLines(1.5);
           } else if (hype) {
             SFX.impact(1.0); SFX.whoosh(0.8, true); SFX.shimmer(1.6); arp([880, 1046.5, 1318.5, 1760], 0.07);
-            if (A.ctx) { const n0 = now(); crash(n0, 0.1); stab(n0, [220, 261.63, 329.63], 0.05, 0.5); sub(n0, 55, 0.3, 0.9); }
+            if (A.ctx && !ST.music) { const n0 = now(); crash(n0, 0.1); stab(n0, [220, 261.63, 329.63], 0.05, 0.5); sub(n0, 55, 0.3, 0.9); }
             flash(0.8); shake(14); spawnEmbers(110, top.ember, "burst"); speedLines(1.3);
           } else if (TIER.key === "average") { SFX.ping(1318.5, 0.07); setTimeout(() => SFX.ping(1760, 0.06), 120); SFX.whoosh(0.7, true); SFX.shimmer(1.1); flash(0.5); spawnEmbers(40, top.ember, "burst"); }
           else { SFX.ping(1318.5, 0.05); setTimeout(() => SFX.ping(1568, 0.04), 140); SFX.whoosh(0.6, true); flash(0.3); spawnEmbers(16, top.ember, "burst"); }
@@ -940,12 +959,13 @@ export function startHighlights(host, U, opts = {}) {
         }],
         [DS.land, () => {
           SFX.impact(hype ? 0.7 : 0.2); flash(hype ? 0.3 : 0.15); shake(7); burst(W / 2, H * 0.5, gold ? 170 : hype ? 120 : 60, top.confetti);
+          if (ST.hit) ST.hit("land", W / 2, H * 0.5);
           if (A.ctx && !hype) beatFrom(now() + 0.02);
         }]);
         // Legendary: once the card has landed, the message comes in under it with a warm chord and bells.
         if (gold) this.cues.push([DS.land + 0.25, () => {
           $("pullMsg").classList.add("on"); SFX.shimmer(1.8);
-          if (A.ctx) brass(now(), [261.63, 329.63, 392, 523.25], 0.05);
+          if (ST.music) ST.music.legend(); else if (A.ctx) brass(now(), [261.63, 329.63, 392, 523.25], 0.05);
           [1318.5, 1568, 2093, 2637].forEach((f, i) => setTimeout(() => SFX.ping(f, 0.06), 120 + i * 110));
         }]);
       },
@@ -1073,6 +1093,7 @@ export function startHighlights(host, U, opts = {}) {
     const r = film.getBoundingClientRect(), g = pullGeom(), byKey = !e || !e.detail;
     tapFx(byKey ? g.cx + (Math.random() - 0.5) * g.w : e.clientX - r.left, byKey ? g.cy - g.h * (0.2 + Math.random() * 0.25) : e.clientY - r.top, i, RARITY[k].glow);
     SFX.tap(i);
+    if (ST.music) ST.music.tap(i);
     if (i < 2) {
       if (k !== prev) {   // the color steps up
         DS.ups.push([t, k]); DS.upAt = t; setPal(RARITY[k].pal);
@@ -1103,7 +1124,7 @@ export function startHighlights(host, U, opts = {}) {
         const num = $("stNum"), lab = $("stLabel"), k = t < 0.2 ? -1 : Math.min(n, Math.floor((t - 0.2) / SLOT));
         if (k !== this.k) {
           this.k = k;
-          if (k >= 0 && k < n) { num.textContent = statItems[k][0]; lab.textContent = statItems[k][1]; if (playing) { SFX.impact(0.55); flash(0.22); speedLines(1); shake(6); } }
+          if (k >= 0 && k < n) { num.textContent = statItems[k][0]; lab.textContent = statItems[k][1]; if (playing) { SFX.impact(0.55); flash(0.22); speedLines(1); shake(6); if (ST.hit) ST.hit("stat", W / 2, H * 0.42, k); } }
         }
         if (k >= 0 && k < n) {
           const lt = t - 0.2 - k * SLOT, e = eOut(lt / 0.2), out = clamp((lt - SLOT + 0.14) / 0.14);
@@ -1322,7 +1343,7 @@ export function startHighlights(host, U, opts = {}) {
     if (U.ratingCount) {
       list.push({ id: "ratings", dur: Infinity, label: "Ratings", chord: "G", kicker: $("rateKicker"), ready: 4.2,
         cues: [[0.1, () => SFX.whoosh(0.7, false)], ...[0, 1, 2, 3, 4].map((i) => [1.55 + i * 0.16, () => SFX.ping([1046.5, 1174.7, 1318.5, 1568, 1760][i], 0.09)]),
-          [2.5, () => { SFX.impact(TIER.slam ? 1 : 0.25); flash(0.3); const r = $("scoreNum").getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2, reduce ? 0 : 190); }]],
+          [2.5, () => { SFX.impact(TIER.slam ? 1 : 0.25); flash(0.3); const r = $("scoreNum").getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2, reduce ? 0 : 190); if (ST.hit) ST.hit("score", r.left + r.width * 0.9, r.top + r.height * 0.15); }]],
         update(t) {
           starEls.forEach((s, i) => {
             s.line.style.strokeDasharray = STAR_LEN; s.line.style.strokeDashoffset = (STAR_LEN * (1 - eInOut((t - 0.15 - i * 0.12) / 0.8))).toFixed(2);
@@ -1368,7 +1389,8 @@ export function startHighlights(host, U, opts = {}) {
   }
 
   // ---------- Playback: the viewer moves through the parts at their own pace; nothing runs on a timer ----------
-  let SC = [], idx = 0, local = 0, playing = false, raf = 0, last = 0, clock = 0, fired = new Set(), trans = null, enteredAt = 0;
+  // pendDt, lastFstep: a style with its own frame rate (Papercut's stop motion) draws only on its own frames.
+  let SC = [], idx = 0, local = 0, playing = false, raf = 0, last = 0, clock = 0, fired = new Set(), trans = null, enteredAt = 0, pendDt = 0, lastFstep = -1;
   let mx = 0, my = 0, mxT = 0, myT = 0, lastPointer = "mouse", suppressClick = false;
   let wallDrag = { x: 0, y: 0 }, wallDragged = false, wallPtr = null, swipe = null;
   const readyAt = (s) => (typeof s.ready === "function" ? s.ready() : s.ready != null ? s.ready : 0);
@@ -1403,12 +1425,14 @@ export function startHighlights(host, U, opts = {}) {
   }
   function startX(i) {
     const to = SC[i]; if (!to) return;
-    xt = { from: SC[idx], to, i, e: 0, kind: XT_KINDS[xtTurn++ % XT_KINDS.length], swapped: false, fast: false, titled: false };
+    const kinds = ST.xtKinds || XT_KINDS;   // a style has its own changes (paper sheets, pixel wipes, page turns...)
+    xt = { from: SC[idx], to, i, e: 0, kind: kinds[xtTurn++ % kinds.length], swapped: false, fast: false, titled: false };
     const ov = $("xt"), tc = hex(TIER.color).join(",");
     ov.className = "xt " + xt.kind + (TIER.hype ? "" : " calm"); ov.style.transform = ""; ov.style.opacity = "";
     ov.style.setProperty("--tc", tc); $("xtRing").style.setProperty("--tc", tc);
     $("xtNum").textContent = pad2(i) + " / " + pad2(SC.length - 1); $("xtTitle").textContent = to.label; $("xtSub").textContent = xtSub(to);
     film.classList.add("in-x");
+    if (ST.xtStart) ST.xtStart(xt);
     SFX.whoosh(0.9, true); musicMuffle(true);
     if (TIER.hype) SFX.riser(XT_SWAP - 0.4);
     if (xt.kind === "flip") SFX.whoosh(0.45, false);
@@ -1416,16 +1440,15 @@ export function startHighlights(host, U, opts = {}) {
   }
   function stepX(dt) {
     const T = xt; T.e += dt * (T.fast ? 2.5 : 1); const x = T.e;
-    if (!T.titled && x >= 1.2) { T.titled = true; if (TIER.hype) { SFX.impact(0.55); speedLines(1); shake(6); flash(0.16); } else SFX.ping(TIER.key === "average" ? 1318.5 : 1046.5, 0.06); }   // the title lands
+    if (!T.titled && x >= 1.2) { T.titled = true; if (TIER.hype) { SFX.impact(0.55); speedLines(1); shake(6); flash(0.16); } else SFX.ping(TIER.key === "average" ? 1318.5 : 1046.5, 0.06); if (ST.hit) ST.hit("chapter", W / 2, H * 0.36); }   // the title lands
     if (!T.swapped && x >= XT_SWAP) {
       // The card covers the screen: switch parts underneath, then open onto the new one.
-      T.swapped = true; ["transform", "filter", "opacity"].forEach((k) => { T.from.el.style[k] = ""; });
+      T.swapped = true; ["transform", "filter", "opacity", "clipPath"].forEach((k) => { T.from.el.style[k] = ""; });
       go(T.i, "x"); musicMuffle(false);
-      if (TIER.hype) { flash(0.45); SFX.impact(0.45); shake(6); speedLines(1.2); if (A.ctx && beatOn(SC[idx]) && SC[idx].id !== "end") { beatFrom(now() + 0.03); crash(A.nextStep, GROOVE[TIER.key].crash); } }
-      else { SFX.whoosh(0.7, false); SFX.ping(1568, 0.04); }
+      if (TIER.hype) { flash(0.45); SFX.impact(0.45); shake(6); speedLines(1.2); if (A.ctx && beatOn(SC[idx]) && SC[idx].id !== "end") { beatFrom(now() + 0.03); if (ST.music) ST.music.part(); else crash(A.nextStep, GROOVE[TIER.key].crash); } }
+      else { SFX.whoosh(0.7, false); SFX.ping(1568, 0.04); if (ST.music && A.ctx && beatOn(SC[idx]) && ST.music.restartOnPart) beatFrom(now() + 0.03); }
     }
-    if (x >= XT_DUR) { endX(); return; }
-    applyX(x);
+    if (x >= XT_DUR) endX();   // (the picture is drawn in frame(), so a style can draw it at its own frame rate)
   }
   function applyX(x) {
     const T = xt, ov = $("xt"), body = $("xtBody"), from = T.from.el, to = T.to.el, hype = TIER.hype, P2 = "perspective(1400px) ";
@@ -1438,7 +1461,9 @@ export function startHighlights(host, U, opts = {}) {
     else { tt.style.opacity = clamp(te * 2).toFixed(3); tt.style.transform = "translateY(" + ((1 - eOut(te)) * 105).toFixed(1) + "%)"; tt.style.filter = ""; }
     const se = clamp((x - 1.7) / 0.45), sb = $("xtSub"); sb.style.opacity = se.toFixed(3); sb.style.transform = "translateY(" + ((1 - eOut(se)) * 10).toFixed(1) + "px)";
     let bo = x < 0.9 ? 0 : 1, bs = 1 + 0.03 * clamp((x - 1.5) / 2.3);
-    if (T.kind === "warp") {
+    const sx = ST.xtApply ? ST.xtApply(T, x, from, to, ov) : null;   // a style's own change returns the card's opacity and scale
+    if (sx) { bo = sx.bo; if (sx.bs != null) bs = sx.bs; }
+    else if (T.kind === "warp") {
       // The old part rushes toward the camera into streaks of light; the card grows out of the middle; at the end
       // it flies past the camera and the new part settles in.
       const a = clamp(x / 0.9), out = clamp((x - XT_SWAP) / 0.6);
@@ -1478,8 +1503,9 @@ export function startHighlights(host, U, opts = {}) {
   }
   function endX() {
     if (!xt) return; const T = xt; xt = null;
-    ["transform", "filter", "opacity"].forEach((k) => { T.to.el.style[k] = ""; T.from.el.style[k] = ""; });
-    const ov = $("xt"); ov.style.transform = ""; ov.style.opacity = ""; ov.style.removeProperty("--r");
+    ["transform", "filter", "opacity", "clipPath"].forEach((k) => { T.to.el.style[k] = ""; T.from.el.style[k] = ""; });
+    const ov = $("xt"); ov.style.transform = ""; ov.style.opacity = ""; ov.style.clipPath = ""; ov.style.removeProperty("--r");
+    if (ST.xtEnd) ST.xtEnd(T);
     Array.from($("xtSlats").children).forEach((s) => { s.style.transform = ""; });
     film.classList.remove("in-x");
   }
@@ -1518,12 +1544,14 @@ export function startHighlights(host, U, opts = {}) {
     if (animate) { trans = { from: prev, to: s, e: 0, dur: 0.75, dir: -1 }; applyTrans(0); SFX.whoosh(0.6, false); }
     if (how === "next") SFX.whoosh(0.6, true);   // reduced motion: a plain change, no chapter card
     if (i === 0) embers = [];
-    if (s.id !== "pull") { fxFrozen = false; if (A.ctx) droneStop(0.4); }
+    if (s.id !== "pull") { fxFrozen = false; if (A.ctx) { droneStop(0.4); if (ST.music) ST.music.waitStop(); } }
     if (!["open", "count", "pull"].includes(s.id)) { film.style.setProperty("--bars", 1); film.style.setProperty("--hud", 1); }
     film.classList.toggle("is-end", s.id === "end"); film.classList.toggle("at-start", i === 0);
+    film.dataset.part = s.id;   // the styles change their backgrounds per part
     const pal = PAL[s.id] || PAL.intro;
     palTo = (TIER.gold && s.id !== "pull" ? ["#f59e0b", pal[1], pal[2]] : pal).map(hex);   // the card draw starts dark and colors the room itself
-    if (A.ctx && s.chord && s.chord !== A.chord) padTo(s.chord);
+    if (A.ctx && !ST.music && s.chord && s.chord !== A.chord) padTo(s.chord);
+    if (ST.go) ST.go(s, i);
     if (s.id !== "ratings" && s.id !== "end") conf = [];
     const ch = $("chapter"); ch.innerHTML = "<span>" + (i ? pad2(i) + " / " + pad2(SC.length - 1) : "") + "</span><b></b>"; ch.querySelector("b").textContent = s.label;
     ch.classList.remove("swap"); void ch.offsetWidth; ch.classList.add("swap");
@@ -1541,7 +1569,7 @@ export function startHighlights(host, U, opts = {}) {
   function back() { if (idx > 0 && !VW.open && !xt) go(idx - 1, "back"); }
   function frame(nowMs) {
     const dt = last ? Math.min((nowMs - last) / 1000, 0.1) : 0; last = nowMs; clock += dt;
-    if (trans) { trans.e += dt; const p = trans.e / trans.dur; if (p >= 1) finishTrans(); else applyTrans(p); }
+    if (trans) { trans.e += dt; if (trans.e >= trans.dur) finishTrans(); }
     if (xt) stepX(dt);
     const s = SC[idx];
     if (playing && !VW.open && !(xt && !xt.swapped)) {   // the part waits while a project is open, and while the chapter card covers it
@@ -1551,15 +1579,26 @@ export function startHighlights(host, U, opts = {}) {
     }
     mx = lerp(mx, mxT, clamp(dt * 4)); my = lerp(my, myT, clamp(dt * 4));
     const cur = SC[idx];
-    cur.update(local, dt);
-    if (!reduce) cur.layers.forEach((l) => { l.el.style.transform = "translate3d(" + (mx * l.d).toFixed(1) + "px," + (my * l.d).toFixed(1) + "px,0)"; });
-    drawBg(clock, dt);
-    fxX.clearRect(0, 0, W, H);
-    drawDust(clock, dt);
-    if (cur.id === "pull") drawPull(local, dt);
-    if (cur.id === "intro") drawParticles(local, cur.dur, clock);
-    if (xt && xt.kind === "warp") drawWarp(xt.e);
-    drawEmbers(dt); drawLines(); drawConfetti(dt);
+    // The picture. Papercut draws it only 12 times a second, like stop motion (time and music still run smoothly);
+    // every other style draws it on every frame.
+    pendDt += dt;
+    const fps = reduce ? 0 : ST.fps || 0, fstep = fps ? Math.floor(clock * fps) : -1;
+    if (!fps || fstep !== lastFstep) {
+      lastFstep = fstep; const fdt = pendDt; pendDt = 0;
+      if (trans) applyTrans(trans.e / trans.dur);
+      if (xt) applyX(xt.e);
+      cur.update(local, fdt);
+      if (!reduce) cur.layers.forEach((l) => { l.el.style.transform = "translate3d(" + (mx * l.d).toFixed(1) + "px," + (my * l.d).toFixed(1) + "px,0)"; });
+      if (ST.bg) ST.bg(clock, fdt, cur.id); else drawBg(clock, fdt);
+      fxX.clearRect(0, 0, W, H);
+      if (ST.ambient) ST.ambient(fxX, clock, fdt, cur.id); else if (!ST.id) drawDust(clock, fdt);
+      if (cur.id === "pull") drawPull(local, fdt);
+      if (cur.id === "intro") drawParticles(local, cur.dur, clock);
+      if (xt && xt.kind === "warp") drawWarp(xt.e);
+      if (xt && ST.xtDraw) ST.xtDraw(fxX, xt, xt.e);
+      drawEmbers(fdt); drawLines(); drawConfetti(fdt);
+      if (ST.frame) ST.frame(cur, local, fdt);
+    }
     // Hype levels: the screen edges pulse on the beat.
     let pulse = 0;
     if (TIER.hype && playing && !VW.open && !xt && beatOn(cur) && cur.id !== "end") {
@@ -1609,18 +1648,31 @@ export function startHighlights(host, U, opts = {}) {
     // The level decides the style of this highlight (the owner can preview another level's style).
     TIER = TIERS[opts.levelPick] || TIERS[U.lvl.key] || TIERS.beginner; A.BEAT = 60 / TIER.bpm; A.STEP = A.BEAT / 4; D = DRAWS[TIER.key];
     film.classList.remove("tier-beginner", "tier-average", "tier-intermediate", "tier-advanced"); film.classList.add("tier-" + TIER.key);
+    applyLook();   // the highlight style (after the level: a style's music speed depends on the level)
     PCOL = TIER.gold ? ["#fffbeb", "#fde68a", "#f59e0b"] : ["#ffffff", "#fdba74", "#f97316"];
     if (A.sfx) A.sfx.gain.value = TIER.hype ? 0.85 : 0.65;
     const coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
     lastPointer = coarse ? "touch" : "mouse"; film.classList.toggle("touchy", coarse); $("ghLong").textContent = coarse ? "Tap anywhere to continue" : "Click anywhere to continue";
-    xtTurn = 0; embers = []; lines = null; shakeV = 0; wallDrag = { x: 0, y: 0 };
+    xtTurn = 0; embers = []; lines = null; shakeV = 0; wallDrag = { x: 0, y: 0 }; lastFstep = -1; pendDt = 0;
     playing = false; buildFilm(); resize();
+    if (ST.build) ST.build();   // the style's decorations, its picture treatment and so on
     conf = []; flashV = 0; clock = 0; last = 0; idx = 0; trans = null;
     film.style.setProperty("--bars", 0); film.style.setProperty("--hud", 0);
     if (A.ctx) { padTo(null); beatFrom(now() + 0.05); }
     go(0); setPlaying(true);
     raf = requestAnimationFrame(frame);
     focusStart();
+  }
+  // The highlight style: a Premium style's hooks, or none for the Director's Cut. Each player is built fresh, so
+  // this runs once. .hl-st marks the film while a style plays (its CSS sits under .hl-film.hl-st.st-<id>).
+  function applyLook() {
+    ST = {};
+    if (opts.style) {
+      try { ST = makeStyle(api, opts.style); } catch (e) { ST = {}; if (import.meta.env.DEV) console.error("highlight style:", e); }
+    }
+    if (ST.id) film.classList.add("hl-st", "st-" + ST.id);
+    Object.assign(SFX, SFX0, ST.sfx || {});
+    if (ST.music) { A.BEAT = 60 / ST.music.bpm(TIER.key); A.STEP = A.BEAT / 4; }
   }
   // Keyboard focus at the start: on the card while it waits for its taps (Space or Enter taps it), else on Next.
   function focusStart() { (drawWaiting() ? $("drawTap") : $("nextBtn")).focus({ preventScroll: true }); }
@@ -1701,8 +1753,20 @@ export function startHighlights(host, U, opts = {}) {
   document.addEventListener("visibilitychange", onVisibility);
   document.addEventListener("keydown", onKey);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!stopped) resize(); });
+  // What a highlight style may read and use from the film (styles/kit.js and styles/*.js)
+  const api = {
+    A, SFX, SFX0, RARITY, film, $, el, txt, clamp, lerp, eOut, eInOut, eBack, hex, mulberry, pad2, reduce, nz,
+    fx: fxX, bg: bgX, bgCanvas: bgC, sceneEl, pullGeom, audioInit, setSoundIcon,
+    env, send, noiseHit, kick, clap, snare, hat, tom, crash, sub, bass, pluck, stab, brass, beatFrom, musicMuffle, now: () => A.ctx.currentTime,
+    get W() { return W; }, get H() { return H; }, get BAR() { return BAR; }, get TIER() { return TIER; }, get D() { return D; }, get DS() { return DS; },
+    get U() { return U; }, get SC() { return SC; }, get idx() { return idx; }, get local() { return local; }, get clock() { return clock; },
+    get playing() { return playing; }, get mx() { return mx; }, get my() { return my; }, get THEME() { return THEME; },
+    get cur() { return SC[idx]; }, get reelClips() { return reelClips; }, get reelCur() { return reelCur; }, get tiles() { return tiles; }, get cards() { return cards; },
+    get filmOpen() { return !stopped; },
+    beatOn: (s) => beatOn(s), drawWaiting: () => drawWaiting(), thrillAt: (t) => thrillAt(t), tierFor: () => TIER, tiers: TIERS
+  };
   // For the automatic screenshot checks only (opts.debug): read-only state.
-  if (opts.debug) window.__hl = { t: () => local, part: () => (SC[idx] ? SC[idx].id : ""), tier: () => TIER.key, ready: () => !!SC[idx] && local >= readyAt(SC[idx]), viewer: () => VW.open, step: () => A.step, x: () => (xt ? xt.kind + ":" + xt.e.toFixed(2) : "") };
+  if (opts.debug) window.__hl = { t: () => local, part: () => (SC[idx] ? SC[idx].id : ""), tier: () => TIER.key, ready: () => !!SC[idx] && local >= readyAt(SC[idx]), viewer: () => VW.open, step: () => A.step, x: () => (xt ? xt.kind + ":" + xt.e.toFixed(2) : ""), style: () => ST.id || "cinema", aud: () => A };
   start();
   return { stop, viewerClosed };
 }
