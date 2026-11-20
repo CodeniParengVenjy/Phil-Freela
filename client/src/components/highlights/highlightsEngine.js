@@ -440,6 +440,20 @@ export function startHighlights(host, U, opts = {}) {
     $("bio").innerHTML = ""; $("bio").hidden = !U.bio; if (U.bio) wordsInto($("bio"), U.bio, "wd");
     $("chips3").innerHTML = ""; U.skills.forEach((k, i) => { const c = txt("span", "chip3", k); c.style.setProperty("--i", i); $("chips3").appendChild(c); });
     $("plinks").innerHTML = ""; U.links.forEach((l) => { const s = el("span", "", ICON.globe); s.appendChild(document.createTextNode(l.url)); if (l.ok) s.appendChild(txt("span", "vb", "Verified owner")); $("plinks").appendChild(s); });
+    // Social accounts (PLAN-social-accounts.md), on a line of their own under the website links. On a computer: the
+    // first 4 as logo + handle, then "+N more on the profile". On a phone (where the chapter is already tall, and a
+    // row of pills with handles pushed the picture under the top bar): just the logos, all of them in one row, the
+    // handle in the tooltip. The logo paths are our own constants (socialGlyphs.js); the handle goes in as plain text.
+    const socials = U.socials || [], phone = window.innerWidth <= 640, cap = phone ? socials.length : 4;
+    if (socials.length && U.links.length) $("plinks").appendChild(el("span", "brk"));
+    socials.slice(0, cap).forEach((a, i) => {
+      const s = el("span", phone ? "soc soc-ic" : "soc"), lg = el("span", "lg", '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="' + a.d + '"></path></svg>');
+      s.style.setProperty("--i", i); lg.style.setProperty("--sc", a.tint); lg.style.setProperty("--sg", a.glyph);
+      s.title = a.handle + " on " + a.label; s.appendChild(lg);
+      if (!phone) s.appendChild(document.createTextNode(a.handle));
+      $("plinks").appendChild(s);
+    });
+    if (socials.length > cap) $("plinks").appendChild(txt("span", "soc-more", "+" + (socials.length - cap) + " more on the profile"));
     // Services: one card per offer, each with the job title of its kind of work. A click opens that offer's
     // page (where its description and the Book button are).
     const n = U.services.length, fan = $("fan"); fan.innerHTML = "";

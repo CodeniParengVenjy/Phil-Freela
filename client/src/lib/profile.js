@@ -450,6 +450,24 @@ export function cleanSocialAccount(key, text) {
   return { link };
 }
 
+// A short name for a saved account, for the chips, the tooltips and the Highlights film: "@bea.edits" for TikTok,
+// Instagram, X, Threads and YouTube, "bea-ramos" for LinkedIn, "bea.ramos" for Facebook, "beaedits" for Pinterest.
+// A link with no readable name in it (Facebook's profile.php?id=..., a YouTube channel number) gets "Facebook
+// profile", "YouTube channel"... Never longer than 24 characters.
+export function socialHandle(key, link) {
+  const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
+  const first = (parts) => parts[0] || "";
+  const parts = String(link || "").replace(/^https:\/\/[^/]+\/?/i, "").replace(/[?#].*$/, "").split("/").filter(Boolean);
+  let name = "";
+  if (key === "facebook") name = /^people$/i.test(first(parts)) ? parts[1] || "" : /^(profile\.php|share|pages|p|groups|watch)$/i.test(first(parts)) ? "" : first(parts);
+  else if (key === "linkedin") name = /^(in|company|school)$/i.test(first(parts)) ? parts[1] || "" : "";
+  else if (key === "youtube") name = /^(c|user)$/i.test(first(parts)) ? (parts[1] ? `@${parts[1]}` : "") : first(parts).startsWith("@") ? first(parts) : "";
+  else if (["instagram", "tiktok", "x", "threads"].includes(key)) name = first(parts) ? (first(parts).startsWith("@") ? first(parts) : `@${first(parts)}`) : "";
+  else name = first(parts);
+  if (!name) return `${platform ? platform.label : "Profile"} ${key === "youtube" ? "channel" : "profile"}`;
+  return name.length > 24 ? `${name.slice(0, 23)}…` : name;
+}
+
 // The user's saved accounts as { platform: link }, or null when they couldn't be loaded.
 export async function fetchSocialLinks(userId) {
   const { data, error } = await supabase.from("profiles").select("social_links").eq("id", userId).maybeSingle();

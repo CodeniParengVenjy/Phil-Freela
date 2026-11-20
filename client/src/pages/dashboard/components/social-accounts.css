@@ -1,0 +1,51 @@
+/* Social accounts look (PLAN-social-accounts.md, the design the user approved 2026-11-20).
+   Each platform has its brand color (--b) and a lighter shade for dark backgrounds (--bl).
+   A round logo button is the brand color as a soft tint (--t) with the logo in --g; under the mouse it fills with
+   --hover and the logo turns --hg. X, TikTok and Threads are black brands, so they use white on the dark theme and
+   black on the light theme (body.theme-light). The brand colors themselves are fixed on purpose: people know a
+   platform by its color, so they don't follow the accent color. */
+.sp-facebook { --b: #1877f2; --bl: #6ba8ff; }
+.sp-instagram { --b: #e1306c; --bl: #f4709c; }
+.sp-youtube { --b: #ff0000; --bl: #ff6b6b; }
+.sp-linkedin { --b: #0a66c2; --bl: #6ab0f5; }
+.sp-pinterest { --b: #e60023; --bl: #ff6b7e; }
+.sp-tiktok, .sp-x, .sp-threads { --b: #111111; --bl: #ffffff; }
+
+.social-btn, .social-ic { --t: var(--b); --g: var(--bl); --hover: var(--b); --hc: var(--b); --hg: #ffffff; }
+.social-btn.sp-instagram { --hover: linear-gradient(45deg, #f09433, #dc2743 55%, #bc1888); --hc: #dc2743; }
+.social-btn.sp-tiktok, .social-btn.sp-x, .social-btn.sp-threads { --t: #ffffff; --g: #ffffff; --hover: #f8fafc; --hc: #f8fafc; --hg: #0b0d14; }
+.social-ic.sp-tiktok, .social-ic.sp-x, .social-ic.sp-threads { --t: #ffffff; --g: #ffffff; }
+
+body.theme-light .social-btn, body.theme-light .social-ic { --g: var(--b); }
+body.theme-light .social-btn.sp-tiktok, body.theme-light .social-btn.sp-x, body.theme-light .social-btn.sp-threads { --t: #111111; --g: #111111; --hover: #111111; --hc: #111111; --hg: #ffffff; }
+body.theme-light .social-ic.sp-tiktok, body.theme-light .social-ic.sp-x, body.theme-light .social-ic.sp-threads { --t: #111111; --g: #111111; }
+
+.social-btn {
+  width: 40px; height: 40px; border-radius: 50%; flex: none;
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+  font-size: 18px; line-height: 1; text-decoration: none;
+  color: var(--g);
+  background: color-mix(in srgb, var(--t) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--t) 42%, transparent);
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.social-btn:hover, .social-btn:focus-visible {
+  background: var(--hover); color: var(--hg); border-color: var(--hc);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--hc) 45%, transparent);
+}
+.social-btn:focus-visible { outline: 2px solid var(--accent-role, #ff8800); outline-offset: 2px; }
+@media (max-width: 575.98px) { .social-btn { width: 36px; height: 36px; font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .social-btn { transition: none; } .social-btn:hover { transform: none; } }
+
+/* The row under a name: "FIND BEA ON", the buttons, then the note on its own line. */
+.social-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.social-label { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; margin-right: 4px; max-width: 100%; overflow-wrap: anywhere; }
+
+/* The tinted logo circle inside a chip (Settings and Profile). */
+.social-ic {
+  width: 26px; height: 26px; border-radius: 50%; flex: none;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 13px; line-height: 1;
+  color: var(--g);
+  background: color-mix(in srgb, var(--t) 22%, transparent);
+}

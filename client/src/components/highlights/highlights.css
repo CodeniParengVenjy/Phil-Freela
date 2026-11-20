@@ -134,6 +134,23 @@
 .hl-film .plinks span { display: inline-flex; align-items: center; gap: 7px; }
 .hl-film .vb { font-size: 0.66rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: rgba(34, 197, 94, 0.18); color: #4ade80; }
 .hl-film .scene.on .plinks { animation: hl-fadein 0.6s ease 3.7s both; }
+/* Social accounts (PLAN-social-accounts.md): logo + handle, on a line of their own under the website links (.brk breaks the
+   line). In the Director's Cut each is a glass pill with a brand-tinted logo that pops in; in the five Premium looks (.hl-st)
+   they are plain text in that look's own colors and font, and the logo takes the text color. */
+.hl-film .plinks .brk { flex-basis: 100%; height: 0; gap: 0; }
+.hl-film .plinks .soc .lg { display: inline-grid; place-items: center; flex: none; }
+.hl-film .plinks .soc .lg svg { width: 1.15em; height: 1.15em; fill: currentColor; }
+.hl-film .plinks .soc-more { font-weight: 700; opacity: 0.75; }
+.hl-film:not(.hl-st) .plinks .soc { padding: 4px 13px 4px 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); color: #ffffff; font-weight: 700; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.hl-film:not(.hl-st) .plinks .soc .lg { width: 1.9em; height: 1.9em; border-radius: 50%; color: var(--sg, #ffffff); background: color-mix(in srgb, var(--sc, #ffffff) 30%, transparent); }
+.hl-film:not(.hl-st) .plinks .soc .lg svg { width: 1em; height: 1em; }
+.hl-film:not(.hl-st) .scene.on .plinks .soc { animation: hl-pop 0.5s cubic-bezier(.2, .9, .3, 1.4) both; animation-delay: calc(3.8s + var(--i) * 0.1s); }
+/* On a phone the accounts are just the logos in one row (.soc-ic, set by the engine), so up to 8 fit one line. */
+.hl-film .plinks .soc-ic { gap: 0; margin-right: -8px; }
+.hl-film .plinks .soc-ic .lg svg { width: 22px; height: 22px; }
+.hl-film:not(.hl-st) .plinks .soc-ic { padding: 0; border: 0; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-film:not(.hl-st) .plinks .soc-ic .lg { width: 30px; height: 30px; }
+.hl-film:not(.hl-st) .plinks .soc-ic .lg svg { width: 15px; height: 15px; }
 @media (max-width: 640px) { .hl-film .p-head { flex-direction: column; align-items: flex-start; } .hl-film .p-wrap { bottom: calc(var(--bar) + 3vh); } .hl-film .p-ava { width: clamp(76px, 13vh, 130px); } }
 
 /* Services: job-title chips on top; the cards are dealt into a fan and lift one by one, lighting up their title */

@@ -16,6 +16,11 @@ Status: approved 2026-11-20 ("ok" to the plan written in chat).
 - Also in Settings > Profile Settings (added the same day, the user: "this must be settable in settings > Profile
   Settings"): the same box, see "What a person sees". Browser test 103/103 in total (30 new checks for Settings:
   computer, light mode, phone, a failed save, Enter not submitting the form).
+- Round 2 (the user, same day: "it display in the profile and include in the highlights, and also, please design it"):
+  a designed look (design canvas https://claude.ai/artifact/CsMaMQY4uaAPFGHcf7Jpb5, approved with "ok"), the row on the
+  own Profile page too, and the accounts in the Highlights film. No database change. Browser tests: pages 113/113;
+  the film's Profile chapter checked in all six looks (Director's Cut and the five Premium ones), on a computer
+  (12 checks each) and on a phone (14 each), plus screenshots of every look.
 - Not tried yet by a real person: adding a real account on the live site and opening it from a public profile.
 
 ## What a person sees
@@ -28,10 +33,23 @@ Status: approved 2026-11-20 ("ok" to the plan written in chat).
    Changes is not needed for it; a line under the box says so.
 2. **Own Profile page:** the same box with a bigger heading, for people who spot it there first (it saves the same
    way, without the "saved" message, like Skills and Portfolio Links on that page).
-3. **Public profile:** a row of round logo buttons under the name (for both roles). Each opens the page in a new tab.
-   Under them: "These open other websites. PhilFreela doesn't check what's on them." Nothing shows until a person
-   adds one.
-4. Portfolio Links now show the TikTok and X logos too (two small additions to the icon list).
+3. **Public profile:** under the name, "FIND BEA ON" and a row of round logo buttons (for both roles). Each is the
+   platform's brand color as a soft tint and fills with the brand color under the mouse (Instagram gets its gradient;
+   X, TikTok and Threads are white on the dark theme and black on the light one). Each opens the page in a new tab and
+   its tooltip reads "@bea.edits on TikTok". Under them: "These open other websites. PhilFreela doesn't check what's
+   on them." Nothing shows until a person adds one.
+4. **Own Profile page:** the same row, centered under your name, follows every add and remove.
+5. **Chips (Settings and Profile):** a tinted logo circle and the short handle (`@bea.edits`, `bea-ramos`), not the
+   whole link; the tooltip has the link.
+6. **Highlights film, Profile chapter (freelancers):** under the website links, on a line of their own, the first 4
+   accounts as logo + handle, then "+N more on the profile". The Director's Cut draws glass pills with a brand-tinted
+   logo that pop in one by one; the five Premium looks (Papercut, Retro, Cartoony, Kinetic type, Comic book) show the
+   same line as plain text in their own font and colors, with the logo in the text color. On a phone (screen 640 px or
+   narrower) the chapter is already tall, so it is just the logos, all of them in one row, with the handle in the
+   tooltip. The film is a show, not a page, so the accounts there are not clickable.
+   Known limit: with a very long bio, 5 skills and 2 website links on a phone, the profile picture can slip up to
+   about 40 px under the film's top bar (Retro already did that on such a profile before accounts existed).
+7. Portfolio Links now show the TikTok and X logos too (two small additions to the icon list).
 
 ## Defaults chosen
 
@@ -45,7 +63,11 @@ Status: approved 2026-11-20 ("ok" to the plan written in chat).
   added, and the leftovers share buttons add (`?igsh=...`, `?utm_...`, `#top`) cut off. Facebook's
   `profile.php?id=123` keeps its `?id=`.
 - Left out on purpose: "verified" ticks (each platform would need its own sign-in), WhatsApp / Telegram / Viber
-  (public phone numbers invite spam and deals outside PhilFreela), and social accounts inside the Highlights film.
+  (public phone numbers invite spam and deals outside PhilFreela). (Social accounts inside the Highlights film were
+  left out in round 1 and added in round 2.)
+- The look: brand colors are fixed on purpose (people know a platform by its color), so they don't follow the accent
+  color; light mode and the phone (36 px buttons) are covered. The alternative that was shown, "Calm" (neutral buttons,
+  accent on hover), was not chosen.
 
 ## How it is kept safe
 
@@ -68,7 +90,11 @@ Status: approved 2026-11-20 ("ok" to the plan written in chat).
 - `database/supabase_social_links_schema.sql` (function + column), `database/test_social_links.sql`.
 - `client/src/lib/profile.js`: `SOCIAL_PLATFORMS`, `cleanSocialAccount`, `isSafeSocialLink`, `fetchSocialLinks`,
   `saveSocialLinks`, the TikTok / X icons.
-- `client/src/pages/dashboard/components/SocialAccounts.jsx`: `SocialAccountsBox` (edit) and `SocialAccountsRow` (public).
+- `client/src/pages/dashboard/components/SocialAccounts.jsx`: `SocialAccountsBox` (edit) and `SocialAccountsRow` (the
+  logo buttons); `social-accounts.css`: the look (brand colors, hover, light theme, phone).
+- `client/src/lib/profile.js` also has `socialHandle` (the short handle).
+- Highlights: `lib/highlights.js` (`socials` in the film's data), `components/highlights/socialGlyphs.js` (the logo
+  outlines, from the icon set), `highlightsEngine.js` (draws them in `.plinks`), `highlights.css` (Director's Cut pills).
 - `client/src/pages/dashboard/views/SettingsView.jsx`, `ProfileView.jsx` and `PublicProfileView.jsx`: one block each
   (Settings uses `<SocialAccountsBox inSettings />`).
 

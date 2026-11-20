@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { fetchIsVerified } from "./verification";
-import { fetchVerifiedLinks, isSafeLink, linkLabel } from "./profile";
+import { SOCIAL_PLATFORMS, fetchSocialLinks, fetchVerifiedLinks, isSafeLink, isSafeSocialLink, linkLabel, socialHandle } from "./profile";
 import { fetchProfileHistory, fetchProfileStats, formatMemberSince } from "./profileStats";
 import { fetchPortfolio, withoutHiddenCharacters } from "./portfolio";
 import { fetchServiceRatings } from "./serviceReviews";
@@ -10,6 +10,7 @@ import { welcomeRoles } from "./welcomeTitles";
 import { avatarUrl, coverUrl } from "./avatar";
 import { shownPrice } from "./money";
 import { STYLE_IDS, isPremiumStyle } from "../components/highlights/styles/index.js";
+import { SOCIAL_GLYPHS } from "../components/highlights/socialGlyphs.js";
 
 // Highlights (PLAN-highlights.md): a short film of a freelancer's profile that
 // visitors can watch from the profile page (components/highlights). Everything
@@ -141,10 +142,11 @@ export async function saveHighlightStyle(userId, styleId) {
 // { data, items } or { error }. items: their portfolio projects as stored, for
 // the project viewer (PortfolioViewer) when a visitor opens one.
 export async function loadHighlight(userId) {
-  const [profileRes, verified, verifiedLinks, proRes, servicesRes, items, stats, history] = await Promise.all([
+  const [profileRes, verified, verifiedLinks, socialLinks, proRes, servicesRes, items, stats, history] = await Promise.all([
     supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, cover_path, description, skills, available_for_work, portfolio_links, highlight_style").eq("id", userId).maybeSingle(),
     fetchIsVerified(userId),
     fetchVerifiedLinks(userId),
+    fetchSocialLinks(userId),
     supabase.from("pro_members").select("pro_until").eq("user_id", userId).maybeSingle(),
     supabase.from("services").select(`id, title, category, price, currency, image_url, media_type, ${SLIDES_SELECT}`).eq("freelancer_id", userId).order("created_at", { ascending: false }),
     fetchPortfolio(userId).catch(() => []),
@@ -211,6 +213,10 @@ export async function loadHighlight(userId) {
     bio: bioWithSkills(person.description, person.skills),
     skills: (person.skills || []).slice(0, 8),
     links: (person.portfolio_links || []).filter(isSafeLink).slice(0, 4).map((link) => ({ url: linkLabel(link), ok: Boolean(verifiedLinks[link]) })),
+    // Their social accounts (PLAN-social-accounts.md), in the fixed platform order: the film shows the first 4, then "+N more".
+    // (socialLinks is null when they couldn't be loaded: then the film simply has none.)
+    socials: SOCIAL_PLATFORMS.filter((p) => isSafeSocialLink(p.key, socialLinks?.[p.key]) && SOCIAL_GLYPHS[p.key])
+      .map((p) => ({ key: p.key, label: p.label, handle: socialHandle(p.key, socialLinks[p.key]), ...SOCIAL_GLYPHS[p.key] })),
     services, lowestPrice: lowest ? lowest.price : null,
     portfolio: projects, videos, videoCount,
     done, breakdown, ratingCount, avg, rating: Math.round(avg * 10) / 10, trust: Math.round(avg * 20),

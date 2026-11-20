@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  SOCIAL_PLATFORMS, cleanSocialAccount, fetchSocialLinks, isSafeSocialLink, linkLabel, saveSocialLinks
+  SOCIAL_PLATFORMS, cleanSocialAccount, fetchSocialLinks, isSafeSocialLink, linkLabel, saveSocialLinks, socialHandle
 } from "../../../lib/profile";
 import { Loader } from "../../../components/Loaders";
+import "./social-accounts.css";
 
 // Social accounts (PLAN-social-accounts.md): a person's Facebook, Instagram, TikTok, YouTube, LinkedIn, X,
-// Threads and Pinterest pages, for freelancers and clients.
+// Threads and Pinterest pages, for freelancers and clients. The look is in social-accounts.css.
 //
 // <SocialAccountsBox>: on your own Profile. "+ Add account" opens a row: pick the platform, type your @username
 // or paste your link, press Enter. Each platform can be added once; the x on an account removes it. It works like
@@ -13,7 +14,9 @@ import { Loader } from "../../../components/Loaders";
 // inSettings: the same box inside Settings > Profile Settings (the user, 2026-11-20: "this must be settable in
 // settings"). It looks like the other settings there (a small label instead of the big heading) and says "saved"
 // after each change, because it saves right away, like the picture and the "Available for work" switch.
-export function SocialAccountsBox({ userId, showToast, inSettings = false }) {
+// onChange(accounts): called with { platform: link } once loaded and after every saved change, so the Profile
+// page can show the same accounts in its header.
+export function SocialAccountsBox({ userId, showToast, inSettings = false, onChange }) {
   // undefined while loading, null when they couldn't load, else { platform: link }.
   const [accounts, setAccounts] = useState(undefined);
   const [adding, setAdding] = useState(false);
@@ -23,12 +26,17 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef(null);
+  // (kept in a ref so a new function from the page never restarts the loading below)
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
   useEffect(() => {
     if (!userId) return undefined;
     let active = true;
     fetchSocialLinks(userId).then((result) => {
-      if (active) setAccounts(result);
+      if (!active) return;
+      setAccounts(result);
+      onChangeRef.current?.(result || {});
     });
     return () => { active = false; };
   }, [userId]);
@@ -53,6 +61,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false }) {
       showToast(problem);
       return false;
     }
+    onChangeRef.current?.(next);
     if (inSettings) showToast("Social accounts saved.");
     return true;
   };
@@ -101,16 +110,16 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false }) {
       {added.length > 0 && (
         <div className="d-flex flex-wrap gap-2">
           {added.map((p) => (
-            <span key={p.key} className="badge bg-secondary bg-opacity-75 text-light px-3 py-2 rounded-pill fs-7 d-inline-flex align-items-center gap-2 mw-100">
-              <i className={`bi ${p.icon}`}></i>
+            <span key={p.key} className="badge bg-secondary bg-opacity-75 text-light ps-1 pe-2 py-1 rounded-pill fs-7 d-inline-flex align-items-center gap-2 mw-100">
+              <span className={`social-ic sp-${p.key}`}><i className={`bi ${p.icon}`}></i></span>
               <a
                 href={isSafeSocialLink(p.key, accounts[p.key]) ? accounts[p.key] : undefined}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
-                title={p.label}
+                title={`${p.label}: ${linkLabel(accounts[p.key])}`}
                 className="text-light text-decoration-none text-truncate"
               >
-                {linkLabel(accounts[p.key])}
+                {socialHandle(p.key, accounts[p.key])}
               </a>
               <button
                 type="button"
@@ -173,25 +182,27 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false }) {
   );
 }
 
-// <SocialAccountsRow>: under a person's name on their public page. One round logo button per account, each opens
-// the page in a new tab ("nofollow noopener noreferrer" keeps the other site from reaching back into PhilFreela's
-// tab). Only a link that fits its platform is drawn (isSafeSocialLink), whatever is stored. Nothing shows when
-// there are no accounts. links: { platform: link }.
-export function SocialAccountsRow({ links, name }) {
+// <SocialAccountsRow>: under a person's name, on their public page and on your own Profile (centered there).
+// "FIND BEA ON", then one round logo button per account: it opens the page in a new tab ("nofollow noopener
+// noreferrer" keeps the other site from reaching back into PhilFreela's tab) and shows "@bea.edits on TikTok"
+// as its tooltip. Only a link that fits its platform is drawn (isSafeSocialLink), whatever is stored. Nothing
+// shows when there are no accounts. links: { platform: link }.
+export function SocialAccountsRow({ links, name, centered = false }) {
   const shown = SOCIAL_PLATFORMS.filter((p) => isSafeSocialLink(p.key, links?.[p.key]));
   if (!shown.length) return null;
+  const first = (name || "").trim().split(/\s+/)[0] || "me";
   return (
-    <div className="d-flex flex-wrap align-items-center gap-2 mt-2" data-testid="social-accounts-row">
+    <div className={`social-row ${centered ? "justify-content-center mb-3" : "mt-3"}`} role="group" aria-label={`${first}'s social accounts`} data-testid="social-accounts-row">
+      <span className="social-label text-secondary">Find {first} on</span>
       {shown.map((p) => (
         <a
           key={p.key}
           href={links[p.key]}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          className="btn btn-outline-secondary text-white-50 rounded-circle d-inline-flex align-items-center justify-content-center p-0 flex-shrink-0"
-          style={{ width: 36, height: 36 }}
-          title={`${name}'s ${p.label}`}
-          aria-label={`${name}'s ${p.label} (opens in a new tab)`}
+          className={`social-btn sp-${p.key}`}
+          title={`${socialHandle(p.key, links[p.key])} on ${p.label}`}
+          aria-label={`${first}'s ${p.label} (opens in a new tab)`}
         >
           <i className={`bi ${p.icon}`}></i>
         </a>

@@ -9,7 +9,7 @@ import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import SkillsBox from "../components/SkillsBox";
 import { PortfolioLinksBox } from "../components/PortfolioLinks";
-import { SocialAccountsBox } from "../components/SocialAccounts";
+import { SocialAccountsBox, SocialAccountsRow } from "../components/SocialAccounts";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
 import PictureViewer from "../../../components/PictureViewer";
@@ -29,6 +29,8 @@ export default function ProfileView() {
   const [coverPath, setCoverPath] = useState("");
   // Which picture is open bigger: "picture", "cover", or null (none).
   const [viewing, setViewing] = useState(null);
+  // Your social accounts, { platform: link }: the box further down loads and changes them, the header shows them.
+  const [socialLinks, setSocialLinks] = useState({});
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -59,6 +61,8 @@ export default function ProfileView() {
               </div>
 
               <h2 className="fw-bold text-white mb-2">{displayName}<ProBadge pro={isPro} /></h2>
+              {/* How others see your accounts: round logo buttons (hidden until you add some). */}
+              <SocialAccountsRow links={socialLinks} name={displayName} centered />
               {/* Premium sees who-many (never who); free accounts see where to get it. */}
               <p className="text-white-50 fs-8 mb-4">
                 <i className="bi bi-eye me-1"></i>
@@ -99,7 +103,7 @@ export default function ProfileView() {
               {/* Their Facebook, Instagram, TikTok... pages (freelancers and clients: PLAN-social-accounts.md). */}
               {currentUserId && (
                 <div className="text-start mb-4">
-                  <SocialAccountsBox userId={currentUserId} showToast={showToast} />
+                  <SocialAccountsBox userId={currentUserId} showToast={showToast} onChange={setSocialLinks} />
                 </div>
               )}
 
