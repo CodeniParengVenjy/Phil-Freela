@@ -2,6 +2,8 @@
 -- the schema file. It ends with raise exception, so nothing it changes is kept;
 -- the PASS/FAIL lines come back in the error message. Result on the live
 -- database before applying: 10/10 PASS.
+-- Updated 2026-11-20 for supabase_portfolio_links_no_limit.sql (run it first): 4 links are fine now, 50 is the
+-- ceiling and 51 is refused.
 
 do $$
 declare
@@ -13,7 +15,7 @@ declare
     ['ok', '{}'],
     ['bad', '{http://behance.net/juan}'],
     ['bad', '{javascript:alert(1)}'],
-    ['bad', '{https://a.com,https://b.com,https://c.com,https://d.com}'],
+    ['ok', '{https://a.com,https://b.com,https://c.com,https://d.com,https://e.com}'],
     ['bad', '{"https://behance.net/ju an"}'],
     ['bad', '{https://localhost}']
   ];
@@ -36,6 +38,20 @@ begin
     out := out || E'\nFAIL a 201-character link was accepted';
   exception when check_violation then
     out := out || E'\nPASS a 201-character link is refused';
+  end;
+
+  -- The quiet ceiling: exactly 50 links are saved, 51 are refused.
+  begin
+    update public.profiles set portfolio_links = (select array_agg('https://site' || n || '.com') from generate_series(1, 50) n) where id = fl;
+    out := out || E'\nPASS 50 links are saved';
+  exception when check_violation then
+    out := out || E'\nFAIL 50 links were refused';
+  end;
+  begin
+    update public.profiles set portfolio_links = (select array_agg('https://site' || n || '.com') from generate_series(1, 51) n) where id = fl;
+    out := out || E'\nFAIL 51 links were accepted';
+  exception when check_violation then
+    out := out || E'\nPASS 51 links are refused';
   end;
 
   raise exception 'TEST RESULTS (rolled back):%', out;
