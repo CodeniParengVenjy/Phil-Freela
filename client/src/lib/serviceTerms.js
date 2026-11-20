@@ -1,3 +1,7 @@
+// The same two things also exist on a client's job post (panel revision of
+// 2026-11-15, item 9; database/supabase_job_terms_schema.sql): PostNeedView.jsx
+// sets them, JobDetailsView.jsx shows them, and hiring copies them into the project.
+//
 // Revisions and the freelancer's own terms on an offer (panel revision,
 // PLAN-panel-revisions.md, item 7). The freelancer says how many rounds of
 // changes the price includes, and can add their own short terms (what's

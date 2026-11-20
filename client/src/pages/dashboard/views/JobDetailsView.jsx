@@ -13,6 +13,7 @@ import { formatDay } from "../../../lib/projects";
 import { getBlockingLateProject } from "../../../lib/lateBlock";
 import { HIRES_FIELD, budgetText, budgetTitle, getJobType, hiredCount, hiresOf, jobState } from "../../../lib/jobTerms";
 import { useMyCurrency } from "../../../lib/money";
+import { revisionsLabel } from "../../../lib/serviceTerms";
 import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { TrustBadge } from "../../../components/TrustRing";
@@ -62,7 +63,7 @@ export default function JobDetailsView() {
         // hired:projects(count) and hires (who was hired) are only meaningful to
         // the owner (a freelancer can only see their own project), so only the
         // owner's view uses them.
-        .select(`id, title, category, description, budget, budget_type, currency, job_type, freelancers_needed, skills, start_date, due_date, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)`)
+        .select(`id, title, category, description, budget, budget_type, currency, job_type, freelancers_needed, skills, start_date, due_date, revisions, extra_terms, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}, client:profiles!job_posts_client_id_fkey(id, full_name, username, avatar_path)`)
         .eq("id", jobId)
         .maybeSingle(),
       getMyApplicationForJob(currentUserId, jobId),
@@ -371,6 +372,28 @@ export default function JobDetailsView() {
         <h4 className="text-white fw-bold mb-3"><i className="bi bi-card-text text-role me-2"></i> Description</h4>
         <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-25 text-light-50 fs-7 lh-lg mb-4" style={{ whiteSpace: "pre-wrap" }}>
           <CensoredText text={job.description} />
+        </div>
+
+        {/* Panel revision (item 9): the client's own revisions and terms, read before
+            applying. A copy is saved in the project when the client hires, so a
+            later edit of the post doesn't change what was agreed. */}
+        <h4 className="text-white fw-bold mb-3"><i className="bi bi-arrow-repeat text-role me-2"></i> Revisions and terms</h4>
+        <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-25 fs-7 mb-4">
+          <p className="mb-0">
+            <span className="text-white fw-semibold">Revisions allowed: </span>
+            {revisionsLabel(job.revisions)
+              ? <span className="text-light-50">{revisionsLabel(job.revisions)}</span>
+              : <span className="text-secondary">Not stated. Ask {clientName} in a chat before applying.</span>}
+          </p>
+          {job.extra_terms && (
+            <>
+              <p className="text-white fw-semibold mt-3 mb-1">{clientName}'s terms:</p>
+              <p className="text-light-50 mb-0 text-break" style={{ whiteSpace: "pre-wrap" }}><CensoredText text={job.extra_terms} /></p>
+            </>
+          )}
+          <p className="text-secondary fs-8 mt-3 mb-0">
+            These are saved with the project if you are hired, so a later change to this post doesn't change what was agreed. They can't override PhilFreela's Terms of Service.
+          </p>
         </div>
 
         {/* The skills the client listed when posting (hidden when there are none). */}

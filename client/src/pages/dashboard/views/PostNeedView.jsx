@@ -19,6 +19,7 @@ import CensoredText from "../../../components/CensoredText";
 import CurrencySelect from "../../../components/CurrencySelect";
 import { Loader, Busy } from "../../../components/Loaders";
 import { DEFAULT_CURRENCY, moneyRule, moneyStep, parseMoney, useMyCurrency } from "../../../lib/money";
+import { MAX_EXTRA_TERMS, REVISION_OPTIONS } from "../../../lib/serviceTerms";
 
 // The database allows up to 10 skills, each up to 40 characters.
 const MAX_SKILLS = 10;
@@ -31,9 +32,10 @@ const hasSkill = (list, name) => list.some((s) => s.toLowerCase() === name.toLow
 // description and skills are here so the Edit form can be filled in from the list.
 // hired:projects(count) is how many freelancers were hired from the post (the
 // owner can read their own projects), for the Open / Filled badge; HIRES_FIELD is
-// who they are, for the "Hired freelancers" list under each post.
+// who they are, for the "Hired freelancers" list under each post. revisions and
+// extra_terms are the client's own terms (panel revision, lib/serviceTerms.js).
 const JOB_COLUMNS =
-  `id, title, category, description, skills, budget, budget_type, currency, job_type, freelancers_needed, start_date, due_date, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}`;
+  `id, title, category, description, skills, budget, budget_type, currency, job_type, freelancers_needed, start_date, due_date, revisions, extra_terms, created_at, updated_at, hired:projects(count), ${HIRES_FIELD}`;
 
 // The sentence for a save the database refused. 23514 = a table rule was broken;
 // the message names which one.
@@ -96,6 +98,11 @@ export default function PostNeedView() {
   // How many freelancers the client wants to hire (a number box, so text).
   // When that many are hired, the post stops showing.
   const [freelancersNeeded, setFreelancersNeeded] = useState("1");
+  // How many rounds of changes the client allows and the client's own terms
+  // (panel revision, lib/serviceTerms.js). "" = not picked yet. Freelancers read
+  // both before applying, and hiring saves a copy in the project.
+  const [revisions, setRevisions] = useState("");
+  const [extraTerms, setExtraTerms] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [posts, setPosts] = useState(null);
   // The job waiting in the "Delete this job post?" pop-up (null = closed).
@@ -167,6 +174,8 @@ export default function PostNeedView() {
     setStartDate(editing.start_date || "");
     setDueDate(editing.due_date || "");
     setFreelancersNeeded(String(editing.freelancers_needed));
+    setRevisions(editing.revisions || "");
+    setExtraTerms(editing.extra_terms || "");
   } else if (!editing && filledFromId) {
     // Edit mode ended (the address no longer has ?edit=), so the same job can be edited again later.
     setFilledFromId(null);
@@ -194,6 +203,8 @@ export default function PostNeedView() {
     setStartDate("");
     setDueDate("");
     setFreelancersNeeded("1");
+    setRevisions("");
+    setExtraTerms("");
   };
 
   // Leaves edit mode and empties the form (Cancel, or after saving).
@@ -371,7 +382,9 @@ export default function PostNeedView() {
       budget_type: budgetType,
       start_date: startDate,
       due_date: dueDate,
-      freelancers_needed: Number(freelancersNeeded)
+      freelancers_needed: Number(freelancersNeeded),
+      revisions: revisions || null,
+      extra_terms: extraTerms.trim() || null
     };
     // .single() fails when no row was updated (for example when the database
     // refuses because the account is blocked from posting), so that is an error too.
@@ -682,6 +695,39 @@ export default function PostNeedView() {
                     />
                     <small className="text-secondary fs-8">Once you've hired this many, the post is hidden from freelancers.</small>
                   </div>
+                </div>
+
+                {/* Panel revision (item 9): the client's own revisions and terms, read
+                    by freelancers before applying and copied into the project when
+                    someone is hired (lib/serviceTerms.js, database/supabase_job_terms_schema.sql). */}
+                <div>
+                  <label htmlFor="jobRevisions" className="form-label text-white fw-semibold fs-7">Revisions you allow:</label>
+                  <select
+                    id="jobRevisions"
+                    className="form-select bg-secondary bg-opacity-25 border-secondary text-white py-2"
+                    value={revisions}
+                    onChange={(e) => setRevisions(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>How many rounds of changes will you ask for?</option>
+                    {REVISION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="jobTerms" className="form-label text-white fw-semibold fs-7">Your terms (optional):</label>
+                  <textarea
+                    id="jobTerms"
+                    className="form-control bg-secondary bg-opacity-25 border-secondary text-white p-3"
+                    rows="3"
+                    maxLength={MAX_EXTRA_TERMS}
+                    placeholder="e.g. Send a draft after 3 days. Files in the format I ask for. I pay after I review the final work."
+                    value={extraTerms}
+                    onChange={(e) => setExtraTerms(e.target.value)}
+                  ></textarea>
+                  <small className="text-secondary fs-8 d-block mt-1">
+                    Freelancers read these before they apply, and a copy is saved with each project you hire from this post. They can't override PhilFreela's Terms of Service. {extraTerms.length}/{MAX_EXTRA_TERMS}
+                  </small>
                 </div>
 
                 <div className="d-flex flex-wrap gap-2 pt-2">

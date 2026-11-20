@@ -34,7 +34,7 @@ async function loadContractFacts(projectId) {
   const { data: p, error } = await supabase
     .from("projects")
     .select(`id, title, note, status, started_at, due_date, completed_at, ended_at,
-      agreed_amount, price_basis, price_status, price_source, price_agreed_at, currency, job_post_id, booking_id,
+      agreed_amount, price_basis, price_status, price_source, price_agreed_at, currency, job_post_id, booking_id, revisions, extra_terms,
       booking:bookings(revisions, extra_terms, created_at, service:services(title)),
       job_post:job_posts(title),
       client:profiles!projects_client_id_fkey(full_name, username, user_number),
@@ -196,13 +196,18 @@ function drawContract(w, c, logo) {
     : "Files the freelancer uploads stay locked, with only a watermarked preview, until the freelancer confirms a payment.");
   w.para("Who pays first (a down payment, or the whole price after delivery) is agreed between the two people in the chat.");
 
-  w.heading(5, "Revisions and the freelancer's terms");
+  w.heading(5, fromOffer ? "Revisions and the freelancer's terms" : "Revisions and the client's terms");
   if (fromOffer) {
     w.row("Revisions included", revisionsLabel(c.booking?.revisions) || "Not stated in the offer: agreed in the chat");
     w.row("Freelancer's terms", c.booking?.extra_terms || "None written on the offer");
     w.para("These are the offer's revisions and terms as they were when the booking was sent. They can't override PhilFreela's Terms of Service.");
   } else {
-    w.para("This project came from a job post, which doesn't set a number of revisions. The two people agree on revisions in the chat.");
+    // A project from a job post: the post's revisions and terms, copied into the
+    // project when the freelancer was hired (database/supabase_job_terms_schema.sql).
+    // Older posts have none.
+    w.row("Revisions allowed", revisionsLabel(c.revisions) || "Not stated in the job post: agreed in the chat");
+    w.row("Client's terms", c.extra_terms || "None written on the job post");
+    w.para("These are the job post's revisions and terms as they were when the freelancer was hired. They can't override PhilFreela's Terms of Service.");
   }
 
   w.heading(6, "Delivery and review");
@@ -216,7 +221,7 @@ function drawContract(w, c, logo) {
   w.para(
     "The client gets the original files once they are paid as described in part 4. How the client may use the " +
       "finished work, and whether the freelancer may show it in their portfolio, is what the two people agreed in the " +
-      "chat or in the freelancer's terms above."
+      "chat or in the terms above."
   );
 
   w.heading(8, "Ending the project");
