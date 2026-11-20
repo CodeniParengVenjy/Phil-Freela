@@ -17,7 +17,7 @@ export default function ProView() {
           <h3 className="text-white fw-bold mb-1"><i className="bi bi-gem text-role me-2"></i>Premium</h3>
           <p className="text-secondary fs-7 mb-4">
             {isFreelancer
-              ? "More offers, a free Featured post every month, view counts, bigger chat files, your own look and watermark, and a gold Premium badge."
+              ? "More offers, a free Featured post every month, view counts, bigger chat files, your own look and watermark, five highlight styles, and a gold Premium badge."
               : "A free Featured job post every month, half-price Featured posts, view counts, bigger chat files, your own look, and a gold Premium badge."}
           </p>
           {currentUserId && accountType && <ProPlans userId={currentUserId} accountType={accountType} onPaid={refreshPro} />}

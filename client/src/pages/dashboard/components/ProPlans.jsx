@@ -224,6 +224,7 @@ export default function ProPlans({ userId, accountType, onPaid }) {
               <Feature included>Chat files up to 10 MB, a one-color look</Feature>
               <Feature included={false}>No free Featured post</Feature>
               <Feature included={false}>No view counts</Feature>
+              {isFreelancer && <Feature included={false}>No highlight styles (the Director&apos;s Cut only)</Feature>}
               <Feature included={false}>No Premium badge</Feature>
             </ul>
             {isPro ? (
@@ -255,6 +256,9 @@ export default function ProPlans({ userId, accountType, onPaid }) {
               <Feature included>Chat files up to 50 MB instead of 10 MB</Feature>
               <Feature included>The two-color look (Settings &gt; Appearance)</Feature>
               {isFreelancer && <Feature included>Your watermark in any color, 4 fonts and more sizes</Feature>}
+              {/* The highlight styles (previews/highlights-styles/): five looks with their own music for a
+                  freelancer's highlight, Premium only; everyone keeps the Director's Cut (the user, 2026-11-20). */}
+              {isFreelancer && <Feature included><strong>Highlight styles</strong>: Papercut, Retro, Cartoony, Kinetic type and Comic book, each with its own music <span className="badge bg-warning text-dark fs-8 ms-1">New</span></Feature>}
               <Feature included>A gold Premium badge by your name, everywhere it shows</Feature>
               <Feature included>Everything in Free</Feature>
             </ul>

@@ -116,7 +116,7 @@ export const TOUR = {
       { page: SETTINGS, target: "settings-gcash", scroll: true, title: "GCash Payment", text: "Add your GCash number so clients know where to pay you. PhilFreela never holds your money." },
 
       { page: null, target: "menu-pro", menu: true, title: "Premium", text: "More offers, a free Featured post every month and a gold Premium badge, if you want them. Next opens it." },
-      { page: "/dashboard/pro", target: "pro-plan", scroll: true, title: "Free or Premium", text: "Free stays free. Premium is ₱149 for 30 days, paid online with GCash, Maya or QR Ph: up to 15 offers instead of 3, a free Featured post every month, view counts, bigger chat files, your own watermark look, and a gold Premium badge." },
+      { page: "/dashboard/pro", target: "pro-plan", scroll: true, title: "Free or Premium", text: "Free stays free. Premium is ₱149 for 30 days, paid online with GCash, Maya or QR Ph: up to 15 offers instead of 3, a free Featured post every month, view counts, bigger chat files, your own watermark look, five highlight styles, and a gold Premium badge." },
 
       { page: null, target: "menu-advertise", menu: true, title: "Advertise", text: "Want more people to see your offers? Send an ad for the Community Billboard, the strip on every dashboard home. Next opens it." },
       { page: "/dashboard/advertise", target: "advertise-form", scroll: true, title: "Send an ad", text: "Write a headline and a short message, add a picture if you like, pick who sees it and for how many days, then send it. An admin reads it first, and you pay only after it's approved." },

@@ -428,7 +428,8 @@ function TermsOfService() {
           <strong className="text-white">Premium (clients and freelancers):</strong> 30 days of a Premium badge by your name,
           half-price Featured posts and one free 3-day Featured post every 30 days, counts of how many people opened your
           posts and your profile (never who), chat files up to 50 MB, the two-color look and, for freelancers, up to 15
-          offers instead of 3 and more watermark choices. It is paid on the checkout page of Xendit, a payment company,
+          offers instead of 3, more watermark choices and five highlight styles (Papercut, Retro, Cartoony, Kinetic type
+          and Comic book). It is paid on the checkout page of Xendit, a payment company,
           with GCash, Maya or QR Ph, and it starts by itself once Xendit confirms the payment. Paying again before it ends
           adds the days after the current end. When Premium ends, what you already have stays (your offers, a saved look),
           but you can't add more than the free limits. While PhilFreela is a student project, Premium runs in Xendit's test

@@ -6,8 +6,9 @@ import { supabase } from "./supabaseClient";
 // PLAN-premium.md): 30 days, for clients and freelancers, paid online through
 // Xendit. Its perks: a gold Premium badge, up to 15 offers instead of 3
 // (freelancers), half-price Featured posts, one free Featured post every 30
-// days, view counts, 50 MB chat files, the two-color look and the watermark's
-// extra choices. The browser can only READ pro_members; the end date is written
+// days, view counts, 50 MB chat files, the two-color look, the watermark's
+// extra choices and (freelancers) the five highlight styles beside the free
+// Director's Cut (added 2026-11-20). The browser can only READ pro_members; the end date is written
 // by the database after Xendit confirms a payment, so nobody can give themselves
 // Premium. (The inside names, pro_members, is_pro, pro_30, stayed.)
 
