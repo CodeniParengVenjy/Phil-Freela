@@ -5,7 +5,8 @@ Last updated: 2026-11-20. To continue in a new Claude session, say:
 
 Status: the user said "ok" on 2026-11-20. **Step 1 is DONE:** after the user typed "apply it", `database/supabase_highlight_style_schema.sql` was applied to the live database (migration `highlight_style`, version 20261120032743). `database/test_highlight_style.sql` passed 7 of 7 before and after (rolled back each time). **Step 2 is DONE**
 (the styles inside the player, 2026-11-20). **Step 3 is DONE** (the style choice on your own profile, 2026-11-20).
-**Next: Step 4.**
+**Step 4 is DONE** (the tour's Portfolio step mentions Style). **ALL 4 STEPS ARE LIVE.** Not tried yet: a real
+Premium freelancer picking a style on the live site.
 
 ## What the user asked
 
@@ -135,6 +136,7 @@ Cartoony, Kinetic type and Comic book.
 
 ### Step 4: Words
 1. The tour's Portfolio step mentions the styles (`welcomeGuide.js`).
+   - Done: "Style, under it, picks how the film looks; Premium adds five styles."
 2. This plan's status is updated.
 
 Each step is committed and pushed, then checked on the live site.
