@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
-import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveDescription, saveDisplayName, saveEmailMuted, saveEmailWhenOffline, saveUsername, noAutofill } from "../../../lib/profile";
+import { EMAIL_KINDS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_USERNAME_LENGTH, NAME_COOLDOWN_DAYS, USERNAME_COOLDOWN_DAYS, cooldownEnds, fetchAvailableForWork, fetchDescription, fetchEmailMuted, fetchEmailWhenOffline, fetchNameChangeDates, saveAvailableForWork, saveEmailMuted, saveEmailWhenOffline, saveProfileSettings, noAutofill } from "../../../lib/profile";
 import { formatEndDate } from "../../../lib/suspensions";
 import { COVER_CROP, PICTURE_CROP, checkAvatarFile, fetchCoverPath, removeCover, uploadAvatar, uploadCover } from "../../../lib/avatar";
 import { deleteMyAccount } from "../../../lib/privacy";
@@ -250,46 +250,40 @@ export default function SettingsView() {
     else saveCover(croppedFile);
   };
 
-  // Saves the name and description to the database (not just the screen), so
-  // they stay after a refresh and other users see them too.
+  // Saves the name, username and description to the database (not just the
+  // screen), so they stay after a refresh and other users see them too. All three
+  // go in ONE trip (lib/profile.js saveProfileSettings; it was six, one after the
+  // other, about 5 seconds), and the button always comes back, even when the
+  // connection drops halfway.
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!currentUserId || saving) return;
 
     setSaving(true);
-    const nameProblem = await saveDisplayName(currentUserId, shownName);
-    if (nameProblem) {
-      setSaving(false);
-      showToast(nameProblem);
-      return;
-    }
-    setDisplayName(shownName.trim());
-    setNameInput(null);
-
-    // The username is only sent when it was changed.
-    if (shownUsername.trim() !== username) {
-      const usernameProblem = await saveUsername(currentUserId, shownUsername);
-      if (usernameProblem) {
-        setSaving(false);
-        showToast(usernameProblem);
+    try {
+      const result = await saveProfileSettings(
+        currentUserId,
+        { name: shownName, username: shownUsername, description: shownDescription },
+        { name: displayName, username, description: savedDescription }
+      );
+      if (result.problem) {
+        showToast(result.problem);
         return;
       }
-      setUsername(shownUsername.trim());
+      setDisplayName(result.values.name);
+      setNameInput(null);
+      setUsername(result.values.username);
       setUsernameInput(null);
-    }
-    // A change starts a new waiting time, so ask the database for the dates again.
-    setNameDates(await fetchNameChangeDates(currentUserId));
-
-    const descriptionProblem = await saveDescription(currentUserId, shownDescription);
-    if (descriptionProblem) {
+      // A change starts a new waiting time; the database sent the new dates back.
+      if (result.dates) setNameDates(result.dates);
+      setSavedDescription(result.values.description);
+      setDescriptionInput(null);
+      showToast("Settings saved successfully!");
+    } catch {
+      showToast("Something went wrong while saving. Please try again.");
+    } finally {
       setSaving(false);
-      showToast(descriptionProblem);
-      return;
     }
-    setSavedDescription(shownDescription.trim());
-    setDescriptionInput(null);
-    setSaving(false);
-    showToast("Settings saved successfully!");
   };
 
   // Freelancer Pro used to be a tab here. Old links to it (and Xendit's return

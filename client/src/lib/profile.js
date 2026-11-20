@@ -154,27 +154,9 @@ export async function saveDisplayName(userId, name) {
   return "";
 }
 
-// Longest username allowed (profiles.username is varchar(60)).
+// Longest username allowed (profiles.username is varchar(60)). The database
+// allows a username change every 30 days and keeps usernames unique.
 export const MAX_USERNAME_LENGTH = 60;
-
-// Saves a new username (Settings > Username), here and in the login's saved
-// copy. The database allows a change every 30 days and keeps usernames unique.
-// Returns "" when saved, or a message to show the user.
-export async function saveUsername(userId, name) {
-  const username = name.trim();
-  if (!username) return "Please choose a username.";
-  if (username.length > MAX_USERNAME_LENGTH) return `Your username can't be longer than ${MAX_USERNAME_LENGTH} characters.`;
-
-  const { data, error } = await supabase.from("profiles").update({ username }).eq("id", userId).select("id");
-  // 23505 = the database's "username is unique" rule.
-  if (error?.code === "23505") return "That username is already taken.";
-  if (cooldownMessage(error)) return cooldownMessage(error);
-  if (badWordMessage(error)) return badWordMessage(error);
-  if (error || !data?.length) return "Couldn't save your username. Please try again.";
-
-  await supabase.auth.updateUser({ data: { username } });
-  return "";
-}
 
 // Longest profile description allowed -- the same limit as the database rule
 // (supabase_profile_description_schema.sql).
@@ -189,15 +171,61 @@ export async function fetchDescription(userId) {
   return data?.description ?? "";
 }
 
-// Saves the description (Settings > Description). An empty one is allowed and
-// just clears it. Returns "" when saved, or a message to show the user.
-export async function saveDescription(userId, text) {
-  const description = text.trim();
-  if (description.length > MAX_DESCRIPTION_LENGTH) return `Your description can't be longer than ${MAX_DESCRIPTION_LENGTH} characters.`;
+// Saves Settings > Profile Settings (name, username, description) in ONE trip to
+// the database. It used to be three updates, two login updates and a re-read, one
+// after the other (about 5 seconds, 2 of them in the bad-word check), and any
+// failure on the way left the Save button spinning for good.
+//   shown = what the boxes say now, saved = what is stored now.
+// Only a box that changed is sent (an empty description may be saved: it clears
+// it). It is all-or-nothing: if the username is taken, the name isn't saved either.
+// Returns { problem } ("" = saved, or a sentence to show the person). When saved it
+// also holds `values` (what is stored now) and `dates` (when the name and username
+// last changed, the database sets them), so the page needs no second trip.
+export async function saveProfileSettings(userId, shown, saved) {
+  const changes = {};
 
-  const { data, error } = await supabase.from("profiles").update({ description }).eq("id", userId).select("id");
-  if (error || !data?.length) return "Couldn't save your description. Please try again.";
-  return "";
+  const name = cleanName(shown.name);
+  if (name !== cleanName(saved.name)) {
+    const problem = checkName(name);
+    if (problem) return { problem };
+    changes.full_name = name;
+  }
+
+  const username = String(shown.username ?? "").trim();
+  if (username !== String(saved.username ?? "").trim()) {
+    if (!username) return { problem: "Please choose a username." };
+    if (username.length > MAX_USERNAME_LENGTH) return { problem: `Your username can't be longer than ${MAX_USERNAME_LENGTH} characters.` };
+    changes.username = username;
+  }
+
+  const description = String(shown.description ?? "").trim();
+  if (description !== String(saved.description ?? "").trim()) {
+    if (description.length > MAX_DESCRIPTION_LENGTH) return { problem: `Your description can't be longer than ${MAX_DESCRIPTION_LENGTH} characters.` };
+    changes.description = description;
+  }
+
+  const values = { name, username, description };
+  // Nothing changed, so there is nothing to send.
+  if (!Object.keys(changes).length) return { problem: "", values, dates: null };
+
+  // .select() returns the saved row (after the database's own rules ran), so an
+  // empty answer means nothing was saved, and it carries the new change dates.
+  const { data, error } = await supabase.from("profiles").update(changes).eq("id", userId).select("id, name_changed_at, username_changed_at");
+  // 23505 = the database's "username is unique" rule.
+  if (error?.code === "23505") return { problem: "That username is already taken." };
+  if (cooldownMessage(error)) return { problem: cooldownMessage(error) };
+  if (badWordMessage(error)) return { problem: badWordMessage(error) };
+  if (error || !data?.length) return { problem: "Couldn't save your changes. Please try again." };
+
+  // The login keeps its own copy of the name and username (the emails greet people
+  // with it). The dashboard reads profiles, so nobody has to wait for this copy,
+  // and if it fails nothing shows wrong: it is sent in the background, in one go.
+  const copy = {};
+  if (changes.full_name) copy.full_name = changes.full_name;
+  if (changes.username) copy.username = changes.username;
+  if (Object.keys(copy).length) supabase.auth.updateUser({ data: copy }).catch(() => {});
+
+  return { problem: "", values, dates: { nameChangedAt: data[0].name_changed_at ?? null, usernameChangedAt: data[0].username_changed_at ?? null } };
 }
 
 // A freelancer's skills (Profile > Skills), shown as chips on their Profile and

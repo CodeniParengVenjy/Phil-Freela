@@ -35,7 +35,7 @@ const sidebarLinks = [
 // calling the hook itself, so the auth session isn't fetched twice.
 export default function FreelancerDashboardLayout({
   nameMissing, handleNameSaved,
-  displayName, setDisplayName, accountType, currentUserId, username,
+  displayName, setDisplayName, accountType, currentUserId, username, setUsername,
   avatarPath, setAvatarPath,
   unreadCount, refreshUnreadCount,
   unreadNotifications, refreshUnreadNotifications,
@@ -132,7 +132,7 @@ export default function FreelancerDashboardLayout({
               </div>
             )}
 
-            <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, refreshPendingBookings, suspension, isPro, refreshPro: pro.reload }} />
+            <Outlet context={{ displayName, setDisplayName, avatarPath, setAvatarPath, accountType, currentUserId, username, setUsername, showToast, openChat, openPreview, refreshUnreadCount, unreadNotifications, refreshUnreadNotifications, refreshPendingBookings, suspension, isPro, refreshPro: pro.reload }} />
           </main>
         </PageTransition>
       </div>
