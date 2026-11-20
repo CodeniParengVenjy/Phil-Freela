@@ -93,6 +93,7 @@ export default function HighlightsPlayer({ userId, levelPick = null, stylePick =
     const engine = startHighlights(hostRef.current, loaded.data, {
       levelPick,
       style: styleDef,
+      stylePreview: Boolean(stylePick) && stylePick !== loaded.data.style,
       onClose: () => actions.current.onClose?.(),
       onMessage: hasMessage ? () => actions.current.onMessage?.() : undefined,
       onSeeServices: () => actions.current.onSeeServices?.(),
@@ -106,7 +107,7 @@ export default function HighlightsPlayer({ userId, levelPick = null, stylePick =
       engine.stop();
       engineRef.current = null;
     };
-  }, [ready, loaded, levelPick, styleDef, hasMessage]);
+  }, [ready, loaded, levelPick, styleDef, stylePick, hasMessage]);
 
   // Escape closes it while it is still loading (once the film runs, the film handles its own keys).
   useEffect(() => {

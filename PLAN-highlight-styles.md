@@ -4,7 +4,8 @@ Last updated: 2026-11-20. To continue in a new Claude session, say:
 "Read PLAN-highlight-styles.md and continue from the current step."
 
 Status: the user said "ok" on 2026-11-20. **Step 1 is DONE:** after the user typed "apply it", `database/supabase_highlight_style_schema.sql` was applied to the live database (migration `highlight_style`, version 20261120032743). `database/test_highlight_style.sql` passed 7 of 7 before and after (rolled back each time). **Step 2 is DONE**
-(the styles inside the player, 2026-11-20). **Next: Step 3.**
+(the styles inside the player, 2026-11-20). **Step 3 is DONE** (the style choice on your own profile, 2026-11-20).
+**Next: Step 4.**
 
 ## What the user asked
 
@@ -117,6 +118,20 @@ Cartoony, Kinetic type and Comic book.
    - `highlights-poster.css`;
    - `lib/highlights.js` (`saveHighlightStyle`).
 4. Checked in light and dark mode, with a light accent color, and on a phone.
+
+**How it was built (2026-11-20):**
+- `StyleChooser.jsx` is a "Style: <name>" button under the poster.
+  - It opens a pop-up with six cards (the preview's small pictures, the look, the music, Preview, and Use this
+    style).
+  - Without Premium, the five Premium cards are grey with a lock, and their button is Get Premium.
+  - When Premium has ended, a note says the saved style is kept and visitors see the Director's Cut.
+- Preview plays your own highlight in that style. The film's top bar says "· Preview" when visitors would see
+  something else.
+- `lib/highlights.js` has `fetchHighlightStyle` and `saveHighlightStyle`. The database's refusal comes back as a
+  plain sentence.
+- Tests (stand-in database): 26 of 26 on your own profile.
+  - They cover: with Premium; without Premium; after Premium ended; light mode with a pale accent (through the
+    site's own `applyAppearance`); a phone.
 
 ### Step 4: Words
 1. The tour's Portfolio step mentions the styles (`welcomeGuide.js`).

@@ -30,8 +30,9 @@ export function startHighlights(host, U, opts = {}) {
   // Elements are looked up inside the player only.
   const $ = (id) => root.querySelector("#" + id);
   let stopped = false;
-  // The owner can preview another level's style on their own highlight ("· Preview" shows in the top bar).
-  const previewing = !!opts.levelPick && opts.levelPick !== U.lvl.key;
+  // The owner can preview another level's style, or a highlight style visitors don't see (opts.stylePreview), on
+  // their own highlight ("· Preview" shows in the top bar).
+  const previewing = (!!opts.levelPick && opts.levelPick !== U.lvl.key) || !!opts.stylePreview;
 
   // ---------- Math helpers ----------
   const clamp = (x, a = 0, b = 1) => Math.min(Math.max(x, a), b);

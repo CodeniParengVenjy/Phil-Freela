@@ -120,6 +120,23 @@ function serviceOf(service, rating) {
   };
 }
 
+// Your own highlight style (PLAN-highlight-styles.md, Step 3): the saved one, "cinema" when none.
+export async function fetchHighlightStyle(userId) {
+  const { data, error } = await supabase.from("profiles").select("highlight_style").eq("id", userId).maybeSingle();
+  if (error) throw error;
+  return STYLE_IDS.includes(data?.highlight_style) ? data.highlight_style : "cinema";
+}
+
+// Saves your highlight style. The database refuses a Premium style without Premium (the trigger
+// profiles_premium_highlight_style); that refusal comes back as a plain sentence.
+export async function saveHighlightStyle(userId, styleId) {
+  if (!STYLE_IDS.includes(styleId)) throw new Error("That style doesn't exist.");
+  const { data, error } = await supabase.from("profiles").update({ highlight_style: styleId }).eq("id", userId).select("highlight_style").maybeSingle();
+  if (error) throw new Error(/Premium perk/i.test(error.message || "") ? "Highlight styles are a Premium perk. Get Premium to use this style." : "Couldn't save your style. Please try again.");
+  if (!data) throw new Error("Couldn't save your style. Please try again.");
+  return data.highlight_style;
+}
+
 // Everything one freelancer's highlight needs, read at the same time. Returns
 // { data, items } or { error }. items: their portfolio projects as stored, for
 // the project viewer (PortfolioViewer) when a visitor opens one.

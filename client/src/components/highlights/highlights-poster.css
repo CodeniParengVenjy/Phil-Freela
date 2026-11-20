@@ -18,3 +18,45 @@
 .hl-poster:focus-visible { outline: 3px solid var(--accent-role, #f97316); outline-offset: 3px; }
 @media (max-width: 575.98px) { .hl-poster-body { left: 1rem; right: 5rem; bottom: 1rem; } .hl-poster-play { right: 1rem; bottom: 1rem; width: 3.4rem; height: 3.4rem; font-size: 1.7rem; } }
 @media (prefers-reduced-motion: reduce) { .hl-poster-pic { transition: opacity 0.3s ease; transform: none !important; } .hl-poster-play::after { animation: none; } }
+
+/* The owner's highlight style (StyleChooser.jsx, PLAN-highlight-styles.md Step 3): six cards in a pop-up. The
+   cards follow the dashboard's light mode; the pictures are the style's own colors (PhilFreela orange). */
+.hl-style-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 900px) { .hl-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .hl-style-grid { grid-template-columns: minmax(0, 1fr); } }
+.hl-style-card { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 10px 12px; border-radius: 14px; border: 1px solid rgba(148, 163, 184, 0.28); background: rgba(255, 255, 255, 0.03); }
+.hl-style-card.on { border-color: var(--accent-role, #f97316); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-role, #f97316) 22%, transparent); }
+.hl-style-card small { line-height: 1.4; }
+body.theme-light .hl-style-card { background: #f8fafc; border-color: #e2e8f0; }
+body.theme-light .hl-style-card.on { border-color: var(--accent-role, #f97316); }
+.hl-style-prem { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #1a1205; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.hl-style-card.locked .hl-style-prem { background: rgba(148, 163, 184, 0.22); color: inherit; }
+.hl-style-note { padding: 8px 12px; border-radius: 12px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); font-size: 0.82rem; }
+/* The pictures (as in the approved preview; without Premium they are grey) */
+.hl-style-art { --pick: #f97316; --pick-rgb: 249, 115, 22; position: relative; display: block; flex: none; height: 92px; border-radius: 10px; overflow: hidden; background: #0b0d14; }
+.hl-style-art i { position: absolute; display: block; }
+.hl-style-card.locked .hl-style-art { filter: grayscale(0.85) brightness(0.85); }
+.hl-style-art.sx-cinema { background: radial-gradient(circle at 30% 40%, rgba(var(--pick-rgb), 0.55), transparent 50%), radial-gradient(circle at 75% 70%, rgba(251, 191, 36, 0.35), transparent 45%), #07080d; }
+.hl-style-art.sx-cinema::before, .hl-style-art.sx-cinema::after { content: ""; position: absolute; left: 0; right: 0; height: 14px; background: #000000; }
+.hl-style-art.sx-cinema::before { top: 0; }
+.hl-style-art.sx-cinema::after { bottom: 0; }
+.hl-style-art.sx-paper { background: #f6ecd9; }
+.hl-style-art.sx-paper .a1 { left: 64%; top: 14px; width: 26px; height: 26px; border-radius: 50%; background: #ffd25e; box-shadow: 2px 3px 0 rgba(60, 40, 20, 0.2); }
+.hl-style-art.sx-paper .a2 { left: -10%; right: -10%; bottom: -30px; height: 70px; border-radius: 50% 50% 0 0; background: color-mix(in srgb, var(--pick) 45%, #ffffff); box-shadow: 0 -3px 0 rgba(60, 40, 20, 0.12); }
+.hl-style-art.sx-paper .a3 { left: 20%; right: -30%; bottom: -40px; height: 64px; border-radius: 50% 50% 0 0; background: var(--pick); box-shadow: 0 -3px 0 rgba(60, 40, 20, 0.16); }
+.hl-style-art.sx-paper .a4 { left: 14%; top: 18px; width: 50px; height: 16px; border-radius: 99px; background: #ffffff; box-shadow: 2px 3px 0 rgba(60, 40, 20, 0.15); }
+.hl-style-art.sx-retro { background: linear-gradient(180deg, #120b2e, #2a1650 70%, var(--pick) 70%, var(--pick) 76%, #0d0820 76%); image-rendering: pixelated; }
+.hl-style-art.sx-retro .a1 { left: 18%; top: 22px; width: 6px; height: 6px; background: #ffffff; box-shadow: 40px -8px #ffffff, 90px 6px #ffe66d, 130px -4px #ffffff, 60px 18px #ffffff; }
+.hl-style-art.sx-retro .a2 { left: 50%; top: 26px; width: 28px; height: 28px; margin-left: -14px; background: #ffd23f; box-shadow: inset -4px -4px 0 #c98a00, 0 0 0 4px #1b1030; }
+.hl-style-art.sx-retro .a2::after { content: "?"; position: absolute; inset: 0; display: grid; place-items: center; font-family: "Press Start 2P", ui-monospace, monospace; font-size: 12px; font-weight: 800; color: #1b1030; }
+.hl-style-art.sx-toon { background: repeating-conic-gradient(from 0deg at 50% 120%, var(--pick) 0deg 10deg, color-mix(in srgb, var(--pick) 55%, #ffffff) 10deg 20deg); }
+.hl-style-art.sx-toon .a1 { left: 50%; top: 18px; width: 54px; height: 54px; margin-left: -27px; border-radius: 50%; background: #ffe14d; border: 4px solid #1b1b1b; box-shadow: 4px 4px 0 #1b1b1b; }
+.hl-style-art.sx-toon .a2 { left: 12%; top: 16px; width: 40px; height: 18px; border-radius: 99px; background: #ffffff; border: 3px solid #1b1b1b; }
+.hl-style-art.sx-kinetic { background: #0a0a0a; }
+.hl-style-art.sx-kinetic .sx-words { position: absolute; left: 10px; top: 8px; right: 6px; overflow: hidden; white-space: nowrap; font-family: Anton, Impact, "Arial Black", sans-serif; font-size: 34px; line-height: 0.92; color: #ffffff; text-transform: uppercase; }
+.hl-style-art.sx-kinetic .a1 { left: 0; right: 0; bottom: 10px; height: 8px; background: var(--pick); }
+.hl-style-art.sx-comic { background: radial-gradient(circle, rgba(var(--pick-rgb), 0.45) 1.6px, transparent 1.8px) 0 0 / 8px 8px, #fffaeb; }
+.hl-style-art.sx-comic .a1 { left: 8px; top: 8px; width: 46%; bottom: 8px; border: 3px solid #111111; background: var(--pick); }
+.hl-style-art.sx-comic .a2 { right: 8px; top: 8px; width: 40%; height: 40%; border: 3px solid #111111; background: #ffffff; }
+.hl-style-art.sx-comic .a3 { right: 8px; bottom: 8px; width: 40%; height: 36%; border: 3px solid #111111; background: #ffe14d; }
+.hl-style-art.sx-comic .a3::after { content: "POW!"; position: absolute; inset: 0; display: grid; place-items: center; font-family: Bangers, Impact, sans-serif; font-size: 16px; color: #e11d48; letter-spacing: 0.04em; }

@@ -21,14 +21,16 @@ function Downloading() {
 //   userId, username  whose highlight (username: drawn over project files in the project viewer)
 //   isOwn             your own highlight (no Message button, no Report)
 //   levelPick         the owner previewing another level's style (null = the real level)
+//   stylePick         the owner previewing a highlight style (null = the style visitors see)
 //   onMessage, onReport(item), reportOpen: chat, Report on a project, and whether that form is open
-export function HighlightsOverlay({ userId, username, isOwn = false, levelPick = null, onMessage, onReport, reportOpen = false, onClose }) {
+export function HighlightsOverlay({ userId, username, isOwn = false, levelPick = null, stylePick = null, onMessage, onReport, reportOpen = false, onClose }) {
   const navigate = useNavigate();
   return (
     <Suspense fallback={<Downloading />}>
       <HighlightsPlayer
         userId={userId}
         levelPick={levelPick}
+        stylePick={stylePick}
         ownerName={username}
         onClose={onClose}
         onMessage={isOwn || !onMessage ? undefined : () => { onClose(); onMessage(); }}
