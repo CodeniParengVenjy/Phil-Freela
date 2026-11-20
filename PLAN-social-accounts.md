@@ -13,17 +13,25 @@ Status: approved 2026-11-20 ("ok" to the plan written in chat).
   column, rule and function there, no profile changed, the links the website builds are accepted by the real rule.
 - Website: LIVE (commit ac9e0a8). Browser test 73/73 (computer, light mode, phone; fake database that refuses what
   the real rule refuses), lint clean, production build OK.
+- Also in Settings > Profile Settings (added the same day, the user: "this must be settable in settings > Profile
+  Settings"): the same box, see "What a person sees". Browser test 103/103 in total (30 new checks for Settings:
+  computer, light mode, phone, a failed save, Enter not submitting the form).
 - Not tried yet by a real person: adding a real account on the live site and opening it from a public profile.
 
 ## What a person sees
 
-1. **Own Profile (freelancers and clients):** a new box, Social Accounts. "+ Add account" opens one row: pick the
+1. **Settings > Profile Settings (freelancers and clients):** the box sits after Description and before Save
+   Changes, as a small label ("Social Accounts:") like the other settings. "+ Add account" opens one row: pick the
    platform, type your `@username` or paste your link, press Enter (or Add). A platform you already added leaves the
-   dropdown; the x on an account removes it. Eight platforms, so at most eight accounts.
-2. **Public profile:** a row of round logo buttons under the name (for both roles). Each opens the page in a new tab.
+   dropdown; the x on an account removes it. Eight platforms, so at most eight accounts. It saves as soon as you add
+   or remove one (like the picture and the "Available for work" switch) and says "Social accounts saved.", so Save
+   Changes is not needed for it; a line under the box says so.
+2. **Own Profile page:** the same box with a bigger heading, for people who spot it there first (it saves the same
+   way, without the "saved" message, like Skills and Portfolio Links on that page).
+3. **Public profile:** a row of round logo buttons under the name (for both roles). Each opens the page in a new tab.
    Under them: "These open other websites. PhilFreela doesn't check what's on them." Nothing shows until a person
    adds one.
-3. Portfolio Links now show the TikTok and X logos too (two small additions to the icon list).
+4. Portfolio Links now show the TikTok and X logos too (two small additions to the icon list).
 
 ## Defaults chosen
 
@@ -61,7 +69,8 @@ Status: approved 2026-11-20 ("ok" to the plan written in chat).
 - `client/src/lib/profile.js`: `SOCIAL_PLATFORMS`, `cleanSocialAccount`, `isSafeSocialLink`, `fetchSocialLinks`,
   `saveSocialLinks`, the TikTok / X icons.
 - `client/src/pages/dashboard/components/SocialAccounts.jsx`: `SocialAccountsBox` (edit) and `SocialAccountsRow` (public).
-- `client/src/pages/dashboard/views/ProfileView.jsx` and `PublicProfileView.jsx`: one block each.
+- `client/src/pages/dashboard/views/SettingsView.jsx`, `ProfileView.jsx` and `PublicProfileView.jsx`: one block each
+  (Settings uses `<SocialAccountsBox inSettings />`).
 
 ## If the panel asks
 

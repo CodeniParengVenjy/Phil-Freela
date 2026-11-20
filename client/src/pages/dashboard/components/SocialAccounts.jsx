@@ -10,7 +10,10 @@ import { Loader } from "../../../components/Loaders";
 // <SocialAccountsBox>: on your own Profile. "+ Add account" opens a row: pick the platform, type your @username
 // or paste your link, press Enter. Each platform can be added once; the x on an account removes it. It works like
 // the Portfolio Links box (PortfolioLinks.jsx): if a save fails, the list goes back.
-export function SocialAccountsBox({ userId, showToast }) {
+// inSettings: the same box inside Settings > Profile Settings (the user, 2026-11-20: "this must be settable in
+// settings"). It looks like the other settings there (a small label instead of the big heading) and says "saved"
+// after each change, because it saves right away, like the picture and the "Available for work" switch.
+export function SocialAccountsBox({ userId, showToast, inSettings = false }) {
   // undefined while loading, null when they couldn't load, else { platform: link }.
   const [accounts, setAccounts] = useState(undefined);
   const [adding, setAdding] = useState(false);
@@ -50,6 +53,7 @@ export function SocialAccountsBox({ userId, showToast }) {
       showToast(problem);
       return false;
     }
+    if (inSettings) showToast("Social accounts saved.");
     return true;
   };
 
@@ -78,7 +82,9 @@ export function SocialAccountsBox({ userId, showToast }) {
   return (
     <div data-testid="social-accounts-box">
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <h5 className="text-white fw-bold mb-0"><i className="bi bi-share-fill text-orange me-2"></i> Social Accounts</h5>
+        {inSettings
+          ? <span className="text-white-50 fw-semibold fs-7">Social Accounts:</span>
+          : <h5 className="text-white fw-bold mb-0"><i className="bi bi-share-fill text-orange me-2"></i> Social Accounts</h5>}
         {accounts && left.length > 0 && !adding && (
           <button type="button" className="btn btn-sm btn-outline-warning rounded-pill fs-8 fw-bold" onClick={() => setAdding(true)}>+ Add account</button>
         )}
@@ -160,6 +166,9 @@ export function SocialAccountsBox({ userId, showToast }) {
         </div>
       )}
       {accounts && left.length === 0 && <p className="text-secondary fs-8 mt-2 mb-0">You've added every platform there is room for.</p>}
+      {inSettings && (
+        <small className="d-block text-secondary fs-8 mt-2">Saved as soon as you add or remove one. Everyone who views your profile can see these.</small>
+      )}
     </div>
   );
 }

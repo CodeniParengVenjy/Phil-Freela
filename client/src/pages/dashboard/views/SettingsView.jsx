@@ -14,6 +14,7 @@ import EstimateCurrencyForm from "../components/EstimateCurrencyForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
 import MoveWorkForm from "../components/MoveWorkForm";
 import GcashSettingsForm from "../components/GcashSettingsForm";
+import { SocialAccountsBox } from "../components/SocialAccounts";
 import OtherPaymentDetailsForm from "../components/OtherPaymentDetailsForm";
 import PurchasesList from "../components/PurchasesList";
 import { Loader, Busy } from "../../../components/Loaders";
@@ -439,6 +440,14 @@ export default function SettingsView() {
                         : `${shownDescription.length}/${MAX_DESCRIPTION_LENGTH} characters. Everyone who views your profile can see this.`}
                     </small>
                   </div>
+
+                  {/* Their Facebook, Instagram, TikTok... pages (freelancers and clients: PLAN-social-accounts.md).
+                      Saved as soon as one is added or removed, like the picture, so Save Changes isn't needed for it. */}
+                  {currentUserId && (
+                    <div>
+                      <SocialAccountsBox userId={currentUserId} showToast={showToast} inSettings />
+                    </div>
+                  )}
 
                   <div>
                     <button type="submit" className="btn btn-gradient-role rounded-pill px-5 py-2 fw-bold text-white shadow-glow-role" disabled={saving || !currentUserId || savedDescription === null}>
