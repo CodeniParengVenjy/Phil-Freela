@@ -16,6 +16,7 @@ import lzma
 import os
 import shutil
 import tempfile
+import time
 
 import cv2
 import imageio_ffmpeg
@@ -33,6 +34,17 @@ CRF = 23
 STRENGTH = 3.0
 CHECK_FRAMES = 4  # frames read back in the self-check
 MAX_WRONG_BITS = 4  # in the read-back of the finished video
+
+# Videos have no length limit, but the server stops a request after 300 seconds
+# (vercel.json) without any message. So watermarking gives up after this many
+# seconds, leaving time to read the video back, check it and save it, and the
+# freelancer is told the video is too long to finish in time.
+MAX_WATERMARK_SECONDS = 230
+
+
+class VideoTooLong(Exception):
+    """The video couldn't be watermarked within MAX_WATERMARK_SECONDS."""
+
 
 # On Vercel, FFmpeg comes compressed in the models folder (see get_models.py).
 PACKED_FFMPEG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "ffmpeg-linux-x86_64.xz")
@@ -80,11 +92,13 @@ def output_size(width, height):
     return _even(width * scale), _even(height * scale)
 
 
-def watermark_video(in_path, out_path, code, layer=None):
+def watermark_video(in_path, out_path, code, layer=None, max_seconds=MAX_WATERMARK_SECONDS):
     """Writes the watermarked 720p MP4 to out_path. layer: the visible
     watermark (an RGBA PIL image of output_size) or None. Returns the key
     frames twice, as (uploaded, shown): as they came in and as they were
-    saved (HxWx3 arrays), for the copy check."""
+    saved (HxWx3 arrays), for the copy check. Raises VideoTooLong if it
+    takes more than max_seconds."""
+    deadline = time.monotonic() + max_seconds
     width, height, fps, _, has_sound = video_info(in_path)
     out_w, out_h = output_size(width, height)
     out_fps = min(fps or MAX_FPS, MAX_FPS)
@@ -113,6 +127,8 @@ def watermark_video(in_path, out_path, code, layer=None):
     uploaded, shown = [], []
     try:
         for count, data in enumerate(reader):
+            if count % 30 == 0 and time.monotonic() > deadline:
+                raise VideoTooLong()
             frame = np.frombuffer(data, dtype=np.uint8).reshape(out_h, out_w, 3)
             is_key = count % key_every == 0
             if is_key:

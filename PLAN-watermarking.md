@@ -36,6 +36,12 @@ Vercel's free plan (500 MB bundle, 4.5 MB per request, 5 minutes, 1 CPU).
 
 - Image slide: JPG, PNG, WEBP, up to 10 MB (shrunk in the browser first).
 - Video slide: MP4, MOV, WEBM, up to 30 seconds, 50 MB (saved as a 720p MP4).
+  **2026-11-20: the 30-second limit was removed** (user's request, both in
+  `client/src/lib/slides.js` and `ai-service/main.py`); 50 MB stays. Because the
+  server stops a request after 300 seconds, `watermark_video.py` gives up after
+  230 seconds (`MAX_WATERMARK_SECONDS`) with "That video is too long to be
+  watermarked in time". Tested offline: a 75-second video watermarks in about
+  40 seconds on the laptop.
 - Document: pasted text, TXT, DOCX, PDF, up to 4 MB and 20,000 characters.
   Kept as text; a PDF's first 5 pages are also kept as pictures (step 11).
   A PDF with no readable text (a scan) is refused.

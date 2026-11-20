@@ -16,8 +16,8 @@ const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 // MOV = iPhone videos (step 7: every video is saved as a watermarked MP4).
 export const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // shrunk to about 0.5 MB before sending
+// Videos have no length limit (only this size), since 2026-11-20.
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
-const MAX_VIDEO_SECONDS = 30;
 // Documents (step 8): the text is kept, like portfolio writing, and a PDF's
 // first pages are also kept as watermarked pictures (step 11). 4 MB fits in
 // one request to the AI service.
@@ -25,7 +25,7 @@ const DOCUMENT_EXTENSIONS = /\.(pdf|docx|txt)$/i;
 const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
 
 export const SLIDE_ACCEPT = [...IMAGE_TYPES, ...VIDEO_TYPES, ".mov"].join(",");
-export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, MOV, WebM) up to 50 MB and 30 seconds; each video takes up to 2 minutes to watermark.";
+export const SLIDE_HINT = "Photos (JPG, PNG, WebP) up to 10 MB. Videos (MP4, MOV, WebM) up to 50 MB, any length; a video takes about 2 minutes to watermark, and a long one takes longer.";
 // Services (step 8) and portfolio projects (step 10) also take documents.
 export const SLIDE_ACCEPT_WITH_DOCUMENTS = `${SLIDE_ACCEPT},.pdf,.docx,.txt`;
 export const SLIDE_HINT_WITH_DOCUMENTS = `${SLIDE_HINT} Documents (PDF, DOCX, TXT) up to 4 MB: the text is kept, with your invisible code and footer, but visitors only see a preview of it (the first part, the rest blurred, and no copying). A PDF also shows its first 5 pages as pictures with your name across them, but only the top of the document is clear and the rest is blurred (about a minute to watermark).`;
@@ -45,7 +45,8 @@ export const isVideoFile = (file) => VIDEO_TYPES.includes(file.type) || /\.mov$/
 const isMovFile = (file) => file.type === "video/quicktime" || /\.mov$/i.test(file.name);
 export const isDocumentFile = (file) => DOCUMENT_EXTENSIONS.test(file.name);
 
-// How many seconds a video file lasts, read by the browser (null if it can't play it).
+// Whether the browser can read a video file at all: its length in seconds, or
+// null if it can't play it (the length itself is no longer limited).
 function videoSeconds(file) {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
@@ -78,8 +79,6 @@ export async function checkSlideFile(file, allowDocuments = false) {
     // Some browsers can't open iPhone (MOV) videos themselves; the AI service
     // checks those, since it converts them anyway.
     if (seconds === null && !isMovFile(file)) return "This video can't be played. Please use an MP4, MOV or WebM video.";
-    // Some recorded videos don't store their length (Infinity); the AI service measures those.
-    if (Number.isFinite(seconds) && seconds > MAX_VIDEO_SECONDS + 0.5) return `Videos can be at most ${MAX_VIDEO_SECONDS} seconds long.`;
     return "";
   }
   return allowDocuments
@@ -207,7 +206,7 @@ export async function uploadSlides(target, items, userId, onProgress) {
   const failed = [];
   for (const [index, { file, promo }] of items.entries()) {
     onProgress(isVideoFile(file)
-      ? `Watermarking and checking video ${index + 1} of ${items.length} (up to 2 minutes)...`
+      ? `Watermarking and checking video ${index + 1} of ${items.length} (about 2 minutes, longer for a long video)...`
       : isDocumentFile(file)
         ? `Watermarking and checking document ${index + 1} of ${items.length} (a PDF takes about a minute)...`
         : `Checking ownership: ${index + 1} of ${items.length}...`, index / items.length);

@@ -61,7 +61,7 @@ from text_watermark import footer as text_footer
 from text_watermark import paragraphs_for_check, strip_hidden
 from text_watermark import read_code as read_text_code
 from visible_watermark import draw_visible_watermark, free_style, load_picture, watermark_layer
-from watermark_video import code_reads_back, output_size, read_video_code, spread, video_info, watermark_video
+from watermark_video import VideoTooLong, code_reads_back, output_size, read_video_code, spread, video_info, watermark_video
 
 load_dotenv()
 
@@ -510,7 +510,8 @@ MAX_SLIDES_PER_ITEM = 10
 MAX_SLIDES_PER_FREELANCER = 50
 MAX_VIDEOS_PER_FREELANCER = 5
 MAX_VIDEO_SIZE = 50 * 1024 * 1024  # same limit as the storage buckets
-MAX_VIDEO_SECONDS = 30
+# Videos have no length limit (since 2026-11-20), only this size. A very long
+# one can still run out of time while it is watermarked (see watermark_video.py).
 # Saved photos are at most this many pixels wide or tall: sharp in the
 # slideshow, but never the freelancer's full-quality original.
 SLIDE_MAX_SIDE = 1200
@@ -575,8 +576,9 @@ def next_slide_position(user_id, owner, item_id, media_type):
     return next(spot for spot in range(1, MAX_SLIDES_PER_ITEM + 1) if spot not in used)
 
 
-def video_seconds(data, extension):
-    """How long the video is, in seconds (None if it can't be played).
+def video_opens(data, extension):
+    """Whether the video can be played (its first frame can be read). There is
+    no length limit any more, so its length isn't measured.
     OpenCV reads videos from a file, so it's written to a temporary one first."""
     handle, path = tempfile.mkstemp(suffix=f".{extension}")
     try:
@@ -584,24 +586,16 @@ def video_seconds(data, extension):
             file.write(data)
         video = cv2.VideoCapture(path)
         try:
-            if not video.isOpened() or not video.grab():
-                return None
-            # Step through the frames to the end: the last frame's time is the
-            # length. Stops early once it's clearly too long.
-            while True:
-                seconds = video.get(cv2.CAP_PROP_POS_MSEC) / 1000
-                if seconds > MAX_VIDEO_SECONDS + 1 or not video.grab():
-                    return seconds
+            return video.isOpened() and video.grab()
         finally:
             video.release()
     finally:
         os.remove(path)
 
 
-def read_slide_video(user_id, video_path, max_seconds=MAX_VIDEO_SECONDS):
+def read_slide_video(user_id, video_path):
     """Takes the video the browser put in slide-uploads and checks it's a real
-    MP4, MOV or WEBM of at most 50 MB and 30 seconds (any length when
-    max_seconds is None). Returns (data, extension)."""
+    MP4, MOV or WEBM of at most 50 MB (any length). Returns (data, extension)."""
     # Only from the caller's own folder, so nobody can take someone else's upload.
     if not video_path.startswith(f"{user_id}/") or ".." in video_path:
         raise HTTPException(403, "That video upload isn't yours.")
@@ -626,11 +620,8 @@ def read_slide_video(user_id, video_path, max_seconds=MAX_VIDEO_SECONDS):
     else:
         raise HTTPException(400, "Videos must be MP4, MOV or WEBM.")
 
-    seconds = video_seconds(data, extension)
-    if seconds is None:
+    if not video_opens(data, extension):
         raise HTTPException(400, "That video couldn't be opened. Please try another one.")
-    if max_seconds and seconds > max_seconds + 0.5:
-        raise HTTPException(400, f"Videos can be at most {max_seconds} seconds long.")
     return data, extension
 
 
@@ -781,6 +772,8 @@ def watermark_video_upload(user_id, data, extension, promo):
         code = new_code()
         try:
             uploaded, shown = watermark_video(source, finished, code, layer)
+        except VideoTooLong:
+            raise HTTPException(400, "That video is too long to be watermarked in time. Please upload a shorter video, or a shorter part of it.")
         except Exception:
             logger.exception("Watermarking a video failed")
             raise HTTPException(400, "That video couldn't be processed. Please try another MP4, MOV or WEBM video.")
@@ -910,7 +903,7 @@ def add_slide(
         if earlier:
             status, matched_slide_id, match_score = "flagged", earlier["slide_id"], 1.0
     elif video_path is not None:
-        # Checked (MP4, MOV or WEBM, at most 50 MB and 30 seconds), then saved
+        # Checked (MP4, MOV or WEBM, at most 50 MB, any length), then saved
         # as a watermarked 720p MP4 (step 7).
         raw, raw_extension = read_slide_video(user_id, video_path)
         data, code, embeddings, earlier_code = watermark_video_upload(user_id, raw, raw_extension, promo)
@@ -1170,7 +1163,7 @@ def extract_video_watermark(video_path: str = Form(...), authorization: str | No
     added up bit by bit. (A screenshot of any frame works with the Picture
     check too.)"""
     user_id = get_user_id(authorization)
-    data, extension = read_slide_video(user_id, video_path, max_seconds=None)
+    data, extension = read_slide_video(user_id, video_path)
     with tempfile.TemporaryDirectory() as folder:
         path = os.path.join(folder, f"found.{extension}")
         with open(path, "wb") as file:
