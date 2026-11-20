@@ -1,0 +1,193 @@
+/* Retro: an 8-bit video game on an old TV. Pixel font (Press Start 2P for titles, VT323 for text), square
+   "dialog boxes" with pixel borders, pixel pictures, scan lines, and the pixel sky drawn on the background canvas.
+   --th is the freelancer's color; the level colors still come from the card draw. */
+.film.st-retro {
+  --font-display: "Press Start 2P", ui-monospace, monospace; --mono: "Press Start 2P", ui-monospace, monospace;
+  --rt-box: #10153a; --rt-ink: #ffffff; --rt-dim: #b8c0ff; --rt-gold: #ffd23f;
+  --rt-px: 4px 0 0 0 var(--rt-ink), -4px 0 0 0 var(--rt-ink), 0 4px 0 0 var(--rt-ink), 0 -4px 0 0 var(--rt-ink);
+  --rt-pxt: 4px 0 0 0 var(--th), -4px 0 0 0 var(--th), 0 4px 0 0 var(--th), 0 -4px 0 0 var(--th);
+  background: #07061a; font-family: "VT323", ui-monospace, monospace; font-size: 20px; image-rendering: pixelated;
+}
+.film.st-retro #bg { filter: none; transform: none; image-rendering: pixelated; }
+.film.st-retro .grain, .film.st-retro .vignette, .film.st-retro .pulse, .film.st-retro .pull-flare, .film.st-retro .pull-spot, .film.st-retro .fan-glow, .film.st-retro .xt-slats, .film.st-retro .xt-ring, .film.st-retro .tf-lines, .film.st-retro .pcf-foil, .film.st-retro .shine, .film.st-retro .xt-bg { display: none; }
+.film.st-retro img, .film.st-retro .p-cover, .film.st-retro .pcf-art, .film.st-retro .ec-banner, .film.st-retro .rbg, .film.st-retro .rm-wall span { image-rendering: pixelated; }
+/* The TV: scan lines and a curved, darker edge */
+.rt-crt { position: absolute; inset: 0; background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 4px), radial-gradient(ellipse 80% 75% at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.55)); }
+.film.st-retro .bar, .film.st-retro .squeeze { background: #000000; }
+.film.st-retro .flash { background: #ffffff; }
+@keyframes rt-blink { 50% { opacity: 0; } }
+@keyframes rt-cycle { 0% { color: #ff4d6d; } 25% { color: var(--rt-gold); } 50% { color: #3ec54b; } 75% { color: #4dc3ff; } 100% { color: #ff4d6d; } }
+
+/* Words */
+.film.st-retro :is(.hud-top, .go-hint) { font-size: 0.55rem; letter-spacing: 0.08em; color: var(--rt-ink); }
+.film.st-retro .film.ready .go-hint, .film.st-retro.ready .go-hint svg { animation: none; }
+.film.st-retro.ready .go-hint { animation: rt-blink 1s steps(1) infinite; }
+.film.st-retro .chapter b { color: var(--rt-gold); }
+.film.st-retro .rec i { border-radius: 0; background: #ff4d6d; box-shadow: none; }
+.film.st-retro .lvl-chip { border-radius: 0; border: 0; box-shadow: 0 0 0 2px var(--lc); padding: 3px 6px; font-size: 0.5rem; }
+.film.st-retro .kicker { justify-self: start; width: max-content; font-size: clamp(0.5rem, 0.9vw, 0.62rem); letter-spacing: 0.06em; color: var(--rt-gold); background: var(--rt-box); padding: 6px 8px; box-shadow: var(--rt-px); margin: 4px; }
+.film.st-retro :is(.p-name, .svc-title, .fb-title, .ec-name, .rt-big, .xt-title, .fc-title, .rl-title, .sc-t, .rm-big) { font-weight: 400; letter-spacing: 0; text-shadow: 4px 4px 0 var(--th-deep); line-height: 1.15; }
+.film.st-retro .p-name { font-size: clamp(1.15rem, 3.4vw, 2.6rem); }
+.film.st-retro .svc-title, .film.st-retro .fb-title { font-size: clamp(1rem, 2.6vw, 2rem); }
+.film.st-retro .fb-title em { color: var(--rt-gold); }
+.film.st-retro .ec-name { font-size: clamp(0.95rem, 2.6vh, 1.4rem); }
+.film.st-retro .fc-title, .film.st-retro .rl-title { font-size: clamp(0.9rem, 2.6vw, 1.9rem); }
+.film.st-retro .sc-t { font-size: clamp(0.85rem, 2vw, 1.6rem); }
+.film.st-retro .rt-big { font-size: clamp(1.6rem, 6vw, 4rem); }
+.film.st-retro .bio { font-family: "VT323", monospace; font-weight: 400; font-size: clamp(1.25rem, 2.3vw, 2rem); line-height: 1.1; max-width: 40ch; background: var(--rt-box); padding: 10px 14px; box-shadow: var(--rt-px); margin: 4px; text-shadow: none; }
+.film.st-retro .scene.on .bio .wd { animation: rt-type 0.08s linear both; animation-delay: calc(1.7s + var(--i) * 70ms); }
+.film.st-retro .scene.on .bio .kw { animation: rt-type 0.08s linear both; animation-delay: calc(1.7s + var(--i) * 70ms); color: var(--rt-gold); background: none; }
+@keyframes rt-type { from { opacity: 0; } to { opacity: 1; } }
+.film.st-retro :is(.p-handle, .plinks, .svc-sub, .rate-sub, .fb-note, .ec-title, .odo-block > span, .rm-note, .rm-sub, .made, .trust-txt span, .b5, .chat-head small, .meta, .ec-stat span, .st-label, .st-all span, .score-of, .pull-hint, .intro-sub, .xt-sub) { font-family: "VT323", monospace; font-size: 1.15em; letter-spacing: 0.04em; color: var(--rt-dim); text-transform: none; }
+.film.st-retro .chip3, .film.st-retro .fbadge, .film.st-retro .role { border-radius: 0; border: 0; background: var(--rt-box); box-shadow: var(--rt-px); margin: 4px; font-family: "VT323", monospace; font-size: 1.15rem; font-weight: 400; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.film.st-retro .chip3::before { content: "\25B8 "; color: var(--th); }
+.film.st-retro .role .ri { border-radius: 0; }
+.film.st-retro .role.lit { box-shadow: 4px 0 0 0 var(--rc), -4px 0 0 0 var(--rc), 0 4px 0 0 var(--rc), 0 -4px 0 0 var(--rc); transform: translateY(-4px); }
+.film.st-retro .avail, .film.st-retro .vb { border-radius: 0; background: #12401c; color: #5dff7a; }
+.film.st-retro .avail i, .film.st-retro .fbadge .dot { border-radius: 0; box-shadow: none; animation: rt-blink 1s steps(1) infinite; }
+.film.st-retro :is(.p-ava, .intro-ava, .ec-ava, .pcf-ava) { border-radius: 0; padding: 4px; background: var(--th); box-shadow: 0 0 0 4px var(--rt-box), 0 0 0 8px var(--rt-ink); }
+.film.st-retro :is(.p-ava, .intro-ava, .ec-ava, .pcf-ava) img { border-radius: 0; border: 0; }
+.film.st-retro .p-shade { background: linear-gradient(180deg, rgba(7, 6, 26, 0.3) 0%, rgba(7, 6, 26, 0.55) 35%, rgba(7, 6, 26, 0.92) 64%, #07061a 100%); }
+.film.st-retro .nic { color: var(--rt-gold); }
+/* Services: item cards in a shop */
+.film.st-retro .scard { border-radius: 0; border: 0; background: var(--rt-box); box-shadow: var(--rt-px); overflow: visible; }
+.film.st-retro .scard .simg { margin: 6px 6px 0; }
+.film.st-retro .scard .simg::after { height: 4px; }
+.film.st-retro .scard.lift { box-shadow: 4px 0 0 0 var(--rc), -4px 0 0 0 var(--rc), 0 4px 0 0 var(--rc), 0 -4px 0 0 var(--rc); }
+.film.st-retro .srole { font-family: "VT323", monospace; font-size: 1rem; letter-spacing: 0.04em; }
+.film.st-retro .srole .ri { border-radius: 0; }
+.film.st-retro .scard .stitle { font-family: "VT323", monospace; font-weight: 400; font-size: 1.15rem; line-height: 1.05; }
+.film.st-retro .scard .sprice { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 0.78rem; color: var(--rt-gold); }
+.film.st-retro .scard .sprice small { font-family: "VT323", monospace; font-size: 1rem; }
+.film.st-retro .scard .srate { font-family: "VT323", monospace; font-size: 1.05rem; color: var(--rt-gold); }
+.film.st-retro :is(.s-view, .t-view, .sc-view, .rl-view, .pe-all, .nextbtn, .pbtn, .cbtn, .vw-nav, .vw-close, .vw-play) { border-radius: 0; border: 0; background: var(--rt-box); color: var(--rt-ink); box-shadow: var(--rt-px); font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 0.55rem; letter-spacing: 0.04em; animation: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.film.st-retro :is(.s-view, .t-view, .sc-view, .rl-view, .pe-all, .nextbtn, .pbtn:not(.ghost), .cbtn, .vw-nav, .vw-close, .vw-play):is(:hover, :focus-visible) { background: var(--th); color: var(--th-on); }
+.film.st-retro :is(.nextbtn, .pbtn:not(.ghost), .pe-all) { background: var(--th); color: var(--th-on); }
+.film.st-retro.ready .nextbtn::after { content: ""; width: 6px; height: 6px; background: currentColor; animation: rt-blink 0.8s steps(1) infinite; }
+.film.st-retro .cbtn { width: 34px; height: 34px; margin: 4px; }
+/* Projects: a pixel gallery */
+.film.st-retro .tile { border-radius: 0; background: var(--rt-box); box-shadow: var(--rt-px); }
+.film.st-retro .tile .tcap { font-family: "VT323", monospace; font-size: 1.05rem; font-weight: 400; background: linear-gradient(180deg, transparent, var(--rt-box) 40%); }
+.film.st-retro .tile.hov, .film.st-retro .tile:focus-visible { outline: 0; box-shadow: var(--rt-pxt); }
+.film.st-retro .tile.more { background: var(--rt-box); border: 0; }
+.film.st-retro .tile.more b { color: var(--rt-gold); }
+.film.st-retro .vtag, .film.st-retro .tile .fstar, .film.st-retro .fc-video, .film.st-retro .rl-meta { border-radius: 0; background: var(--rt-box); font-family: "VT323", monospace; font-size: 0.95rem; font-weight: 400; }
+.film.st-retro .tile video { filter: contrast(1.15) saturate(1.3); }
+.film.st-retro .proj-shade { background: linear-gradient(100deg, rgba(7, 6, 26, 0.95) 0%, rgba(7, 6, 26, 0.6) 38%, transparent 62%); }
+.film.st-retro .odo { font-weight: 400; font-size: clamp(2rem, 7.5vh, 4.6rem); color: var(--rt-gold); text-shadow: 5px 5px 0 var(--th-deep); }
+.film.st-retro .fc-cat, .film.st-retro .rl-count { font-size: 0.55rem; color: var(--rt-gold); }
+.film.st-retro .proj-explore { border-radius: 0; border: 0; background: var(--rt-box); box-shadow: var(--rt-px); font-family: "VT323", monospace; font-size: 1.05rem; font-weight: 400; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.film.st-retro .sc-p { box-shadow: inset 0 0 0 6px var(--rt-box); }
+.film.st-retro .sc-p::after { background: linear-gradient(180deg, transparent 40%, rgba(7, 6, 26, 0.9)); }
+.film.st-retro .showcase.n2 .sc-p + .sc-p { box-shadow: inset 6px 0 0 var(--th); }
+/* Video reel: an old TV */
+.film.st-retro .rt-pxv { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 1; }
+.film.st-retro .reel-title, .film.st-retro .reel-more { background: #07061a; }
+.film.st-retro .rm-wall span { border-radius: 0; }
+.film.st-retro .rm-big { color: var(--rt-gold); }
+.film.st-retro .reel-lower { z-index: 3; }
+/* Ratings: pixel stars and a high score */
+.film.st-retro .stars5 svg { filter: drop-shadow(4px 4px 0 var(--th-deep)); }
+.film.st-retro .sline { stroke: var(--rt-ink); stroke-width: 1.4; stroke-linejoin: miter; stroke-linecap: square; }
+.film.st-retro .score-num { font-weight: 400; background: none; color: var(--rt-gold); -webkit-text-fill-color: var(--rt-gold); text-shadow: 8px 8px 0 var(--th-deep); font-size: min(15vh, 18vw); }
+.film.st-retro .score-of { font-family: "Press Start 2P", monospace; font-size: min(3vh, 4vw); }
+.film.st-retro .rate-row { border-radius: 0; border: 0; background: var(--rt-box); box-shadow: var(--rt-px); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.film.st-retro .trust svg { shape-rendering: crispEdges; }
+.film.st-retro .trust .tf { stroke: var(--rt-gold); stroke-linecap: butt; }
+.film.st-retro .trust-txt b { font-weight: 400; font-size: 1.2rem; }
+.film.st-retro .b5-t, .film.st-retro .b5-t i { border-radius: 0; }
+.film.st-retro .b5-t i { background: repeating-linear-gradient(90deg, var(--rt-gold) 0 6px, transparent 6px 8px); }
+/* Feedback: dialog boxes */
+.film.st-retro .kw-layer span { color: rgba(255, 255, 255, 0.05); font-size: min(7vw, 10vh); }
+.film.st-retro .chat { border-radius: 0; border: 0; background: var(--rt-box); box-shadow: var(--rt-px); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.film.st-retro .chat-head b { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 0.6rem; }
+.film.st-retro .live { font-size: 0.5rem; color: #5dff7a; }
+.film.st-retro .live i { border-radius: 0; background: #5dff7a; box-shadow: none; }
+.film.st-retro .bubble { border-radius: 0; background: #ffffff; color: #10153a; font-family: "VT323", monospace; font-size: 1.2rem; line-height: 1.05; box-shadow: 4px 4px 0 0 var(--th); }
+.film.st-retro .bubble .st { color: #c98a00; }
+.film.st-retro .ava-stack i, .film.st-retro .msg .av { border-radius: 0; }
+/* The ending: a "CONTINUE?" screen */
+.film.st-retro .endcard { border-radius: 0; border: 0; background: var(--rt-box); box-shadow: var(--rt-px); }
+.film.st-retro .endcard::before { display: none; }
+.film.st-retro .ec-banner { opacity: 0.5; }
+.film.st-retro .ec-stat { border-radius: 0; border: 0; background: #07061a; }
+.film.st-retro .ec-stat b { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 0.85rem; color: var(--rt-gold); }
+.film.st-retro .pbtn { font-size: 0.6rem; padding: 12px 14px; margin: 4px; }
+.film.st-retro .pbtn.ghost { background: #07061a; }
+.film.st-retro .replay2, .film.st-retro .made { font-family: "Press Start 2P", monospace; font-size: 0.55rem; }
+.film.st-retro .replay2 { animation: rt-blink 1.2s steps(1) infinite 2s; }
+/* Stats: big pixel numbers */
+.film.st-retro :is(.st-num, .st-all b) { font-weight: 400; background: none; color: var(--rt-gold); -webkit-text-fill-color: var(--rt-gold); text-shadow: 8px 8px 0 var(--th-deep); }
+.film.st-retro .st-num { font-size: min(18vh, 18vw); }
+.film.st-retro .st-all b { font-size: min(8vh, 7vw); }
+
+/* ---------- The card draw: a "?" item card ---------- */
+.film.st-retro .pull-dark { background: radial-gradient(ellipse 30% 36% at 50% 52%, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.94) 100%); }
+.film.st-retro .env-tint { background: radial-gradient(ellipse 50% 46% at 50% 52%, rgba(var(--glow), 0.4) 0 30%, rgba(var(--glow), 0.2) 30% 55%, transparent 55%); }
+.film.st-retro .env-room { background: repeating-conic-gradient(from 0deg at 50% 54%, rgba(var(--room), 0.4) 0deg 10deg, transparent 10deg 20deg); }
+.film.st-retro .pull-rays { background: repeating-conic-gradient(from 0deg, rgba(var(--ray), 0.5) 0deg 6deg, transparent 6deg 15deg); -webkit-mask-image: radial-gradient(circle, #000000 0 20%, transparent 20% 22%, #000000 22% 30%, transparent 30%); mask-image: radial-gradient(circle, #000000 0 20%, transparent 20% 22%, #000000 22% 30%, transparent 30%); }
+.film.st-retro .pull-pillars i { filter: none; background: repeating-linear-gradient(0deg, rgba(var(--ray), 0.8) 0 8px, rgba(var(--room), 0.4) 8px 16px); }
+.film.st-retro .pull-floor { background: none; }
+.film.st-retro .pull-floor i { border-radius: 0; border: 4px solid rgba(var(--ray), 0.9); box-shadow: none; }
+.film.st-retro .pc-aura { filter: none; border-radius: 0; inset: -14% -16%; background: radial-gradient(closest-side, rgba(var(--glow), 0.85) 0 55%, rgba(var(--glow), 0.4) 55% 72%, rgba(var(--glow), 0.18) 72% 88%, transparent 88%); }
+.film.st-retro .pc-face { border-radius: 0; }
+.film.st-retro .pc-back { background: linear-gradient(180deg, #1b1f5a 0 50%, #141848 50%); box-shadow: 0 0 0 6px rgb(var(--glow)), 0 0 0 12px #07061a; }
+.film.st-retro .pc-back::before { inset: 0.7em; border-radius: 0; border: 4px dashed rgba(var(--glow), 0.55); }
+.film.st-retro .pc-back::after { display: none; }
+.film.st-retro .pc-back img { width: 46%; image-rendering: pixelated; filter: none; }
+.film.st-retro .pc-back span { font-family: "Press Start 2P", monospace; font-size: 0.42em; letter-spacing: 0.1em; padding-left: 0.1em; color: rgb(var(--glow)); }
+.film.st-retro .pc-back span::before { content: "?"; display: block; margin: 0 auto 0.4em; font-size: 4em; line-height: 1; color: var(--rt-gold); text-shadow: 6px 6px 0 #6b4800; animation: rt-bob 0.8s steps(2) infinite; }
+@keyframes rt-bob { 50% { transform: translateY(-6px); } }
+.film.st-retro .pc-front { box-shadow: 0 0 0 6px rgb(var(--ray)), 0 0 0 12px #07061a; padding: 0.3em; }
+.film.st-retro .pcf { border-radius: 0; background: #10153a; }
+.film.st-retro .pcf-art::before { display: none; }
+.film.st-retro .pcf-art::after { background: linear-gradient(180deg, transparent 50%, #10153a); }
+.film.st-retro .pcf-score b { font-weight: 400; font-size: 1.5em; background: none; color: var(--rt-gold); -webkit-text-fill-color: var(--rt-gold); filter: none; text-shadow: 3px 3px 0 #6b4800; }
+.film.st-retro .pcf-score span { font-size: 0.34em; }
+.film.st-retro .pcf-rar { border-radius: 0; font-size: 0.34em; background: #07061a; }
+.film.st-retro .pcf-name { font-weight: 400; font-size: 0.82em; line-height: 1.3; }
+.film.st-retro .pcf-title { font-family: "VT323", monospace; font-size: 0.68em; line-height: 1.05; }
+.film.st-retro .pcf-stats b { font-weight: 400; font-size: 0.66em; color: var(--rt-gold); }
+.film.st-retro .pcf-stats span, .film.st-retro .pcf-badges { font-family: "VT323", monospace; font-size: 0.52em; letter-spacing: 0.04em; }
+.film.st-retro .pc-cracks path { stroke: #ffffff; stroke-width: 2.6; stroke-linecap: square; stroke-linejoin: miter; filter: drop-shadow(2px 2px 0 rgb(var(--crkg, 251,191,36))); }
+.film.st-retro .pc-leak { mix-blend-mode: normal; background: radial-gradient(circle at 50% 46%, rgba(var(--crkg, 251,191,36), 0.7) 0 22%, rgba(var(--crkg, 251,191,36), 0.35) 22% 44%, transparent 44%); }
+.film.st-retro .pc-burst { background: radial-gradient(circle at 50% 45%, #ffffff 0 30%, rgba(var(--glow), 0.6) 30% 50%, transparent 50%); }
+.film.st-retro .tap-ring { border-radius: 0; border: 4px solid rgb(var(--glow)); }
+.film.st-retro .pull-word { font-weight: 400; background: none; -webkit-text-fill-color: currentColor; color: var(--w1); text-shadow: 5px 5px 0 #000000; letter-spacing: 0.08em; font-size: min(5vh, 5vw, 2.6rem); filter: none; animation: rt-cycle 0.6s steps(1) infinite; }
+.film.st-retro .rar-blue .pull-word { animation: none; }
+.film.st-retro .pull-hint.top { border-radius: 0; border: 0; background: var(--rt-box); box-shadow: var(--rt-px); color: var(--rt-ink); }
+.film.st-retro .tap-prompt { border-radius: 0; border: 0; background: var(--rt-box); box-shadow: var(--rt-px); font-family: "Press Start 2P", monospace; font-size: 0.6rem; letter-spacing: 0.06em; animation: rt-blink 1s steps(1) infinite; }
+.film.st-retro .pm-big { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: min(2.6vh, 3.2vw, 1.25rem); line-height: 1.5; background: var(--rt-box); padding: 14px 18px; box-shadow: var(--rt-px); filter: none; }
+.film.st-retro .pm-big .ch { background: none; color: #ffffff; -webkit-text-fill-color: #ffffff; }
+.film.st-retro .pull-msg.on .pm-big .ch { animation: rt-type 0.06s linear both; animation-delay: calc(0.05s + var(--i) * 42ms); }
+.film.st-retro .pm-sub { font-family: "Press Start 2P", monospace; font-size: 0.5rem; color: var(--rt-gold); }
+.film.st-retro .pull-msg.on .pm-sub { animation-delay: calc(var(--n, 20) * 42ms + 0.3s); }
+.film.st-retro .tf-word { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 0.55em; color: var(--rt-gold); text-shadow: 3px 0 0 #000, -3px 0 0 #000, 0 3px 0 #000, 0 -3px 0 #000, 5px 5px 0 rgb(var(--c)); }
+.film.st-retro .tf-burst { background: rgb(var(--c)); clip-path: polygon(40% 0, 60% 0, 60% 40%, 100% 40%, 100% 60%, 60% 60%, 60% 100%, 40% 100%, 40% 60%, 0 60%, 0 40%, 40% 40%); }
+.film.st-retro .tf-ring { border-radius: 0; border: 0.12em solid rgb(var(--c)); }
+.rt-pop > b { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 16px; color: #ffd23f; text-shadow: 3px 0 0 #000, -3px 0 0 #000, 0 3px 0 #000, 0 -3px 0 #000, 4px 4px 0 #b4002e; animation: rt-up 0.9s steps(6) forwards; }
+.rt-banner > b { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: clamp(18px, 4vw, 40px); color: #ffffff; padding: 12px 18px; background: #10153a; box-shadow: 4px 0 0 0 #fff, -4px 0 0 0 #fff, 0 4px 0 0 #fff, 0 -4px 0 0 #fff; animation: rt-banner 1.9s steps(1) forwards; }
+@keyframes rt-up { from { transform: translate(-50%, -50%); opacity: 1; } to { transform: translate(-50%, -260%); opacity: 0; } }
+@keyframes rt-banner { 0% { opacity: 1; } 15% { opacity: 0; } 25% { opacity: 1; } 35% { opacity: 0; } 45%, 90% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ---------- The change between parts: a pixel dissolve, or rows closing like an old TV; "STAGE 02" ---------- */
+.rt-cells { position: absolute; inset: 0; display: grid; }
+.rt-cells i { visibility: hidden; background: #07061a; box-shadow: inset 0 0 0 1px rgba(var(--th-rgb), 0.25); }
+.rt-cells i:nth-child(odd) { background: #0c0a26; }
+.film.st-retro .xt-body { gap: 2.4vh; }
+.film.st-retro .xt-num { font-size: clamp(0.6rem, 1.2vw, 0.85rem); letter-spacing: 0.15em; color: var(--rt-gold); }
+.film.st-retro .xt-num::before { content: "STAGE "; }
+.film.st-retro .xt-title { font-weight: 400; font-size: min(7vw, 9vh); text-shadow: none; }
+.film.st-retro .xt-title span { background: none; color: #ffffff; -webkit-text-fill-color: #ffffff; text-shadow: 6px 6px 0 var(--th); }
+.film.st-retro .xt-sub { font-size: 1.5rem; color: var(--rt-dim); }
+.film.st-retro .xt-sub::after { content: "_"; animation: rt-blink 0.8s steps(1) infinite; }
+.film.st-retro .xt-line { height: 4px; background: repeating-linear-gradient(90deg, var(--th) 0 12px, transparent 12px 20px); box-shadow: none; }
+
+/* The project viewer: a pixel-framed window (the project itself is shown as it is) */
+.film.st-retro .vw-back { background: rgba(7, 6, 26, 0.86); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.film.st-retro .vw-box { border-radius: 0; border: 0; background: var(--rt-box); box-shadow: var(--rt-px); }
+.film.st-retro .vw-media img, .film.st-retro .vw-media video { image-rendering: auto; }
+.film.st-retro .vw-title { font-weight: 400; font-size: clamp(0.85rem, 1.6vw, 1.2rem); line-height: 1.4; }
+.film.st-retro .vw-desc, .film.st-retro .vw-protect { font-family: "VT323", monospace; font-size: 1.15rem; }
+.film.st-retro .vw-count { font-size: 0.55rem; color: var(--rt-gold); }
+.film.st-retro .vw-chip { border-radius: 0; font-family: "VT323", monospace; font-size: 1rem; font-weight: 400; }

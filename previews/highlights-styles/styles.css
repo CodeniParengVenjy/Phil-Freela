@@ -1,0 +1,68 @@
+/* Shared parts of the highlight styles: the launch page's style cards and the pops a style shows on top of the
+   film. Each style's own look is in its own file (st-paper.css, st-retro.css, st-toon.css, st-kinetic.css, st-comic.css). */
+.poster-glow { background: radial-gradient(circle at 20% 30%, rgba(var(--pg, 249,115,22), 0.42), transparent 45%), radial-gradient(circle at 80% 70%, rgba(6, 182, 212, 0.2), transparent 45%); }
+.poster-eyebrow { color: color-mix(in srgb, rgb(var(--pg, 249,115,22)) 55%, #ffffff); }
+
+/* Style cards */
+.scardx { position: relative; padding: 0; overflow: hidden; gap: 0; cursor: default; }
+.scardx.on { border-color: var(--pick, #f97316); box-shadow: 0 0 0 3px rgba(var(--pick-rgb, 249,115,22), 0.25); }
+.sx-main { display: grid; gap: 6px; padding: 10px 10px 4px; border: 0; background: none; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.sx-main:focus-visible { outline: 2px solid var(--pick, #f97316); outline-offset: -2px; border-radius: 14px; }
+.sx-row { padding: 2px 10px 10px; }
+.sx-hear svg { width: 11px; height: 11px; }
+.scardx.on .sx-main b::after { content: "Picked"; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--pick, #f97316); color: #ffffff; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; vertical-align: 2px; }
+
+/* The little picture on each style card (drawn with CSS, in the freelancer's color) */
+.sx-art { display: block; background: #0b0d14; }
+.sx-art i { position: absolute; display: block; }
+.sx-cinema { background: radial-gradient(circle at 30% 40%, rgba(var(--pick-rgb), 0.55), transparent 50%), radial-gradient(circle at 75% 70%, rgba(251, 191, 36, 0.35), transparent 45%), #07080d; }
+.sx-cinema::before, .sx-cinema::after { content: ""; position: absolute; left: 0; right: 0; height: 14px; background: #000000; }
+.sx-cinema::before { top: 0; }
+.sx-cinema::after { bottom: 0; }
+.sx-paper { background: #f6ecd9; }
+.sx-paper .a1 { left: 64%; top: 14px; width: 26px; height: 26px; border-radius: 50%; background: #ffd25e; box-shadow: 2px 3px 0 rgba(60, 40, 20, 0.2); }
+.sx-paper .a2 { left: -10%; right: -10%; bottom: -30px; height: 70px; border-radius: 50% 50% 0 0; background: color-mix(in srgb, var(--pick) 45%, #ffffff); box-shadow: 0 -3px 0 rgba(60, 40, 20, 0.12); }
+.sx-paper .a3 { left: 20%; right: -30%; bottom: -40px; height: 64px; border-radius: 50% 50% 0 0; background: var(--pick); box-shadow: 0 -3px 0 rgba(60, 40, 20, 0.16); }
+.sx-paper .a4 { left: 14%; top: 18px; width: 50px; height: 16px; border-radius: 99px; background: #ffffff; box-shadow: 2px 3px 0 rgba(60, 40, 20, 0.15); }
+.sx-retro { background: linear-gradient(180deg, #120b2e, #2a1650 70%, var(--pick) 70%, var(--pick) 76%, #0d0820 76%); image-rendering: pixelated; }
+.sx-retro .a1 { left: 18%; top: 22px; width: 6px; height: 6px; background: #ffffff; box-shadow: 40px -8px #ffffff, 90px 6px #ffe66d, 130px -4px #ffffff, 60px 18px #ffffff; }
+.sx-retro .a2 { left: 50%; top: 26px; width: 28px; height: 28px; margin-left: -14px; background: #ffd23f; box-shadow: inset -4px -4px 0 #c98a00, 0 0 0 4px #1b1030; }
+.sx-retro .a2::after { content: "?"; position: absolute; inset: 0; display: grid; place-items: center; font-family: "Press Start 2P", monospace; font-size: 12px; color: #1b1030; }
+.sx-retro .a3, .sx-retro .a4 { display: none; }
+.sx-toon { background: repeating-conic-gradient(from 0deg at 50% 120%, var(--pick) 0deg 10deg, color-mix(in srgb, var(--pick) 55%, #ffffff) 10deg 20deg); }
+.sx-toon .a1 { left: 50%; top: 18px; width: 54px; height: 54px; margin-left: -27px; border-radius: 50%; background: #ffe14d; border: 4px solid #1b1b1b; box-shadow: 4px 4px 0 #1b1b1b; }
+.sx-toon .a2 { left: 12%; top: 16px; width: 40px; height: 18px; border-radius: 99px; background: #ffffff; border: 3px solid #1b1b1b; }
+.sx-toon .a3, .sx-toon .a4 { display: none; }
+.sx-kinetic { background: #0a0a0a; }
+.sx-kinetic::before { content: "MEET\A RAFAEL"; white-space: pre; position: absolute; left: 10px; top: 8px; font-family: Anton, Impact, sans-serif; font-size: 34px; line-height: 0.92; color: #ffffff; }
+.sx-kinetic .a1 { left: 0; right: 0; bottom: 10px; height: 8px; background: var(--pick); }
+.sx-kinetic .a2, .sx-kinetic .a3, .sx-kinetic .a4 { display: none; }
+.sx-comic { background: radial-gradient(circle, rgba(var(--pick-rgb), 0.45) 1.6px, transparent 1.8px) 0 0 / 8px 8px, #fffaeb; }
+.sx-comic .a1 { left: 8px; top: 8px; width: 46%; bottom: 8px; border: 3px solid #111111; background: var(--pick); }
+.sx-comic .a2 { right: 8px; top: 8px; width: 40%; height: 40%; border: 3px solid #111111; background: #ffffff; }
+.sx-comic .a3 { right: 8px; bottom: 8px; width: 40%; height: 36%; border: 3px solid #111111; background: #ffe14d; }
+.sx-comic .a3::after { content: "POW!"; position: absolute; inset: 0; display: grid; place-items: center; font-family: Bangers, Impact, sans-serif; font-size: 16px; color: #e11d48; letter-spacing: 0.04em; }
+.sx-comic .a4 { display: none; }
+
+/* A pop that a style shows on top of the film (comic words, pixel scores, puffs, stickers) */
+.spop { position: absolute; width: 0; height: 0; pointer-events: none; }
+.spop > * { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); white-space: nowrap; }
+
+/* Premium styles (2026-11-20): a gold Premium label on the five styles; locked (grey, with a lock) for a freelancer
+   without Premium. The Premium bundle box lists Premium's perks with the styles added. */
+.styles { --pick: #f97316; --pick-rgb: 249, 115, 22; }
+.sx-prem { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #1a1205; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; vertical-align: 2px; }
+.sx-prem svg { width: 11px; height: 11px; }
+.scardx.locked .sx-art { filter: grayscale(0.85) brightness(0.85); }
+.scardx.locked .sx-main b { color: var(--muted); }
+.scardx.locked .sx-prem { background: var(--card); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+.bundle { border-radius: 14px; padding: 14px 16px; background: linear-gradient(160deg, rgba(251, 191, 36, 0.14), transparent 60%), var(--card-2); border: 1px solid rgba(245, 158, 11, 0.45); }
+.bundle h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-family: var(--font-display); font-size: 1.05rem; }
+.bundle h3 svg { width: 16px; height: 16px; color: #f59e0b; }
+.bundle ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 700px) { .bundle ul { grid-template-columns: minmax(0, 1fr); } }
+.bundle li { display: flex; gap: 8px; align-items: flex-start; min-width: 0; font-size: 0.84rem; }
+.bundle li svg { flex: none; margin-top: 2px; }
+.bundle li.new { grid-column: 1 / -1; padding: 8px 10px; border-radius: 10px; background: rgba(245, 158, 11, 0.14); }
+.bundle li em { margin-left: auto; align-self: center; font-style: normal; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: #f59e0b; color: #1a1205; }
+.bundle p { margin: 10px 0 0; color: var(--muted); font-size: 0.74rem; }
