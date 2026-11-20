@@ -382,7 +382,7 @@ export async function savePortfolioLinks(userId, links) {
   return "";
 }
 
-// A person's social accounts (PLAN-social-accounts.md): their Facebook, Instagram, TikTok, YouTube, LinkedIn, X,
+// A person's social accounts (PLAN-social-accounts.md): their Facebook, Instagram, TikTok, YouTube, LinkedIn, GitHub, X,
 // Threads and Pinterest pages, for freelancers and clients. They are saved on the profile as { platform: link }
 // (profiles.social_links), so each platform is there once. The database has the same rule
 // (supabase_social_links_schema.sql): https only, at most 200 characters, and the link must be on that platform's
@@ -395,6 +395,7 @@ const SOCIAL_LIST = [
   { key: "tiktok", label: "TikTok", icon: "bi-tiktok", domains: ["tiktok.com"], nameOk: /^[A-Za-z0-9._]{2,24}$/, makeLink: (name) => `https://www.tiktok.com/@${name}` },
   { key: "youtube", label: "YouTube", icon: "bi-youtube", domains: ["youtube.com"], nameOk: /^[A-Za-z0-9._-]{3,30}$/, makeLink: (name) => `https://www.youtube.com/@${name}` },
   { key: "linkedin", label: "LinkedIn", icon: "bi-linkedin", domains: ["linkedin.com"], nameOk: /^[A-Za-z0-9-]{3,100}$/, makeLink: (name) => `https://www.linkedin.com/in/${name}` },
+  { key: "github", label: "GitHub", icon: "bi-github", domains: ["github.com"], nameOk: /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/, makeLink: (name) => `https://github.com/${name}` },
   { key: "x", label: "X", icon: "bi-twitter-x", domains: ["x.com", "twitter.com"], nameOk: /^[A-Za-z0-9_]{1,15}$/, makeLink: (name) => `https://x.com/${name}` },
   { key: "threads", label: "Threads", icon: "bi-threads", domains: ["threads.net", "threads.com"], nameOk: /^[A-Za-z0-9._]{1,30}$/, makeLink: (name) => `https://www.threads.com/@${name}` },
   { key: "pinterest", label: "Pinterest", icon: "bi-pinterest", domains: ["pinterest.com"], nameOk: /^[A-Za-z0-9_]{3,30}$/, makeLink: (name) => `https://www.pinterest.com/${name}/` }
@@ -466,19 +467,43 @@ export function socialName(key, link) {
   return name.length > 24 ? `${name.slice(0, 23)}…` : name;
 }
 
-// What a chip or a pill says for an account: the name from its link, or just the platform's name ("Facebook") when
-// the link has no name in it.
-export function socialHandle(key, link) {
-  const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
-  return socialName(key, link) || (platform ? platform.label : "Profile");
+// The name a person typed for an account (PLAN-social-accounts.md, round 3): "Juan Dela Cruz" on a Facebook link that has
+// no name in it. Saved next to the links, profiles.social_labels = { platform: name }. At most 40 characters, no space
+// at either end, none of / \ < > " ` and no control characters, and no "://" or "www." (so a name can't be a link).
+// The database has the same rule (social_labels_ok) and also refuses blocked words.
+export const MAX_SOCIAL_LABEL_LENGTH = 40;
+function labelProblem(text) {
+  if (text.length > MAX_SOCIAL_LABEL_LENGTH) return `A name can be at most ${MAX_SOCIAL_LABEL_LENGTH} characters.`;
+  if (/[/\\<>"`]/.test(text) || /:\/\/|www\./i.test(text)) return "A name can't have a link in it, or any of these: / \\ < > \" `";
+  if ([...text].some((ch) => ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127)) return "A name can't have line breaks.";
+  return "";
 }
 
-// The tooltip of an account: "@bea.edits on TikTok", or "Bea's Facebook" when the link has no name in it.
-export function socialTitle(key, link, who) {
+// What was typed in "Name to show" becomes { label } ("" = no name), or { error }. Spaces are tidied first.
+export function cleanSocialLabel(text) {
+  const label = String(text ?? "").replace(/\s+/g, " ").trim();
+  const problem = label ? labelProblem(label) : "";
+  return problem ? { error: problem } : { label };
+}
+
+// A saved name, or "" when it isn't a good one (the page only draws what the database rule would allow).
+export function safeSocialLabel(label) {
+  return typeof label === "string" && label && label === label.trim() && !labelProblem(label) ? label : "";
+}
+
+// What a chip or a pill says for an account: the name the person typed, else the name inside the link, else just
+// the platform's name ("Facebook") when the link has no name in it.
+export function socialHandle(key, link, label) {
   const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
-  const label = platform ? platform.label : "Profile";
-  const name = socialName(key, link);
-  return name ? `${name} on ${label}` : who ? `${who}'s ${label}` : label;
+  return safeSocialLabel(label) || socialName(key, link) || (platform ? platform.label : "Profile");
+}
+
+// The tooltip of an account: "Juan Dela Cruz on Facebook" or "@bea.edits on TikTok", or "Bea's Facebook" when there is no name.
+export function socialTitle(key, link, who, label) {
+  const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
+  const platformName = platform ? platform.label : "Profile";
+  const name = safeSocialLabel(label) || socialName(key, link);
+  return name ? `${name} on ${platformName}` : who ? `${who}'s ${platformName}` : platformName;
 }
 
 // The user's saved accounts as { platform: link }, or null when they couldn't be loaded.
@@ -488,9 +513,17 @@ export async function fetchSocialLinks(userId) {
   return data?.social_links ?? {};
 }
 
-// Saves the whole object. Returns "" when saved, or a message to show.
-export async function saveSocialLinks(userId, links) {
-  const { data, error } = await supabase.from("profiles").update({ social_links: links }).eq("id", userId).select("id");
+// Their typed names as { platform: name }. Read in its own request, so a missing column only means no names: {}.
+export async function fetchSocialLabels(userId) {
+  const { data, error } = await supabase.from("profiles").select("social_labels").eq("id", userId).maybeSingle();
+  if (error) return {};
+  return data?.social_labels && typeof data.social_labels === "object" ? data.social_labels : {};
+}
+
+// Saves the links and the names together. Returns "" when saved, or a message to show.
+export async function saveSocialLinks(userId, links, labels = {}) {
+  const { data, error } = await supabase.from("profiles").update({ social_links: links, social_labels: labels }).eq("id", userId).select("id");
+  if (error && /bad words/i.test(error.message || "")) return "Please don't use bad words in a name.";
   if (error || !data?.length) return "Couldn't save your accounts. Please try again.";
   return "";
 }

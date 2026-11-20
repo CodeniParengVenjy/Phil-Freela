@@ -31,6 +31,12 @@ export default function ProfileView() {
   const [viewing, setViewing] = useState(null);
   // Your social accounts, { platform: link }: the box further down loads and changes them, the header shows them.
   const [socialLinks, setSocialLinks] = useState({});
+  const [socialLabels, setSocialLabels] = useState({});
+  // (the box reports both after loading and after every save)
+  const handleSocialChange = (links, names) => {
+    setSocialLinks(links);
+    setSocialLabels(names);
+  };
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -62,7 +68,7 @@ export default function ProfileView() {
 
               <h2 className="fw-bold text-white mb-2">{displayName}<ProBadge pro={isPro} /></h2>
               {/* How others see your accounts: round logo buttons (hidden until you add some). */}
-              <SocialAccountsRow links={socialLinks} name={displayName} centered />
+              <SocialAccountsRow links={socialLinks} labels={socialLabels} name={displayName} centered />
               {/* Premium sees who-many (never who); free accounts see where to get it. */}
               <p className="text-white-50 fs-8 mb-4">
                 <i className="bi bi-eye me-1"></i>
@@ -103,7 +109,7 @@ export default function ProfileView() {
               {/* Their Facebook, Instagram, TikTok... pages (freelancers and clients: PLAN-social-accounts.md). */}
               {currentUserId && (
                 <div className="text-start mb-4">
-                  <SocialAccountsBox userId={currentUserId} showToast={showToast} onChange={setSocialLinks} />
+                  <SocialAccountsBox userId={currentUserId} showToast={showToast} onChange={handleSocialChange} />
                 </div>
               )}
 

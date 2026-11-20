@@ -1,31 +1,41 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  SOCIAL_PLATFORMS, cleanSocialAccount, fetchSocialLinks, isSafeSocialLink, linkLabel, saveSocialLinks, socialHandle, socialName, socialTitle
+  MAX_SOCIAL_LABEL_LENGTH, SOCIAL_PLATFORMS, cleanSocialAccount, cleanSocialLabel, fetchSocialLabels, fetchSocialLinks, isSafeSocialLink,
+  linkLabel, saveSocialLinks, socialHandle, socialName, socialTitle, safeSocialLabel
 } from "../../../lib/profile";
 import { Loader } from "../../../components/Loaders";
 import "./social-accounts.css";
 
-// Social accounts (PLAN-social-accounts.md): a person's Facebook, Instagram, TikTok, YouTube, LinkedIn, X,
+// Social accounts (PLAN-social-accounts.md): a person's Facebook, Instagram, TikTok, YouTube, LinkedIn, GitHub, X,
 // Threads and Pinterest pages, for freelancers and clients. The look is in social-accounts.css.
 //
 // <SocialAccountsBox>: on your own Profile. "+ Add account" opens a row: pick the platform, type your @username
-// or paste your link, press Enter. Each platform can be added once; the x on an account removes it. It works like
-// the Portfolio Links box (PortfolioLinks.jsx): if a save fails, the list goes back.
+// or paste your link, optionally a "Name to show", press Enter. Each platform can be added once; the pencil on an
+// account changes its name, the x removes it. It works like the Portfolio Links box (PortfolioLinks.jsx): if a save
+// fails, the list goes back. The name is for links that have none inside them (a Facebook share link): the site
+// never visits the page to read one.
 // inSettings: the same box inside Settings > Profile Settings (the user, 2026-11-20: "this must be settable in
 // settings"). It looks like the other settings there (a small label instead of the big heading) and says "saved"
 // after each change, because it saves right away, like the picture and the "Available for work" switch.
-// onChange(accounts): called with { platform: link } once loaded and after every saved change, so the Profile
-// page can show the same accounts in its header.
+// onChange(accounts, labels): called with { platform: link } and { platform: name } once loaded and after every
+// saved change, so the Profile page can show the same accounts in its header.
 export function SocialAccountsBox({ userId, showToast, inSettings = false, onChange }) {
   // undefined while loading, null when they couldn't load, else { platform: link }.
   const [accounts, setAccounts] = useState(undefined);
+  // The names they typed, { platform: name } ({} when none, or when they couldn't be loaded).
+  const [labels, setLabels] = useState({});
   const [adding, setAdding] = useState(false);
-  // The platform picked in the add row, and what was typed.
+  // The platform picked in the add row, what was typed for it, and the name to show.
   const [platform, setPlatform] = useState("");
   const [input, setInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
+  // The platform whose name is being changed (the pencil), and the new text.
+  const [editing, setEditing] = useState(null);
+  const [editText, setEditText] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef(null);
+  const editRef = useRef(null);
   // (kept in a ref so a new function from the page never restarts the loading below)
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
@@ -33,10 +43,11 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
   useEffect(() => {
     if (!userId) return undefined;
     let active = true;
-    fetchSocialLinks(userId).then((result) => {
+    Promise.all([fetchSocialLinks(userId), fetchSocialLabels(userId)]).then(([links, names]) => {
       if (!active) return;
-      setAccounts(result);
-      onChangeRef.current?.(result || {});
+      setAccounts(links);
+      setLabels(names);
+      onChangeRef.current?.(links || {}, names);
     });
     return () => { active = false; };
   }, [userId]);
@@ -44,30 +55,38 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
   useEffect(() => {
     if (adding) inputRef.current?.focus();
   }, [adding]);
+  useEffect(() => {
+    if (editing) editRef.current?.focus();
+  }, [editing]);
 
   // The platforms not added yet (the dropdown only offers these), and the one picked now.
   const left = accounts ? SOCIAL_PLATFORMS.filter((p) => !accounts[p.key]) : [];
   const chosen = left.find((p) => p.key === platform) ?? left[0];
   const added = accounts ? SOCIAL_PLATFORMS.filter((p) => accounts[p.key]) : [];
-  // Saved links with no name inside them (Facebook's profile.php?id=... or /share/..., a YouTube channel number...):
-  // their chip can only say the platform, so the box explains how to get a name on it.
-  const nameless = added.filter((p) => !socialName(p.key, accounts[p.key]));
+  // Saved links with no name anywhere (none typed, none inside the link: Facebook's profile.php?id=... or /share/...,
+  // a YouTube channel number...): their chip can only say the platform, so the box explains the pencil.
+  const nameless = added.filter((p) => !safeSocialLabel(labels[p.key]) && !socialName(p.key, accounts[p.key]));
 
-  const update = async (next) => {
-    const before = accounts;
-    setAccounts(next);
+  // Saves the links and the names together; if it fails, both go back.
+  const update = async (nextLinks, nextLabels = labels) => {
+    const before = { links: accounts, names: labels };
+    setAccounts(nextLinks);
+    setLabels(nextLabels);
     setSaving(true);
-    const problem = await saveSocialLinks(userId, next);
+    const problem = await saveSocialLinks(userId, nextLinks, nextLabels);
     setSaving(false);
     if (problem) {
-      setAccounts(before);
+      setAccounts(before.links);
+      setLabels(before.names);
       showToast(problem);
       return false;
     }
-    onChangeRef.current?.(next);
+    onChangeRef.current?.(nextLinks, nextLabels);
     if (inSettings) showToast("Social accounts saved.");
     return true;
   };
+
+  const without = (object, key) => Object.fromEntries(Object.entries(object).filter(([name]) => name !== key));
 
   const handleAdd = async () => {
     if (saving || !chosen) return;
@@ -76,20 +95,54 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
       setError(problem);
       return;
     }
-    if (await update({ ...accounts, [chosen.key]: link })) {
+    const { label, error: labelProblem } = cleanSocialLabel(nameInput);
+    if (labelProblem) {
+      setError(labelProblem);
+      return;
+    }
+    if (await update({ ...accounts, [chosen.key]: link }, label ? { ...labels, [chosen.key]: label } : labels)) {
       setInput("");
+      setNameInput("");
       setError("");
       setAdding(false);
     }
   };
 
-  const remove = (key) => update(Object.fromEntries(Object.entries(accounts).filter(([name]) => name !== key)));
+  // Removing an account takes its name with it.
+  const remove = (key) => update(without(accounts, key), without(labels, key));
+
+  const startEdit = (key) => {
+    setAdding(false);
+    setError("");
+    setEditing(key);
+    setEditText(safeSocialLabel(labels[key]));
+  };
+
+  const closeEdit = () => {
+    setEditing(null);
+    setEditText("");
+    setError("");
+  };
+
+  // An empty name takes the typed name away (the chip goes back to the name inside the link, or the platform).
+  const handleSaveName = async () => {
+    if (saving || !editing) return;
+    const { label, error: problem } = cleanSocialLabel(editText);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    if (await update(accounts, label ? { ...labels, [editing]: label } : without(labels, editing))) closeEdit();
+  };
 
   const close = () => {
     setInput("");
+    setNameInput("");
     setError("");
     setAdding(false);
   };
+
+  const editingPlatform = editing ? SOCIAL_PLATFORMS.find((p) => p.key === editing) : null;
 
   return (
     <div data-testid="social-accounts-box">
@@ -97,7 +150,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
         {inSettings
           ? <span className="text-white-50 fw-semibold fs-7">Social Accounts:</span>
           : <h5 className="text-white fw-bold mb-0"><i className="bi bi-share-fill text-orange me-2"></i> Social Accounts</h5>}
-        {accounts && left.length > 0 && !adding && (
+        {accounts && left.length > 0 && !adding && !editing && (
           <button type="button" className="btn btn-sm btn-outline-warning rounded-pill fs-8 fw-bold" onClick={() => setAdding(true)}>+ Add account</button>
         )}
       </div>
@@ -106,7 +159,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
       {accounts === null && <p className="text-secondary fs-7 mb-0">Couldn't load your accounts.</p>}
       {accounts && added.length === 0 && !adding && (
         <p className="text-secondary fs-7 mb-0">
-          No accounts yet. Add your Facebook, Instagram, TikTok, YouTube, LinkedIn, X and more, so people can find you there.
+          No accounts yet. Add your Facebook, Instagram, TikTok, YouTube, LinkedIn, GitHub, X and more, so people can find you there.
         </p>
       )}
 
@@ -122,8 +175,18 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
                 title={`${p.label}: ${linkLabel(accounts[p.key])}`}
                 className="text-light text-decoration-none text-truncate"
               >
-                {socialHandle(p.key, accounts[p.key])}
+                {socialHandle(p.key, accounts[p.key], labels[p.key])}
               </a>
+              <button
+                type="button"
+                className="btn btn-link text-white-50 p-0 lh-1 border-0"
+                aria-label={`Change the name of ${p.label}`}
+                title="Change the name"
+                disabled={saving}
+                onClick={() => startEdit(p.key)}
+              >
+                <i className="bi bi-pencil-fill fs-8"></i>
+              </button>
               <button
                 type="button"
                 className="btn-close btn-close-white"
@@ -136,14 +199,44 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
           ))}
         </div>
       )}
-
       {nameless.length > 0 && (
         <p className="text-secondary fs-8 mt-2 mb-0">
           <i className="bi bi-info-circle me-1"></i>
           {nameless.length === 1
-            ? `Your ${nameless[0].label} link has no name in it, so its chip just says "${nameless[0].label}". To show your name, remove it and add it again by typing your username instead of pasting the link.`
-            : `The ${new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(nameless.map((p) => p.label))} links have no name in them, so those chips just say the platform. To show a name, remove them and add them again by typing your username instead of pasting the link.`}
+            ? `Your ${nameless[0].label} link has no name in it, so its chip just says "${nameless[0].label}". Tap the pencil on the chip to type the name to show.`
+            : `The ${new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(nameless.map((p) => p.label))} links have no name in them, so those chips just say the platform. Tap the pencil on a chip to type the name to show.`}
         </p>
+      )}
+
+      {editingPlatform && (
+        <div className="mt-3">
+          <div className="d-flex flex-wrap gap-2">
+            <input
+              ref={editRef}
+              type="text"
+              autoComplete="off"
+              spellCheck={false}
+              className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2 flex-grow-1 w-auto"
+              style={{ minWidth: "12rem" }}
+              placeholder={`Name to show for ${editingPlatform.label}`}
+              aria-label={`Name to show for ${editingPlatform.label}`}
+              maxLength={MAX_SOCIAL_LABEL_LENGTH + 10}
+              value={editText}
+              onChange={(event) => { setEditText(event.target.value); setError(""); }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  handleSaveName();
+                }
+                if (event.key === "Escape") closeEdit();
+              }}
+            />
+            <button type="button" className="btn btn-gradient-role rounded-pill px-3 fw-bold text-white flex-shrink-0" onClick={handleSaveName} disabled={saving}>Save name</button>
+            <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 flex-shrink-0" onClick={closeEdit} disabled={saving}>Cancel</button>
+          </div>
+          <p className="text-secondary fs-8 mt-1 mb-0">Up to {MAX_SOCIAL_LABEL_LENGTH} characters, no links. Leave it empty to go back to the name in the link.</p>
+          {error && <p className="text-warning fs-8 mt-2 mb-0"><i className="bi bi-exclamation-triangle-fill me-1"></i>{error}</p>}
+        </div>
       )}
 
       {accounts && adding && chosen && (
@@ -180,6 +273,25 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
                 if (event.key === "Escape") close();
               }}
             />
+            <input
+              type="text"
+              autoComplete="off"
+              spellCheck={false}
+              className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2 w-auto"
+              style={{ width: "12rem" }}
+              placeholder="Name to show (optional)"
+              aria-label={`Name to show for ${chosen.label} (optional)`}
+              maxLength={MAX_SOCIAL_LABEL_LENGTH + 10}
+              value={nameInput}
+              onChange={(event) => { setNameInput(event.target.value); setError(""); }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  handleAdd();
+                }
+                if (event.key === "Escape") close();
+              }}
+            />
             <button type="button" className="btn btn-gradient-role rounded-pill px-3 fw-bold text-white flex-shrink-0" onClick={handleAdd} disabled={saving}>Add</button>
             <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 flex-shrink-0" onClick={close} disabled={saving}>Cancel</button>
           </div>
@@ -197,9 +309,9 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
 // <SocialAccountsRow>: under a person's name, on their public page and on your own Profile (centered there).
 // "FIND BEA ON", then one round logo button per account: it opens the page in a new tab ("nofollow noopener
 // noreferrer" keeps the other site from reaching back into PhilFreela's tab) and shows "@bea.edits on TikTok"
-// as its tooltip. Only a link that fits its platform is drawn (isSafeSocialLink), whatever is stored. Nothing
-// shows when there are no accounts. links: { platform: link }.
-export function SocialAccountsRow({ links, name, centered = false }) {
+// (or "Juan Dela Cruz on Facebook") as its tooltip. Only a link that fits its platform is drawn (isSafeSocialLink),
+// whatever is stored. Nothing shows when there are no accounts. links: { platform: link }, labels: { platform: name }.
+export function SocialAccountsRow({ links, labels, name, centered = false }) {
   const shown = SOCIAL_PLATFORMS.filter((p) => isSafeSocialLink(p.key, links?.[p.key]));
   if (!shown.length) return null;
   const first = (name || "").trim().split(/\s+/)[0] || "me";
@@ -213,7 +325,7 @@ export function SocialAccountsRow({ links, name, centered = false }) {
           target="_blank"
           rel="noopener noreferrer nofollow"
           className={`social-btn sp-${p.key}`}
-          title={socialTitle(p.key, links[p.key], first)}
+          title={socialTitle(p.key, links[p.key], first, labels?.[p.key])}
           aria-label={`${first}'s ${p.label} (opens in a new tab)`}
         >
           <i className={`bi ${p.icon}`}></i>

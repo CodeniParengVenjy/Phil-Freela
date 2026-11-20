@@ -9,16 +9,16 @@
 .sp-youtube { --b: #ff0000; --bl: #ff6b6b; }
 .sp-linkedin { --b: #0a66c2; --bl: #6ab0f5; }
 .sp-pinterest { --b: #e60023; --bl: #ff6b7e; }
-.sp-tiktok, .sp-x, .sp-threads { --b: #111111; --bl: #ffffff; }
+.sp-tiktok, .sp-x, .sp-threads, .sp-github { --b: #111111; --bl: #ffffff; }
 
 .social-btn, .social-ic { --t: var(--b); --g: var(--bl); --hover: var(--b); --hc: var(--b); --hg: #ffffff; }
 .social-btn.sp-instagram { --hover: linear-gradient(45deg, #f09433, #dc2743 55%, #bc1888); --hc: #dc2743; }
-.social-btn.sp-tiktok, .social-btn.sp-x, .social-btn.sp-threads { --t: #ffffff; --g: #ffffff; --hover: #f8fafc; --hc: #f8fafc; --hg: #0b0d14; }
-.social-ic.sp-tiktok, .social-ic.sp-x, .social-ic.sp-threads { --t: #ffffff; --g: #ffffff; }
+.social-btn.sp-tiktok, .social-btn.sp-x, .social-btn.sp-threads, .social-btn.sp-github { --t: #ffffff; --g: #ffffff; --hover: #f8fafc; --hc: #f8fafc; --hg: #0b0d14; }
+.social-ic.sp-tiktok, .social-ic.sp-x, .social-ic.sp-threads, .social-ic.sp-github { --t: #ffffff; --g: #ffffff; }
 
 body.theme-light .social-btn, body.theme-light .social-ic { --g: var(--b); }
-body.theme-light .social-btn.sp-tiktok, body.theme-light .social-btn.sp-x, body.theme-light .social-btn.sp-threads { --t: #111111; --g: #111111; --hover: #111111; --hc: #111111; --hg: #ffffff; }
-body.theme-light .social-ic.sp-tiktok, body.theme-light .social-ic.sp-x, body.theme-light .social-ic.sp-threads { --t: #111111; --g: #111111; }
+body.theme-light .social-btn.sp-tiktok, body.theme-light .social-btn.sp-x, body.theme-light .social-btn.sp-threads, body.theme-light .social-btn.sp-github { --t: #111111; --g: #111111; --hover: #111111; --hc: #111111; --hg: #ffffff; }
+body.theme-light .social-ic.sp-tiktok, body.theme-light .social-ic.sp-x, body.theme-light .social-ic.sp-threads, body.theme-light .social-ic.sp-github { --t: #111111; --g: #111111; }
 
 .social-btn {
   width: 40px; height: 40px; border-radius: 50%; flex: none;

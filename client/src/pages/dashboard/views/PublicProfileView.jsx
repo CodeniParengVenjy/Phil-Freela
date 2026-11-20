@@ -3,7 +3,7 @@ import { useOutletContext, useParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { fetchIsVerified } from "../../../lib/verification";
 import { countPortfolio } from "../../../lib/portfolio";
-import { fetchSocialLinks, fetchVerifiedLinks } from "../../../lib/profile";
+import { fetchSocialLabels, fetchSocialLinks, fetchVerifiedLinks } from "../../../lib/profile";
 import { fetchProfileStats } from "../../../lib/profileStats";
 import { SLIDES_SELECT } from "../../../lib/slides";
 import { useServiceRatings } from "../../../lib/useServiceRatings";
@@ -58,6 +58,8 @@ function PublicProfile({ userId }) {
   // { [platform]: link }: their Facebook, Instagram, TikTok... pages (stays {} when none, or when they couldn't be
   // loaded, so the rest of the page never depends on it).
   const [socialLinks, setSocialLinks] = useState({});
+  // { [platform]: name }: the names they typed for those accounts (read on its own too, {} when none).
+  const [socialLabels, setSocialLabels] = useState({});
   // The person being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
   // Which picture is open bigger: "picture", "cover", or null (none).
@@ -79,14 +81,16 @@ function PublicProfile({ userId }) {
       fetchIsVerified(userId),
       countPortfolio(userId),
       fetchVerifiedLinks(userId),
-      fetchSocialLinks(userId)
-    ]).then(([{ data }, isVerified, count, siteBadges, social]) => {
+      fetchSocialLinks(userId),
+      fetchSocialLabels(userId)
+    ]).then(([{ data }, isVerified, count, siteBadges, social, names]) => {
       if (!active) return;
       setPerson(data || null);
       setVerified(isVerified);
       setPortfolioCount(count);
       setVerifiedLinks(siteBadges);
       setSocialLinks(social || {});
+      setSocialLabels(names || {});
     });
     return () => {
       active = false;
@@ -146,7 +150,7 @@ function PublicProfile({ userId }) {
               {isFreelancer && <AvailabilityBadge available={person.available_for_work} showAvailable className="fs-8" />}
             </p>
             {/* Their Facebook, Instagram, TikTok... pages as round logo buttons (hidden until they add some). */}
-            <SocialAccountsRow links={socialLinks} name={name} />
+            <SocialAccountsRow links={socialLinks} labels={socialLabels} name={name} />
           </div>
           {isOwnPage ? (
             // (Your own highlight is the Portfolio box further down: HighlightsPoster.jsx.)
