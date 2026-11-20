@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  SOCIAL_PLATFORMS, cleanSocialAccount, fetchSocialLinks, isSafeSocialLink, linkLabel, saveSocialLinks, socialHandle
+  SOCIAL_PLATFORMS, cleanSocialAccount, fetchSocialLinks, isSafeSocialLink, linkLabel, saveSocialLinks, socialHandle, socialName, socialTitle
 } from "../../../lib/profile";
 import { Loader } from "../../../components/Loaders";
 import "./social-accounts.css";
@@ -49,6 +49,9 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
   const left = accounts ? SOCIAL_PLATFORMS.filter((p) => !accounts[p.key]) : [];
   const chosen = left.find((p) => p.key === platform) ?? left[0];
   const added = accounts ? SOCIAL_PLATFORMS.filter((p) => accounts[p.key]) : [];
+  // Saved links with no name inside them (Facebook's profile.php?id=... or /share/..., a YouTube channel number...):
+  // their chip can only say the platform, so the box explains how to get a name on it.
+  const nameless = added.filter((p) => !socialName(p.key, accounts[p.key]));
 
   const update = async (next) => {
     const before = accounts;
@@ -134,6 +137,15 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
         </div>
       )}
 
+      {nameless.length > 0 && (
+        <p className="text-secondary fs-8 mt-2 mb-0">
+          <i className="bi bi-info-circle me-1"></i>
+          {nameless.length === 1
+            ? `Your ${nameless[0].label} link has no name in it, so its chip just says "${nameless[0].label}". To show your name, remove it and add it again by typing your username instead of pasting the link.`
+            : `The ${new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(nameless.map((p) => p.label))} links have no name in them, so those chips just say the platform. To show a name, remove them and add them again by typing your username instead of pasting the link.`}
+        </p>
+      )}
+
       {accounts && adding && chosen && (
         <div className="mt-3">
           <div className="d-flex flex-wrap gap-2">
@@ -201,7 +213,7 @@ export function SocialAccountsRow({ links, name, centered = false }) {
           target="_blank"
           rel="noopener noreferrer nofollow"
           className={`social-btn sp-${p.key}`}
-          title={`${socialHandle(p.key, links[p.key])} on ${p.label}`}
+          title={socialTitle(p.key, links[p.key], first)}
           aria-label={`${first}'s ${p.label} (opens in a new tab)`}
         >
           <i className={`bi ${p.icon}`}></i>

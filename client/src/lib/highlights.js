@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { fetchIsVerified } from "./verification";
-import { SOCIAL_PLATFORMS, fetchSocialLinks, fetchVerifiedLinks, isSafeLink, isSafeSocialLink, linkLabel, socialHandle } from "./profile";
+import { SOCIAL_PLATFORMS, fetchSocialLinks, fetchVerifiedLinks, isSafeLink, isSafeSocialLink, linkLabel, socialHandle, socialTitle } from "./profile";
 import { fetchProfileHistory, fetchProfileStats, formatMemberSince } from "./profileStats";
 import { fetchPortfolio, withoutHiddenCharacters } from "./portfolio";
 import { fetchServiceRatings } from "./serviceReviews";
@@ -216,7 +216,7 @@ export async function loadHighlight(userId) {
     // Their social accounts (PLAN-social-accounts.md), in the fixed platform order: the film shows the first 4, then "+N more".
     // (socialLinks is null when they couldn't be loaded: then the film simply has none.)
     socials: SOCIAL_PLATFORMS.filter((p) => isSafeSocialLink(p.key, socialLinks?.[p.key]) && SOCIAL_GLYPHS[p.key])
-      .map((p) => ({ key: p.key, label: p.label, handle: socialHandle(p.key, socialLinks[p.key]), ...SOCIAL_GLYPHS[p.key] })),
+      .map((p) => ({ key: p.key, label: p.label, handle: socialHandle(p.key, socialLinks[p.key]), title: socialTitle(p.key, socialLinks[p.key], firstName(name)), ...SOCIAL_GLYPHS[p.key] })),
     services, lowestPrice: lowest ? lowest.price : null,
     portfolio: projects, videos, videoCount,
     done, breakdown, ratingCount, avg, rating: Math.round(avg * 10) / 10, trust: Math.round(avg * 20),

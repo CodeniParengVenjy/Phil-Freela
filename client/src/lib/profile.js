@@ -450,12 +450,11 @@ export function cleanSocialAccount(key, text) {
   return { link };
 }
 
-// A short name for a saved account, for the chips, the tooltips and the Highlights film: "@bea.edits" for TikTok,
-// Instagram, X, Threads and YouTube, "bea-ramos" for LinkedIn, "bea.ramos" for Facebook, "beaedits" for Pinterest.
-// A link with no readable name in it (Facebook's profile.php?id=..., a YouTube channel number) gets "Facebook
-// profile", "YouTube channel"... Never longer than 24 characters.
-export function socialHandle(key, link) {
-  const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
+// The name that is written inside a saved account's link: "@bea.edits" for TikTok, Instagram, X, Threads and
+// YouTube, "bea-ramos" for LinkedIn, "bea.ramos" for Facebook, "beaedits" for Pinterest. "" when the link has none:
+// Facebook's profile.php?id=... and /share/... links, a YouTube channel number and an old LinkedIn /pub/ link don't
+// contain the name, and the site never visits the page to read it. Never longer than 24 characters.
+export function socialName(key, link) {
   const first = (parts) => parts[0] || "";
   const parts = String(link || "").replace(/^https:\/\/[^/]+\/?/i, "").replace(/[?#].*$/, "").split("/").filter(Boolean);
   let name = "";
@@ -464,8 +463,22 @@ export function socialHandle(key, link) {
   else if (key === "youtube") name = /^(c|user)$/i.test(first(parts)) ? (parts[1] ? `@${parts[1]}` : "") : first(parts).startsWith("@") ? first(parts) : "";
   else if (["instagram", "tiktok", "x", "threads"].includes(key)) name = first(parts) ? (first(parts).startsWith("@") ? first(parts) : `@${first(parts)}`) : "";
   else name = first(parts);
-  if (!name) return `${platform ? platform.label : "Profile"} ${key === "youtube" ? "channel" : "profile"}`;
   return name.length > 24 ? `${name.slice(0, 23)}…` : name;
+}
+
+// What a chip or a pill says for an account: the name from its link, or just the platform's name ("Facebook") when
+// the link has no name in it.
+export function socialHandle(key, link) {
+  const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
+  return socialName(key, link) || (platform ? platform.label : "Profile");
+}
+
+// The tooltip of an account: "@bea.edits on TikTok", or "Bea's Facebook" when the link has no name in it.
+export function socialTitle(key, link, who) {
+  const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
+  const label = platform ? platform.label : "Profile";
+  const name = socialName(key, link);
+  return name ? `${name} on ${label}` : who ? `${who}'s ${label}` : label;
 }
 
 // The user's saved accounts as { platform: link }, or null when they couldn't be loaded.

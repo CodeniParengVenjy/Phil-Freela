@@ -449,7 +449,7 @@ export function startHighlights(host, U, opts = {}) {
     socials.slice(0, cap).forEach((a, i) => {
       const s = el("span", phone ? "soc soc-ic" : "soc"), lg = el("span", "lg", '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="' + a.d + '"></path></svg>');
       s.style.setProperty("--i", i); lg.style.setProperty("--sc", a.tint); lg.style.setProperty("--sg", a.glyph);
-      s.title = a.handle + " on " + a.label; s.appendChild(lg);
+      s.title = a.title || a.handle; s.appendChild(lg);
       if (!phone) s.appendChild(document.createTextNode(a.handle));
       $("plinks").appendChild(s);
     });

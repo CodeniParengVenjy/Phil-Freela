@@ -40,7 +40,11 @@ Status: approved 2026-11-20 ("ok" to the plan written in chat).
    on them." Nothing shows until a person adds one.
 4. **Own Profile page:** the same row, centered under your name, follows every add and remove.
 5. **Chips (Settings and Profile):** a tinted logo circle and the short handle (`@bea.edits`, `bea-ramos`), not the
-   whole link; the tooltip has the link.
+   whole link; the tooltip has the link. A link with no name inside it (Facebook's `profile.php?id=...` and `/share/...`
+   links, a YouTube channel number, an old LinkedIn `/pub/` link) can only say the platform ("Facebook"), because the
+   site never visits the page to read a name; the box then explains how to get a name on the chip (add it again by
+   typing the username instead of pasting the link), and the tooltip says "Nia's Facebook". A name typed by the person
+   would need a database change and was not built.
 6. **Highlights film, Profile chapter (freelancers):** under the website links, on a line of their own, the first 4
    accounts as logo + handle, then "+N more on the profile". The Director's Cut draws glass pills with a brand-tinted
    logo that pop in one by one; the five Premium looks (Papercut, Retro, Cartoony, Kinetic type, Comic book) show the
