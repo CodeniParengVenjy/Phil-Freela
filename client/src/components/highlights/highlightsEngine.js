@@ -391,8 +391,9 @@ export function startHighlights(host, U, opts = {}) {
     const lvB = el("span", "fbadge lvlb", LVL_ICON[TIER.key] + TIER.name); lvB.style.setProperty("--lc", TIER.color); lvB.style.setProperty("--i", 0); ib.appendChild(lvB);
     [[U.verified, "", ICON.check + "ID verified"], [U.premium, "gold", ICON.crown + "Premium"], [U.available, "", '<span class="dot"></span>Available for work']]
       .filter((b) => b[0]).forEach((b, i) => { const e = el("span", "fbadge " + b[1], b[2]); e.style.setProperty("--i", i + 1); ib.appendChild(e); });
-    // The level chip in the top bar ("· Preview" when the owner is trying another level's style)
-    $("lvlChip").textContent = TIER.name + (previewing ? " · Preview" : ""); $("lvlChip").style.setProperty("--lc", TIER.color);
+    // The top bar never names the level: it would give away the card draw before it opens (the user, 2026-11-20).
+    // Only the owner trying another level or style sees "Preview" there, in PhilFreela orange (not the level's color).
+    $("lvlChip").textContent = previewing ? "Preview" : ""; $("lvlChip").hidden = !previewing;
     // Stats that slam in (Intermediate and Advanced)
     const rated = U.breakdown.reduce((a, b) => a + b, 0), posPct = rated ? Math.round((U.breakdown[0] + U.breakdown[1]) / rated * 100) : 0;
     statItems = U.ratingCount ? [[String(U.done), U.done === 1 ? "project done" : "projects done"], [U.rating.toFixed(1) + "★", "average rating"], [posPct + "%", "positive ratings"]]
