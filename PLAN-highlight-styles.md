@@ -8,6 +8,14 @@ Status: the user said "ok" on 2026-11-20. **Step 1 is DONE:** after the user typ
 **Step 4 is DONE** (the tour's Portfolio step mentions Style). **ALL 4 STEPS ARE LIVE.** Not tried yet: a real
 Premium freelancer picking a style on the live site.
 
+**Moved 2026-11-20 (the user's ask, after seeing the "Style:" button and "Preview as" box under the poster):** the
+style choice and the level preview now live in **Settings > Highlights** (freelancers only, after Watermark
+Settings), not under the Portfolio poster. `pages/dashboard/components/HighlightSettingsForm.jsx` replaced
+`StyleChooser.jsx` (the pop-up is gone: the six cards sit right in the tab, with "Preview as" above them). The
+profile's poster is just "Preview my highlights" now. `?tab=Highlights` opens the tab; clients have no such tab. The
+tour's Portfolio step says "Settings > Highlights picks how the film looks". Same save rules (`saveHighlightStyle`,
+Premium trigger), no database change. Where Steps 3 and 4 below say "under the poster", read "in Settings".
+
 ## What the user asked
 
 Build the five styles from the preview (`previews/highlights-styles/`) into the site's highlights: Papercut, Retro,

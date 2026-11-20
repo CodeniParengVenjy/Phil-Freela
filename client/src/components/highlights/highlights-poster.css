@@ -19,11 +19,11 @@
 @media (max-width: 575.98px) { .hl-poster-body { left: 1rem; right: 5rem; bottom: 1rem; } .hl-poster-play { right: 1rem; bottom: 1rem; width: 3.4rem; height: 3.4rem; font-size: 1.7rem; } }
 @media (prefers-reduced-motion: reduce) { .hl-poster-pic { transition: opacity 0.3s ease; transform: none !important; } .hl-poster-play::after { animation: none; } }
 
-/* The owner's highlight style (StyleChooser.jsx, PLAN-highlight-styles.md Step 3): six cards in a pop-up. The
-   cards follow the dashboard's light mode; the pictures are the style's own colors (PhilFreela orange). */
-.hl-style-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-@media (max-width: 900px) { .hl-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .hl-style-grid { grid-template-columns: minmax(0, 1fr); } }
+/* The owner's highlight style (Settings > Highlights: pages/dashboard/components/HighlightSettingsForm.jsx,
+   PLAN-highlight-styles.md Step 3): six cards. The cards follow the dashboard's light mode; the pictures are the
+   style's own colors (PhilFreela orange). As many columns as fit the panel (it is narrower than the page). */
+.hl-style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+@media (max-width: 420px) { .hl-style-grid { grid-template-columns: minmax(0, 1fr); } }
 .hl-style-card { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 10px 12px; border-radius: 14px; border: 1px solid rgba(148, 163, 184, 0.28); background: rgba(255, 255, 255, 0.03); }
 .hl-style-card.on { border-color: var(--accent-role, #f97316); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-role, #f97316) 22%, transparent); }
 .hl-style-card small { line-height: 1.4; }

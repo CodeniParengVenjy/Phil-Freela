@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { useOutletContext } from "react-router-dom";
 import { itemSlides } from "../../lib/slides";
 import { coverUrl } from "../../lib/avatar";
-import { HighlightsOverlay, LevelSwitch } from "./HighlightsButton";
-import StyleChooser from "./StyleChooser";
+import { HighlightsOverlay } from "./HighlightsButton";
 import "./highlights-poster.css";
 
 // Stops the browser's "Save image as..." menu on the pictures.
@@ -15,15 +13,11 @@ const reduceMotion = () => window.matchMedia && window.matchMedia("(prefers-redu
 // opens the highlight, and inside it the visitor opens each project from the project wall.
 //   userId, username, displayName, coverPath  whose highlight (the cover photo shows when there are no pictures)
 //   items      their portfolio projects (null while loading), for the pictures and the counts
-//   isOwn      your own profile: "Preview my highlights", your highlight style and the level switch, only for you
+//   isOwn      your own profile: "Preview my highlights" (your highlight style and the level preview are in
+//              Settings > Highlights: pages/dashboard/components/HighlightSettingsForm.jsx)
 //   onMessage, onReport(item), reportOpen: chat, Report on a project, and whether that form is open
 export default function HighlightsPoster({ userId, username, displayName, coverPath, items, isOwn = false, onMessage, onReport, reportOpen = false }) {
-  // (the dashboard's: whether you have Premium, and its message line)
-  const { isPro = false, showToast } = useOutletContext() || {};
   const [open, setOpen] = useState(false);
-  const [levelPick, setLevelPick] = useState("");
-  // Owner only: a highlight style to preview (PLAN-highlight-styles.md, Step 3); null = the style visitors see.
-  const [stylePick, setStylePick] = useState(null);
   // Which picture shows now.
   const [shown, setShown] = useState(0);
 
@@ -75,25 +69,15 @@ export default function HighlightsPoster({ userId, username, displayName, coverP
         </span>
         <span className="hl-poster-play" aria-hidden="true"><i className="bi bi-play-fill"></i></span>
       </button>
-      {isOwn && (
-        <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
-          <StyleChooser userId={userId} first={first} isPro={isPro} showToast={showToast} onPreview={(id) => { setStylePick(id); setOpen(true); }} />
-          <span className="text-secondary fs-8 ms-sm-2">Preview as</span>
-          <LevelSwitch value={levelPick} onChange={setLevelPick} />
-          <span className="text-secondary fs-8">Visitors always see your real level.</span>
-        </div>
-      )}
       {open && (
         <HighlightsOverlay
           userId={userId}
           username={username}
           isOwn={isOwn}
-          levelPick={levelPick || null}
-          stylePick={stylePick}
           onMessage={onMessage}
           onReport={onReport}
           reportOpen={reportOpen}
-          onClose={() => { setOpen(false); setStylePick(null); }}
+          onClose={() => setOpen(false)}
         />
       )}
     </div>

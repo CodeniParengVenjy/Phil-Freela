@@ -9,6 +9,7 @@ import CoverPhoto from "../../../components/CoverPhoto";
 import ImageCropDialog from "../../../components/ImageCropDialog";
 import VerificationStatusCard from "../components/VerificationStatusCard";
 import WatermarkSettingsForm from "../components/WatermarkSettingsForm";
+import HighlightSettingsForm from "../components/HighlightSettingsForm";
 import AppearanceForm from "../components/AppearanceForm";
 import EstimateCurrencyForm from "../components/EstimateCurrencyForm";
 import AccountSecurityForm from "../components/AccountSecurityForm";
@@ -19,19 +20,20 @@ import OtherPaymentDetailsForm from "../components/OtherPaymentDetailsForm";
 import PurchasesList from "../components/PurchasesList";
 import { Loader, Busy } from "../../../components/Loaders";
 
-const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Appearance", "Privacy & Notifications"];
+// ("Highlights", the style your highlight film plays in, is only for freelancers: they have the portfolio.)
+const subNavItems = ["Profile Settings", "Account Security", "Watermark Settings", "Highlights", "Appearance", "Privacy & Notifications"];
 // The tabs the opening tour points at by name (components/WelcomeGuide.jsx).
 const TOUR_TABS = { "GCash Payment": "settings-gcash" };
 
 export default function SettingsView() {
-  const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, setUsername, showToast } = useOutletContext();
+  const { displayName, setDisplayName, avatarPath, setAvatarPath, currentUserId, accountType, username, setUsername, showToast, isPro = false } = useOutletContext();
   const navigate = useNavigate();
   // Only freelancers get paid, so only they have the GCash Payment tab. (Freelancer
   // Pro has its own page in the menu now: views/ProView.jsx.)
   // Currency ("My currency", PLAN-currencies.md) is about money, not looks, so it sits
   // with the money tabs instead of in Appearance (the user, 2026-11-15). Purchases
   // (receipts of what they paid PhilFreela for online) is for everyone, last.
-  const menuItems = [...subNavItems, "Currency", ...(accountType === "freelancer" ? ["GCash Payment"] : []), "Purchases"];
+  const menuItems = [...subNavItems.filter((item) => item !== "Highlights" || accountType === "freelancer"), "Currency", ...(accountType === "freelancer" ? ["GCash Payment"] : []), "Purchases"];
   // A link can open a tab: /dashboard/settings?tab=GCash%20Payment. It is worked
   // out here, not copied into state, because the account type (and so the
   // freelancer-only tabs) may arrive after the page opens.
@@ -456,6 +458,19 @@ export default function SettingsView() {
                 <WatermarkSettingsForm userId={currentUserId} username={username} fullName={displayName} showToast={showToast} />
               ) : (
                 <p className="text-secondary fs-7">Only freelancers upload work, so there's nothing to set here.</p>
+              )
+            ) : activeSubNav === "Highlights" ? (
+              // The style the highlight film plays in, and a preview of it at any level (PLAN-highlight-styles.md).
+              accountType === "freelancer" && currentUserId ? (
+                <HighlightSettingsForm
+                  userId={currentUserId}
+                  username={username}
+                  first={(displayName || username || "").trim().split(/\s+/)[0]}
+                  isPro={isPro}
+                  showToast={showToast}
+                />
+              ) : (
+                <p className="text-secondary fs-7">Only freelancers have a highlight, so there's nothing to set here.</p>
               )
             ) : activeSubNav === "GCash Payment" ? (
               // Where clients send the money (PLAN-gcash-payments.md). Freelancers only.
