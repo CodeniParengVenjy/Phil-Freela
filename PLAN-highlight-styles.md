@@ -143,8 +143,10 @@ Each step is committed and pushed, then checked on the live site.
 
 ## 3D models (asked 2026-11-20, not part of this plan)
 
-The portfolio takes no 3D files today (only photos, videos and PDF, Word or text documents). It needs a plan of its own,
-after this one: PLAN-3d-portfolio.md, waiting for the user. The idea:
+**Dropped: the user said "nvm" on 2026-11-20.** Kept here in case it comes back.
+
+The portfolio takes no 3D files today (only photos, videos and PDF, Word or text documents). It would need a plan of its
+own (PLAN-3d-portfolio.md). The idea was:
 - Accept .glb files (the one-file 3D format that Blender, SketchUp and others export).
 - When a freelancer uploads one, their browser turns it into a 360-degree spin (about 36 pictures) and a cover picture.
 - Visitors only ever get those pictures (drag to turn it, @name mark on it), never the 3D file. This is the same idea as
