@@ -8,10 +8,11 @@ revision item 6). LinkedIn, Facebook, Instagram and YouTube links got their logo
 chain-link icon, and clients could add nothing. There was no place meant for social accounts.
 
 Status: approved 2026-11-20 ("ok" to the plan written in chat).
-- Database: `database/supabase_social_links_schema.sql`, rolled-back trial on the live database 44/44 PASS
-  (`database/test_social_links.sql`). Applying it waits for the user's go.
-- Website: built. Browser test 73/73 (computer, light mode, phone; fake database that refuses what the real rule
-  refuses), lint clean, production build OK.
+- Database: LIVE since 2026-11-20 (migration `social_links` from `database/supabase_social_links_schema.sql`, applied
+  after the user's go; rolled-back trial 44/44 PASS first, `database/test_social_links.sql`). Checked after applying:
+  column, rule and function there, no profile changed, the links the website builds are accepted by the real rule.
+- Website: LIVE (commit ac9e0a8). Browser test 73/73 (computer, light mode, phone; fake database that refuses what
+  the real rule refuses), lint clean, production build OK.
 - Not tried yet by a real person: adding a real account on the live site and opening it from a public profile.
 
 ## What a person sees
