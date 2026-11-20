@@ -21,7 +21,6 @@ import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import ReportDialog from "../components/ReportDialog";
 import ServiceCard from "../components/ServiceCard";
-import { PortfolioLinksList } from "../components/PortfolioLinks";
 import { SocialAccountsRow } from "../components/SocialAccounts";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
@@ -204,8 +203,7 @@ function PublicProfile({ userId }) {
         </div>
       )}
 
-      {/* Links to their work on other sites (panel revision; hidden until they add some). */}
-      {isFreelancer && <PortfolioLinksList links={person.portfolio_links} verified={verifiedLinks} />}
+      {/* (Their links to work on other sites sit inside the Portfolio card below, under the poster: PLAN-portfolio-links-merge.md.) */}
 
       {/* A freelancer's services: the way to a booking is through one of them. */}
       {isFreelancer && <ServicesOffered freelancerId={person.id} />}
@@ -215,7 +213,15 @@ function PublicProfile({ userId }) {
       {(isFreelancer || portfolioCount > 0) && (
         <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25">
           {/* A freelancer's portfolio is their highlight (PLAN-highlights.md); a client's old work stays a grid. */}
-          <PortfolioSection freelancerId={person.id} ownerName={person.username} asHighlights={isFreelancer} ownerDisplayName={name} coverPath={person.cover_path} />
+          <PortfolioSection
+            freelancerId={person.id}
+            ownerName={person.username}
+            asHighlights={isFreelancer}
+            ownerDisplayName={name}
+            coverPath={person.cover_path}
+            portfolioLinks={person.portfolio_links}
+            verifiedLinks={verifiedLinks}
+          />
         </div>
       )}
 

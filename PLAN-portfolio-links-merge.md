@@ -37,3 +37,12 @@ website in the film" and "no limit", then "ok".
 ## Status
 
 - Approved 2026-11-20 ("ok").
+- Step 1 database: LIVE (migration `portfolio_links_no_limit`, rolled-back trial 12/12 PASS first; be35731).
+- Steps 2-5 website: built and tested on this laptop with a fake database. Pages test 33/33 (own Profile, visitor page,
+  client, 50-link ceiling, phone, light theme); film test 21 checks in all six looks on a computer and in Director's
+  Cut, Paper and Retro on a phone.
+- Phone tweaks made after the first run: a phone card has no "Visit website" words (a small arrow instead), "+N more
+  links" shares the row of the second card, and the film's link rows are a little closer together. Known limit: Retro on
+  a phone with a very long profile (5 skills, a long description, 9 accounts) was already cut off at the top before
+  (picture top -76 px), now -98 px; every other look is where it was or better.
+- Not tried yet by a real person: adding real links and opening them from someone else's profile.

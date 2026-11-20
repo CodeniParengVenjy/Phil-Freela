@@ -224,8 +224,8 @@ function TermsOfService() {
         button on the project, service, or profile, pick "Stolen work / plagiarism", and tell us where the original is.
       </p>
       <p className="text-secondary">
-        A freelancer can add up to 3 portfolio links (https only) to their profile, for work kept on other sites like
-        Behance, GitHub or Google Drive. They must lead to the freelancer's own work. PhilFreela doesn't check what's on
+        A freelancer can add portfolio links (https only) under the Portfolio on their profile, for work kept on other
+        sites like Behance, GitHub or Google Drive, and they also show in the freelancer's highlights. They must lead to the freelancer's own work. PhilFreela doesn't check what's on
         those sites, and work kept there doesn't get PhilFreela's invisible mark. A link to the freelancer's own website can
         get a "Verified owner" badge: the freelancer puts a PhilFreela code on the page, and PhilFreela visits that one page
         when they click Check now. The badge means they control that website (checked in the last 90 days). It doesn't

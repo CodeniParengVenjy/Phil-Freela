@@ -10,6 +10,7 @@ import HighlightsPoster from "../../../components/highlights/HighlightsPoster";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import OwnershipCheckDialog from "./OwnershipCheckDialog";
 import PortfolioUploadDialog from "./PortfolioUploadDialog";
+import { PortfolioLinksBox, PortfolioLinksList } from "./PortfolioLinks";
 import PortfolioViewer from "./PortfolioViewer";
 import ReportDialog from "./ReportDialog";
 import "./portfolio.css";
@@ -47,7 +48,10 @@ function DocumentCover({ url }) {
 //   isOwner: your own Profile page (add, check a file, manage and delete)
 //   ownerName: the freelancer's @username, shown over the slides (see MediaCarousel)
 //   ownerDisplayName, coverPath: their name and cover photo, for the poster
-export default function PortfolioSection({ freelancerId, ownerName, isOwner = false, asHighlights = false, ownerDisplayName = "", coverPath = "" }) {
+//   portfolioLinks, verifiedLinks: a visitor's view of the freelancer's links to work on other sites and which of them
+//     have the Verified owner badge. They sit under the poster (PLAN-portfolio-links-merge.md); the owner gets the
+//     box to add them instead (PortfolioLinksBox).
+export default function PortfolioSection({ freelancerId, ownerName, isOwner = false, asHighlights = false, ownerDisplayName = "", coverPath = "", portfolioLinks = [], verifiedLinks = {} }) {
   const { showToast, currentUserId, openChat } = useOutletContext();
   const [items, setItems] = useState(null);
   const [loadError, setLoadError] = useState("");
@@ -209,20 +213,26 @@ export default function PortfolioSection({ freelancerId, ownerName, isOwner = fa
       {loadError && <p className="text-danger fs-7 mb-0">{loadError}</p>}
 
       {asHighlights ? (
-        // Their highlight is their portfolio: the poster plays it (HighlightsPoster.jsx).
-        !loadError && (
-          <HighlightsPoster
-            userId={freelancerId}
-            username={ownerName}
-            displayName={ownerDisplayName}
-            coverPath={coverPath}
-            items={items}
-            isOwn={isOwnProfile}
-            onMessage={isOwnProfile || !openChat ? undefined : () => openChat(freelancerId)}
-            onReport={canReport ? (item) => setReportTarget({ type: "portfolio_item", id: item.id, name: item.title }) : undefined}
-            reportOpen={Boolean(reportTarget)}
-          />
-        )
+        // Their highlight is their portfolio: the poster plays it (HighlightsPoster.jsx), and their links to work
+        // on other sites sit right under it (they play in the film's Profile chapter too).
+        <>
+          {!loadError && (
+            <HighlightsPoster
+              userId={freelancerId}
+              username={ownerName}
+              displayName={ownerDisplayName}
+              coverPath={coverPath}
+              items={items}
+              isOwn={isOwnProfile}
+              onMessage={isOwnProfile || !openChat ? undefined : () => openChat(freelancerId)}
+              onReport={canReport ? (item) => setReportTarget({ type: "portfolio_item", id: item.id, name: item.title }) : undefined}
+              reportOpen={Boolean(reportTarget)}
+            />
+          )}
+          {isOwner
+            ? <PortfolioLinksBox userId={freelancerId} showToast={showToast} />
+            : <PortfolioLinksList links={portfolioLinks} verified={verifiedLinks} />}
+        </>
       ) : (
         <>
           {!loadError && items === null && <Loader size="sm" />}

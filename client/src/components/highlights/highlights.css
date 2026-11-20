@@ -134,6 +134,29 @@
 .hl-film .plinks span { display: inline-flex; align-items: center; gap: 7px; }
 .hl-film .vb { font-size: 0.66rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: rgba(34, 197, 94, 0.18); color: #4ade80; }
 .hl-film .scene.on .plinks { animation: hl-fadein 0.6s ease 3.7s both; }
+/* Website links (PLAN-portfolio-links-merge.md): each is a real link card (name, Verified owner, Visit website) that opens the
+   site in a new tab. In the Director's Cut it is a glass pill that turns orange under the pointer; in the five Premium looks
+   (.hl-st) it keeps that look's own colors and font, with "Visit website" underlined. */
+.hl-film .plinks a.wl { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; color: inherit; text-decoration: none; cursor: pointer; }
+.hl-film .plinks a.wl .wl-n { display: block; flex: 0 1 auto; min-width: 0; max-width: min(46vw, 15rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hl-film .plinks a.wl .wl-go { flex: none; font-size: 0.72em; font-weight: 800; letter-spacing: 0.02em; color: #fdba74; }
+.hl-film .plinks a.wl:focus-visible { outline: 2px solid #fdba74; outline-offset: 2px; }
+.hl-film:not(.hl-st) .plinks a.wl { padding: 5px 13px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); color: #ffffff; font-weight: 700; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: background-color 0.2s ease; }
+.hl-film:not(.hl-st) .plinks a.wl:hover, .hl-film:not(.hl-st) .plinks a.wl:focus-visible { background: #f97316; border-color: transparent; }
+.hl-film:not(.hl-st) .plinks a.wl:hover .wl-go, .hl-film:not(.hl-st) .plinks a.wl:focus-visible .wl-go { color: #ffffff; }
+.hl-film:not(.hl-st) .scene.on .plinks a.wl { animation: hl-pop 0.5s cubic-bezier(.2, .9, .3, 1.4) both; animation-delay: calc(3.8s + var(--i) * 0.1s); }
+.hl-film.hl-st .plinks a.wl .wl-go { color: inherit; text-decoration: underline; }
+.hl-film .plinks a.wl .vb { white-space: nowrap; }
+/* On a phone the chapter is already tall (the film grows upward from the bottom), so a card is shorter: no "Visit website"
+   words, just a small arrow, which lets "+N more links" sit on the same row as the second card. */
+@media (max-width: 640px) {
+  .hl-film .plinks { row-gap: 3px; }
+  .hl-film .plinks a.wl { gap: 5px; }
+  .hl-film .plinks a.wl .wl-go { display: none; }
+  .hl-film .plinks a.wl::after { content: "\2197"; flex: none; font-weight: 800; color: #fdba74; }
+  .hl-film.hl-st .plinks a.wl::after { color: inherit; }
+  .hl-film:not(.hl-st) .plinks a.wl { padding: 3px 10px; }
+}
 /* Social accounts (PLAN-social-accounts.md): logo + handle, on a line of their own under the website links (.brk breaks the
    line). In the Director's Cut each is a glass pill with a brand-tinted logo that pops in; in the five Premium looks (.hl-st)
    they are plain text in that look's own colors and font, and the logo takes the text color. */

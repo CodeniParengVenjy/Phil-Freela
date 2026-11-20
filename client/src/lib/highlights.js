@@ -213,7 +213,8 @@ export async function loadHighlight(userId) {
     since: formatMemberSince(stats?.member_since),
     bio: bioWithSkills(person.description, person.skills),
     skills: (person.skills || []).slice(0, 8),
-    links: (person.portfolio_links || []).filter(isSafeLink).slice(0, 4).map((link) => ({ url: linkLabel(link), ok: Boolean(verifiedLinks[link]) })),
+    // Their website links, all of them (PLAN-portfolio-links-merge.md): the film shows the first few as link cards, then "+N more".
+    links: (person.portfolio_links || []).filter(isSafeLink).map((link) => ({ url: linkLabel(link), href: link, ok: Boolean(verifiedLinks[link]) })),
     // Their social accounts (PLAN-social-accounts.md), in the fixed platform order: the film shows the first 4, then "+N more".
     // (socialLinks is null when they couldn't be loaded: then the film simply has none.)
     socials: SOCIAL_PLATFORMS.filter((p) => isSafeSocialLink(p.key, socialLinks?.[p.key]) && SOCIAL_GLYPHS[p.key])

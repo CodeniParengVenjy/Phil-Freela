@@ -263,12 +263,14 @@ export function addSkillsFromText(current, text) {
 }
 
 // A freelancer's portfolio links (panel revision, PLAN-panel-revisions.md,
-// item 6): up to 3 links to work kept on other sites (Behance, GitHub, Google
-// Drive, their own website...). The database has the same rule
-// (supabase_portfolio_links_schema.sql): at most 3, each an https:// address
+// item 6): links to work kept on other sites (Behance, GitHub, Google
+// Drive, their own website...). Since 2026-11-20 (PLAN-portfolio-links-merge.md)
+// there is no limit shown: 50 is a quiet ceiling so one profile can't be stuffed
+// with thousands. The database has the same rule
+// (supabase_portfolio_links_no_limit.sql): at most 50, each an https:// address
 // of at most 200 characters. Only https, so a link can never run code on the
 // page (a "javascript:" link) and always opens over a secure connection.
-export const MAX_PORTFOLIO_LINKS = 3;
+export const MAX_PORTFOLIO_LINKS = 50;
 export const MAX_LINK_LENGTH = 200;
 const PORTFOLIO_LINK_PATTERN = /^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d{1,5})?(\/[^\s<>"]*)?$/;
 
@@ -376,7 +378,7 @@ export async function fetchPortfolioLinks(userId) {
 
 // Saves the whole list. Returns "" when saved, or a message to show.
 export async function savePortfolioLinks(userId, links) {
-  if (links.length > MAX_PORTFOLIO_LINKS) return `You can add up to ${MAX_PORTFOLIO_LINKS} links.`;
+  if (links.length > MAX_PORTFOLIO_LINKS) return `A profile can hold up to ${MAX_PORTFOLIO_LINKS} links.`;
   const { data, error } = await supabase.from("profiles").update({ portfolio_links: links }).eq("id", userId).select("id");
   if (error || !data?.length) return "Couldn't save your links. Please try again.";
   return "";

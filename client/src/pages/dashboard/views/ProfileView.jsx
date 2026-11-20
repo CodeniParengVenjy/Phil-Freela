@@ -8,7 +8,6 @@ import PortfolioSection from "../components/PortfolioSection";
 import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import SkillsBox from "../components/SkillsBox";
-import { PortfolioLinksBox } from "../components/PortfolioLinks";
 import { SocialAccountsBox, SocialAccountsRow } from "../components/SocialAccounts";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
@@ -99,13 +98,6 @@ export default function ProfileView() {
                 </div>
               )}
 
-              {/* Links to their work on other sites (panel revision, freelancers only). */}
-              {accountType === "freelancer" && currentUserId && (
-                <div className="text-start mb-4">
-                  <PortfolioLinksBox userId={currentUserId} showToast={showToast} />
-                </div>
-              )}
-
               {/* Their Facebook, Instagram, TikTok... pages (freelancers and clients: PLAN-social-accounts.md). */}
               {currentUserId && (
                 <div className="text-start mb-4">
@@ -120,7 +112,8 @@ export default function ProfileView() {
                 </div>
               )}
 
-              {/* Only freelancers have a portfolio, and it is their highlight (PLAN-highlights.md). */}
+              {/* Only freelancers have a portfolio, and it is their highlight (PLAN-highlights.md). Their links to work on
+                  other sites sit inside it, under the poster (PLAN-portfolio-links-merge.md). */}
               {accountType === "freelancer" && currentUserId && (
                 <div data-tour="profile-portfolio" className="text-start">
                   <PortfolioSection freelancerId={currentUserId} ownerName={username} isOwner asHighlights ownerDisplayName={displayName} coverPath={coverPath} />

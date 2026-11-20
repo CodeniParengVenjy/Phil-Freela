@@ -440,12 +440,25 @@ export function startHighlights(host, U, opts = {}) {
     if (U.multi) U.roles.forEach((c, i) => pr.appendChild(rolePill(c, i)));
     $("bio").innerHTML = ""; $("bio").hidden = !U.bio; if (U.bio) wordsInto($("bio"), U.bio, "wd");
     $("chips3").innerHTML = ""; U.skills.forEach((k, i) => { const c = txt("span", "chip3", k); c.style.setProperty("--i", i); $("chips3").appendChild(c); });
-    $("plinks").innerHTML = ""; U.links.forEach((l) => { const s = el("span", "", ICON.globe); s.appendChild(document.createTextNode(l.url)); if (l.ok) s.appendChild(txt("span", "vb", "Verified owner")); $("plinks").appendChild(s); });
+    // Website links (PLAN-portfolio-links-merge.md): each is a real <a> card that opens the site in a new tab (a click
+    // on an <a> never moves the film on, see the film's click handler). A computer shows the first 3, a phone 2, then
+    // "+N more links on the profile". Only https links get here (isSafeLink in lib/highlights.js); checked again below.
+    const phone = window.innerWidth <= 640, linkCap = phone ? 2 : 3, plinks = $("plinks"); plinks.innerHTML = "";
+    const shownLinks = U.links.filter((l) => /^https:\/\//.test(l.href)).slice(0, linkCap);
+    shownLinks.forEach((l, i) => {
+      const a = el("a", "wl", ICON.globe); a.href = l.href; a.target = "_blank"; a.rel = "noopener noreferrer nofollow";
+      a.style.setProperty("--i", i); a.title = "Open " + l.url + " in a new tab";
+      a.appendChild(txt("span", "wl-n", l.url));
+      if (l.ok) a.appendChild(txt("span", "vb", "Verified owner"));
+      a.appendChild(txt("span", "wl-go", "Visit website"));
+      plinks.appendChild(a);
+    });
+    if (U.links.length > shownLinks.length) { const more = U.links.length - shownLinks.length; plinks.appendChild(txt("span", "soc-more", "+" + more + " more " + (more === 1 ? "link" : "links") + (phone ? "" : " on the profile"))); }
     // Social accounts (PLAN-social-accounts.md), on a line of their own under the website links. On a computer: the
     // first 4 as logo + handle, then "+N more on the profile". On a phone (where the chapter is already tall, and a
     // row of pills with handles pushed the picture under the top bar): just the logos, all of them in one row, the
     // handle in the tooltip. The logo paths are our own constants (socialGlyphs.js); the handle goes in as plain text.
-    const socials = U.socials || [], phone = window.innerWidth <= 640, cap = phone ? socials.length : 4;
+    const socials = U.socials || [], cap = phone ? socials.length : 4;
     if (socials.length && U.links.length) $("plinks").appendChild(el("span", "brk"));
     socials.slice(0, cap).forEach((a, i) => {
       const s = el("span", phone ? "soc soc-ic" : "soc"), lg = el("span", "lg", '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="' + a.d + '"></path></svg>');
@@ -1752,13 +1765,14 @@ export function startHighlights(host, U, opts = {}) {
   // The music sleeps while the tab is hidden, so it stays in time with the picture
   function onVisibility() { if (stopped || !A.ctx) return; if (document.hidden) A.ctx.suspend(); else if (playing) A.ctx.resume(); }
   function trapTab(e) {
-    const f = Array.from(film.querySelectorAll('button, [role="button"][tabindex="0"]')).filter((b) => b.offsetParent !== null && !b.hidden && !b.closest(".scene:not(.on)") && getComputedStyle(b).visibility !== "hidden");
+    const f = Array.from(film.querySelectorAll('button, a[href], [role="button"][tabindex="0"]')).filter((b) => b.offsetParent !== null && !b.hidden && !b.closest(".scene:not(.on)") && getComputedStyle(b).visibility !== "hidden");
     if (!f.length) return; const i = f.indexOf(document.activeElement); e.preventDefault(); f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
   }
   // Keys: while the project viewer is open it handles them itself.
   function onKey(e) {
     if (stopped || e.defaultPrevented || VW.open) return;
-    const onBtn = e.target && e.target.closest && e.target.closest('button, [role="button"]');
+    // (a focused website link, like a button, keeps Enter and Space for itself: it opens, the film does not move on)
+    const onBtn = e.target && e.target.closest && e.target.closest('button, a[href], [role="button"]');
     if (e.key === "Escape") { e.preventDefault(); requestClose(); }
     else if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); if (drawWaiting()) drawTap(); else advance(); }   // while the card waits, "next" is a tap
     else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); back(); }

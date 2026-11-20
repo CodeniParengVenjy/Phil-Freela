@@ -6,8 +6,10 @@ import {
 import { Loader } from "../../../components/Loaders";
 import SiteVerifyDialog from "./SiteVerifyDialog";
 
-// Portfolio links (panel revision, PLAN-panel-revisions.md, item 6): up to 3
-// links to a freelancer's work on other sites.
+// Portfolio links (panel revision, PLAN-panel-revisions.md, item 6): links to a
+// freelancer's work on other sites. Since 2026-11-20 (PLAN-portfolio-links-merge.md)
+// they live INSIDE the Portfolio highlight card (PortfolioSection.jsx), under the
+// poster, and there is no limit shown (50 is a quiet ceiling, lib/profile.js).
 //
 // <PortfolioLinksBox>: on the freelancer's own Profile. "+ Add Link" opens a
 // box, Enter saves the link right away, the x on a link removes it. Works like
@@ -118,9 +120,10 @@ export function PortfolioLinksBox({ userId, showToast }) {
   };
 
   return (
-    <div>
+    // (a line above separates it from the poster it sits under)
+    <div className="mt-4 pt-4 border-top border-secondary border-opacity-25">
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <h5 className="text-white fw-bold mb-0"><i className="bi bi-link-45deg text-orange me-2"></i> Portfolio Links</h5>
+        <h6 className="text-white fw-bold mb-0"><i className="bi bi-link-45deg text-orange me-2"></i> Websites &amp; links</h6>
         {links && !full && !adding && (
           <button type="button" className="btn btn-sm btn-outline-warning rounded-pill fs-8 fw-bold" onClick={() => setAdding(true)}>+ Add Link</button>
         )}
@@ -130,7 +133,7 @@ export function PortfolioLinksBox({ userId, showToast }) {
       {links === null && <p className="text-secondary fs-7 mb-0">Couldn't load your links.</p>}
       {links?.length === 0 && !adding && (
         <p className="text-secondary fs-7 mb-0">
-          No links yet. Add up to {MAX_PORTFOLIO_LINKS} links to your work on other sites, like Behance, GitHub or Google Drive, or to your own website.
+          No links yet. Add links to your work on other sites, like Behance, GitHub or Google Drive, or to your own website. They also show in your highlights.
         </p>
       )}
 
@@ -183,7 +186,7 @@ export function PortfolioLinksBox({ userId, showToast }) {
           {error && <p className="text-warning fs-8 mt-2 mb-0"><i className="bi bi-exclamation-triangle-fill me-1"></i>{error}</p>}
         </div>
       )}
-      {full && <p className="text-secondary fs-8 mt-2 mb-0">You've added the most links allowed ({MAX_PORTFOLIO_LINKS}).</p>}
+      {full && <p className="text-secondary fs-8 mt-2 mb-0">That's the most links a profile can hold ({MAX_PORTFOLIO_LINKS}).</p>}
       {canStillVerify && (
         <p className="text-secondary fs-8 mt-2 mb-0">
           <i className="bi bi-patch-check me-1"></i>A link to your own website can get a Verified owner badge: click Verify to prove it&apos;s yours.
@@ -195,7 +198,8 @@ export function PortfolioLinksBox({ userId, showToast }) {
   );
 }
 
-// <PortfolioLinksList>: on a freelancer's public page. Each link opens in a
+// <PortfolioLinksList>: on a freelancer's public page, inside the Portfolio card
+// under the poster. Each link opens in a
 // new tab; "nofollow noopener noreferrer" keeps the other site from reaching
 // back into PhilFreela's tab. Nothing shows when there are no links.
 // verified: { [link]: verified_at } from fetchVerifiedLinks(): those links get
@@ -205,8 +209,8 @@ export function PortfolioLinksList({ links, verified = {} }) {
   if (!safe.length) return null;
   const anyVerified = safe.some((link) => verified[link]);
   return (
-    <div className="glass-card rounded-4 p-4 border border-secondary border-opacity-25 mb-4">
-      <h5 className="text-white fw-bold mb-3"><i className="bi bi-link-45deg text-orange me-2"></i> Portfolio Links</h5>
+    <div className="mt-4 pt-4 border-top border-secondary border-opacity-25">
+      <h6 className="text-white fw-bold mb-3"><i className="bi bi-link-45deg text-orange me-2"></i> Websites &amp; links</h6>
       <div className="d-flex flex-wrap gap-2">
         {safe.map((link) => (
           <a
