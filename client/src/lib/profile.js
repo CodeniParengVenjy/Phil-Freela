@@ -279,7 +279,10 @@ const SITE_ICONS = [
   ["youtu.be", "bi-youtube"],
   ["vimeo.com", "bi-vimeo"],
   ["instagram.com", "bi-instagram"],
-  ["facebook.com", "bi-facebook"]
+  ["facebook.com", "bi-facebook"],
+  ["tiktok.com", "bi-tiktok"],
+  ["x.com", "bi-twitter-x"],
+  ["twitter.com", "bi-twitter-x"]
 ];
 
 export function linkIcon(link) {
@@ -348,6 +351,88 @@ export async function savePortfolioLinks(userId, links) {
   if (links.length > MAX_PORTFOLIO_LINKS) return `You can add up to ${MAX_PORTFOLIO_LINKS} links.`;
   const { data, error } = await supabase.from("profiles").update({ portfolio_links: links }).eq("id", userId).select("id");
   if (error || !data?.length) return "Couldn't save your links. Please try again.";
+  return "";
+}
+
+// A person's social accounts (PLAN-social-accounts.md): their Facebook, Instagram, TikTok, YouTube, LinkedIn, X,
+// Threads and Pinterest pages, for freelancers and clients. They are saved on the profile as { platform: link }
+// (profiles.social_links), so each platform is there once. The database has the same rule
+// (supabase_social_links_schema.sql): https only, at most 200 characters, and the link must be on that platform's
+// own website, so a "TikTok" entry can never point anywhere else.
+//   key: the name saved in the database (don't rename it); domains: the platform's own websites (the same list is in
+//   the SQL file); nameOk: what a plain @username may look like; makeLink: the page address for a username.
+const SOCIAL_LIST = [
+  { key: "facebook", label: "Facebook", icon: "bi-facebook", domains: ["facebook.com", "fb.com", "fb.me"], nameOk: /^[A-Za-z0-9.]{5,50}$/, makeLink: (name) => `https://www.facebook.com/${name}` },
+  { key: "instagram", label: "Instagram", icon: "bi-instagram", domains: ["instagram.com"], nameOk: /^[A-Za-z0-9._]{1,30}$/, makeLink: (name) => `https://www.instagram.com/${name}` },
+  { key: "tiktok", label: "TikTok", icon: "bi-tiktok", domains: ["tiktok.com"], nameOk: /^[A-Za-z0-9._]{2,24}$/, makeLink: (name) => `https://www.tiktok.com/@${name}` },
+  { key: "youtube", label: "YouTube", icon: "bi-youtube", domains: ["youtube.com"], nameOk: /^[A-Za-z0-9._-]{3,30}$/, makeLink: (name) => `https://www.youtube.com/@${name}` },
+  { key: "linkedin", label: "LinkedIn", icon: "bi-linkedin", domains: ["linkedin.com"], nameOk: /^[A-Za-z0-9-]{3,100}$/, makeLink: (name) => `https://www.linkedin.com/in/${name}` },
+  { key: "x", label: "X", icon: "bi-twitter-x", domains: ["x.com", "twitter.com"], nameOk: /^[A-Za-z0-9_]{1,15}$/, makeLink: (name) => `https://x.com/${name}` },
+  { key: "threads", label: "Threads", icon: "bi-threads", domains: ["threads.net", "threads.com"], nameOk: /^[A-Za-z0-9._]{1,30}$/, makeLink: (name) => `https://www.threads.com/@${name}` },
+  { key: "pinterest", label: "Pinterest", icon: "bi-pinterest", domains: ["pinterest.com"], nameOk: /^[A-Za-z0-9_]{3,30}$/, makeLink: (name) => `https://www.pinterest.com/${name}/` }
+];
+
+// The same list (in this order everywhere), each with the pattern a saved link must match: https://, the
+// platform's own site (or a sub-domain like www. or m.), then the page name and nothing after it, no ?query and no
+// #part (Facebook's profile.php?id=123 is the one exception). The database checks the same pattern.
+export const SOCIAL_PLATFORMS = SOCIAL_LIST.map((platform) => {
+  const sites = platform.domains.map((domain) => domain.replace(/\./g, "\\.")).join("|");
+  const pattern = new RegExp(`^https://([a-z0-9-]+\\.)*(${sites})/[^\\s<>"?#/][^\\s<>"?#]*(\\?id=\\d+)?$`, "i");
+  return { ...platform, pattern };
+});
+
+// True only for a saved link the page may open: right platform, right website, right shape.
+export function isSafeSocialLink(key, link) {
+  const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
+  return Boolean(platform) && typeof link === "string" && link.length <= MAX_LINK_LENGTH && platform.pattern.test(link);
+}
+
+// Turns what was typed for a platform into the link to save, or returns { error }. Two ways in: a plain username
+// ("@juan" or "juan" becomes https://www.tiktok.com/@juan) or a pasted link (the leftovers that share buttons add,
+// like ?igsh=... or #top, are cut off; "tiktok.com/@juan" gets its https://).
+export function cleanSocialAccount(key, text) {
+  const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
+  if (!platform) return { error: "Pick a platform first." };
+  let typed = text.trim();
+  if (!typed) return { error: `Type your ${platform.label} username or paste your link.` };
+  if (/\s/.test(typed)) return { error: "A username or link can't have spaces in it." };
+
+  // Anything with a slash, or that is just the platform's address (www.tiktok.com), is a pasted link.
+  const lower = typed.toLowerCase();
+  const justTheSite = platform.domains.some((domain) => lower === domain || lower.endsWith(`.${domain}`));
+  if (!typed.includes("/") && !justTheSite) {
+    const name = typed.replace(/^@/, "");
+    if (!platform.nameOk.test(name)) return { error: `That isn't a valid ${platform.label} username. Check it, or paste your ${platform.label} link instead.` };
+    return { link: platform.makeLink(name) };
+  }
+
+  if (/^http:\/\//i.test(typed)) return { error: "Use a secure link: it must start with https://" };
+  if (!/^https:\/\//i.test(typed)) typed = `https://${typed}`;
+  typed = typed.replace(/^https:\/\//i, "https://");
+  const facebookId = platform.key === "facebook" ? typed.match(/^(https:\/\/[^/?#]+\/profile\.php)\?(?:[^#]*&)?(id=\d+)/i) : null;
+  const link = facebookId ? `${facebookId[1]}?${facebookId[2]}` : typed.replace(/[?#].*$/, "");
+  if (link.length > MAX_LINK_LENGTH) return { error: `A link can be at most ${MAX_LINK_LENGTH} characters.` };
+  if (!platform.pattern.test(link)) {
+    const host = link.slice("https://".length).split("/")[0].toLowerCase();
+    const onPlatform = platform.domains.some((domain) => host === domain || host.endsWith(`.${domain}`));
+    return { error: onPlatform
+      ? `Add your page name after the address, like ${platform.makeLink("yourname")}`
+      : `That link isn't on ${platform.domains[0]}. Paste your ${platform.label} link, or just type your username.` };
+  }
+  return { link };
+}
+
+// The user's saved accounts as { platform: link }, or null when they couldn't be loaded.
+export async function fetchSocialLinks(userId) {
+  const { data, error } = await supabase.from("profiles").select("social_links").eq("id", userId).maybeSingle();
+  if (error) return null;
+  return data?.social_links ?? {};
+}
+
+// Saves the whole object. Returns "" when saved, or a message to show.
+export async function saveSocialLinks(userId, links) {
+  const { data, error } = await supabase.from("profiles").update({ social_links: links }).eq("id", userId).select("id");
+  if (error || !data?.length) return "Couldn't save your accounts. Please try again.";
   return "";
 }
 

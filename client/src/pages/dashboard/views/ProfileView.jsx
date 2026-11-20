@@ -9,6 +9,7 @@ import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import SkillsBox from "../components/SkillsBox";
 import { PortfolioLinksBox } from "../components/PortfolioLinks";
+import { SocialAccountsBox } from "../components/SocialAccounts";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
 import PictureViewer from "../../../components/PictureViewer";
@@ -92,6 +93,13 @@ export default function ProfileView() {
               {accountType === "freelancer" && currentUserId && (
                 <div className="text-start mb-4">
                   <PortfolioLinksBox userId={currentUserId} showToast={showToast} />
+                </div>
+              )}
+
+              {/* Their Facebook, Instagram, TikTok... pages (freelancers and clients: PLAN-social-accounts.md). */}
+              {currentUserId && (
+                <div className="text-start mb-4">
+                  <SocialAccountsBox userId={currentUserId} showToast={showToast} />
                 </div>
               )}
 

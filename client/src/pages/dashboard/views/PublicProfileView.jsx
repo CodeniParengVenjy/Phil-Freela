@@ -3,7 +3,7 @@ import { useOutletContext, useParams } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { fetchIsVerified } from "../../../lib/verification";
 import { countPortfolio } from "../../../lib/portfolio";
-import { fetchVerifiedLinks } from "../../../lib/profile";
+import { fetchSocialLinks, fetchVerifiedLinks } from "../../../lib/profile";
 import { fetchProfileStats } from "../../../lib/profileStats";
 import { SLIDES_SELECT } from "../../../lib/slides";
 import { useServiceRatings } from "../../../lib/useServiceRatings";
@@ -22,6 +22,7 @@ import CompletedProjects from "../components/CompletedProjects";
 import ReportDialog from "../components/ReportDialog";
 import ServiceCard from "../components/ServiceCard";
 import { PortfolioLinksList } from "../components/PortfolioLinks";
+import { SocialAccountsRow } from "../components/SocialAccounts";
 import CensoredText from "../../../components/CensoredText";
 import { Loader } from "../../../components/Loaders";
 import HighlightsButton from "../../../components/highlights/HighlightsButton";
@@ -54,6 +55,9 @@ function PublicProfile({ userId }) {
   const [portfolioCount, setPortfolioCount] = useState(0);
   // { [link]: verified_at }: their portfolio links with a Verified owner badge.
   const [verifiedLinks, setVerifiedLinks] = useState({});
+  // { [platform]: link }: their Facebook, Instagram, TikTok... pages (stays {} when none, or when they couldn't be
+  // loaded, so the rest of the page never depends on it).
+  const [socialLinks, setSocialLinks] = useState({});
   // The person being reported (null = Report popup closed).
   const [reportTarget, setReportTarget] = useState(null);
   // Which picture is open bigger: "picture", "cover", or null (none).
@@ -74,13 +78,15 @@ function PublicProfile({ userId }) {
       supabase.from("profiles").select("id, full_name, username, account_type, avatar_path, cover_path, description, skills, available_for_work, portfolio_links").eq("id", userId).maybeSingle(),
       fetchIsVerified(userId),
       countPortfolio(userId),
-      fetchVerifiedLinks(userId)
-    ]).then(([{ data }, isVerified, count, siteBadges]) => {
+      fetchVerifiedLinks(userId),
+      fetchSocialLinks(userId)
+    ]).then(([{ data }, isVerified, count, siteBadges, social]) => {
       if (!active) return;
       setPerson(data || null);
       setVerified(isVerified);
       setPortfolioCount(count);
       setVerifiedLinks(siteBadges);
+      setSocialLinks(social || {});
     });
     return () => {
       active = false;
@@ -139,6 +145,8 @@ function PublicProfile({ userId }) {
               {/* Whether they are taking new work (freelancers only). */}
               {isFreelancer && <AvailabilityBadge available={person.available_for_work} showAvailable className="fs-8" />}
             </p>
+            {/* Their Facebook, Instagram, TikTok... pages as round logo buttons (hidden until they add some). */}
+            <SocialAccountsRow links={socialLinks} name={name} />
           </div>
           {isOwnPage ? (
             // (Your own highlight is the Portfolio box further down: HighlightsPoster.jsx.)
