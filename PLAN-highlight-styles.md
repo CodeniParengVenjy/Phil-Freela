@@ -1,0 +1,120 @@
+# PLAN: Highlight styles on the site (Premium)
+
+Last updated: 2026-11-20. To continue in a new Claude session, say:
+"Read PLAN-highlight-styles.md and continue from the current step."
+
+Status: the user said "ok" on 2026-11-20. **Step 1 is DONE:** after the user typed "apply it", `database/supabase_highlight_style_schema.sql` was applied to the live database (migration `highlight_style`, version 20261120032743). `database/test_highlight_style.sql` passed 7 of 7 before and after (rolled back each time). **Next: Step 2.**
+
+## What the user asked
+
+Build the five styles from the preview (`previews/highlights-styles/`) into the site's highlights: Papercut, Retro,
+Cartoony, Kinetic type and Comic book.
+- **Premium only.** The Director's Cut stays for every freelancer.
+- **No color choice.** Every style uses PhilFreela orange.
+- **Matched by level**, like the preview.
+- **The Premium page already lists the perk** (commit c9ce9cf, live).
+
+## What is there today (checked 2026-11-20)
+
+1. **The site's player** is in `client/src/components/highlights/`:
+   - `highlightsEngine.js` (1,708 lines, the Director's Cut) and `highlights.css` (all its styles under `.hl-film`);
+   - `HighlightsPlayer.jsx` and `highlightsMarkup.js`.
+   - It is downloaded only when someone opens a highlight.
+2. **The data.** `lib/highlights.js` `loadHighlight()` reads `profiles` (no style yet) and `pro_members` (it already
+   knows whether the freelancer is Premium).
+3. **The owner's controls.** On your own profile, the Portfolio poster (`HighlightsPoster.jsx`) has
+   "Preview my highlights" and the level switch (`LevelSwitch` in `HighlightsButton.jsx`).
+4. **Premium rules in the database** follow one pattern, as with the two-color look (`premium_gradient_only`):
+   - A trigger refuses a NEW Premium-only choice from someone without Premium.
+   - A saved choice stays when Premium ends, and the site shows the free version until Premium is back.
+   - `is_pro(user)` already exists.
+5. **Fonts.** The site loads 3 Google Fonts in `index.html`. The styles need 9 more, so each style loads only its own
+   fonts when one of its highlights opens.
+6. **The preview has all five styles working.** It has the style kit (`styles.js`), one file per style (`st-*.js` /
+   `st-*.css`) and the hooks in the film. Checked there: every part plays with no errors on a computer and a phone,
+   and the music loudness was measured for each level.
+
+## Steps
+
+### Step 1: Save the chosen style (database)
+1. Add a new column `profiles.highlight_style`.
+   - Type: text, default `'cinema'` (the Director's Cut).
+   - Allowed values: `cinema`, `paper`, `retro`, `toon`, `kinetic` or `comic`.
+2. Add the trigger `profiles_premium_highlight_style` (function `premium_highlight_style_only`).
+   - A new choice other than the Director's Cut needs Premium (`is_pro`).
+   - A saved choice stays when Premium ends.
+3. Files:
+   - `database/supabase_highlight_style_schema.sql`;
+   - `database/test_highlight_style.sql` (checks that are rolled back).
+4. Tables: `profiles`. Endpoints: none new.
+   - The page saves through the existing "update your own profile" rule, and the trigger guards it.
+5. Tried first with the rolled-back checks on the live database (PGlite isn't installed here).
+   - **Applied 2026-11-20** after the user's typed go. The checks passed 7 of 7 again afterwards.
+   - Visitors (`anon`) and signed-in users can read the column.
+
+### Step 2: The styles inside the player (no new button yet)
+1. Add a new folder `client/src/components/highlights/styles/`:
+   - `kit.js`: the music sequencer and the drawing helpers;
+   - `paper.js`, `retro.js`, `toon.js`, `kinetic.js` and `comic.js`, each with its own CSS.
+   - They are ported from the preview. All their CSS stays under `.hl-film`, and their animation names start with
+     `hl-`, so nothing else on the site changes.
+2. `highlightsEngine.js`: add the same hooks as the preview:
+   - the stop-motion frame rate for Papercut;
+   - each style's backgrounds, effects, changes between parts, sound effects, music and pops.
+   - The Director's Cut stays exactly as it is now.
+3. `HighlightsPlayer.jsx`: the film opens in the freelancer's style.
+   - Only that style's file and fonts are downloaded, so the rest of the site stays as fast.
+4. `lib/highlights.js`: also read `highlight_style`.
+   - A style plays only while the freelancer is Premium; otherwise it is the Director's Cut.
+5. Retro's pixel pictures are redrawn through a canvas.
+   - Pictures from storage are asked for with permission (`crossOrigin`).
+   - A picture that can't be redrawn shows as it is, with the scan lines.
+6. Documents get each style's look too (the user asked, 2026-11-20). A PDF or Word file shows its first page; typed
+   writing shows a page with its title and first lines.
+   - Papercut: a lined paper note.
+   - Retro: a pixel dialog box. Document pages are NOT pixelated, so the words stay readable.
+   - Cartoony: a notebook page with a thick outline.
+   - Kinetic type: the title in big type.
+   - Comic book: a caption page.
+7. Tests with the stand-in database:
+   - each style plays every part with no errors, on a computer and a phone;
+   - the Director's Cut's 71 checks still pass;
+   - a freelancer without Premium gets the Director's Cut;
+   - a document project shows in every style.
+
+### Step 3: Picking the style on your own profile
+1. Add a "Highlight style" choice under the poster, next to the level switch (only the owner sees it).
+   - It has six choices.
+   - Without Premium, the five Premium ones show a lock and "Get Premium" (goes to `/dashboard/pro`).
+2. The owner can preview any style; only they see it.
+   - Saving a Premium style needs Premium. The page checks it, and so does the database.
+3. Files:
+   - `HighlightsPoster.jsx` and `HighlightsButton.jsx` (the choice next to `LevelSwitch`);
+   - `highlights-poster.css`;
+   - `lib/highlights.js` (`saveHighlightStyle`).
+4. Checked in light and dark mode, with a light accent color, and on a phone.
+
+### Step 4: Words
+1. The tour's Portfolio step mentions the styles (`welcomeGuide.js`).
+2. This plan's status is updated.
+
+Each step is committed and pushed, then checked on the live site.
+
+## 3D models (asked 2026-11-20, not part of this plan)
+
+The portfolio takes no 3D files today (only photos, videos and PDF, Word or text documents). It needs a plan of its own,
+after this one: PLAN-3d-portfolio.md, waiting for the user. The idea:
+- Accept .glb files (the one-file 3D format that Blender, SketchUp and others export).
+- When a freelancer uploads one, their browser turns it into a 360-degree spin (about 36 pictures) and a cover picture.
+- Visitors only ever get those pictures (drag to turn it, @name mark on it), never the 3D file. This is the same idea as
+  documents showing only their first page.
+- In the highlight, a 3D project turns slowly on its tile, and View project lets the visitor drag it around, in every style.
+
+## Defaults chosen (the user can change these)
+
+1. The owner can preview a locked style (a taste of Premium). Saving it needs Premium.
+2. When Premium ends, the saved style is kept, but visitors see the Director's Cut until Premium is back. This is the
+   same as the two-color look.
+3. Visitors can't switch styles. They see the freelancer's choice.
+4. Clients don't get highlights (unchanged).
+5. A style's fonts come from Google Fonts, only when a highlight in that style opens.
