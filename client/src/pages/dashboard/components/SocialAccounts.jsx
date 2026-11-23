@@ -7,8 +7,8 @@ import { fetchSocialName } from "../../../lib/aiService";
 import { Loader } from "../../../components/Loaders";
 import "./social-accounts.css";
 
-// Social accounts (PLAN-social-accounts.md): a person's Facebook, Instagram, TikTok, YouTube, LinkedIn, GitHub, X,
-// Threads and Pinterest pages, for freelancers and clients. The look is in social-accounts.css.
+// Social accounts (PLAN-social-accounts.md): a person's Facebook, Instagram, TikTok, YouTube, LinkedIn, GitHub, X
+// and Threads pages, for freelancers and clients (Pinterest was removed 2026-11-24). The look is in social-accounts.css.
 //
 // <SocialAccountsBox>: on your own Profile. "+ Add account" opens a row: pick the platform, type your @username
 // or paste your link, optionally a "Name to show", press Enter. Each platform can be added once; the pencil on an

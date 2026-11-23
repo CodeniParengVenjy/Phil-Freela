@@ -384,8 +384,8 @@ export async function savePortfolioLinks(userId, links) {
   return "";
 }
 
-// A person's social accounts (PLAN-social-accounts.md): their Facebook, Instagram, TikTok, YouTube, LinkedIn, GitHub, X,
-// Threads and Pinterest pages, for freelancers and clients. They are saved on the profile as { platform: link }
+// A person's social accounts (PLAN-social-accounts.md): their Facebook, Instagram, TikTok, YouTube, LinkedIn, GitHub, X
+// and Threads pages, for freelancers and clients. They are saved on the profile as { platform: link }
 // (profiles.social_links), so each platform is there once. The database has the same rule
 // (supabase_social_links_schema.sql): https only, at most 200 characters, and the link must be on that platform's
 // own website, so a "TikTok" entry can never point anywhere else.
@@ -399,8 +399,9 @@ const SOCIAL_LIST = [
   { key: "linkedin", label: "LinkedIn", icon: "bi-linkedin", domains: ["linkedin.com"], nameOk: /^[A-Za-z0-9-]{3,100}$/, makeLink: (name) => `https://www.linkedin.com/in/${name}` },
   { key: "github", label: "GitHub", icon: "bi-github", domains: ["github.com"], nameOk: /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/, makeLink: (name) => `https://github.com/${name}` },
   { key: "x", label: "X", icon: "bi-twitter-x", domains: ["x.com", "twitter.com"], nameOk: /^[A-Za-z0-9_]{1,15}$/, makeLink: (name) => `https://x.com/${name}` },
-  { key: "threads", label: "Threads", icon: "bi-threads", domains: ["threads.net", "threads.com"], nameOk: /^[A-Za-z0-9._]{1,30}$/, makeLink: (name) => `https://www.threads.com/@${name}` },
-  { key: "pinterest", label: "Pinterest", icon: "bi-pinterest", domains: ["pinterest.com"], nameOk: /^[A-Za-z0-9_]{3,30}$/, makeLink: (name) => `https://www.pinterest.com/${name}/` }
+  { key: "threads", label: "Threads", icon: "bi-threads", domains: ["threads.net", "threads.com"], nameOk: /^[A-Za-z0-9._]{1,30}$/, makeLink: (name) => `https://www.threads.com/@${name}` }
+  // Pinterest was here until 2026-11-24 (the user: "remove pinterest"). The database rule still accepts a
+  // "pinterest" link, but the site no longer offers or shows one, and the next save drops it (saveSocialLinks).
 ];
 
 // The same list (in this order everywhere), each with the pattern a saved link must match: https://, the
@@ -454,7 +455,7 @@ export function cleanSocialAccount(key, text) {
 }
 
 // The name that is written inside a saved account's link: "@bea.edits" for TikTok, Instagram, X, Threads and
-// YouTube, "bea-ramos" for LinkedIn, "bea.ramos" for Facebook, "beaedits" for Pinterest. "" when the link has none:
+// YouTube, "bea-ramos" for LinkedIn, "bea.ramos" for Facebook, "beaedits" for GitHub. "" when the link has none:
 // Facebook's profile.php?id=... and /share/... links, a YouTube channel number and an old LinkedIn /pub/ link don't
 // contain the name, and the site never visits the page to read it. Never longer than 24 characters.
 export function socialName(key, link) {
@@ -522,9 +523,12 @@ export async function fetchSocialLabels(userId) {
   return data?.social_labels && typeof data.social_labels === "object" ? data.social_labels : {};
 }
 
+// Only the platforms the site still offers (a Pinterest link saved before 2026-11-24 is dropped this way).
+const onlyOffered = (object) => Object.fromEntries(Object.entries(object || {}).filter(([key]) => SOCIAL_PLATFORMS.some((p) => p.key === key)));
+
 // Saves the links and the names together. Returns "" when saved, or a message to show.
 export async function saveSocialLinks(userId, links, labels = {}) {
-  const { data, error } = await supabase.from("profiles").update({ social_links: links, social_labels: labels }).eq("id", userId).select("id");
+  const { data, error } = await supabase.from("profiles").update({ social_links: onlyOffered(links), social_labels: onlyOffered(labels) }).eq("id", userId).select("id");
   if (error && /bad words/i.test(error.message || "")) return "Please don't use bad words in a name.";
   if (error || !data?.length) return "Couldn't save your accounts. Please try again.";
   return "";

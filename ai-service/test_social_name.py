@@ -47,7 +47,6 @@ titles = [
     ("linkedin", "Microsoft | LinkedIn", "Microsoft"),
     ("github", "torvalds (Linus Torvalds) · GitHub", "Linus Torvalds"),
     ("github", "Microsoft · GitHub", "Microsoft"),
-    ("pinterest", "NASA (nasa) - Profile | Pinterest", "NASA"),
 ]
 for platform, title, want in titles:
     got = name_from_title(platform, title)
@@ -68,8 +67,7 @@ no_name = [
     ("github", "Page not found · GitHub"),
     ("youtube", "404 Not Found"),
     ("youtube", "YouTube"),
-    ("pinterest", ""),
-    ("pinterest", "Pinterest"),
+    ("youtube", ""),
 ]
 for platform, title in no_name:
     got = name_from_title(platform, title)
@@ -103,6 +101,7 @@ check("facebook.com@evil.com is refused", not link_ok("facebook", "https://faceb
 check("http is refused", not link_ok("instagram", "http://www.instagram.com/juan"))
 check("a ?query is refused", not link_ok("instagram", "https://www.instagram.com/juan?next=https://evil.com"))
 check("an unknown platform is refused", not link_ok("myspace", "https://myspace.com/juan"))
+check("Pinterest is refused (removed from the site 2026-11-24)", not link_ok("pinterest", "https://www.pinterest.com/juan/"))
 check("a link over 200 characters is refused", not link_ok("github", "https://github.com/" + "a" * 190))
 check("web.facebook.com is Facebook's", on_platform("facebook", "web.facebook.com"))
 check("evilfacebook.com is not Facebook's", not on_platform("facebook", "evilfacebook.com"))
@@ -119,7 +118,6 @@ ADDRESS_BOOK = {
     "www.instagram.com": ["157.240.1.174"],
     "github.com": ["140.82.112.3"],
     "www.youtube.com": ["142.250.1.1"],
-    "www.pinterest.com": ["151.101.0.84"],
     "x.com": ["104.244.42.1"],
     "www.tiktok.com": ["23.1.1.1"],
     "www.linkedin.com": ["13.107.42.14"],
@@ -136,7 +134,7 @@ def resolve(host, port, proto=0):
 
 visits = []
 HTML = {"content-type": "text/html; charset=utf-8"}
-# A page with its title far down (like YouTube and Pinterest).
+# A page with its title far down (like YouTube).
 FAR = b"<html><head><script>var x='" + b"y" * 1_200_000 + b"';</script><title>NASA - YouTube</title></head></html>"
 # A page with no title at all, longer than the reading limit.
 ENDLESS = b"<html><body>" + b"z" * 3_000_000 + b"</body></html>"
@@ -167,7 +165,7 @@ def pretend_web(request):
         "https://github.com/torvalds": httpx.Response(200, headers=HTML, text='<head><meta property="og:title" content="torvalds - Overview" /><title>torvalds (Linus Torvalds) · GitHub</title></head>'),
         "https://github.com/nobody": httpx.Response(404, headers=HTML, text="Not Found"),
         "https://www.youtube.com/@NASA": httpx.Response(200, headers=HTML, content=chunks(FAR)),
-        "https://www.pinterest.com/endless/": httpx.Response(200, headers=HTML, content=chunks(ENDLESS)),
+        "https://www.youtube.com/@endless": httpx.Response(200, headers=HTML, content=chunks(ENDLESS)),
         "https://www.linkedin.com/in/juan": httpx.Response(999, headers=HTML, text="request denied"),
         # The og:title line starts right before the end of the first 65,536-byte piece.
         "https://x.com/split": httpx.Response(200, headers=HTML, content=chunks(b"<head>" + b" " * 65_510 + b'<meta property="og:title" content="Split Name (@split) on X"/></head>')),
@@ -208,7 +206,7 @@ check("GitHub: the name from <title>, not og:title", find("github", "https://git
 check("GitHub missing account (404): no name", find("github", "https://github.com/nobody") == "")
 check("YouTube: a title 1.2 MB down the page is still found", find("youtube", "https://www.youtube.com/@NASA") == "NASA")
 check("X: a title split between two pieces is still found", find("x", "https://x.com/split") == "Split Name")
-check("a page with no title stops at the reading limit", find("pinterest", "https://www.pinterest.com/endless/") == "")
+check("a page with no title stops at the reading limit", find("youtube", "https://www.youtube.com/@endless") == "")
 check("LinkedIn refusing servers (999): no name", find("linkedin", "https://www.linkedin.com/in/juan") == "")
 check("a site that doesn't answer: no name, no crash", find("instagram", "https://www.instagram.com/slow") == "")
 check("TikTok: the name from its embed address", find("tiktok", "https://www.tiktok.com/@nasa") == "NASA")
@@ -279,7 +277,6 @@ if "--live" in sys.argv:
         ("github", "https://github.com/torvalds", "Linus Torvalds"),
         ("x", "https://x.com/NASA", "NASA"),
         ("threads", "https://www.threads.com/@nasa", "NASA"),
-        ("pinterest", "https://www.pinterest.com/nasa/", "NASA"),
         ("instagram", "https://www.instagram.com/thisuserdoesnotexist98765x", ""),
     ]
     for platform, link, want in live:

@@ -65,7 +65,7 @@ Status: approved 2026-11-20 ("ok" to the plan written in chat).
 
 ## Defaults chosen
 
-- Platforms (same order everywhere): Facebook, Instagram, TikTok, YouTube, LinkedIn, GitHub, X, Threads, Pinterest
+- Platforms (same order everywhere): Facebook, Instagram, TikTok, YouTube, LinkedIn, GitHub, X, Threads (Pinterest was removed 2026-11-24 at the user's "remove pinterest"; the database rule still accepts it, the site no longer offers or shows it, and the next save drops a saved one)
   (GitHub after LinkedIn: the two work ones together; it is a black brand, so white on dark and black on light, like X). All have
   a logo in the icon set already on the site. A new one is one line in `SOCIAL_LIST` (profile.js) and one line in the
   SQL function.

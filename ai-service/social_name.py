@@ -1,7 +1,7 @@
 """Name to show for a social account (PLAN-social-name.md).
 
 When someone pastes their Facebook, Instagram, TikTok, YouTube, LinkedIn,
-GitHub, X, Threads or Pinterest link in the Social Accounts box, the website
+GitHub, X or Threads link in the Social Accounts box, the website
 asks POST /social/name for the name on that page and fills "Name to show" with
 it (the person can still change it). A browser can't read another website's
 page itself (those sites block that), so this service does it, the same way a
@@ -30,7 +30,7 @@ Visiting an address someone typed must be done carefully, so read_title():
 - refuses any address inside a private network (is_public_host from
   site_check.py);
 - stops reading as soon as the title is found, after 2.5 MB at most (YouTube
-  and Pinterest put it about 1 MB down the page) or after 8 seconds;
+  puts it about 0.9 MB down the page) or after 8 seconds;
 - needs a signed-in user, at most 20 tries a minute each.
 """
 
@@ -70,7 +70,7 @@ PLATFORMS = {
     "github": ("github.com",),
     "x": ("x.com", "twitter.com"),
     "threads": ("threads.net", "threads.com"),
-    "pinterest": ("pinterest.com",),
+    # (Pinterest was removed from the site on 2026-11-24)
 }
 
 # The shape of a saved link, the same pattern as the website and the database:
@@ -132,10 +132,6 @@ def name_from_title(platform, title):
         # the name is what comes before "(@username)". No "(@" = not a profile.
         match = re.match(r"^(.*?)\s*\(@[^)]*\)", text)
         text = match.group(1) if match else ""
-    elif platform == "pinterest":
-        # "NASA (nasa) - Profile | Pinterest"
-        match = re.match(r"^(.*?)\s*\([^)]*\)\s*-\s*Profile\b", text)
-        text = match.group(1) if match else re.sub(r"\s*\|\s*Pinterest$", "", text)
     elif platform == "github":
         # "torvalds (Linus Torvalds) · GitHub" for a person, "Microsoft · GitHub"
         # for an organization (or a person who gave no name).

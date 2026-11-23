@@ -8,7 +8,6 @@
 .sp-instagram { --b: #e1306c; --bl: #f4709c; }
 .sp-youtube { --b: #ff0000; --bl: #ff6b6b; }
 .sp-linkedin { --b: #0a66c2; --bl: #6ab0f5; }
-.sp-pinterest { --b: #e60023; --bl: #ff6b7e; }
 .sp-tiktok, .sp-x, .sp-threads, .sp-github { --b: #111111; --bl: #ffffff; }
 
 .social-btn, .social-ic { --t: var(--b); --g: var(--bl); --hover: var(--b); --hc: var(--b); --hg: #ffffff; }

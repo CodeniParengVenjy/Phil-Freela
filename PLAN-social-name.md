@@ -48,7 +48,7 @@ A typed @username works too, 0.8 seconds after the last key (so it isn't asked f
 - Only links on that platform's own website, the same rule as the saved link (https, the platform's domains).
 - At most 3 redirects, and only within that platform's sites (facebook.com sends servers to web.facebook.com).
 - No address inside a private network (`is_public_host` from `site_check.py`).
-- Stops as soon as the title is found, after 2.5 MB (YouTube and Pinterest put it about 1 MB down the page) or after
+- Stops as soon as the title is found, after 2.5 MB (YouTube puts it about 0.9 MB down the page) or after
   8 seconds.
 - The name is cleaned to the "Name to show" rule (40 characters, no / \ < > " `, no links) before it is sent back;
   the website checks it again, and the database rule and bad-word trigger still check what is saved.
