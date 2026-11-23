@@ -308,6 +308,26 @@ response = api.get("/social/selftest?link=https://evil.com/")
 check("selftest: asked again within 60 s, the kept answer comes back and nothing is opened (a ?link= is ignored)",
       response.status_code == 200 and len(asked) == before and response.json() == body)
 
+import os  # (the probe's key comes from the service's secret)
+os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "pretend-secret"
+right_key = social_name.probe_key()
+check("the probe key is made from the secret, never the secret itself", right_key and "pretend-secret" not in right_key and right_key == social_name.probe_key("pretend-secret"))
+check("no secret set: no probe key (the probe is closed)", social_name.probe_key("") == "")
+before = len(asked)
+response = api.post("/social/probe", json={"platform": "facebook", "link": "https://www.facebook.com/juan.dc"})
+check("probe without the key: 403, nothing opened", response.status_code == 403 and len(asked) == before)
+response = api.post("/social/probe", json={"platform": "facebook", "link": "https://www.facebook.com/juan.dc"}, headers={"X-Probe-Key": "guess"})
+check("probe with a wrong key: 403, nothing opened", response.status_code == 403 and len(asked) == before)
+response = api.post("/social/probe", json={"platform": "facebook", "link": "https://www.facebook.com/juan.dc"}, headers={"Authorization": "Bearer juan"})
+check("a normal login is not enough for the probe: 403", response.status_code == 403 and len(asked) == before)
+response = api.post("/social/probe", json={"platform": "facebook", "link": "https://evil.com/x"}, headers={"X-Probe-Key": right_key})
+check("probe with the key still only takes platform links: 400", response.status_code == 400 and len(asked) == before)
+response = api.post("/social/probe", json={"platform": "facebook", "link": "https://www.facebook.com/juan.dc"}, headers={"X-Probe-Key": right_key})
+check("probe with the key: the name and every address on the way", response.status_code == 200 and response.json()["name"] == "Juan Dela Cruz" and response.json()["hops"] == ["200 pretend"])
+del os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+response = api.post("/social/probe", json={"platform": "facebook", "link": "https://www.facebook.com/juan.dc"}, headers={"X-Probe-Key": right_key})
+check("secret not set on the server: the probe is closed (403)", response.status_code == 403)
+
 # ---------------------------------------------------------------------------
 # 6. Optional: real public pages (needs the internet)
 # ---------------------------------------------------------------------------

@@ -37,8 +37,11 @@ Visiting an address someone typed must be done carefully, so read_title():
 """
 
 import html
+import hashlib
+import hmac
 import json
 import logging
+import os
 import re
 import socket
 import threading
@@ -338,6 +341,14 @@ SELFTEST_LINKS = (
 SELFTEST_KEEP_SECONDS = 60
 
 
+def probe_key(secret=None):
+    """The key /social/probe needs. It is made from the service's own secret
+    (SUPABASE_SERVICE_ROLE_KEY), so only the people who run the service can make
+    it; "" when the secret isn't set (then /social/probe is closed)."""
+    secret = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") if secret is None else secret
+    return hashlib.sha256(("social-probe:" + secret).encode()).hexdigest() if secret else ""
+
+
 def social_router(get_user_id, finder=find_name):
     """POST /social/name, given main.py's login check (added to the app with
     one line in main.py), and GET /social/selftest. finder is the page reader,
@@ -395,5 +406,23 @@ def social_router(get_user_id, finder=find_name):
             answer = {"checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "results": results}
             last_test.update(at=time.monotonic(), answer=answer)
             return answer
+
+    @router.post("/social/probe")
+    def social_probe(body: SocialNameRequest, x_probe_key: str | None = Header(default=None)):
+        """For the people who run the service: what /social/name finds for one
+        link, with every address it went through (like /social/selftest, but for
+        a link that broke for a user). It needs the X-Probe-Key header
+        (probe_key()), so nobody else can use it."""
+        expected = probe_key()
+        if not expected or not x_probe_key or not hmac.compare_digest(x_probe_key, expected):
+            raise HTTPException(403, "Not allowed.")
+        platform = body.platform.strip().lower()
+        link = body.link.strip()
+        if not link_ok(platform, link):
+            raise HTTPException(400, "That isn't a link to a page on that platform.")
+        hops = []
+        started = time.monotonic()
+        name = finder(platform, link, hops=hops)
+        return {"name": name, "seconds": round(time.monotonic() - started, 1), "hops": hops}
 
     return router

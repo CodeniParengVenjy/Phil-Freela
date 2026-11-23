@@ -37,6 +37,8 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
   const [editing, setEditing] = useState(null);
   const [editText, setEditText] = useState("");
   const [error, setError] = useState("");
+  // A friendly line under the add row (a name typed in the link box was moved to "Name to show").
+  const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef(null);
   const editRef = useRef(null);
@@ -117,7 +119,9 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
     clearTimeout(nameTimer.current);
     const { link } = cleanSocialAccount(key, text);
     const job = nameJob.current;
-    if (link && job && job.key === key && job.link === link) return; // already asked for this one
+    // Already asked for this link: don't ask again. A paste of the same link after "no name" does ask again (the
+    // service may have been waking up, or the page may answer this time).
+    if (link && job && job.key === key && job.link === link && !(rightAway && job.done && !job.name)) return;
     // Another link (or none): a name the page gave for the old link doesn't fit any more.
     const current = nameInputRef.current;
     const typedByHand = current.trim() !== "" && current !== autoName.current;
@@ -135,6 +139,8 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
       nameJob.current = mine;
       setNameState("loading");
       mine.promise.then((name) => {
+        mine.done = true;
+        mine.name = name;
         if (nameJob.current !== mine) return; // the link changed while the page was read
         const now = nameInputRef.current;
         if (name && (now.trim() === "" || now === autoName.current)) {
@@ -154,6 +160,30 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
   const handleAdd = async () => {
     if (saving || !chosen) return;
     clearTimeout(nameTimer.current);
+    // A name typed in the link box ("VG Cuevas"; the user, 2026-11-24: "if I will put name or link"): a name can't
+    // open a page (links use the username or a number), so it goes into "Name to show" and the box asks for the
+    // link or @username instead of showing an error.
+    const typed = input.trim();
+    if (/\s/.test(typed) && !typed.includes("/")) {
+      const { label, error: labelProblem } = cleanSocialLabel(typed.replace(/^@/, ""));
+      if (labelProblem) {
+        setError(labelProblem);
+        return;
+      }
+      const nameBoxFree = !nameInput.trim() || nameInput === autoName.current;
+      if (nameBoxFree) {
+        resetName();
+        nameInputRef.current = label;
+        setNameInput(label);
+        setInput("");
+      }
+      setError("");
+      setNotice(nameBoxFree
+        ? `"${label}" is a name, so it's in "Name to show" now. Paste your ${chosen.label} link here (or type your @username), then press Add.`
+        : `That's a name. Put your ${chosen.label} link or @username here; the name goes in "Name to show".`);
+      inputRef.current?.focus();
+      return;
+    }
     const { link, error: problem } = cleanSocialAccount(chosen.key, input);
     if (problem) {
       setError(problem);
@@ -179,6 +209,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
       setInput("");
       setNameInput("");
       setError("");
+      setNotice("");
       setAdding(false);
       resetName();
     }
@@ -215,6 +246,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
     setInput("");
     setNameInput("");
     setError("");
+    setNotice("");
     setAdding(false);
     resetName();
   };
@@ -325,7 +357,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
               aria-label="Platform"
               value={chosen.key}
               disabled={saving}
-              onChange={(event) => { setPlatform(event.target.value); setError(""); askForName(event.target.value, input, true); }}
+              onChange={(event) => { setPlatform(event.target.value); setError(""); setNotice(""); askForName(event.target.value, input, true); }}
             >
               {left.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select>
@@ -341,10 +373,22 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
               aria-label={`${chosen.label} username or link`}
               maxLength={250}
               value={input}
-              onPaste={() => { pasted.current = true; }}
+              onPaste={(event) => {
+                pasted.current = true;
+                // Pasting the very same link changes nothing, so onChange doesn't run: ask from here then (a paste of
+                // the same link after "no name" tries again).
+                const box = event.currentTarget;
+                const key = chosen.key;
+                setTimeout(() => {
+                  if (!pasted.current) return; // onChange already asked
+                  pasted.current = false;
+                  askForName(key, box.value, true);
+                }, 0);
+              }}
               onChange={(event) => {
                 setInput(event.target.value);
                 setError("");
+                setNotice("");
                 askForName(chosen.key, event.target.value, pasted.current);
                 pasted.current = false;
               }}
@@ -396,6 +440,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
               </p>
             )}
           </div>
+          {notice && <p className="text-info fs-8 mt-2 mb-0" data-testid="social-notice"><i className="bi bi-info-circle me-1"></i>{notice}</p>}
           {error && <p className="text-warning fs-8 mt-2 mb-0"><i className="bi bi-exclamation-triangle-fill me-1"></i>{error}</p>}
         </div>
       )}
