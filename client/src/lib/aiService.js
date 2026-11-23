@@ -258,24 +258,30 @@ export const checkSite = (link) => siteRequest("/sites/check", link);
 
 // Name to show for a social account (PLAN-social-name.md, ai-service/social_name.py): PhilFreela opens the pasted
 // Facebook, Instagram, TikTok... page once and reads the name on it. Returns the name, or "" when there is none (a
-// login page, a missing account, the service is offline or takes longer than 12 seconds: an idle service needs a few
-// seconds to wake up). It never fails, because the name is only a help: the person can always type it.
+// login page, a missing account, the service is offline or takes longer than 30 seconds: a service that has been
+// idle needs several seconds to wake up). A try that fails quickly is made once more. It never fails, because the
+// name is only a help: the person can always type it.
 export async function fetchSocialName(platform, link) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
-  try {
-    const body = await request("/social/name", {
-      method: "POST",
-      headers: { ...(await authHeader()), "Content-Type": "application/json" },
-      body: JSON.stringify({ platform, link }),
-      signal: controller.signal
-    });
-    return typeof body.name === "string" ? body.name.trim() : "";
-  } catch {
-    return "";
-  } finally {
-    clearTimeout(timer);
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    try {
+      const body = await request("/social/name", {
+        method: "POST",
+        headers: { ...(await authHeader()), "Content-Type": "application/json" },
+        body: JSON.stringify({ platform, link }),
+        signal: controller.signal
+      });
+      return typeof body.name === "string" ? body.name.trim() : "";
+    } catch {
+      // Too slow, or already the second try: give up. Failed quickly: wait a moment, then try once more.
+      if (controller.signal.aborted || attempt === 2) return "";
+    } finally {
+      clearTimeout(timer);
+    }
+    await new Promise((done) => setTimeout(done, 1500));
   }
+  return "";
 }
 
 // Asks the AI service whether a resume file (a PDF, a Word file or a picture)

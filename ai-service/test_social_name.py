@@ -211,6 +211,12 @@ check("   ...and profile.php itself was never opened", visits and not any("profi
 check("Facebook login page: no name", find("facebook", "https://www.facebook.com/locked") == "")
 got = find("facebook", "https://web.facebook.com/profile.php?id=61500000000001")
 check(f"Facebook number-only account: the name from the /people/ address, though the end is a login page (got '{got}')", got == "Juan Dela Cruz")
+hops = []
+with httpx.Client(transport=httpx.MockTransport(pretend_web), follow_redirects=False) as client:
+    find_name("facebook", "https://www.facebook.com/profile.php?id=61500000000001", client=client, resolve=resolve, hops=hops)
+check("   ...and every answer on the way is listed (for /social/selftest): " + " | ".join(hops),
+      hops[:2] == ["302 www.facebook.com/61500000000001", "301 web.facebook.com/61500000000001"]
+      and "302 web.facebook.com/people/Juan-Dela-Cruz/pfbid0abcDEF" in hops and hops[-1] == "title: Facebook")
 got = find("facebook", "https://www.facebook.com/profile.php?id=61500000000002")
 check(f"   ...with é in the name (got '{got}')", got == "José Rizal")
 got = find("facebook", "https://www.facebook.com/profile.php?id=61500000000003")
@@ -254,8 +260,10 @@ def pretend_login(authorization):
 asked = []
 
 
-def pretend_finder(platform, link):
+def pretend_finder(platform, link, hops=None):
     asked.append((platform, link))
+    if hops is not None:
+        hops.append("200 pretend")
     return "Juan Dela Cruz" if link == "https://www.facebook.com/juan.dc" else ""
 
 
@@ -287,6 +295,18 @@ response = post("pedro", "github", "https://github.com/pedro")
 check("one more: 429", response.status_code == 429 and "wait" in response.json()["detail"])
 response = post("juan", "github", "https://github.com/juan")
 check("Pedro's limit doesn't stop Juan", response.status_code == 200)
+
+before = len(asked)
+response = api.get("/social/selftest")
+body = response.json()
+check("selftest: no login needed, it tries each fixed public page once",
+      response.status_code == 200 and len(body["results"]) == len(social_name.SELFTEST_LINKS) and len(asked) - before == len(social_name.SELFTEST_LINKS))
+check("selftest: only the fixed pages, never a user's link", sorted(asked[before:]) == sorted(social_name.SELFTEST_LINKS))
+check("selftest: each answer lists the addresses it went through", all(r["hops"] == ["200 pretend"] and "seconds" in r for r in body["results"]))
+before = len(asked)
+response = api.get("/social/selftest?link=https://evil.com/")
+check("selftest: asked again within 60 s, the kept answer comes back and nothing is opened (a ?link= is ignored)",
+      response.status_code == 200 and len(asked) == before and response.json() == body)
 
 # ---------------------------------------------------------------------------
 # 6. Optional: real public pages (needs the internet)

@@ -41,8 +41,11 @@ import json
 import logging
 import re
 import socket
+import threading
 import time
 from collections import defaultdict, deque
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from urllib.parse import unquote, urljoin, urlsplit
 
 import httpx
@@ -54,7 +57,7 @@ from site_check import is_public_host
 TIMEOUT_SECONDS = 5             # longest wait for the site to answer each time
 TOTAL_SECONDS = 8               # longest time for reading the whole page
 MAX_PAGE_BYTES = 2_500_000      # stop after this much, title found or not
-MAX_REDIRECTS = 3
+MAX_REDIRECTS = 5               # facebook.com/123 -> web. -> /people/... -> login takes 3
 MAX_LINK_LENGTH = 200           # the same limit as a saved link
 MAX_NAME_LENGTH = 40            # the same limit as "Name to show"
 MAX_PER_MINUTE = 20             # tries per signed-in user
@@ -212,23 +215,28 @@ def find_title(platform, data):
     return None
 
 
-def read_title(platform, link, client, resolve=socket.getaddrinfo):
+def read_title(platform, link, client, resolve=socket.getaddrinfo, hops=None):
     """Opens the page at link, safely (see the top of this file). Returns
     (title, address_name): the page's title, and a name found in one of the
-    addresses it went through (name_in_address); each is "" when there is none."""
+    addresses it went through (name_in_address); each is "" when there is none.
+    hops: a list that gets each answer ("302 www.facebook.com/4"), for /social/selftest."""
     url = link
     address_name = ""
     deadline = time.monotonic() + TOTAL_SECONDS
+    note = hops.append if hops is not None else (lambda _text: None)
     for _ in range(MAX_REDIRECTS + 1):
         parts = urlsplit(url)
         host = (parts.hostname or "").lower()
         if parts.scheme != "https" or parts.port not in (None, 443) or not on_platform(platform, host):
+            note(f"stopped: {host or url[:40]} is not on {platform}")
             return "", address_name  # a redirect to another website, or to a page that isn't https
         if not is_public_host(host, resolve):
+            note(f"stopped: {host} is not a public address")
             return "", address_name
         # (read only from an address that passed the checks above)
         address_name = name_in_address(platform, url) or address_name
         with client.stream("GET", url) as response:
+            note(f"{response.status_code} {host}{parts.path}")
             if response.status_code in (301, 302, 303, 307, 308) and response.headers.get("location"):
                 url = urljoin(url, response.headers["location"])
                 continue
@@ -240,10 +248,13 @@ def read_title(platform, link, client, resolve=socket.getaddrinfo):
                 body.extend(chunk)
                 title = find_title(platform, bytes(body[start:]))
                 if title is not None:
+                    note(f"title: {tidy(title)[:80]}")
                     return title, address_name
                 if len(body) >= MAX_PAGE_BYTES or time.monotonic() > deadline:
                     break
+            note(f"no title in the first {len(body)} bytes")
             return "", address_name
+    note("stopped: too many redirects")
     return "", address_name
 
 
@@ -269,9 +280,10 @@ def tiktok_name(link, client):
     return name if isinstance(name, str) else ""
 
 
-def find_name(platform, link, client=None, resolve=socket.getaddrinfo):
+def find_name(platform, link, client=None, resolve=socket.getaddrinfo, hops=None):
     """The name to show for a saved-style link, or "" when none can be found.
-    Never raises: a site that doesn't answer just means no name."""
+    Never raises: a site that doesn't answer just means no name. hops: see
+    read_title."""
     own_client = client is None
     if own_client:
         client = httpx.Client(
@@ -282,15 +294,19 @@ def find_name(platform, link, client=None, resolve=socket.getaddrinfo):
         if platform == "tiktok":
             name = plain_name(tidy(tiktok_name(link, client)))
         else:
-            title, address_name = read_title(platform, page_to_read(platform, link), client, resolve)
+            title, address_name = read_title(platform, page_to_read(platform, link), client, resolve, hops)
             # The page's own title is best (real capitals and dashes); a login page
             # has none, then the name from Facebook's /people/ address is used.
             name = name_from_title(platform, title) or address_name
         return clean_name(name)
-    except (httpx.HTTPError, ValueError, json.JSONDecodeError):
+    except (httpx.HTTPError, ValueError, json.JSONDecodeError) as problem:
+        if hops is not None:
+            hops.append(f"failed: {type(problem).__name__}")
         return ""
     except Exception:
         logging.getLogger(__name__).exception("Reading a social page name failed")
+        if hops is not None:
+            hops.append("failed: unexpected error")
         return ""
     finally:
         if own_client:
@@ -306,12 +322,30 @@ class SocialNameRequest(BaseModel):
     link: str
 
 
+# The fixed public pages /social/selftest tries (famous people and brands, never
+# a user's link), and how long its answer is kept.
+SELFTEST_LINKS = (
+    ("facebook", "https://www.facebook.com/zuck"),
+    ("facebook", "https://www.facebook.com/profile.php?id=4"),
+    ("instagram", "https://www.instagram.com/nasa/"),
+    ("tiktok", "https://www.tiktok.com/@nasa"),
+    ("youtube", "https://www.youtube.com/@NASA"),
+    ("linkedin", "https://www.linkedin.com/in/williamhgates"),
+    ("github", "https://github.com/torvalds"),
+    ("x", "https://x.com/NASA"),
+    ("threads", "https://www.threads.com/@nasa"),
+)
+SELFTEST_KEEP_SECONDS = 60
+
+
 def social_router(get_user_id, finder=find_name):
     """POST /social/name, given main.py's login check (added to the app with
-    one line in main.py). finder is the page reader, replaced by a pretend one
-    in the tests."""
+    one line in main.py), and GET /social/selftest. finder is the page reader,
+    replaced by a pretend one in the tests."""
     router = APIRouter()
     recent = defaultdict(deque)  # user id -> times of their last tries
+    last_test = {"at": 0.0, "answer": None}
+    test_lock = threading.Lock()
 
     def too_many(user_id):
         now = time.monotonic()
@@ -335,5 +369,31 @@ def social_router(get_user_id, finder=find_name):
         if too_many(user_id):
             raise HTTPException(429, "Too many tries. Please wait a minute.")
         return {"name": finder(platform, link)}
+
+    @router.get("/social/selftest")
+    def social_selftest():
+        """Which platforms give a name to THIS server right now: the reader is
+        tried on fixed public pages (SELFTEST_LINKS) and each answer is listed
+        with the addresses it went through. A site can treat a cloud server
+        differently from a laptop, so this shows what the live service really
+        gets. No login is needed because it takes no input at all, and the
+        answer is kept for 60 seconds, so it can't be used to flood the sites."""
+        with test_lock:
+            if last_test["answer"] and time.monotonic() - last_test["at"] < SELFTEST_KEEP_SECONDS:
+                return last_test["answer"]
+
+            def try_one(item):
+                platform, link = item
+                hops = []
+                started = time.monotonic()
+                name = finder(platform, link, hops=hops)
+                return {"platform": platform, "link": link, "name": name,
+                        "seconds": round(time.monotonic() - started, 1), "hops": hops}
+
+            with ThreadPoolExecutor(max_workers=3) as pool:  # 3 at a time, so the tries don't slow each other down
+                results = list(pool.map(try_one, SELFTEST_LINKS))
+            answer = {"checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "results": results}
+            last_test.update(at=time.monotonic(), answer=answer)
+            return answer
 
     return router

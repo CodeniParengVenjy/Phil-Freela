@@ -159,12 +159,13 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
       setError(problem);
       return;
     }
-    // Add was pressed while the name is still being read from this page: wait for it (12 seconds at most).
+    // Add was pressed while the name is still being read from this page: wait for it (12 seconds at most, then the
+    // account is added without it).
     let typedName = nameInput;
     const job = nameJob.current;
     if (job && job.key === chosen.key && job.link === link && nameState === "loading" && (!typedName.trim() || typedName === autoName.current)) {
       setSaving(true);
-      await job.promise;
+      await Promise.race([job.promise, new Promise((done) => setTimeout(done, 12000))]);
       setSaving(false);
       if (nameJob.current !== job) return; // closed with Escape while waiting
       typedName = nameInputRef.current;
