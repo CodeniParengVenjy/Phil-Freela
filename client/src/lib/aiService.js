@@ -256,6 +256,28 @@ async function siteRequest(path, link) {
 export const getSiteCode = (link) => siteRequest("/sites/code", link);
 export const checkSite = (link) => siteRequest("/sites/check", link);
 
+// Name to show for a social account (PLAN-social-name.md, ai-service/social_name.py): PhilFreela opens the pasted
+// Facebook, Instagram, TikTok... page once and reads the name on it. Returns the name, or "" when there is none (a
+// login page, a missing account, the service is offline or takes longer than 12 seconds: an idle service needs a few
+// seconds to wake up). It never fails, because the name is only a help: the person can always type it.
+export async function fetchSocialName(platform, link) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const body = await request("/social/name", {
+      method: "POST",
+      headers: { ...(await authHeader()), "Content-Type": "application/json" },
+      body: JSON.stringify({ platform, link }),
+      signal: controller.signal
+    });
+    return typeof body.name === "string" ? body.name.trim() : "";
+  } catch {
+    return "";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Asks the AI service whether a resume file (a PDF, a Word file or a picture)
 // looks like a resume. Returns { verdict: "yes" | "unsure" | "no", message },
 // or null when there is no answer: the service is offline, or too slow (30

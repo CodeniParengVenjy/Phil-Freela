@@ -54,6 +54,7 @@ from recommendations import recommend
 from resume_check import MAX_RESUME_BYTES, check_resume
 from similarity import image_embedding
 from site_check import site_router
+from social_name import social_router
 from skills import match_skill, suggest_skills
 from text_embedder import embed_texts
 from text_watermark import add_code as add_text_code
@@ -1705,3 +1706,8 @@ app.include_router(preview_router(supabase, get_user_id))
 # a code for one of their portfolio links, /sites/check visits the website and
 # looks for it (site_check.py).
 app.include_router(site_router(supabase, get_user_id))
+
+# Name to show for a social account (PLAN-social-name.md): /social/name opens a
+# pasted Facebook, Instagram, TikTok... link and reads the name on the page
+# (social_name.py).
+app.include_router(social_router(get_user_id))

@@ -3,6 +3,7 @@ import {
   MAX_SOCIAL_LABEL_LENGTH, SOCIAL_PLATFORMS, cleanSocialAccount, cleanSocialLabel, fetchSocialLabels, fetchSocialLinks, isSafeSocialLink,
   linkLabel, saveSocialLinks, socialHandle, socialName, socialTitle, safeSocialLabel
 } from "../../../lib/profile";
+import { fetchSocialName } from "../../../lib/aiService";
 import { Loader } from "../../../components/Loaders";
 import "./social-accounts.css";
 
@@ -12,8 +13,11 @@ import "./social-accounts.css";
 // <SocialAccountsBox>: on your own Profile. "+ Add account" opens a row: pick the platform, type your @username
 // or paste your link, optionally a "Name to show", press Enter. Each platform can be added once; the pencil on an
 // account changes its name, the x removes it. It works like the Portfolio Links box (PortfolioLinks.jsx): if a save
-// fails, the list goes back. The name is for links that have none inside them (a Facebook share link): the site
-// never visits the page to read one.
+// fails, the list goes back. The name is for links that have none inside them (a Facebook profile.php?id= link).
+// Name from the page (PLAN-social-name.md, the user, 2026-11-24: "by pasting link, I want that automatically getting
+// the name"): right after a paste (or a moment after typing a username) the AI service opens the page once and reads
+// the name on it ("Juan Dela Cruz"), and it goes into "Name to show". It never replaces a name typed by hand, and when
+// the page shows no name (a login page, a missing account) the box just stays empty.
 // inSettings: the same box inside Settings > Profile Settings (the user, 2026-11-20: "this must be settable in
 // settings"). It looks like the other settings there (a small label instead of the big heading) and says "saved"
 // after each change, because it saves right away, like the picture and the "Available for work" switch.
@@ -39,6 +43,17 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
   // (kept in a ref so a new function from the page never restarts the loading below)
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+
+  // Name from the page: "" (nothing to say), "loading", "filled" (the box now holds the page's name) or "none"
+  // (the page showed no name).
+  const [nameState, setNameState] = useState("");
+  const nameJob = useRef(null); // the last name asked for: { key, link, promise }
+  const nameTimer = useRef(null); // the short wait after typing
+  const autoName = useRef(""); // the name the page gave, so a new link may replace it (a typed name, never)
+  const pasted = useRef(false); // the next change of the link box is a paste
+  const nameInputRef = useRef(""); // what is in "Name to show" right now, for the answers that come later
+  useEffect(() => { nameInputRef.current = nameInput; }, [nameInput]);
+  useEffect(() => () => clearTimeout(nameTimer.current), []);
 
   useEffect(() => {
     if (!userId) return undefined;
@@ -88,14 +103,73 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
 
   const without = (object, key) => Object.fromEntries(Object.entries(object).filter(([name]) => name !== key));
 
+  // Forgets the name asked for (the add row closed, or the account was added).
+  const resetName = () => {
+    clearTimeout(nameTimer.current);
+    nameJob.current = null;
+    autoName.current = "";
+    setNameState("");
+  };
+
+  // Asks the AI service for the name on the page of what was typed for this platform: right away after a paste,
+  // 0.8 seconds after the last key otherwise (so it isn't asked for every letter of a username).
+  const askForName = (key, text, rightAway) => {
+    clearTimeout(nameTimer.current);
+    const { link } = cleanSocialAccount(key, text);
+    const job = nameJob.current;
+    if (link && job && job.key === key && job.link === link) return; // already asked for this one
+    // Another link (or none): a name the page gave for the old link doesn't fit any more.
+    const current = nameInputRef.current;
+    const typedByHand = current.trim() !== "" && current !== autoName.current;
+    if (!typedByHand && current) {
+      nameInputRef.current = "";
+      setNameInput("");
+    }
+    nameJob.current = null;
+    autoName.current = "";
+    setNameState("");
+    if (!link || typedByHand) return;
+    const start = () => {
+      const mine = { key, link };
+      mine.promise = fetchSocialName(key, link).then((name) => cleanSocialLabel(name).label || "");
+      nameJob.current = mine;
+      setNameState("loading");
+      mine.promise.then((name) => {
+        if (nameJob.current !== mine) return; // the link changed while the page was read
+        const now = nameInputRef.current;
+        if (name && (now.trim() === "" || now === autoName.current)) {
+          autoName.current = name;
+          nameInputRef.current = name;
+          setNameInput(name);
+          setNameState("filled");
+        } else {
+          setNameState(name ? "" : "none");
+        }
+      });
+    };
+    if (rightAway) start();
+    else nameTimer.current = setTimeout(start, 800);
+  };
+
   const handleAdd = async () => {
     if (saving || !chosen) return;
+    clearTimeout(nameTimer.current);
     const { link, error: problem } = cleanSocialAccount(chosen.key, input);
     if (problem) {
       setError(problem);
       return;
     }
-    const { label, error: labelProblem } = cleanSocialLabel(nameInput);
+    // Add was pressed while the name is still being read from this page: wait for it (12 seconds at most).
+    let typedName = nameInput;
+    const job = nameJob.current;
+    if (job && job.key === chosen.key && job.link === link && nameState === "loading" && (!typedName.trim() || typedName === autoName.current)) {
+      setSaving(true);
+      await job.promise;
+      setSaving(false);
+      if (nameJob.current !== job) return; // closed with Escape while waiting
+      typedName = nameInputRef.current;
+    }
+    const { label, error: labelProblem } = cleanSocialLabel(typedName);
     if (labelProblem) {
       setError(labelProblem);
       return;
@@ -105,6 +179,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
       setNameInput("");
       setError("");
       setAdding(false);
+      resetName();
     }
   };
 
@@ -140,6 +215,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
     setNameInput("");
     setError("");
     setAdding(false);
+    resetName();
   };
 
   const editingPlatform = editing ? SOCIAL_PLATFORMS.find((p) => p.key === editing) : null;
@@ -248,7 +324,7 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
               aria-label="Platform"
               value={chosen.key}
               disabled={saving}
-              onChange={(event) => { setPlatform(event.target.value); setError(""); }}
+              onChange={(event) => { setPlatform(event.target.value); setError(""); askForName(event.target.value, input, true); }}
             >
               {left.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select>
@@ -264,7 +340,13 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
               aria-label={`${chosen.label} username or link`}
               maxLength={250}
               value={input}
-              onChange={(event) => { setInput(event.target.value); setError(""); }}
+              onPaste={() => { pasted.current = true; }}
+              onChange={(event) => {
+                setInput(event.target.value);
+                setError("");
+                askForName(chosen.key, event.target.value, pasted.current);
+                pasted.current = false;
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
@@ -279,11 +361,15 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
               spellCheck={false}
               className="form-control bg-secondary bg-opacity-25 border-secondary text-white py-2 w-auto"
               style={{ width: "12rem" }}
-              placeholder="Name to show (optional)"
+              placeholder={nameState === "loading" ? "Getting the name…" : "Name to show (optional)"}
               aria-label={`Name to show for ${chosen.label} (optional)`}
               maxLength={MAX_SOCIAL_LABEL_LENGTH + 10}
               value={nameInput}
-              onChange={(event) => { setNameInput(event.target.value); setError(""); }}
+              onChange={(event) => {
+                setNameInput(event.target.value);
+                setError("");
+                if (nameState !== "loading") setNameState("");
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
@@ -294,6 +380,20 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
             />
             <button type="button" className="btn btn-gradient-role rounded-pill px-3 fw-bold text-white flex-shrink-0" onClick={handleAdd} disabled={saving}>Add</button>
             <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 flex-shrink-0" onClick={close} disabled={saving}>Cancel</button>
+          </div>
+          {/* Name from the page: what is happening with "Name to show" */}
+          <div data-testid="social-name-status">
+            {nameState === "loading" && <Loader size="sm" label={`Getting the name from the ${chosen.label} page`} className="mt-2 fs-8" />}
+            {nameState === "filled" && (
+              <p className="text-secondary fs-8 mt-2 mb-0">
+                <i className="bi bi-stars text-orange me-1"></i>Name filled from the {chosen.label} page. Change it if it&apos;s wrong.
+              </p>
+            )}
+            {nameState === "none" && !socialName(chosen.key, cleanSocialAccount(chosen.key, input).link) && (
+              <p className="text-secondary fs-8 mt-2 mb-0">
+                <i className="bi bi-info-circle me-1"></i>Couldn&apos;t get the name from the {chosen.label} page. You can type it in &quot;Name to show&quot;.
+              </p>
+            )}
           </div>
           {error && <p className="text-warning fs-8 mt-2 mb-0"><i className="bi bi-exclamation-triangle-fill me-1"></i>{error}</p>}
         </div>
