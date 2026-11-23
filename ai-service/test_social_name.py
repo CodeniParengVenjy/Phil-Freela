@@ -18,7 +18,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 import social_name
-from social_name import clean_name, find_name, link_ok, name_from_title, on_platform, page_to_read, social_router
+from social_name import clean_name, find_name, link_ok, name_from_title, name_in_address, on_platform, page_to_read, social_router
 
 results = []
 
@@ -107,6 +107,12 @@ check("web.facebook.com is Facebook's", on_platform("facebook", "web.facebook.co
 check("evilfacebook.com is not Facebook's", not on_platform("facebook", "evilfacebook.com"))
 check("a Facebook id link is opened as facebook.com/<id>", page_to_read("facebook", "https://m.facebook.com/profile.php?id=4") == "https://www.facebook.com/4")
 check("other links are opened as they are", page_to_read("github", "https://github.com/juan") == "https://github.com/juan")
+check("a /people/ address holds the name, dashes for spaces", name_in_address("facebook", "https://web.facebook.com/people/Juan-Dela-Cruz/pfbid0abcDEF") == "Juan Dela Cruz")
+check("   ...also with letters like é (written %C3%A9 in the address)", name_in_address("facebook", "https://web.facebook.com/people/Jos%C3%A9-Rizal/pfbid0xyz") == "José Rizal")
+check("   ...only for Facebook", name_in_address("instagram", "https://www.instagram.com/people/Juan-Dela-Cruz/x") == "")
+check("   ...only in the address's own path, not inside ?next=", name_in_address("facebook", "https://web.facebook.com/login/?next=/people/Juan-Dela-Cruz/x") == "")
+check("   ...and never a login word", name_in_address("facebook", "https://web.facebook.com/people/Log-in/pfbid0") == "")
+check("other Facebook addresses hold no name", name_in_address("facebook", "https://web.facebook.com/61500000000001?_rdc=1") == "")
 
 # ---------------------------------------------------------------------------
 # 4. Visiting a pasted link safely (pretend web)
@@ -157,6 +163,17 @@ def pretend_web(request):
         "https://web.facebook.com/zuck": httpx.Response(200, headers=HTML, text='<head><meta property="og:title" content="Mark Zuckerberg"></head>'),
         "https://www.facebook.com/locked": httpx.Response(302, headers={"location": "https://www.facebook.com/login/?next=x"}),
         "https://www.facebook.com/login/?next=x": httpx.Response(200, headers=HTML, text="<head><title>Log into Facebook | Facebook</title></head>"),
+        # A number-only account (no username), the way Facebook really answered on 2026-11-24
+        # (made-up number and name): www -> web -> /people/<name>/<code> -> its login page.
+        "https://www.facebook.com/61500000000001": httpx.Response(302, headers={"location": "https://web.facebook.com/61500000000001?_rdc=1&_rdr"}),
+        "https://web.facebook.com/61500000000001?_rdc=1&_rdr": httpx.Response(301, headers={"location": "https://web.facebook.com/people/Juan-Dela-Cruz/pfbid0abcDEF"}),
+        "https://web.facebook.com/people/Juan-Dela-Cruz/pfbid0abcDEF": httpx.Response(302, headers={"location": "https://web.facebook.com/login/?next=x2"}),
+        "https://web.facebook.com/login/?next=x2": httpx.Response(200, headers=HTML, text="<head><title>Facebook</title></head>"),
+        "https://www.facebook.com/61500000000002": httpx.Response(302, headers={"location": "https://web.facebook.com/people/Jos%C3%A9-Rizal/pfbid0xyz"}),
+        "https://web.facebook.com/people/Jos%C3%A9-Rizal/pfbid0xyz": httpx.Response(302, headers={"location": "https://web.facebook.com/login/?next=x2"}),
+        "https://www.facebook.com/61500000000003": httpx.Response(301, headers={"location": "https://web.facebook.com/people/Mary-Anne-Cruz/pfbid0q"}),
+        "https://web.facebook.com/people/Mary-Anne-Cruz/pfbid0q": httpx.Response(200, headers=HTML, text='<head><meta property="og:title" content="Mary-Anne Cruz"></head>'),
+        "https://www.facebook.com/61500000000004": httpx.Response(302, headers={"location": "https://evil.com/people/Fake-Name/pfbid0"}),
         "https://www.facebook.com/away": httpx.Response(302, headers={"location": "https://evil.com/page"}),
         "https://www.facebook.com/inside": httpx.Response(302, headers={"location": "https://inside.facebook.com/x"}),
         "https://www.facebook.com/plain": httpx.Response(302, headers={"location": "http://www.facebook.com/plain"}),
@@ -192,6 +209,15 @@ visits.clear()
 check("Facebook id link: opened as facebook.com/4, gives the name", find("facebook", "https://www.facebook.com/profile.php?id=4") == "Mark Zuckerberg")
 check("   ...and profile.php itself was never opened", visits and not any("profile.php" in url for url in visits))
 check("Facebook login page: no name", find("facebook", "https://www.facebook.com/locked") == "")
+got = find("facebook", "https://web.facebook.com/profile.php?id=61500000000001")
+check(f"Facebook number-only account: the name from the /people/ address, though the end is a login page (got '{got}')", got == "Juan Dela Cruz")
+got = find("facebook", "https://www.facebook.com/profile.php?id=61500000000002")
+check(f"   ...with é in the name (got '{got}')", got == "José Rizal")
+got = find("facebook", "https://www.facebook.com/profile.php?id=61500000000003")
+check(f"   ...when the page itself does open, its title wins (real dash kept) (got '{got}')", got == "Mary-Anne Cruz")
+visits.clear()
+got = find("facebook", "https://www.facebook.com/profile.php?id=61500000000004")
+check(f"   ...a /people/ address on ANOTHER website is not read (got '{got}')", got == "" and not any("evil.com" in url for url in visits))
 visits.clear()
 check("a redirect to another website: no name", find("facebook", "https://www.facebook.com/away") == "")
 check("   ...and the other website was never opened", not any("evil.com" in url for url in visits))

@@ -5,12 +5,14 @@ The user, looking at the Social Accounts add row (platform, "@username or Facebo
 
 Status: approved 2026-11-24 ("ok"). No database change.
 - Step 1 AI service: `ai-service/social_name.py` (POST /social/name) + one line in `main.py`;
-  `test_social_name.py` 83/83 offline, 11/11 on real public pages from the laptop.
+  `test_social_name.py` 92/92 offline (with the number-only Facebook fix below), real public pages from the laptop.
 - Step 2 website: `fetchSocialName()` in `client/src/lib/aiService.js`, the add row in
   `client/src/pages/dashboard/components/SocialAccounts.jsx` (Profile page and Settings > Profile Settings).
   Browser test 44/44 (pretend database and AI service; dark, light, phone, Settings).
-- Not tried yet: a real person on the live site; and whether Facebook, Instagram and LinkedIn answer the live
-  server (Vercel) the way they answer the laptop.
+- First real try (the user, 2026-11-24): a number-only Facebook link (`web.facebook.com/profile.php?id=615...`)
+  gave "Couldn't get the name". Fixed the same day: the name is read from Facebook's /people/ address (below).
+- Not tried yet: whether Facebook, Instagram and LinkedIn answer the live server (Vercel) the way they answer the
+  laptop.
 
 ## The idea, in plain words
 
@@ -56,8 +58,11 @@ A typed @username works too, 0.8 seconds after the last key (so it isn't asked f
 ## What was found while building it
 
 - Facebook sends a server that opens `profile.php?id=123` to its login page, but `facebook.com/123` still leads to
-  the profile when the account also has a username, so that address is opened instead. An account with only a
-  number may still get no name; then the person types it.
+  the profile when the account also has a username, so that address is opened instead.
+- An account with only a number (no username): `facebook.com/123` forwards to
+  `web.facebook.com/people/Juan-Dela-Cruz/pfbid...` and only then to the login page. The name is read from that
+  /people/ address (dashes become spaces, %C3%A9 becomes é), only when that address passed the safety checks, and
+  only when the page itself shows no name (its own title keeps real capitals and dashes, like "Mary-Anne").
 - A missing account gives no name on every platform (Instagram shows just "Instagram", Threads sends to its login
   page, X/YouTube/GitHub answer 404, TikTok's embed address answers 400).
 

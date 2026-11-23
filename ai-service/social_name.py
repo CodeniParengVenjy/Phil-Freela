@@ -15,7 +15,9 @@ name_from_title() cuts the name out of it for each platform. TikTok's page has
 no title for servers, so its public embed address (tiktok.com/oembed) is asked
 instead; it answers with "author_name". Facebook sends a server that opens
 profile.php?id=123 to its login page, so facebook.com/123 is opened instead
-(page_to_read).
+(page_to_read). For an account with no username, Facebook then forwards to
+/people/Juan-Dela-Cruz/... before its login page, and the name is read from
+that address (name_in_address).
 
 When there is no name: a login page ("Log in to Facebook"), a missing account,
 an error, or a site that doesn't answer all give "". The website then leaves
@@ -41,7 +43,7 @@ import re
 import socket
 import time
 from collections import defaultdict, deque
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import unquote, urljoin, urlsplit
 
 import httpx
 from fastapi import APIRouter, Header, HTTPException
@@ -145,10 +147,30 @@ def name_from_title(platform, title):
         text = re.sub(r"\s*-\s*YouTube$", "", text)
     elif platform == "facebook":
         text = re.sub(r"\s*[|-]\s*Facebook$", "", text)
-    text = text.strip()
+    return plain_name(text)
+
+
+def plain_name(text):
+    """text, or "" when it is a login or error page's words, or just the
+    platform's own name."""
+    text = (text or "").strip()
     if not text or text.lower() in PLATFORM_WORDS or NOT_A_NAME.search(text):
         return ""
     return text
+
+
+def name_in_address(platform, url):
+    """The name Facebook writes in an address. A number-only link (the person
+    has no username) sends visitors on to
+        https://web.facebook.com/people/Juan-Dela-Cruz/pfbid0ywQZ...
+    with the name in it, dashes for spaces, before its login page (found
+    2026-11-24 with a real profile.php?id= link). "" for any other address."""
+    if platform != "facebook":
+        return ""
+    match = re.match(r"^/people/([^/]+)/", urlsplit(url).path)
+    if not match:
+        return ""
+    return plain_name(unquote(match.group(1)).replace("-", " "))
 
 
 def clean_name(text):
@@ -191,40 +213,45 @@ def find_title(platform, data):
 
 
 def read_title(platform, link, client, resolve=socket.getaddrinfo):
-    """Opens the page at link, safely (see the top of this file), and returns
-    its title, or "" when there is none."""
+    """Opens the page at link, safely (see the top of this file). Returns
+    (title, address_name): the page's title, and a name found in one of the
+    addresses it went through (name_in_address); each is "" when there is none."""
     url = link
+    address_name = ""
     deadline = time.monotonic() + TOTAL_SECONDS
     for _ in range(MAX_REDIRECTS + 1):
         parts = urlsplit(url)
         host = (parts.hostname or "").lower()
         if parts.scheme != "https" or parts.port not in (None, 443) or not on_platform(platform, host):
-            return ""  # a redirect to another website, or to a page that isn't https
+            return "", address_name  # a redirect to another website, or to a page that isn't https
         if not is_public_host(host, resolve):
-            return ""
+            return "", address_name
+        # (read only from an address that passed the checks above)
+        address_name = name_in_address(platform, url) or address_name
         with client.stream("GET", url) as response:
             if response.status_code in (301, 302, 303, 307, 308) and response.headers.get("location"):
                 url = urljoin(url, response.headers["location"])
                 continue
             if response.status_code >= 400:
-                return ""  # a missing account, or a site that refuses servers
+                return "", address_name  # a missing account, or a site that refuses servers
             body = bytearray()
             for chunk in response.iter_bytes():
                 start = max(0, len(body) - 1024)  # a title split between two chunks is still found
                 body.extend(chunk)
                 title = find_title(platform, bytes(body[start:]))
                 if title is not None:
-                    return title
+                    return title, address_name
                 if len(body) >= MAX_PAGE_BYTES or time.monotonic() > deadline:
                     break
-            return ""
-    return ""
+            return "", address_name
+    return "", address_name
 
 
 def page_to_read(platform, link):
     """The address to open for a link. Facebook sends a server that opens
     profile.php?id=123 to its login page, but facebook.com/123 still leads to
-    the profile when the account also has a username (tried 2026-11-24)."""
+    the profile when the account has a username, and through
+    /people/Juan-Dela-Cruz/... when it doesn't (tried 2026-11-24)."""
     if platform == "facebook":
         match = re.match(r"^https://[^/]+/profile\.php\?id=(\d+)$", link, re.IGNORECASE)
         if match:
@@ -253,10 +280,12 @@ def find_name(platform, link, client=None, resolve=socket.getaddrinfo):
         )
     try:
         if platform == "tiktok":
-            name = tiktok_name(link, client)
-            name = "" if not name or name.lower() in PLATFORM_WORDS else tidy(name)
+            name = plain_name(tidy(tiktok_name(link, client)))
         else:
-            name = name_from_title(platform, read_title(platform, page_to_read(platform, link), client, resolve))
+            title, address_name = read_title(platform, page_to_read(platform, link), client, resolve)
+            # The page's own title is best (real capitals and dashes); a login page
+            # has none, then the name from Facebook's /people/ address is used.
+            name = name_from_title(platform, title) or address_name
         return clean_name(name)
     except (httpx.HTTPError, ValueError, json.JSONDecodeError):
         return ""
