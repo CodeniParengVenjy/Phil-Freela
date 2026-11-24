@@ -18,6 +18,7 @@ import Avatar from "../../../components/Avatar";
 import VerifiedBadge from "../../../components/VerifiedBadge";
 import { TrustBadge } from "../../../components/TrustRing";
 import BlockedNotice from "../components/BlockedNotice";
+import LateApplyNotice from "../components/LateApplyNotice";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import DeletePostDialog from "../components/DeletePostDialog";
 import HiredFreelancers from "../components/HiredFreelancers";
@@ -243,15 +244,10 @@ export default function JobDetailsView() {
       return <BlockedNotice suspension={suspension} what="apply to jobs" compact />;
     }
     // Missed a due date on this client's project: the database refuses the
-    // application, so say why instead of showing the form.
+    // application, so say why instead of showing the form, with the Appeal
+    // button right here (PLAN-late-appeals.md).
     if (lateProject) {
-      return (
-        <p className="text-secondary fs-7 mb-0">
-          <i className="bi bi-slash-circle text-warning me-1"></i> You can't apply to {clientName}'s job posts: the work for your project "
-          <CensoredText text={lateProject.title} />" (due {formatDay(lateProject.due_date)}) wasn't sent on time. {clientName} can allow you to apply again, and you can appeal to them from that project's page.{" "}
-          <Link to={`/dashboard/project-details/${lateProject.id}`} className="text-role fw-bold text-decoration-none">Open project</Link>
-        </p>
-      );
+      return <LateApplyNotice lateProject={lateProject} clientName={clientName} showToast={showToast} />;
     }
     if (iAmVerified === false) {
       return (
