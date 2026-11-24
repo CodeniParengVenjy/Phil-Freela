@@ -3,7 +3,7 @@ import {
   SOCIAL_PLATFORMS, cleanSocialAccount, cleanSocialLabel, fetchSocialLabels, fetchSocialLinks, isSafeSocialLink,
   linkLabel, saveSocialLinks, socialHandle, socialTitle
 } from "../../../lib/profile";
-import { fetchSocialName } from "../../../lib/aiService";
+import { checkSocialAccount } from "../../../lib/aiService";
 import { Loader } from "../../../components/Loaders";
 import "./social-accounts.css";
 
@@ -18,6 +18,9 @@ import "./social-accounts.css";
 // account. When the page shows no name (a login page, an account Facebook hides from servers), the account just shows
 // its link. There is no "Name to show" box (the user, 2026-11-24: "if website cant appear the name, just link only
 // instead.... remove the Name to Show... as well other platforms").
+// Checks (2026-11-24, the user: "okay build it, also build the not correct link like that"): a link to a post, video
+// or group is refused, or shortened to the account in it (cleanSocialAccount in profile.js); an account that YouTube,
+// GitHub or X says doesn't exist can't be added ("block Add", the user's choice).
 // inSettings: the same box inside Settings > Profile Settings (the user, 2026-11-20: "this must be settable in
 // settings"). It looks like the other settings there (a small label instead of the big heading) and says "saved"
 // after each change, because it saves right away, like the picture and the "Available for work" switch.
@@ -41,10 +44,11 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
-  // Name from the page: "" (nothing yet), "loading", "found" (foundName holds it) or "none" (only the link will show).
+  // Name from the page: "" (nothing yet), "loading", "found" (foundName holds it), "none" (only the link will show)
+  // or "missing" (the platform says there is no such account: it can't be added).
   const [nameState, setNameState] = useState("");
   const [foundName, setFoundName] = useState("");
-  const nameJob = useRef(null); // the last name asked for: { key, link, promise, done, name }
+  const nameJob = useRef(null); // the last page asked about: { key, link, promise, done, name, missing }
   const nameTimer = useRef(null); // the short wait after typing
   const pasted = useRef(false); // the next change of the link box is a paste
   useEffect(() => () => clearTimeout(nameTimer.current), []);
@@ -69,6 +73,12 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
   const left = accounts ? SOCIAL_PLATFORMS.filter((p) => !accounts[p.key]) : [];
   const chosen = left.find((p) => p.key === platform) ?? left[0];
   const added = accounts ? SOCIAL_PLATFORMS.filter((p) => accounts[p.key]) : [];
+  // What the pasted link really is, checked as it is typed: shortened to the account in it ("tiktok.com/@juan" from a
+  // video link), or not an account at all (a post, a group, the platform's own page). Only for links (with a "/"),
+  // so a username being typed never shows a warning.
+  const typedLink = adding && chosen && input.trim().includes("/") ? cleanSocialAccount(chosen.key, input) : null;
+  const shortenedTo = typedLink?.fixed ? typedLink.link : "";
+  const wrongLink = typedLink?.wrongPage ? typedLink.error : "";
 
   // What an account says: the name from its page (or one typed before), the name inside the link ("@bea.edits"),
   // or else just the platform's name ("Facebook"); the link itself shows on hover. (The user, 2026-11-24, on a chip
@@ -116,15 +126,16 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
     if (!link) return;
     const start = () => {
       const mine = { key, link };
-      mine.promise = fetchSocialName(key, link).then((name) => cleanSocialLabel(name).label || "");
+      mine.promise = checkSocialAccount(key, link).then(({ name, missing }) => ({ name: cleanSocialLabel(name).label || "", missing }));
       nameJob.current = mine;
       setNameState("loading");
-      mine.promise.then((name) => {
+      mine.promise.then(({ name, missing }) => {
         mine.done = true;
         mine.name = name;
+        mine.missing = missing;
         if (nameJob.current !== mine) return; // the link changed while the page was read
         setFoundName(name);
-        setNameState(name ? "found" : "none");
+        setNameState(missing ? "missing" : name ? "found" : "none");
       });
     };
     if (rightAway) start();
@@ -161,6 +172,11 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
       await Promise.race([job.promise, new Promise((done) => setTimeout(done, 12000))]);
       setSaving(false);
       if (nameJob.current !== job) return; // closed with Escape while waiting
+    }
+    // The platform says there is no such account: not added (the line under the row says why).
+    if (job?.done && job.missing) {
+      inputRef.current?.focus();
+      return;
     }
     const name = job?.done ? job.name : "";
     if (await update({ ...accounts, [chosen.key]: link }, name ? { ...labels, [chosen.key]: name } : without(labels, chosen.key))) {
@@ -284,17 +300,29 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
             <button type="button" className="btn btn-gradient-role rounded-pill px-3 fw-bold text-white flex-shrink-0" onClick={handleAdd} disabled={saving}>Add</button>
             <button type="button" className="btn btn-outline-secondary text-white-50 rounded-pill px-3 flex-shrink-0" onClick={close} disabled={saving}>Cancel</button>
           </div>
-          {/* Name from the page: shown while it is read, and once found. No name found: nothing to say, the link shows. */}
+          {/* A link to a post or video inside an account: only the account is added. */}
+          {shortenedTo && (
+            <p className="text-info fs-8 mt-2 mb-0" data-testid="social-shortened">
+              <i className="bi bi-scissors me-1"></i>Only the account part of that link will be added: <span className="text-white fw-semibold">{linkLabel(shortenedTo)}</span>
+            </p>
+          )}
+          {/* Name from the page: shown while it is read, and once found. No name found: nothing to say, the link shows.
+              No such account: it can't be added. */}
           <div data-testid="social-name-status">
-            {nameState === "loading" && <Loader size="sm" label={`Getting the name from the ${chosen.label} page`} className="mt-2 fs-8" />}
+            {nameState === "loading" && <Loader size="sm" label={`Checking the ${chosen.label} page`} className="mt-2 fs-8" />}
             {nameState === "found" && (
               <p className="text-secondary fs-8 mt-2 mb-0">
                 <i className="bi bi-stars text-orange me-1"></i>It will show as <span className="text-white fw-semibold">{foundName}</span>, the name on the {chosen.label} page.
               </p>
             )}
+            {nameState === "missing" && (
+              <p className="text-warning fs-8 mt-2 mb-0" data-testid="social-missing">
+                <i className="bi bi-person-x-fill me-1"></i>We couldn&apos;t find this account on {chosen.label}. Check the link or the username.
+              </p>
+            )}
           </div>
           {notice && <p className="text-info fs-8 mt-2 mb-0" data-testid="social-notice"><i className="bi bi-info-circle me-1"></i>{notice}</p>}
-          {error && <p className="text-warning fs-8 mt-2 mb-0"><i className="bi bi-exclamation-triangle-fill me-1"></i>{error}</p>}
+          {(error || wrongLink) && <p className="text-warning fs-8 mt-2 mb-0" data-testid="social-error"><i className="bi bi-exclamation-triangle-fill me-1"></i>{error || wrongLink}</p>}
         </div>
       )}
       {accounts && left.length === 0 && <p className="text-secondary fs-8 mt-2 mb-0">You've added every platform there is room for.</p>}

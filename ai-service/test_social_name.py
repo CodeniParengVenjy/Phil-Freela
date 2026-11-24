@@ -18,7 +18,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 import social_name
-from social_name import clean_name, find_name, link_ok, name_from_title, name_in_address, on_platform, page_to_read, social_router
+from social_name import check_account, clean_name, find_name, link_ok, name_from_title, name_in_address, on_platform, page_to_read, social_router
 
 results = []
 
@@ -125,6 +125,7 @@ ADDRESS_BOOK = {
     "github.com": ["140.82.112.3"],
     "www.youtube.com": ["142.250.1.1"],
     "x.com": ["104.244.42.1"],
+    "twitter.com": ["104.244.42.1"],
     "www.tiktok.com": ["23.1.1.1"],
     "www.linkedin.com": ["13.107.42.14"],
     "inside.facebook.com": ["10.0.0.5"],
@@ -181,6 +182,10 @@ def pretend_web(request):
         "https://www.instagram.com/nasa/": httpx.Response(200, headers=HTML, text='<head><meta property="og:title" content="NASA (&#064;nasa) &#x2022; Instagram photos and videos" /></head>'),
         "https://github.com/torvalds": httpx.Response(200, headers=HTML, text='<head><meta property="og:title" content="torvalds - Overview" /><title>torvalds (Linus Torvalds) · GitHub</title></head>'),
         "https://github.com/nobody": httpx.Response(404, headers=HTML, text="Not Found"),
+        "https://github.com/busy": httpx.Response(429, headers=HTML, text="Too many requests"),
+        "https://twitter.com/nobody": httpx.Response(301, headers={"location": "https://x.com/nobody"}),
+        "https://x.com/away": httpx.Response(302, headers={"location": "https://evil.com/gone"}),
+        "https://www.facebook.com/gone": httpx.Response(302, headers={"location": "https://www.facebook.com/gone2"}),
         "https://www.youtube.com/@NASA": httpx.Response(200, headers=HTML, content=chunks(FAR)),
         "https://www.youtube.com/@endless": httpx.Response(200, headers=HTML, content=chunks(ENDLESS)),
         "https://www.linkedin.com/in/juan": httpx.Response(999, headers=HTML, text="request denied"),
@@ -245,6 +250,31 @@ check("TikTok: the name from its embed address", find("tiktok", "https://www.tik
 check("TikTok missing account: no name", find("tiktok", "https://www.tiktok.com/@nobody") == "")
 check("TikTok broken answer: no name, no crash", find("tiktok", "https://www.tiktok.com/@broken") == "")
 
+
+# Account not found: only a clear 404 from YouTube, GitHub or X counts.
+def account(platform, link):
+    with httpx.Client(transport=httpx.MockTransport(pretend_web), follow_redirects=False) as client:
+        return check_account(platform, link, client=client, resolve=resolve)
+
+
+check("missing: GitHub 404 says missing", account("github", "https://github.com/nobody") == {"name": "", "missing": True})
+check("missing: YouTube 404 says missing", account("youtube", "https://www.youtube.com/@nobody") == {"name": "", "missing": True})
+check("missing: X 404 says missing", account("x", "https://x.com/nobody")["missing"] is True)
+check("missing: twitter.com sent on to x.com, then 404: missing", account("x", "https://twitter.com/nobody")["missing"] is True)
+check("missing: a real GitHub account is not missing", account("github", "https://github.com/torvalds") == {"name": "Linus Torvalds", "missing": False})
+check("missing: a real YouTube account is not missing", account("youtube", "https://www.youtube.com/@NASA") == {"name": "NASA", "missing": False})
+check("missing: GitHub 429 (too many) is NOT missing", account("github", "https://github.com/busy")["missing"] is False)
+check("missing: LinkedIn 999 is NOT missing", account("linkedin", "https://www.linkedin.com/in/juan")["missing"] is False)
+check("missing: Instagram 404 is NOT trusted (not missing)", account("instagram", "https://www.instagram.com/nobody/")["missing"] is False)
+check("missing: Facebook 404 is NOT trusted (not missing)", account("facebook", "https://www.facebook.com/gone")["missing"] is False)
+check("missing: Facebook login page is not missing", account("facebook", "https://www.facebook.com/locked")["missing"] is False)
+check("missing: TikTok 'Something went wrong' is NOT missing", account("tiktok", "https://www.tiktok.com/@nobody") == {"name": "", "missing": False})
+check("missing: a site that doesn't answer is not missing", account("instagram", "https://www.instagram.com/slow") == {"name": "", "missing": False})
+visits.clear()
+check("missing: a 404 on ANOTHER website (after a redirect) is never reached, not missing",
+      account("x", "https://x.com/away")["missing"] is False)
+check("missing: the trusted list is just YouTube, GitHub and X", social_name.SAYS_NOT_FOUND == {"youtube", "github", "x"})
+
 # ---------------------------------------------------------------------------
 # 5. The endpoint
 # ---------------------------------------------------------------------------
@@ -260,15 +290,16 @@ def pretend_login(authorization):
 asked = []
 
 
-def pretend_finder(platform, link, hops=None):
+def pretend_checker(platform, link, hops=None):
     asked.append((platform, link))
     if hops is not None:
         hops.append("200 pretend")
-    return "Juan Dela Cruz" if link == "https://www.facebook.com/juan.dc" else ""
+    return {"name": "Juan Dela Cruz" if link == "https://www.facebook.com/juan.dc" else "",
+            "missing": link == "https://github.com/nobody"}
 
 
 app = FastAPI()
-app.include_router(social_router(pretend_login, finder=pretend_finder))
+app.include_router(social_router(pretend_login, checker=pretend_checker))
 api = TestClient(app)
 
 
@@ -280,9 +311,11 @@ def post(who, platform, link):
 response = post(None, "facebook", "https://www.facebook.com/juan.dc")
 check("no login: 401", response.status_code == 401 and not asked)
 response = post("juan", "facebook", "https://www.facebook.com/juan.dc")
-check("Juan gets the name", response.status_code == 200 and response.json() == {"name": "Juan Dela Cruz"})
+check("Juan gets the name (and not missing)", response.status_code == 200 and response.json() == {"name": "Juan Dela Cruz", "missing": False})
 response = post("juan", "facebook", "https://www.facebook.com/someone")
-check("no name on the page: 200 with an empty name", response.status_code == 200 and response.json() == {"name": ""})
+check("no name on the page: 200 with an empty name", response.status_code == 200 and response.json() == {"name": "", "missing": False})
+response = post("juan", "github", "https://github.com/nobody")
+check("a missing account: 200 with missing true", response.status_code == 200 and response.json() == {"name": "", "missing": True})
 before = len(asked)
 response = post("juan", "facebook", "https://evil.com/juan")
 check("a link that isn't on the platform: 400, never visited", response.status_code == 400 and len(asked) == before)
@@ -303,6 +336,9 @@ check("selftest: no login needed, it tries each fixed public page once",
       response.status_code == 200 and len(body["results"]) == len(social_name.SELFTEST_LINKS) and len(asked) - before == len(social_name.SELFTEST_LINKS))
 check("selftest: only the fixed pages, never a user's link", sorted(asked[before:]) == sorted(social_name.SELFTEST_LINKS))
 check("selftest: each answer lists the addresses it went through", all(r["hops"] == ["200 pretend"] and "seconds" in r for r in body["results"]))
+check("selftest: each answer says whether the account is missing", all(r["missing"] in (True, False) for r in body["results"]))
+check("selftest: it also tries made-up YouTube, GitHub and X accounts",
+      {p for p, link in social_name.SELFTEST_LINKS if "pfnosuchacct01" in link} == {"youtube", "github", "x"})
 before = len(asked)
 response = api.get("/social/selftest?link=https://evil.com/")
 check("selftest: asked again within 60 s, the kept answer comes back and nothing is opened (a ?link= is ignored)",
@@ -348,6 +384,9 @@ if "--live" in sys.argv:
     for platform, link, want in live:
         got = find_name(platform, link)
         check(f"LIVE: {link} gives '{want}' (got '{got}')", got == want)
+    for platform, link in [p for p in social_name.SELFTEST_LINKS if "pfnosuchacct01" in p[1]]:
+        check(f"LIVE: made-up {link} is missing", check_account(platform, link)["missing"] is True)
+    check("LIVE: a real GitHub account is not missing", check_account("github", "https://github.com/torvalds")["missing"] is False)
 
 print(f"\n{sum(results)}/{len(results)} checks passed")
 sys.exit(0 if all(results) else 1)

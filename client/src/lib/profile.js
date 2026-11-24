@@ -419,9 +419,116 @@ export function isSafeSocialLink(key, link) {
   return Boolean(platform) && typeof link === "string" && link.length <= MAX_LINK_LENGTH && platform.pattern.test(link);
 }
 
+// Wrong links (2026-11-24, the user: "also build the not correct link like that"): a link on the right platform that
+// opens a post, a video, a group or one of the platform's own pages instead of an account. For each platform:
+//   kinds: the first part of the address that means "not an account", and what it is ("p" on Instagram = a post)
+//   own:   the platform's own pages (login, settings, explore...)
+//   account(parts): where the account is in the other links: the parts to keep ("@juan" from
+//                   tiktok.com/@juan/video/123), null when the link is fine as it is, or "hint" when it can't be an
+//                   account link at all (tiktok.com/juan has no @).
+// Share links from the phone apps (facebook.com/share/..., vt.tiktok.com/...) are kept: they often open a profile.
+const keepFirst = (parts) => (parts.length > 1 ? parts.slice(0, 1) : null);
+const keepTwo = (parts) => (parts.length > 2 ? parts.slice(0, 2) : parts.length === 2 ? null : "hint");
+const ACCOUNT_PARTS = {
+  facebook: {
+    kinds: { groups: "group", photo: "photo", "photo.php": "photo", photos: "photo", media: "photo album", watch: "video", video: "video", videos: "video", "video.php": "video", reel: "reel", reels: "reel", events: "event", posts: "post", "story.php": "post", "permalink.php": "post", stories: "story", marketplace: "Marketplace page", hashtag: "hashtag", live: "live video" },
+    own: ["login", "login.php", "home.php", "help", "settings", "notifications", "messages", "friends", "search", "privacy", "policies", "policy.php", "ads", "bookmarks", "saved", "memories", "recover", "reg", "r.php", "dialog", "sharer", "sharer.php", "l.php", "plugins", "legal", "terms", "terms.php", "business", "checkpoint", "gaming"],
+    account: (parts, first) => {
+      if (first === "profile.php") return null;
+      if (first === "people") return parts.length > 3 ? parts.slice(0, 3) : null; // people/Juan-Dela-Cruz/<number>
+      if (first === "pages") return parts.length > 3 ? parts.slice(0, 3) : null;
+      if (first === "p") return parts.length > 2 ? parts.slice(0, 2) : null; // p/Juan-Dela-Cruz-1000.../ (a newer page link)
+      if (first === "share") {
+        // share/1AbC (a profile or page from the app) is fine; share/p, /v, /r and /g are a post, video, reel, group.
+        const shared = { p: "post", v: "video", r: "reel", g: "group" }[(parts[1] || "").toLowerCase()];
+        return shared ? { what: shared } : null;
+      }
+      return keepFirst(parts); // juan.dc/posts/123 -> juan.dc
+    }
+  },
+  instagram: {
+    kinds: { p: "post", reel: "reel", reels: "reel", tv: "video" },
+    own: ["explore", "accounts", "direct", "about", "legal", "developer", "web", "challenge", "emails", "session", "privacy", "terms", "ar", "lite", "create", "oauth", "press", "api", "directory", "topics"],
+    account: (parts, first) => {
+      if (first === "stories") {
+        if (!parts[1] || parts[1].toLowerCase() === "highlights") return { what: "story" };
+        return parts.slice(1, 2); // stories/juan/123 -> juan
+      }
+      return keepFirst(parts); // juan/reels -> juan
+    }
+  },
+  tiktok: {
+    kinds: { video: "video", v: "video", embed: "video", photo: "photo", tag: "hashtag", music: "sound", live: "live video" },
+    own: ["discover", "explore", "foryou", "following", "friends", "search", "login", "signup", "upload", "messages", "inbox", "setting", "settings", "business", "legal", "about", "coins", "feedback", "creators", "privacy", "terms"],
+    account: (parts, first, host) => {
+      if (/^(vt|vm)\./i.test(host) || first === "t") return null; // a share link from the app
+      if (first.startsWith("@")) return keepFirst(parts); // @juan/video/123 -> @juan
+      return "hint"; // a TikTok account link always has an @
+    }
+  },
+  youtube: {
+    kinds: { watch: "video", embed: "video", v: "video", live: "live video", shorts: "Short", playlist: "playlist", results: "search", post: "post", hashtag: "hashtag", clip: "clip" },
+    own: ["feed", "account", "premium", "gaming", "kids", "about", "t", "howyoutubeworks", "signin", "logout", "upload", "redirect", "attribution_link", "channel_switcher", "reporthistory", "paid_memberships", "ads", "creators", "jobs", "trends", "new"],
+    account: (parts, first) => (["channel", "c", "user"].includes(first) ? keepTwo(parts) : keepFirst(parts)) // @juan/videos -> @juan
+  },
+  linkedin: {
+    kinds: { posts: "post", pulse: "article", jobs: "job post", learning: "course", events: "event", groups: "group", newsletters: "newsletter" },
+    own: ["feed", "search", "login", "signup", "help", "mynetwork", "messaging", "notifications", "home", "legal", "premium", "sales", "talent", "uas", "checkpoint", "authwall", "games", "my-items", "accessibility"],
+    account: (parts, first) => {
+      if (["in", "company", "school", "showcase"].includes(first)) return keepTwo(parts); // in/juan/details/skills -> in/juan
+      if (first === "pub") return null; // an old public profile link
+      return "hint";
+    }
+  },
+  github: {
+    kinds: {},
+    own: ["settings", "login", "logout", "join", "signup", "explore", "topics", "trending", "marketplace", "features", "pricing", "about", "notifications", "issues", "pulls", "search", "new", "organizations", "codespaces", "collections", "events", "enterprise", "security", "site", "readme", "apps", "customer-stories", "team", "sessions", "dashboard", "copilot", "contact", "account", "password_reset", "solutions", "resources", "partners", "mobile", "nonprofit", "education", "stars", "watching"],
+    account: (parts, first) => {
+      if (first === "orgs" || first === "sponsors") return parts[1] ? parts.slice(1, 2) : { what: "" }; // orgs/acme/people -> acme
+      return keepFirst(parts); // juan/my-project -> juan
+    }
+  },
+  x: {
+    kinds: { hashtag: "hashtag", search: "search" },
+    own: ["home", "explore", "notifications", "messages", "settings", "login", "logout", "signup", "compose", "tos", "privacy", "intent", "share", "account", "jobs", "communities", "lists", "premium_sign_up"],
+    account: (parts, first) => {
+      if (first === "i") return parts.some((part) => part.toLowerCase() === "status") ? { what: "post" } : { what: "" }; // i/web/status/123
+      return keepFirst(parts); // juan/status/123 -> juan
+    }
+  },
+  threads: {
+    kinds: { t: "post" },
+    own: ["search", "login", "activity", "settings", "explore", "intent", "about", "legal", "privacy", "terms"],
+    account: (parts, first) => (first.startsWith("@") ? keepFirst(parts) : "hint") // @juan/post/abc -> @juan
+  }
+};
+
+// The account inside a pasted link: { link } (the same link, or shortened to the account with fixed: true), or
+// { error, wrongPage: true } when it isn't an account link (the box shows that one while the link is pasted).
+function accountLink(platform, link) {
+  const rules = ACCOUNT_PARTS[platform.key];
+  const [, host, rest] = link.match(/^https:\/\/([^/]+)\/(.*)$/i) || [];
+  const parts = (rest || "").replace(/[?#].*$/, "").split("/").filter(Boolean);
+  if (!rules || !parts.length) return { link };
+  const first = parts[0].toLowerCase();
+  const article = ["instagram", "x"].includes(platform.key) ? "an" : "a";
+  const notAccount = (what) => ({
+    error: `${what ? `That's a link to ${article} ${platform.label} ${what}` : `That's one of ${platform.label}'s own pages`}, not an account. Open your ${platform.label} profile and copy its link, or type your username.`,
+    wrongPage: true
+  });
+  if (rules.kinds[first]) return notAccount(rules.kinds[first]);
+  if (rules.own.includes(first)) return notAccount("");
+  const found = rules.account(parts, first, host);
+  if (found === "hint") return { error: `That isn't a link to a ${platform.label} account. An account link looks like ${platform.makeLink("yourname")}, or just type your username.`, wrongPage: true };
+  if (found && !Array.isArray(found)) return notAccount(found.what);
+  if (Array.isArray(found)) return { link: `https://${host}/${found.join("/")}`, fixed: true };
+  return { link };
+}
+
 // Turns what was typed for a platform into the link to save, or returns { error }. Two ways in: a plain username
 // ("@juan" or "juan" becomes https://www.tiktok.com/@juan) or a pasted link (the leftovers that share buttons add,
-// like ?igsh=... or #top, are cut off; "tiktok.com/@juan" gets its https://).
+// like ?igsh=... or #top, are cut off; "tiktok.com/@juan" gets its https://). A pasted link that opens a post or a
+// video inside an account is shortened to the account ({ link, fixed: true }); one with no account in it is refused.
 export function cleanSocialAccount(key, text) {
   const platform = SOCIAL_PLATFORMS.find((p) => p.key === key);
   if (!platform) return { error: "Pick a platform first." };
@@ -451,7 +558,7 @@ export function cleanSocialAccount(key, text) {
       ? `Add your page name after the address, like ${platform.makeLink("yourname")}`
       : `That link isn't on ${platform.domains[0]}. Paste your ${platform.label} link, or just type your username.` };
   }
-  return { link };
+  return accountLink(platform, link);
 }
 
 // The name that is written inside a saved account's link: "@bea.edits" for TikTok, Instagram, X, Threads and

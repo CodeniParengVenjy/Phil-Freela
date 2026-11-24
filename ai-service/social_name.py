@@ -20,9 +20,17 @@ profile.php?id=123 to its login page, so facebook.com/123 is opened instead
 that address (name_in_address).
 
 When there is no name: a login page ("Log in to Facebook"), a missing account,
-an error, or a site that doesn't answer all give "". The website then leaves
-the box empty and the person types the name, like before. Nothing is saved
-here: the name only goes back to the person who asked.
+an error, or a site that doesn't answer all give "". The website then shows
+the account with its link only. Nothing is saved here: the answer only goes
+back to the person who asked.
+
+Account not found (2026-11-24, the user: "okay build it", Add blocked): the
+answer also says "missing": true when the platform clearly answered "no such
+account" (404). Only YouTube, GitHub and X do that for servers
+(SAYS_NOT_FOUND); Facebook, Instagram, Threads and LinkedIn show a login page
+for a real and a missing account alike, and TikTok's embed address only says
+"Something went wrong", which could also be a private account. The website
+then refuses to add the link.
 
 Visiting an address someone typed must be done carefully, so read_title():
 - only opens links on that platform's own website (the same list as
@@ -66,6 +74,11 @@ MAX_NAME_LENGTH = 40            # the same limit as "Name to show"
 MAX_PER_MINUTE = 20             # tries per signed-in user
 USER_AGENT = "Mozilla/5.0 (compatible; PhilFreela-PageName/1.0; +https://phil-freela.pages.dev)"
 TIKTOK_OEMBED = "https://www.tiktok.com/oembed"
+
+# The platforms whose 404 really means "no such account" (tried 2026-11-24 with
+# made-up accounts from the laptop, and from the live server via
+# /social/selftest; a real account gives 200 on all three).
+SAYS_NOT_FOUND = {"youtube", "github", "x"}
 
 # Each platform's own websites. The website (SOCIAL_LIST in profile.js) and
 # the database rule (social_links_ok) have the same list.
@@ -220,9 +233,11 @@ def find_title(platform, data):
 
 def read_title(platform, link, client, resolve=socket.getaddrinfo, hops=None):
     """Opens the page at link, safely (see the top of this file). Returns
-    (title, address_name): the page's title, and a name found in one of the
-    addresses it went through (name_in_address); each is "" when there is none.
-    hops: a list that gets each answer ("302 www.facebook.com/4"), for /social/selftest."""
+    (title, address_name, not_found): the page's title, a name found in one of
+    the addresses it went through (name_in_address), each "" when there is
+    none, and True when the platform's own site answered 404 or 410 (no such
+    page). hops: a list that gets each answer ("302 www.facebook.com/4"), for
+    /social/selftest."""
     url = link
     address_name = ""
     deadline = time.monotonic() + TOTAL_SECONDS
@@ -232,10 +247,10 @@ def read_title(platform, link, client, resolve=socket.getaddrinfo, hops=None):
         host = (parts.hostname or "").lower()
         if parts.scheme != "https" or parts.port not in (None, 443) or not on_platform(platform, host):
             note(f"stopped: {host or url[:40]} is not on {platform}")
-            return "", address_name  # a redirect to another website, or to a page that isn't https
+            return "", address_name, False  # a redirect to another website, or to a page that isn't https
         if not is_public_host(host, resolve):
             note(f"stopped: {host} is not a public address")
-            return "", address_name
+            return "", address_name, False
         # (read only from an address that passed the checks above)
         address_name = name_in_address(platform, url) or address_name
         with client.stream("GET", url) as response:
@@ -244,7 +259,8 @@ def read_title(platform, link, client, resolve=socket.getaddrinfo, hops=None):
                 url = urljoin(url, response.headers["location"])
                 continue
             if response.status_code >= 400:
-                return "", address_name  # a missing account, or a site that refuses servers
+                # 404/410: no such page. Anything else (429 too many, 999 LinkedIn) is a site refusing servers.
+                return "", address_name, response.status_code in (404, 410)
             body = bytearray()
             for chunk in response.iter_bytes():
                 start = max(0, len(body) - 1024)  # a title split between two chunks is still found
@@ -252,13 +268,13 @@ def read_title(platform, link, client, resolve=socket.getaddrinfo, hops=None):
                 title = find_title(platform, bytes(body[start:]))
                 if title is not None:
                     note(f"title: {tidy(title)[:80]}")
-                    return title, address_name
+                    return title, address_name, False
                 if len(body) >= MAX_PAGE_BYTES or time.monotonic() > deadline:
                     break
             note(f"no title in the first {len(body)} bytes")
-            return "", address_name
+            return "", address_name, False
     note("stopped: too many redirects")
-    return "", address_name
+    return "", address_name, False
 
 
 def page_to_read(platform, link):
@@ -283,9 +299,11 @@ def tiktok_name(link, client):
     return name if isinstance(name, str) else ""
 
 
-def find_name(platform, link, client=None, resolve=socket.getaddrinfo, hops=None):
-    """The name to show for a saved-style link, or "" when none can be found.
-    Never raises: a site that doesn't answer just means no name. hops: see
+def check_account(platform, link, client=None, resolve=socket.getaddrinfo, hops=None):
+    """What the page of a saved-style link says: {"name": "Juan Dela Cruz",
+    "missing": False}. name is "" when none can be found; missing is True only
+    when a SAYS_NOT_FOUND platform answered "no such account". Never raises: a
+    site that doesn't answer just means no name (and not missing). hops: see
     read_title."""
     own_client = client is None
     if own_client:
@@ -294,26 +312,32 @@ def find_name(platform, link, client=None, resolve=socket.getaddrinfo, hops=None
             headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.8"},
         )
     try:
+        not_found = False
         if platform == "tiktok":
             name = plain_name(tidy(tiktok_name(link, client)))
         else:
-            title, address_name = read_title(platform, page_to_read(platform, link), client, resolve, hops)
+            title, address_name, not_found = read_title(platform, page_to_read(platform, link), client, resolve, hops)
             # The page's own title is best (real capitals and dashes); a login page
             # has none, then the name from Facebook's /people/ address is used.
             name = name_from_title(platform, title) or address_name
-        return clean_name(name)
+        return {"name": clean_name(name), "missing": not_found and platform in SAYS_NOT_FOUND}
     except (httpx.HTTPError, ValueError, json.JSONDecodeError) as problem:
         if hops is not None:
             hops.append(f"failed: {type(problem).__name__}")
-        return ""
+        return {"name": "", "missing": False}
     except Exception:
         logging.getLogger(__name__).exception("Reading a social page name failed")
         if hops is not None:
             hops.append("failed: unexpected error")
-        return ""
+        return {"name": "", "missing": False}
     finally:
         if own_client:
             client.close()
+
+
+def find_name(platform, link, client=None, resolve=socket.getaddrinfo, hops=None):
+    """Just the name from check_account ("" when none)."""
+    return check_account(platform, link, client, resolve, hops)["name"]
 
 
 # ---------------------------------------------------------------------------
@@ -337,6 +361,10 @@ SELFTEST_LINKS = (
     ("github", "https://github.com/torvalds"),
     ("x", "https://x.com/NASA"),
     ("threads", "https://www.threads.com/@nasa"),
+    # Made-up accounts: these must come back "missing" on the live server too.
+    ("youtube", "https://www.youtube.com/@pfnosuchacct01"),
+    ("github", "https://github.com/pfnosuchacct01"),
+    ("x", "https://x.com/pfnosuchacct01"),
 )
 SELFTEST_KEEP_SECONDS = 60
 
@@ -349,10 +377,10 @@ def probe_key(secret=None):
     return hashlib.sha256(("social-probe:" + secret).encode()).hexdigest() if secret else ""
 
 
-def social_router(get_user_id, finder=find_name):
+def social_router(get_user_id, checker=check_account):
     """POST /social/name, given main.py's login check (added to the app with
-    one line in main.py), and GET /social/selftest. finder is the page reader,
-    replaced by a pretend one in the tests."""
+    one line in main.py), and GET /social/selftest. checker is the page reader
+    (check_account), replaced by a pretend one in the tests."""
     router = APIRouter()
     recent = defaultdict(deque)  # user id -> times of their last tries
     last_test = {"at": 0.0, "answer": None}
@@ -370,8 +398,10 @@ def social_router(get_user_id, finder=find_name):
 
     @router.post("/social/name")
     def social_name(body: SocialNameRequest, authorization: str | None = Header(default=None)):
-        """The name on a social page: {"name": "Juan Dela Cruz"}, or
-        {"name": ""} when the page shows none."""
+        """The name on a social page and whether the account exists:
+        {"name": "Juan Dela Cruz", "missing": false}; "name" is "" when the page
+        shows none, "missing" is true when the platform said there is no such
+        account (see check_account)."""
         user_id = get_user_id(authorization)
         platform = body.platform.strip().lower()
         link = body.link.strip()
@@ -379,7 +409,8 @@ def social_router(get_user_id, finder=find_name):
             raise HTTPException(400, "That isn't a link to a page on that platform.")
         if too_many(user_id):
             raise HTTPException(429, "Too many tries. Please wait a minute.")
-        return {"name": finder(platform, link)}
+        answer = checker(platform, link)
+        return {"name": answer["name"], "missing": bool(answer["missing"])}
 
     @router.get("/social/selftest")
     def social_selftest():
@@ -397,8 +428,8 @@ def social_router(get_user_id, finder=find_name):
                 platform, link = item
                 hops = []
                 started = time.monotonic()
-                name = finder(platform, link, hops=hops)
-                return {"platform": platform, "link": link, "name": name,
+                answer = checker(platform, link, hops=hops)
+                return {"platform": platform, "link": link, "name": answer["name"], "missing": answer["missing"],
                         "seconds": round(time.monotonic() - started, 1), "hops": hops}
 
             with ThreadPoolExecutor(max_workers=3) as pool:  # 3 at a time, so the tries don't slow each other down
@@ -422,7 +453,7 @@ def social_router(get_user_id, finder=find_name):
             raise HTTPException(400, "That isn't a link to a page on that platform.")
         hops = []
         started = time.monotonic()
-        name = finder(platform, link, hops=hops)
-        return {"name": name, "seconds": round(time.monotonic() - started, 1), "hops": hops}
+        answer = checker(platform, link, hops=hops)
+        return {**answer, "seconds": round(time.monotonic() - started, 1), "hops": hops}
 
     return router

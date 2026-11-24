@@ -30,6 +30,34 @@ Status: approved 2026-11-24 ("ok"). No database change.
   "what is this??", then chose "Just Facebook". It now says the platform's name (`socialHandle`, the same as the
   Highlights film); the link shows on hover and a click still opens it.
 
+## Wrong links and missing accounts (2026-11-24, the user: "okay build it, also build the not correct link like that")
+
+The user asked whether the box can tell a right link from a wrong one. Two checks were added; "block Add" was the
+user's choice for a missing account.
+
+1. Wrong links, on the website, instantly (`cleanSocialAccount` -> `accountLink` / `ACCOUNT_PARTS` in profile.js):
+   - The account is inside the link: only that part is kept, and a line says so ("Only the account part of that
+     link will be added: tiktok.com/@juan"). tiktok.com/@juan/video/123, x.com/juan/status/123, youtube.com/@juan/videos,
+     github.com/juan/my-project, instagram.com/juan/reels, linkedin.com/in/juan/details/skills, threads.com/@juan/post/...
+   - No account in it: refused at once ("That's a link to an Instagram post, not an account. Open your Instagram profile
+     and copy its link, or type your username."): posts, reels, videos, Shorts, playlists, groups, events, hashtags,
+     searches and each platform's own pages (login, settings, explore...). A link that can't be an account link at all
+     (tiktok.com/juan without @, linkedin.com/juan) says what one looks like.
+   - Kept as they are: share links from the phone apps (facebook.com/share/1AbC, vt.tiktok.com/...), which often open
+     a profile. (facebook.com/share/p, /v, /r, /g are a post, video, reel, group: refused.)
+   - The AI service isn't asked about a refused link. Typing a username never shows these warnings.
+2. Account not found, from the AI service: `check_account()` in social_name.py; POST /social/name now answers
+   `{"name": ..., "missing": true/false}`. missing = the platform's own site answered 404/410, and only for YouTube,
+   GitHub and X (`SAYS_NOT_FOUND`). Made-up accounts from the laptop: those three answer 404; Facebook, Threads and
+   Instagram show a login page or a plain title; LinkedIn answers 999; TikTok's embed address answers 400
+   "Something went wrong" (could be a private account too, so not trusted). The line "We couldn't find this account on
+   GitHub. Check the link or the username." shows, and Add saves nothing until the link changes. A 429, a login page, a
+   slow or sleeping service never count as missing, so the link is then added as before.
+   /social/selftest also tries made-up YouTube, GitHub and X accounts (pfnosuchacct01), to show what the live server gets.
+- Accounts saved before are not checked again. No database change.
+- Tests: AI service 123/123 offline (+ live from the laptop: the 3 made-up accounts missing, real ones not);
+  rules 97/97 (`name-test/rules.mjs` in session 82ef6bd6's scratchpad); browser bench 59/59.
+
 ## The idea, in plain words
 
 A browser can't read a Facebook or Instagram page itself (those sites block it), so the AI service does it, the
