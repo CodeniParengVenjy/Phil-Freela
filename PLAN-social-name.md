@@ -26,6 +26,9 @@ Status: approved 2026-11-24 ("ok"). No database change.
   Settings > Profile Settings. The Profile page still shows the accounts as logos under the name.
 - A name typed where the link goes ("VG Cuevas") gets a friendly line saying to paste the link or type the
   @username, instead of "can't have spaces".
+- The chip of an account with no name anywhere (Facebook profile.php?id=...) showed the long raw link; the user:
+  "what is this??", then chose "Just Facebook". It now says the platform's name (`socialHandle`, the same as the
+  Highlights film); the link shows on hover and a click still opens it.
 
 ## The idea, in plain words
 

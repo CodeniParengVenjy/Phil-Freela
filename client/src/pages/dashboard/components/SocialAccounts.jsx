@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   SOCIAL_PLATFORMS, cleanSocialAccount, cleanSocialLabel, fetchSocialLabels, fetchSocialLinks, isSafeSocialLink,
-  linkLabel, saveSocialLinks, socialName, socialTitle, safeSocialLabel
+  linkLabel, saveSocialLinks, socialHandle, socialTitle
 } from "../../../lib/profile";
 import { fetchSocialName } from "../../../lib/aiService";
 import { Loader } from "../../../components/Loaders";
@@ -71,8 +71,9 @@ export function SocialAccountsBox({ userId, showToast, inSettings = false, onCha
   const added = accounts ? SOCIAL_PLATFORMS.filter((p) => accounts[p.key]) : [];
 
   // What an account says: the name from its page (or one typed before), the name inside the link ("@bea.edits"),
-  // or else just the link itself.
-  const accountText = (key, link) => safeSocialLabel(labels[key]) || socialName(key, link) || linkLabel(link);
+  // or else just the platform's name ("Facebook"); the link itself shows on hover. (The user, 2026-11-24, on a chip
+  // that showed "web.facebook.com/profile.php?id=…": "what is this??", then chose "Just Facebook".)
+  const accountText = (key, link) => socialHandle(key, link, labels[key]);
 
   // Saves the links and the names together; if it fails, both go back.
   const update = async (nextLinks, nextLabels = labels) => {
