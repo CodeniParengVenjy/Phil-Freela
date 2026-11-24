@@ -161,7 +161,13 @@ export const notificationIcons = {
   delay_declined: { icon: "bi-calendar-x-fill", className: "bg-secondary text-white" },
   // The client ended a project that was late and never sent (database/supabase_end_project_schema.sql,
   // PLAN-end-project.md): both people are told.
-  project_ended: { icon: "bi-slash-circle-fill", className: "bg-secondary text-white" }
+  project_ended: { icon: "bi-slash-circle-fill", className: "bg-secondary text-white" },
+  // Appeals against the late block (database/supabase_late_appeals_schema.sql,
+  // PLAN-late-appeals.md): to the client when one arrives, to the freelancer
+  // when it is allowed (also after the plain "Allow to apply again") or declined.
+  late_appeal_sent: { icon: "bi-megaphone-fill", className: "bg-info text-dark" },
+  late_appeal_allowed: { icon: "bi-unlock-fill", className: "bg-success text-white" },
+  late_appeal_declined: { icon: "bi-lock-fill", className: "bg-secondary text-white" }
 };
 
 // Text for the popup's button (only for kinds that have a link).
@@ -205,5 +211,8 @@ export const notificationLinkLabels = {
   delay_requested: "Answer request",
   delay_accepted: "Open project",
   delay_declined: "Open project",
-  project_ended: "Open project"
+  project_ended: "Open project",
+  late_appeal_sent: "Answer appeal",
+  late_appeal_allowed: "Open project",
+  late_appeal_declined: "Open project"
 };

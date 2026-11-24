@@ -248,7 +248,7 @@ export default function JobDetailsView() {
       return (
         <p className="text-secondary fs-7 mb-0">
           <i className="bi bi-slash-circle text-warning me-1"></i> You can't apply to {clientName}'s job posts: the work for your project "
-          <CensoredText text={lateProject.title} />" (due {formatDay(lateProject.due_date)}) wasn't sent on time. {clientName} can allow you to apply again from that project's page.{" "}
+          <CensoredText text={lateProject.title} />" (due {formatDay(lateProject.due_date)}) wasn't sent on time. {clientName} can allow you to apply again, and you can appeal to them from that project's page.{" "}
           <Link to={`/dashboard/project-details/${lateProject.id}`} className="text-role fw-bold text-decoration-none">Open project</Link>
         </p>
       );

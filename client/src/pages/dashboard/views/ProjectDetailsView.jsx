@@ -347,8 +347,9 @@ export default function ProjectDetailsView() {
           </div>
         )}
         {/* Work not sent by the due date: the freelancer can't apply to this
-            client's job posts until the client allows it (lib/lateBlock.js). */}
-        <LateBlockNotice projectId={project.id} isClient={iAmClient} otherName={otherName} showToast={showToast} />
+            client's job posts until the client allows it; the freelancer can
+            appeal to the client here (lib/lateBlock.js, PLAN-late-appeals.md). */}
+        <LateBlockNotice projectId={project.id} projectTitle={project.title} isClient={iAmClient} otherName={otherName} showToast={showToast} />
         {/* Payment late: the client can't hire or book this freelancer again until it
             is paid or the freelancer allows it (lib/payBlock.js, PLAN-delays.md Step 2). */}
         <PayBlockNotice

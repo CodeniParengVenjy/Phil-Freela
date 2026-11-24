@@ -195,7 +195,9 @@ function TermsOfService() {
         <li>
           <strong className="text-white">A freelancer whose work was late can't apply to that client's job posts</strong> until
           the client allows it again with the "Allow to apply again" button on that project. The client's posts stay visible,
-          and the job page says why you can't apply. Other clients' posts are not affected.
+          and the job page says why you can't apply. Other clients' posts are not affected. The freelancer can appeal to
+          that client from the project's page with a short message, twice for each late project. The client decides: Allow
+          lets them apply again, Decline keeps the block (the client can add a reason). Admins don't decide these appeals.
         </li>
         <li>
           The same rule decides the "on time" share on your profile: a finished project counts as on time only if its work
