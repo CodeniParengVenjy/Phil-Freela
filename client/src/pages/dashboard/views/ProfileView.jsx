@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { fetchIsVerified } from "../../../lib/verification";
-import { fetchDescription } from "../../../lib/profile";
+import { fetchDescription, fetchSocialLabels, fetchSocialLinks } from "../../../lib/profile";
 import { useMyViews } from "../../../lib/pro";
 import ProBadge from "../../../components/ProBadge";
 import PortfolioSection from "../components/PortfolioSection";
 import PerformanceBox from "../components/PerformanceBox";
 import CompletedProjects from "../components/CompletedProjects";
 import SkillsBox from "../components/SkillsBox";
-import { SocialAccountsBox, SocialAccountsRow } from "../components/SocialAccounts";
+import { SocialAccountsRow } from "../components/SocialAccounts";
 import Avatar from "../../../components/Avatar";
 import CoverPhoto from "../../../components/CoverPhoto";
 import PictureViewer from "../../../components/PictureViewer";
@@ -28,20 +28,24 @@ export default function ProfileView() {
   const [coverPath, setCoverPath] = useState("");
   // Which picture is open bigger: "picture", "cover", or null (none).
   const [viewing, setViewing] = useState(null);
-  // Your social accounts, { platform: link }: the box further down loads and changes them, the header shows them.
+  // Your social accounts, { platform: link } and { platform: name }, shown under your name the way others see them.
+  // They are added and removed only in Settings > Profile Settings (the user, 2026-11-24: "just the setting the
+  // social platforms in the setting it self in the profile section").
   const [socialLinks, setSocialLinks] = useState({});
   const [socialLabels, setSocialLabels] = useState({});
-  // (the box reports both after loading and after every save)
-  const handleSocialChange = (links, names) => {
-    setSocialLinks(links);
-    setSocialLabels(names);
-  };
 
   useEffect(() => {
     if (!currentUserId) return;
     let active = true;
     fetchCoverPath(currentUserId).then((path) => {
       if (active) setCoverPath(path || "");
+    });
+    // (each in its own small request, so a problem with one never hides the rest of the page)
+    fetchSocialLinks(currentUserId).then((links) => {
+      if (active) setSocialLinks(links || {});
+    });
+    fetchSocialLabels(currentUserId).then((names) => {
+      if (active) setSocialLabels(names || {});
     });
     fetchIsVerified(currentUserId).then((result) => {
       if (active) setVerified(result);
@@ -95,13 +99,6 @@ export default function ProfileView() {
               {accountType === "freelancer" && currentUserId && (
                 <div data-tour="profile-skills" className="text-start mb-4">
                   <SkillsBox userId={currentUserId} showToast={showToast} />
-                </div>
-              )}
-
-              {/* Their Facebook, Instagram, TikTok... pages (freelancers and clients: PLAN-social-accounts.md). */}
-              {currentUserId && (
-                <div className="text-start mb-4">
-                  <SocialAccountsBox userId={currentUserId} showToast={showToast} onChange={handleSocialChange} />
                 </div>
               )}
 

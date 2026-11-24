@@ -11,8 +11,21 @@ Status: approved 2026-11-24 ("ok"). No database change.
   Browser test 44/44 (pretend database and AI service; dark, light, phone, Settings).
 - First real try (the user, 2026-11-24): a number-only Facebook link (`web.facebook.com/profile.php?id=615...`)
   gave "Couldn't get the name". Fixed the same day: the name is read from Facebook's /people/ address (below).
-- Not tried yet: whether Facebook, Instagram and LinkedIn answer the live server (Vercel) the way they answer the
-  laptop.
+- Live self-check (`GET /ai/social/selftest`): from the live server Facebook (username links and id links of
+  accounts with a username), YouTube, LinkedIn, GitHub, X, Threads and TikTok give names; Instagram shows the
+  server its login page. The user's number-only Facebook link still gave no name live.
+
+## Changed after the first tries (2026-11-24, the user)
+
+- "if website cant appear the name, just link only instead.... remove the Name to Show... as well other
+  platforms": there is no "Name to show" box and no pencil any more, for every platform. The add row is platform +
+  link + Add. The name found on the page is saved with the link and shown ("It will show as Juan Dela Cruz");
+  when none is found, the account just shows its link (or the @name inside the link), with no "couldn't" message.
+  Names typed before stay. Add waits up to 12 s for a name that is still coming, then adds the link only.
+- "just the setting the social platforms in the setting it self in the profile section": the box is only in
+  Settings > Profile Settings. The Profile page still shows the accounts as logos under the name.
+- A name typed where the link goes ("VG Cuevas") gets a friendly line saying to paste the link or type the
+  @username, instead of "can't have spaces".
 
 ## The idea, in plain words
 
