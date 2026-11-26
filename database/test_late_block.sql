@@ -3,8 +3,9 @@
 -- an error whose text holds the PASS/FAIL lines. It borrows existing accounts
 -- (a verified freelancer with no late project, and two clients) and adds its
 -- own made-up job posts and projects, which roll back. The notification and
--- email triggers on job_applications are switched off inside the block (that
--- also rolls back), so nobody is told about the made-up applications.
+-- email triggers on job_applications, and the email trigger on
+-- user_notifications, are switched off inside the block (that also rolls
+-- back), so nobody is told about the made-up applications.
 
 do $$
 declare
@@ -19,6 +20,8 @@ declare
 begin
   alter table public.job_applications disable trigger notify_new_applicant;
   alter table public.job_applications disable trigger email_offline_on_application;
+  -- Allow now sends the freelancer a notice (supabase_late_appeals_schema.sql): no email.
+  alter table public.user_notifications disable trigger email_offline_on_notification;
 
   -- People (only read; everything they get here rolls back).
   select p.id into fl from public.profiles p
@@ -109,7 +112,9 @@ begin
   end;
   reset role;
 
-  -- The client allows one late project: still blocked by the other one.
+  -- The client allows one late project. Since 2026-11-26
+  -- (supabase_late_allow_all_schema.sql) that lifts the block from BOTH late
+  -- projects with this client; before, the other one still blocked.
   perform set_config('request.jwt.claims', json_build_object('sub', cl, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', cl::text, true);
   set local role authenticated;
@@ -124,29 +129,18 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', fl, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', fl::text, true);
   set local role authenticated;
-  ok := public.blocked_for_lateness(job1);
-  out := out || format('15 one of two late projects allowed: still blocked = %s %s; ', ok, case when ok then 'PASS' else 'FAIL' end);
-  reset role;
-
-  -- The client allows the other one too: the freelancer may apply again.
-  perform set_config('request.jwt.claims', json_build_object('sub', cl, 'role', 'authenticated')::text, true);
-  perform set_config('request.jwt.claim.sub', cl::text, true);
-  set local role authenticated;
-  perform public.allow_late_freelancer(p_not_sent);
-  reset role;
-  perform set_config('request.jwt.claims', json_build_object('sub', fl, 'role', 'authenticated')::text, true);
-  perform set_config('request.jwt.claim.sub', fl::text, true);
-  set local role authenticated;
+  ok := not public.blocked_for_lateness(job1);
+  out := out || format('15 one Allow lifts the block from both late projects = %s %s; ', ok, case when ok then 'PASS' else 'FAIL' end);
   begin
     insert into public.job_applications (job_post_id, freelancer_id, resume_path) values (job1, fl, fl || '/' || job1 || '-2.pdf');
-    out := out || '16 after both are allowed, applying works PASS; ';
+    out := out || '16 after one Allow, applying works PASS; ';
   exception when others then
-    out := out || format('16 after both are allowed, applying works FAIL (%s); ', sqlerrm);
+    out := out || format('16 after one Allow, applying works FAIL (%s); ', sqlerrm);
   end;
   reset role;
 
   select count(*) into n from public.projects where id in (p_sent_late, p_not_sent) and late_allowed_at is not null;
-  out := out || format('17 both projects record when they were allowed = %s %s; ', n, case when n = 2 then 'PASS' else 'FAIL' end);
+  out := out || format('17 both late projects record when they were allowed = %s %s; ', n, case when n = 2 then 'PASS' else 'FAIL' end);
   out := out || format('18 signed-out users can''t call the functions = %s %s; ',
     not (has_function_privilege('anon', 'public.blocked_for_lateness(uuid)', 'execute') or has_function_privilege('anon', 'public.allow_late_freelancer(uuid)', 'execute')),
     case when not (has_function_privilege('anon', 'public.blocked_for_lateness(uuid)', 'execute') or has_function_privilege('anon', 'public.allow_late_freelancer(uuid)', 'execute')) then 'PASS' else 'FAIL' end);

@@ -11,7 +11,9 @@
 --            counts, so re-sending after the client asked for changes is not
 --            "late".
 --   blocked  from applying to every job post of THAT client, until the client
---            presses "Allow to apply again" on the late project.
+--            presses "Allow to apply again" on the late project. (Since
+--            2026-11-26 one Allow lifts every late project with that client:
+--            supabase_late_allow_all_schema.sql replaces section 4.)
 --   shown    the client's posts stay visible; the job page says why the
 --            freelancer can't apply.
 --

@@ -11,6 +11,15 @@ Status (2026-11-24): ALL 3 STEPS DONE. The user said "dont ask, just goooo" to t
 - Step 2 and Step 3: website + Terms + System Functions row; lint clean, build OK, browser check on a pretend
   backend 38/38 (dark, light with a yellow accent, phone width).
 - Still untried: a real freelancer and a real client going through it on the live site.
+- Fix 2026-11-26 (the user: "elena has already [allowed] enjoker but not open yet"): Elena allowed Enjoker's appeal
+  on "Logo Designer for a Small Business", Enjoker was told "You can apply again", but a SECOND late project with
+  her ("Wedding Invitation") still blocked him. Now Allow (the button, or Allow on an appeal) lifts EVERY project
+  between that freelancer and that client that is late right now, answers their waiting appeals, and sends one
+  notice naming them; a project that becomes late later blocks again. Migration `late_allow_all`
+  (`database/supabase_late_allow_all_schema.sql`, test `database/test_late_allow_all.sql` 28/28, rolled-back trial
+  first) also allowed "Wedding Invitation" at Elena's Allow time (the only such project). Old tests updated to the
+  new rule and re-run on live: test_late_block 18/18, test_late_appeals 32/32. New md5 of allow_late_freelancer
+  9be39418...
 
 ## What is there today
 

@@ -217,31 +217,32 @@ begin
     and message like '%one more time%' and message not like '%Reason:%';
   out := out || format('25 first decline, no reason: one more appeal left = %s %s; ', n, case when n = 1 then 'PASS' else 'FAIL' end);
 
-  -- The client allows one appeal: the block is lifted and the freelancer told.
+  -- The client allows one appeal. Since 2026-11-26 (supabase_late_allow_all_schema.sql)
+  -- that lifts the block from EVERY late project with this client (p_late,
+  -- p_accept, p_button, p_plain), answers the other waiting appeal (a4) and
+  -- tells the freelancer once.
   perform set_config('request.jwt.claims', json_build_object('sub', cl, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', cl::text, true);
   set local role authenticated;
   perform public.answer_late_appeal(a3, true);
-  -- And uses the plain "Allow to apply again" button on the other one.
+  -- The plain "Allow to apply again" button afterwards does nothing more (and no error).
   perform public.allow_late_freelancer(p_button);
-  -- And again on a late project with no appeal at all.
-  perform public.allow_late_freelancer(p_plain);
-  -- Pressing it twice does nothing more.
   perform public.allow_late_freelancer(p_plain);
   reset role;
   select (select status from public.late_appeals where id = a3) = 'allowed'
-     and (select late_allowed_at from public.projects where id = p_accept) is not null into ok;
-  out := out || format('26 allowing the appeal lifts the block = %s %s; ', ok, case when ok then 'PASS' else 'FAIL' end);
-  select (select status from public.late_appeals where id = a4) = 'allowed'
-     and (select late_allowed_at from public.projects where id = p_button) is not null into ok;
-  out := out || format('27 the plain button also answers a waiting appeal = %s %s; ', ok, case when ok then 'PASS' else 'FAIL' end);
+     and (select count(*) from public.projects where id in (p_late, p_accept, p_button, p_plain) and late_allowed_at is not null) = 4 into ok;
+  out := out || format('26 allowing the appeal lifts the block from all 4 late projects = %s %s; ', ok, case when ok then 'PASS' else 'FAIL' end);
+  select (select status from public.late_appeals where id = a4) = 'allowed' into ok;
+  out := out || format('27 the waiting appeal on another late project counts as allowed = %s %s; ', ok, case when ok then 'PASS' else 'FAIL' end);
+  select count(*) into n from public.user_notifications
+  where user_id = fl and type = 'late_appeal_allowed' and link = '/dashboard/project-details/' || p_accept
+    and message like '%the late projects %';
+  out := out || format('28 the freelancer is told once, naming the projects = %s %s; ', n, case when n = 1 then 'PASS' else 'FAIL' end);
   select count(*) into n from public.user_notifications
   where user_id = fl and type = 'late_appeal_allowed'
-    and link in ('/dashboard/project-details/' || p_accept, '/dashboard/project-details/' || p_button);
-  out := out || format('28 the freelancer is told for both = %s %s; ', n, case when n = 2 then 'PASS' else 'FAIL' end);
-  select count(*) into n from public.user_notifications
-  where user_id = fl and type = 'late_appeal_allowed' and link = '/dashboard/project-details/' || p_plain;
-  out := out || format('29 the plain button with no appeal tells the freelancer once = %s %s; ', n, case when n = 1 then 'PASS' else 'FAIL' end);
+    and link in ('/dashboard/project-details/' || p_late, '/dashboard/project-details/' || p_accept,
+                 '/dashboard/project-details/' || p_button, '/dashboard/project-details/' || p_plain);
+  out := out || format('29 pressing Allow again tells nobody again = %s %s; ', n, case when n = 1 then 'PASS' else 'FAIL' end);
 
   -- Nothing left to appeal once allowed.
   perform set_config('request.jwt.claims', json_build_object('sub', fl, 'role', 'authenticated')::text, true);

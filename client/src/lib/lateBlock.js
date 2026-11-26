@@ -3,7 +3,9 @@ import { supabase } from "./supabaseClient";
 // Late freelancers (database/supabase_late_block_schema.sql; the user,
 // 2026-11-10): a freelancer who didn't send a client's project by its due date
 // can't apply to that client's job posts until the client presses "Allow to
-// apply again" on that project. The database's apply rule is what really
+// apply again" on that project. One Allow lifts every project with that client
+// that is late at that moment (supabase_late_allow_all_schema.sql, 2026-11-26);
+// a project that becomes late later blocks again. The database's apply rule is what really
 // decides; these only explain it on the pages. If the database can't answer
 // (for example before that SQL is run), they report "nothing late".
 

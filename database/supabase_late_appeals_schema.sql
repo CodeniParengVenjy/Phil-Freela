@@ -80,6 +80,9 @@ alter table public.user_notifications
 -- 3. "Allow to apply again" also answers a waiting appeal and tells the
 --    freelancer (before, it told nobody). Spliced into the LIVE function: the
 --    lines below go right after its update, nothing else changes.
+--    (2026-11-26: the whole function is replaced by
+--    supabase_late_allow_all_schema.sql, which keeps these steps for every late
+--    project with that client.)
 -- ---------------------------------------------------------------------------
 
 do $splice$

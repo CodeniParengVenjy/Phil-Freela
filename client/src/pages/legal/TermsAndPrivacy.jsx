@@ -194,7 +194,8 @@ function TermsOfService() {
         </li>
         <li>
           <strong className="text-white">A freelancer whose work was late can't apply to that client's job posts</strong> until
-          the client allows it again with the "Allow to apply again" button on that project. The client's posts stay visible,
+          the client allows it again with the "Allow to apply again" button on that project. Allowing once covers every
+          project with that client that is late at that moment; a project that becomes late later blocks again. The client's posts stay visible,
           and the job page says why you can't apply. Other clients' posts are not affected. The freelancer can appeal to
           that client from the project's page with a short message, twice for each late project. The client decides: Allow
           lets them apply again, Decline keeps the block (the client can add a reason). Admins don't decide these appeals.
